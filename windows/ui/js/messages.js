@@ -422,6 +422,8 @@ export function MessagesPage({ device }) {
     : p.conversations;
   const open = !composing && selection != null ? p.conversations.find((c) => c.thread === selection) : null;
 
+  // With more than one phone the sidebar still has one row for the messages: whose they are is chosen here.
+  const phones = store.devices.filter(offersMessages);
   return html`<div class="sms">
     <aside class="sms-list">
       <div class="sms-head">
@@ -431,6 +433,9 @@ export function MessagesPage({ device }) {
         </label>
         <button class=${"ib" + (composing ? " on" : "")} title=${t("sms_new")} onClick=${() => compose()}><${Icon} name="edit" size=${18} /></button>
       </div>
+      ${phones.length > 1 && html`<div class="seg sms-tabs sms-phones" role="tablist" aria-label=${t("devices")}>
+        ${phones.map((d) => html`<button key=${d.id} role="tab" class=${d.id === device.id ? "on" : ""} aria-selected=${d.id === device.id} onClick=${() => set({ selected: d.id })}><span class="ellipsis">${d.name}</span></button>`)}
+      </div>`}
       <div class="seg sms-tabs" role="tablist">
         <button role="tab" class=${tab === "conversations" ? "on" : ""} aria-selected=${tab === "conversations"} onClick=${() => switchTo("conversations")}>${t("sms_conversations")}</button>
         <button role="tab" class=${tab === "contacts" ? "on" : ""} aria-selected=${tab === "contacts"} onClick=${() => switchTo("contacts")}>${t("sms_contacts")}</button>

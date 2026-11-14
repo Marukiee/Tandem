@@ -33,6 +33,8 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
   --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-display: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  /* How things that change size or place settle: a little past, then back. Colour and opacity fade plainly. */
+  --spring: cubic-bezier(0.3, 1.28, 0.45, 1);
   color-scheme: light dark;
 }
 
@@ -78,19 +80,34 @@ button { font: inherit; color: inherit; }
 .small { font-size: 12px; }
 
 /* ---- Shell ---- */
-#app { display: grid; grid-template-columns: 272px 1fr; height: 100vh; }
+#app { display: grid; grid-template-columns: auto 1fr; height: 100vh; }
+/* The sidebar floats clear of the window's edge. It is one column with two widths: wide with the words, and a narrow one of
+   icons when the window gets small or Settings brings a list of its own. The icons stay where they are, the words fade, the
+   width springs. */
 .nav {
+  width: 256px;
+  margin: 8px 0 8px 8px;
   background: var(--nav);
-  border-right: 1px solid var(--line);
-  padding: 14px 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow: auto;
+  overflow: hidden auto;
+  position: relative;
+  transition: width 0.5s var(--spring), margin-right 0.5s var(--spring), box-shadow 0.2s;
 }
-.brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px; font: 600 15px var(--font-display); }
-.brand img { width: 24px; height: 24px; border-radius: 6px; }
-.tag { font: 600 10px var(--font); letter-spacing: 0.02em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 7px; }
+.nav.fold { width: 78px; }
+/* Opened over the page for a moment: it keeps the room of the narrow one, so the page under it does not move. */
+.nav.peek { margin-right: -178px; z-index: 20; box-shadow: var(--shadow); }
+.navhead { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 9px; flex: none; white-space: nowrap; overflow: hidden; transition: opacity 0.18s; }
+.navhead .t { font: 600 15px var(--font-display); color: var(--text-2); }
+.navhead .count { margin-left: auto; display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-3); }
+.navhead .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
+.navhead .dot.on { background: var(--ok); }
+.nav.fold .navhead { opacity: 0; }
+.navline { height: 1px; margin: 6px 12px; background: var(--line); flex: none; }
 .label { font-size: 12px; color: var(--text-3); padding: 10px 10px 4px; }
 
 .row {
@@ -137,6 +154,40 @@ main.drop-at { box-shadow: inset 0 0 0 2px var(--accent); background: var(--acce
   place-items: center;
 }
 
+.nav .row { flex: none; height: 52px; padding: 6px 7px 0; gap: 9px; align-items: flex-start; border-radius: 16px; transition: height 0.45s var(--spring), padding 0.45s var(--spring), background 0.12s; }
+.nav .row.selected::before { display: none; }
+.nav .row .words { height: 40px; display: flex; flex-direction: column; justify-content: center; white-space: nowrap; transition: opacity 0.18s, transform 0.45s var(--spring); }
+.nav .row .line2 { display: flex; align-items: center; gap: 6px; }
+.nav .row .line2 .bat { margin-left: auto; flex: none; display: flex; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.nav .row .tail { flex: none; align-self: center; max-width: 104px; font-variant-numeric: tabular-nums; transition: opacity 0.15s; }
+/* The name under the icon, for the narrow sidebar. */
+.nav .row .mini { position: absolute; left: -7px; right: -7px; bottom: 3px; text-align: center; font-size: 10.5px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+.nav .row.selected .mini { color: var(--accent); }
+.nav .pagerow { height: 40px; padding-top: 0; }
+.nav .pagerow .words { font-weight: 600; }
+.navicon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; transition: height 0.45s var(--spring); }
+.nav .row .badge { position: absolute; right: 10px; top: calc(50% - 9px); transition: top 0.45s var(--spring), right 0.45s var(--spring); }
+.nav.fold .row { height: 60px; padding-top: 3px; }
+.nav.fold .row .words, .nav.fold .row .tail { opacity: 0; transform: translateX(-10px); pointer-events: none; }
+.nav.fold .row .mini { opacity: 1; transition: opacity 0.25s 0.18s; }
+.nav.fold .pagerow { height: 50px; padding-top: 0; }
+.nav.fold .pagerow .navicon { height: 34px; }
+.nav.fold .row .badge { top: 1px; right: 5px; }
+.nav .addrow, .nav.fold .addrow { height: 40px; }
+.plusdisc { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; }
+.nav .banners { display: flex; flex-direction: column; flex: none; }
+/* In the narrow sidebar a banner is its icon: a press opens the sidebar over the page, where its words and buttons are. */
+.nav.fold .update { margin: 2px 0 6px; padding: 0; background: none; border-color: transparent; align-items: center; }
+.nav.fold .update .grow, .nav.fold .update .small, .nav.fold .update-actions, .nav.fold .update .prog { display: none; }
+
+/* The battery of a device as a ring around it. */
+.ringed { flex: none; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--ok) calc(var(--level) * 1%), var(--line-strong) 0); transition: background 0.3s; }
+.ringed.low { background: conic-gradient(var(--bad) calc(var(--level) * 1%), var(--line-strong) 0); }
+.ringed.none { background: none; }
+/* The disc inside is see-through by itself, which would show the ring through it. */
+.ringed .glyph { background: linear-gradient(rgba(127, 127, 140, 0.16), rgba(127, 127, 140, 0.16)), var(--nav); }
+.ringed .glyph.on { background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--nav); }
+
 .glyph {
   flex: none;
   border-radius: 50%;
@@ -174,10 +225,10 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
   border: 1px solid var(--line-strong);
   background: var(--card);
   cursor: default;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.3s var(--spring);
 }
 .btn:hover { background: var(--hover); }
-.btn:active { background: var(--press); transform: scale(0.985); }
+.btn:active { background: var(--press); transform: scale(0.96); transition-duration: 0.12s, 0.12s, 0.12s, 0.06s; }
 .btn.accent { background: var(--accent); border-color: transparent; color: #fff; }
 .btn.accent:hover { filter: brightness(1.08); }
 .btn.danger { color: var(--bad); }
@@ -219,10 +270,10 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
   display: grid;
   place-items: center;
   cursor: default;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s, color 0.12s, transform 0.3s var(--spring);
 }
-.ib:hover { background: var(--hover); transform: scale(1.06); }
-.ib:active { background: var(--press); transform: scale(0.96); }
+.ib:hover, .ib.open { background: var(--hover); }
+.ib:active { background: var(--press); transform: scale(0.96); transition-duration: 0.12s, 0.12s, 0.06s; }
 .ib.solid { background: var(--card-2); border: 1px solid var(--line); }
 .ib[disabled] { opacity: 0.35; pointer-events: none; }
 .ib.on { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -384,9 +435,9 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .item { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; }
 /* The buttons of a row of the list: round, quiet until the pointer is on the row, one size, one place. */
 .item-actions { display: flex; align-items: center; gap: 2px; flex: none; }
-.iconbtn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--text-2); cursor: pointer; transition: background 0.12s, color 0.12s, opacity 0.12s, transform 0.12s; }
+.iconbtn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--text-2); cursor: default; transition: background 0.12s, color 0.12s, opacity 0.12s, transform 0.3s var(--spring); }
 .iconbtn:hover { background: var(--hover); color: var(--text); }
-.iconbtn:active { transform: scale(0.92); }
+.iconbtn:active { background: var(--press); transform: scale(0.96); transition-duration: 0.12s, 0.12s, 0.12s, 0.06s; }
 .iconbtn.on { background: var(--accent); color: #fff; }
 .iconbtn.danger:hover { color: var(--bad); }
 .item .item-actions .iconbtn:not(.on) { opacity: 0.55; }
@@ -448,7 +499,6 @@ body.panel { background: var(--card); }
 .bad { color: var(--bad); }
 .card.flush > .item:first-child, .card.flush > .setting:first-child { border-top: 0; }
 .nav .spacer { flex: 1; min-height: 12px; }
-.nav .addrow { color: var(--accent); }
 .ok-text { color: var(--ok); }
 select { cursor: default; }
 
@@ -461,10 +511,10 @@ select { cursor: default; }
 .wbtns { display: flex; gap: 6px; }
 .wbtn {
   width: 28px; height: 28px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center;
-  background: transparent; color: var(--text-2); cursor: default; transition: background 0.12s, color 0.12s, transform 0.12s;
+  background: transparent; color: var(--text-2); cursor: default; transition: background 0.12s, color 0.12s, transform 0.3s var(--spring);
 }
 .wbtn:hover { background: var(--hover); color: var(--text); }
-.wbtn:active { background: var(--press); transform: scale(0.92); }
+.wbtn:active { background: var(--press); transform: scale(0.96); transition-duration: 0.12s, 0.12s, 0.06s; }
 .wbtn.close:hover { background: #e5484d; color: #fff; }
 .edge { position: fixed; z-index: 100; }
 .edge-n, .edge-s { left: 8px; right: 8px; height: 5px; cursor: ns-resize; }
@@ -514,12 +564,14 @@ select { cursor: default; }
 .chipwrap { position: relative; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid transparent; background: var(--hover); color: var(--text); font: 500 13px var(--font); cursor: pointer; transition: background 0.12s, border-color 0.12s, transform 0.12s; }
 .chip:hover { background: var(--press); }
-.chip:active { transform: scale(0.97); }
+.chip:active { transform: scale(0.96); }
 .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .chipmenu { position: absolute; z-index: 20; top: 38px; left: 0; min-width: 190px; padding: 6px; border-radius: 14px; background: var(--surface-2, #232329); border: 1px solid var(--line-strong); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; gap: 2px; animation: chipin 0.14s ease-out; }
 @keyframes chipin { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
 .chipitem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); font: 13px var(--font); text-align: left; cursor: pointer; }
+.chipitem { transition: background 0.12s; }
 .chipitem:hover { background: var(--hover); }
+.chipitem:active { background: var(--press); }
 .chipitem.on { color: var(--accent); }
 
 /* A copied text in the history: short ones as they are, long ones in a box that scrolls and that the person can pull taller by the corner. */
@@ -751,3 +803,134 @@ button.health-title:not(:disabled) { cursor: pointer; }
 @keyframes health-grow-x { from { transform: scaleX(0); } }
 @keyframes health-reveal { from { clip-path: inset(0 100% 0 0); } }
 @media (prefers-reduced-motion: reduce) { .health-grow, .health-grow-x, .health-reveal { animation: none; } }
+
+/* ---- The device page: the drawn device, the players on their own card, a colour per group ---- */
+:root { --tone-2: #ffdde9; --on-tone-2: #6b1f3f; --tone-3: #d6f0da; --on-tone-3: #0f4d1d; --tone-4: #ffe1d3; --on-tone-4: #6a2a10; --art-a: rgba(91, 91, 214, 0.30); --art-b: rgba(255, 176, 203, 0.42); }
+@media (prefers-color-scheme: dark) {
+  :root { --tone-2: #56283b; --on-tone-2: #ffd7e4; --tone-3: #1f4729; --on-tone-3: #c9edd0; --tone-4: #573020; --on-tone-4: #ffdacb; --art-a: rgba(120, 120, 235, 0.36); --art-b: rgba(255, 140, 180, 0.22); }
+}
+.devart { flex: none; color: var(--text-3); }
+.devart .body { fill: rgba(127, 127, 140, 0.14); stroke: currentColor; stroke-width: 2.5; transition: fill 0.2s; }
+.devart .line { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+.devart .dot { fill: currentColor; }
+.devart .from { stop-color: var(--art-a); } .devart .to { stop-color: var(--art-b); }
+.devart.on { color: var(--text); }
+.devart.on .body { fill: var(--fill); }
+
+/* The players sit between the head and the buttons. Closed they take no room, not even the gap of the page. */
+.players-card { margin-top: -14px; transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease, margin-top 0.45s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.players-card.open { margin-top: 0; }
+.players-card .list { padding-top: 16px; gap: 12px; }
+.ptabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.ptab { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--hover); color: var(--text-2);
+  font: 600 12.5px var(--font); white-space: nowrap; cursor: default; transition: background 0.12s, color 0.12s, transform 0.3s var(--spring); }
+.ptab:hover { background: var(--press); color: var(--text); }
+.ptab:active { transform: scale(0.96); transition-duration: 0.12s, 0.12s, 0.06s; }
+.ptab.on, .ptab.on:hover { background: var(--accent); color: #fff; }
+
+/* Each group of buttons has a colour of its own; what is on, and the one that sends, stay filled with the accent. */
+.agroups > .agroup:nth-child(2) .btn:not(.on):not(.accent) .icon { background: var(--tone-2); color: var(--on-tone-2); }
+.agroups > .agroup:nth-child(3) .btn:not(.on):not(.accent) .icon { background: var(--tone-3); color: var(--on-tone-3); }
+.agroups > .agroup:nth-child(4) .btn:not(.on):not(.accent) .icon { background: var(--tone-4); color: var(--on-tone-4); }
+
+/* ---- Rows of files: what kind it is, the reason at the right, and three dots with what can be done ---- */
+.item.transfer { gap: 12px; transition: background 0.12s; }
+.card.flush > .item.transfer:hover { background: var(--hover); }
+.kind { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--hover); color: var(--text-2); }
+.kind.k-picture { background: var(--accent-soft); color: var(--accent); }
+.kind.k-video { background: var(--tone-2); color: var(--on-tone-2); }
+.kind.k-paper { background: var(--tone-3); color: var(--on-tone-3); }
+.kind.k-sound { background: var(--tone-4); color: var(--on-tone-4); }
+.kind.chosen { background: var(--accent); color: #fff; }
+.item.transfer .dir { display: inline-block; vertical-align: -1px; margin-right: 4px; }
+/* A long reason goes to a second line: it is never cut. */
+.reason { flex: none; display: inline-flex; align-items: center; min-height: 24px; max-width: 230px; padding: 3px 10px; border-radius: 12px; background: var(--bad-soft); color: var(--bad); font: 600 12px/1.25 var(--font); }
+.menuwrap { position: relative; flex: none; display: inline-flex; }
+.rowmenu { position: absolute; z-index: 20; top: 36px; right: 0; min-width: 200px; padding: 6px; border-radius: 14px; background: var(--card); border: 1px solid var(--line-strong); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 2px; transform-origin: top right; animation: menu-in 0.32s var(--spring); }
+@keyframes menu-in { from { opacity: 0; transform: scale(0.9) translateY(-6px); } }
+.menuitem { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); font: 13px var(--font); text-align: left; white-space: nowrap; cursor: default; transition: background 0.12s; }
+.menuitem .icon { color: var(--text-2); }
+.menuitem:hover { background: var(--hover); }
+.menuitem:active { background: var(--press); }
+.menuitem.danger, .menuitem.danger .icon { color: var(--bad); }
+
+/* A row of settings that leads somewhere answers the pointer like any other row. */
+.setting.link { cursor: default; transition: background 0.12s; }
+.setting.link:hover { background: var(--hover); }
+.setting.link:active { background: var(--press); }
+.setting.link > .icon:last-child { color: var(--text-3); }
+
+/* The name of a round button, shown the moment the pointer is on it (tips.js). */
+.tip { position: fixed; z-index: 200; padding: 4px 9px; border-radius: 8px; background: var(--text); color: var(--bg); font: 500 12px var(--font); white-space: nowrap; pointer-events: none;
+  opacity: 0; transform: translateY(3px); transition: opacity 0.1s, transform 0.2s var(--spring); }
+.tip.on { opacity: 1; transform: none; }
+
+/* A subject in Settings that holds more than one part. */
+.settings-stack { display: flex; flex-direction: column; gap: 26px; }
+
+/* ---- Shared: three tiles that say how it stands and filter, a table, and the picked file beside it ---- */
+:root { --tone-1: #e3e2fb; --on-tone-1: #2a2980; }
+@media (prefers-color-scheme: dark) { :root { --tone-1: #30305e; --on-tone-1: #dcdbff; } }
+.page > .wrap.shared { max-width: 1080px; }
+.tiles { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 10px; }
+.tile { min-width: 0; min-height: 108px; padding: 14px 16px; border: 0; border-radius: 20px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; text-align: left; font: inherit; cursor: default;
+  transition: box-shadow 0.12s, transform 0.3s var(--spring); }
+.tile.t1 { background: var(--tone-1); color: var(--on-tone-1); }
+.tile.t2 { background: var(--tone-2); color: var(--on-tone-2); }
+.tile.t3 { background: var(--tone-4); color: var(--on-tone-4); }
+.tile.click:hover { box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 28%, transparent); }
+.tile.click:active { transform: scale(0.98); transition-duration: 0.12s, 0.06s; }
+.tile.on, .tile.on:hover { box-shadow: inset 0 0 0 2px currentColor; }
+.tile .tk { font: 700 12px var(--font); opacity: 0.78; }
+.tile .big { font: 700 40px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.tile .ts { font-size: 12.5px; opacity: 0.85; }
+.tile .tn { display: block; font-weight: 600; }
+.tile .tw { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tile .tw .ts { display: block; }
+.tile .tb { display: flex; gap: 8px; }
+.tile .btn:not(.accent) { background: color-mix(in srgb, currentColor 12%, transparent); border-color: transparent; color: inherit; }
+.searchfield { width: 100%; box-sizing: border-box; padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: inherit; font: inherit; outline: none; transition: border-color 0.12s; }
+.searchfield:focus { border-color: var(--accent); }
+.wrap.shared .chips { margin: 0; }
+.sharedsplit { display: flex; gap: 12px; align-items: flex-start; }
+.sharedsplit > .table { flex: 1; min-width: 0; }
+.thead { display: flex; align-items: center; gap: 12px; padding: 6px 12px 4px; font: 700 12px var(--font); color: var(--text-3); }
+.thead .hk { width: 34px; flex: none; } .thead .hm { width: 32px; flex: none; }
+.col { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col.size { width: 72px; } .col.when { width: 116px; } .col.state { width: 200px; white-space: normal; }
+.col.state .reason { max-width: 100%; }
+.item.transfer.selected { background: var(--hover); }
+.card.detail { position: sticky; top: 0; flex: none; width: 240px; min-height: 300px; padding: 14px; display: flex; flex-direction: column; gap: 10px; animation: detail-in 0.32s var(--spring); }
+@keyframes detail-in { from { opacity: 0; transform: translateX(10px); } }
+.detail .preview { width: auto; height: 104px; border-radius: 14px; }
+.detail .dname { font-weight: 600; overflow-wrap: anywhere; }
+.detail .facts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 12.5px; }
+.detail .facts dt { color: var(--text-3); } .detail .facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.detail .btn { justify-content: center; }
+/* Narrow: the name gives way, the reason is never cut. */
+@media (max-width: 860px) { .col.when, .col.size { display: none; } .col.state { width: auto; overflow: visible; } .thead { display: none; } }
+@media (max-width: 640px) { .tiles { grid-template-columns: 1fr 1fr; } .tile.t2 { grid-column: 1 / -1; order: -1; } }
+
+/* ---- The head of a device and what plays, side by side ---- */
+/* Under each other by default, which is also what a webview without container queries shows. With 720 px of room they sit
+   beside each other, and the player folds its buttons under its cover so it fits the narrower card. */
+.headbox { container-type: inline-size; }
+.headrow { display: flex; flex-direction: column; gap: 14px; }
+@container (min-width: 720px) {
+  .headrow { flex-direction: row; align-items: stretch; }
+  .headrow > .headcard { flex: 1.6 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+  .headrow > .players-card { display: flex; flex: 0 1 0; min-width: 0; margin: 0 0 0 -14px; opacity: 0; overflow: hidden;
+    transition: flex-grow 0.45s cubic-bezier(0.2, 0.9, 0.3, 1), margin-left 0.45s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease; }
+  .headrow > .players-card.open { flex-grow: 1; margin-left: 0; opacity: 1; }
+  .headrow > .players-card > .in { flex: 1; min-width: 0; display: flex; }
+  .headrow > .players-card .list { flex: 1; min-width: 0; justify-content: center; transform: none; }
+  .headrow .player { grid-template-columns: 64px 1fr; grid-template-areas: "cover words" "bar bar" "btns btns"; gap: 10px 12px; align-items: center; }
+  .headrow .player .main, .headrow .player .top { display: contents; }
+  .headrow .player .cover { grid-area: cover; width: 64px; height: 64px; border-radius: 12px; }
+  .headrow .player .top > .grow { grid-area: words; }
+  .headrow .player .t { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .headrow .player .top .small { white-space: normal; }
+  .headrow .player .progress { grid-area: bar; }
+  .headrow .player .btns { grid-area: btns; justify-content: center; }
+}

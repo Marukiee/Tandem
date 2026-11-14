@@ -11,21 +11,24 @@ import { MessagesPage, offersMessages } from "./messages.js";
 import { CallDialog, useCallAsk } from "./calls.js";
 import { TourPage, maybeShowTour } from "./tour.js";
 import { dropPaths, markDropTarget } from "./drops.js";
+import { watchTips } from "./tips.js";
 
 /** The update, in the sidebar above its lower rows: what is out, how far the download is, and what went wrong. */
 // The watch only talks to its phone, but it is a device of its own: its page goes by way of the phone.
-function watchRow(d) {
+function watchRow(d, folded) {
   const watch = d.status && d.status.watch;
   if (!watch || !watch.paired || d.id !== watchPhoneId(state.devices)) return null;
   const reachable = d.online && watch.online;
   const on = (state.page === "watch" || state.page === "health") && state.selected === d.id;
-  return html`<div class=${"row" + (on ? " selected" : "") + (reachable ? "" : " dim")} key=${d.id + "-watch"} onClick=${() => set({ selected: d.id, page: "watch" })}>
-    <span style="width:36px;height:36px;display:flex;align-items:center;justify-content:center"><${Icon} name="device-watch" size=${20} /></span>
-    <div class="grow">
+  const status = reachable ? t("connected") : t("watch_away");
+  return html`<div class=${"row devrow" + (on ? " selected" : "") + (reachable ? "" : " dim")} key=${d.id + "-watch"} title=${folded ? watchName(d) + " · " + status : null}
+    onClick=${() => set({ selected: d.id, page: "watch" })}>
+    <span class="navicon"><${Icon} name="device-watch" size=${20} /></span>
+    <div class="words grow">
       <div class="name ellipsis">${watchName(d)}</div>
-      <div class=${"sub" + (reachable ? " ok" : "")}>${reachable ? t("connected") : t("watch_away")}</div>
+      <div class="line2"><span class=${"sub ellipsis" + (reachable ? " ok" : "")}>${status}</span>${watch.level != null && html`<span class="small muted bat">${watch.level}%</span>`}</div>
     </div>
-    ${watch.level != null && html`<span class="small muted">${watch.level}%</span>`}
+    <span class="mini">${t("watch")}</span>
   </div>`;
 }
 
@@ -90,40 +93,85 @@ function DisplayBanner() {
   </div>`;
 }
 
+/** A word for each device in the narrow sidebar: the one that tells it from the others. */
+function shortNames(devices) {
+  const words = devices.map((d) => d.name.trim().split(/\s+/));
+  // A first word they all share (the name of their owner) says nothing in a column this narrow.
+  const shared = words.length > 1 && words.every((w) => w.length > 1 && w[0] === words[0][0]);
+  return Object.fromEntries(devices.map((d, i) => {
+    const rest = words[i].slice(shared ? 1 : 0);
+    const whole = rest.join(" ");
+    const word = whole.length <= 10 ? whole : rest[0];
+    return [d.id, word.length > 10 ? word.slice(0, 9) + "…" : word];
+  }));
+}
+
+const narrowWindow = window.matchMedia("(max-width: 899px)");
+/** True while the window is too narrow for the wide sidebar. */
+function useNarrow() {
+  const [narrow, setNarrow] = useState(narrowWindow.matches);
+  useEffect(() => {
+    const look = () => setNarrow(narrowWindow.matches);
+    narrowWindow.addEventListener("change", look);
+    return () => narrowWindow.removeEventListener("change", look);
+  }, []);
+  return narrow;
+}
+
+// The phone whose messages the one row opens: the one that was open last, else the first that is connected.
+let lastPhone = null;
+
 function Nav() {
+  const narrow = useNarrow();
+  // A banner in the narrow sidebar is only its icon. A press on it opens the sidebar over the page until the pointer leaves.
+  const [peek, setPeek] = useState(false);
   const unread = state.notifications.length;
-  // The messages of a phone, and its calls with them, sit with Shared and the clipboard; with more than one phone each says whose it is.
   const phones = state.devices.filter(offersMessages);
-  return html`<nav class="nav">
-    <div class="brand" data-tauri-drag-region><img src="icons/brand.png" alt="" />Tandem<span class="tag">${t("experimental")}</span></div>
-    <div class="label">${t("devices")}</div>
+  if (state.page === "messages" && phones.some((d) => d.id === state.selected)) lastPhone = state.selected;
+  const phone = phones.find((d) => d.id === lastPhone) || phones.find((d) => d.online) || phones[0];
+  // One sidebar with two widths. It folds by itself when the window is narrow, and on Settings, which brings a list of its own:
+  // two wide columns side by side leave no room for the page.
+  const folded = (narrow || state.page === "settings") && !peek;
+  const short = shortNames(state.devices);
+  const online = state.devices.filter((d) => d.online).length;
+  const pageRow = (id, icon, label, tail, more = {}) => html`<div class=${"row pagerow" + ((more.on ?? state.page === id) ? " selected" : "") + (more.dim ? " dim" : "")}
+    title=${folded ? label : null} onClick=${more.go || (() => set({ page: id }))}>
+    <span class="navicon"><${Icon} name=${icon} size=${20} /></span><span class="words grow ellipsis">${label}</span>${tail}<span class="mini">${label}</span></div>`;
+  return html`<nav class=${"nav" + (folded ? " fold" : "") + (peek ? " peek" : "")} onMouseLeave=${() => peek && setPeek(false)}>
+    <div class="navhead" data-tauri-drag-region><span class="t">${t("devices")}</span>
+      ${state.devices.length > 0 && html`<span class="count"><i class=${"dot" + (online ? " on" : "")}></i>${t("connected_of", online, state.devices.length)}</span>`}</div>
     ${state.devices.map((d) => {
       const battery = d.status && d.status.battery;
       const on = (state.page === "device" || state.page === "files") && state.selected === d.id;
-      return [html`<div class=${"row" + (on ? " selected" : "") + (d.online ? "" : " dim")} key=${d.id} data-device-id=${d.id} onClick=${() => set({ selected: d.id, page: "device" })}>
-        <${DeviceGlyph} device=${d} size=${36} />
-        <div class="grow">
+      const status = d.online ? t("connected") + (d.rttMs != null ? " · " + d.rttMs + " ms" : "") : d.ble ? t("over_bluetooth") : t("not_connected");
+      return [html`<div class=${"row devrow" + (on ? " selected" : "") + (d.online ? "" : " dim")} key=${d.id} data-device-id=${d.id} title=${folded ? d.name + " · " + status : null}
+        onClick=${() => set({ selected: d.id, page: "device" })}>
+        <${DeviceGlyph} device=${d} size=${40} ring=${true} />
+        <div class="words grow">
           <div class="name ellipsis">${d.name}</div>
-          <div class=${"sub" + (d.online ? " ok" : d.ble ? " ble" : "")}>${d.online ? t("connected") + (d.rttMs != null ? " · " + d.rttMs + " ms" : "") : d.ble ? t("over_bluetooth") : t("not_connected")}</div>
+          <div class="line2"><span class=${"sub ellipsis" + (d.online ? " ok" : d.ble ? " ble" : "")}>${status}</span>
+            ${battery && html`<span class="small muted bat">${battery.charging && d.online && html`<${Icon} name="bolt" size=${13} filled=${true} class="ok-text" />`}${battery.level}%</span>`}</div>
         </div>
-        ${battery && html`<span class="small muted" style="display:flex;align-items:center;gap:2px">
-          ${battery.charging && d.online && html`<${Icon} name="bolt" size=${13} filled=${true} class="ok-text" />`}${battery.level}%</span>`}
-      </div>`, watchRow(d)];
+        <span class="mini">${short[d.id]}</span>
+      </div>`, watchRow(d, folded)];
     })}
-    <div class="row addrow" onClick=${() => set({ dialog: { kind: "pair" } })}><${Icon} name="plus" size=${18} />${t("add_device")}</div>
+    <div class="navline"></div>
+    ${pageRow("shared", "files", t("shared"), state.transfers.length > 0 && html`<span class="tail small muted">${state.transfers.length}</span>`)}
+    ${/* One row for the messages, of whichever phone was open last: with two phones the page itself has the choice. */ null}
+    ${phone && pageRow("messages", "message", t("sms_messages"), phones.length > 1 && html`<span class="tail small muted ellipsis">${phone.name}</span>`,
+      { on: state.page === "messages", dim: !phone.online, go: () => set({ selected: phone.id, page: "messages" }) })}
+    ${pageRow("clipboard", "clipboard", t("clipboard"))}
+    ${pageRow("notifications", "bell", t("notifications"), unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`)}
+    ${pageRow("settings", "settings", t("settings"))}
     <div class="spacer"></div>
-    ${/* Above the lower rows and not under them: here they take their room from the empty middle, and no row moves when one comes or goes. */ null}
-    <${HostingBanner} />
-    <${DisplayBanner} />
-    <${UpdateBanner} />
-    <div class=${"row" + (state.page === "shared" ? " selected" : "")} onClick=${() => set({ page: "shared" })}><${Icon} name="files" size=${19} /><span class="grow">${t("shared")}</span></div>
-    ${phones.map((d) => html`<div class=${"row" + (state.page === "messages" && state.selected === d.id ? " selected" : "") + (d.online ? "" : " dim")}
-      key=${d.id + "-messages"} onClick=${() => set({ selected: d.id, page: "messages" })}>
-      <${Icon} name="message" size=${19} /><span class="grow ellipsis">${t("sms_messages")}${phones.length > 1 && html` <span class="muted">${d.name}</span>`}</span></div>`)}
-    <div class=${"row" + (state.page === "clipboard" ? " selected" : "")} onClick=${() => set({ page: "clipboard" })}><${Icon} name="clipboard" size=${19} /><span class="grow">${t("clipboard")}</span></div>
-    <div class=${"row" + (state.page === "notifications" ? " selected" : "")} onClick=${() => set({ page: "notifications" })}>
-      <${Icon} name="bell" size=${19} /><span class="grow">${t("notifications")}</span>${unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`}</div>
-    <div class=${"row" + (state.page === "settings" ? " selected" : "")} onClick=${() => set({ page: "settings" })}><${Icon} name="settings" size=${19} /><span class="grow">${t("settings")}</span></div>
+    ${/* Above the foot and not under it: here they take their room from the empty middle, and no row moves when one comes or goes. */ null}
+    <div class="banners" onClick=${() => folded && setPeek(true)}>
+      <${HostingBanner} />
+      <${DisplayBanner} />
+      <${UpdateBanner} />
+    </div>
+    <div class="row pagerow addrow" title=${folded ? t("add_device") : null} onClick=${() => set({ dialog: { kind: "pair" } })}>
+      <span class="navicon"><span class="plusdisc"><${Icon} name="plus" size=${14} /></span></span><span class="words grow ellipsis">${t("add_device")}</span></div>
   </nav>`;
 }
 
@@ -271,3 +319,4 @@ await listenDrops(
   (paths, at) => { set({ dropping: false }); dropPaths(paths, at); },
 );
 render(html`<${App} />`, document.getElementById("root"));
+watchTips();

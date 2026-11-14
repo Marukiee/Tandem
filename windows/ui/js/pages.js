@@ -2,7 +2,7 @@
 import { html, useEffect, useRef, useState } from "../vendor/preact-htm.js";
 import { call, listen, native } from "./backend.js";
 import { ArrangementEditor } from "./arrange.js";
-import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, fmtSize, platformIcon, watchPhoneId } from "./components.js";
+import { BatteryRing, Chip, DeviceArt, DeviceGlyph, PlayersCard, RowMenu, Switch, ago, deviceChips, fmtSize, platformIcon, watchPhoneId } from "./components.js";
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { MicButton, OutputButton } from "./output.js";
@@ -112,6 +112,10 @@ function Offers({ device }) {
   </div>`);
 }
 
+// How each kind of file looks in a row, as [colour, icon]. The kinds are those the page Shared filters by (kindOf).
+const KIND_LOOK = { pictures: ["picture", "photo"], videos: ["video", "video"], audio: ["sound", "music"], documents: ["paper", "file"] };
+const fileKind = (name) => KIND_LOOK[kindOf(name || "")] || ["other", "file"];
+
 /** Why a file did not get there, in words. A reason the core gave that has none is shown as it is. */
 function failedText(item, peer) {
   if (["cancelled", "declined", "expired"].includes(item.error)) return t(item.error);
@@ -129,7 +133,7 @@ function HalfwayRow({ item }) {
   const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
   const goOn = () => (online ? call("halfway_go_on", { from: item.from, offer: item.offer }).catch(failed) : say(t("halfway_away_toast", name)));
   return html`<div class=${"item halfway" + (online ? "" : " away")}>
-    <span class="glyph on" style="width:34px;height:34px"><${Icon} name="player-pause" size=${16} /></span>
+    <span class="kind k-picture"><${Icon} name="player-pause" size=${17} /></span>
     <div class="grow">
       <div style="font-weight:500;overflow-wrap:anywhere">${title}</div>
       <div class="small muted">${online ? t("halfway_row", fmtSize(item.done), fmtSize(item.total), name) : t("halfway_row_away", name)}</div>
@@ -142,24 +146,85 @@ function HalfwayRow({ item }) {
   </div>`;
 }
 
-export function TransferRow({ item, chosen, onClick }) {
+/** A file that went or came. On the page Shared it is a line of a table ([columns]): size, when and how it stands each in a
+    column of their own. Everything that can be done with it is under its three dots. */
+export function TransferRow({ item, chosen, selected, columns, onClick, onDblClick }) {
   const peer = state.devices.find((d) => d.id === item.peer);
   const active = item.state === "active";
+  const bad = item.state === "failed";
   const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
-  const detail = active
-    ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "")
-    : item.state === "failed" ? failedText(item, peer) : fmtSize(item.total);
-  return html`<div class=${"item" + (chosen ? " chosen" : "") + (onClick ? " pickable" : "")} onMouseDown=${noTextPick} onClick=${onClick}>
-    ${chosen ? html`<${Icon} name="check" size=${18} class="accent-text" />` : html`<${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${18} class=${item.state === "failed" ? "bad" : ""} />`}
+  const reason = bad ? failedText(item, peer) : null;
+  const detail = active ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "") : bad ? null : fmtSize(item.total);
+  const when = !active && item.updatedAt ? ago(item.updatedAt) : null;
+  const [kind, icon] = fileKind(item.name);
+  const there = item.state === "done" && item.incoming && item.location;
+  const tile = chosen ? html`<span class="kind chosen"><${Icon} name="check" size=${17} /></span>` : html`<span class=${"kind k-" + kind}><${Icon} name=${icon} size=${17} /></span>`;
+  const arrow = html`<${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${12} class="dir" />`;
+  const menu = html`<${RowMenu} label=${t("more")} items=${[
+    active && { icon: "x", label: t("cancel_transfer"), danger: true, run: () => call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed) },
+    there && { icon: "external-link", label: t("open"), run: () => call("open_path", { path: item.location }).catch(failed) },
+    there && { icon: "folder-open", label: t("show_in_folder"), run: () => call("reveal_path", { path: item.location }).catch(failed) },
+    !active && { icon: "x", label: t("remove_from_list"), run: () => call("transfers_remove", { ids: [item.id] }).then(() => set({ transfers: state.transfers.filter((x) => x.id !== item.id) })).catch(failed) },
+  ]} />`;
+  const cls = "item transfer" + (chosen ? " chosen" : "") + (selected ? " selected" : "") + (onClick ? " pickable" : "");
+  if (columns) return html`<div class=${cls + " cols"} onMouseDown=${noTextPick} onClick=${onClick} onDblClick=${onDblClick}>
+    ${tile}
     <div class="grow">
       <div class="ellipsis" style="font-weight:500">${item.name}</div>
-      <div class="small muted ellipsis" style=${item.state === "failed" ? "color:var(--bad)" : ""}>${peer ? peer.name + " · " : ""}${detail}${!active && item.updatedAt ? " · " + ago(item.updatedAt) : ""}</div>
+      <div class="small muted ellipsis">${arrow}${t(item.incoming ? "from_device" : "to_device", peer ? peer.name : "?")}</div>
       ${active && html`<div class="prog"><i style=${`width:${pct}%`}></i></div>`}
     </div>
-    ${active && html`<button class="ib" title=${t("cancel_transfer")} onClick=${(e) => e.stopPropagation() || call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed)}><${Icon} name="x" size=${18} /></button>`}
-    ${item.state === "done" && item.incoming && item.location && html`
-      <button class="ib" title=${t("show_in_folder")} onClick=${(e) => e.stopPropagation() || call("reveal_path", { path: item.location }).catch(failed)}><${Icon} name="folder-open" size=${18} /></button>`}
+    <span class="col size small muted">${item.total ? fmtSize(item.total) : ""}</span>
+    <span class="col when small muted">${when || ""}</span>
+    <span class="col state">${reason ? html`<span class="reason">${reason}</span>` : html`<span class="small muted">${active ? pct + "%" : t(item.incoming ? "dir_received" : "dir_sent")}</span>`}</span>
+    ${menu}
   </div>`;
+  return html`<div class=${cls} onMouseDown=${noTextPick} onClick=${onClick}>
+    ${tile}
+    <div class="grow">
+      <div class="ellipsis" style="font-weight:500">${item.name}</div>
+      <div class="small muted ellipsis">${arrow}${[peer && peer.name, detail, when].filter(Boolean).join(" · ")}</div>
+      ${active && html`<div class="prog"><i style=${`width:${pct}%`}></i></div>`}
+    </div>
+    ${reason && html`<span class="reason">${reason}</span>`}
+    ${menu}
+  </div>`;
+}
+
+/** The file that is picked on the page Shared, beside the list when the window is wide enough for both. */
+function SharedDetail({ item }) {
+  const peer = state.devices.find((d) => d.id === item.peer);
+  const [kind, icon] = fileKind(item.name);
+  const bad = item.state === "failed";
+  const reason = bad ? failedText(item, peer) : null;
+  const there = item.state === "done" && item.incoming && item.location;
+  const folder = item.location ? item.location.replace(/[\\/][^\\/]*$/, "") : null;
+  return html`<aside class="card detail" key=${item.id}>
+    <div class=${"preview kind k-" + kind}><${Icon} name=${icon} size=${34} /></div>
+    <div class="dname">${item.name}</div>
+    <dl class="facts">
+      <dt>${t(item.incoming ? "fact_from" : "fact_to")}</dt><dd>${peer ? peer.name : "?"}</dd>
+      ${item.total > 0 && html`<dt>${t("col_size")}</dt><dd>${fmtSize(item.total)}</dd>`}
+      ${item.updatedAt && html`<dt>${t("col_when")}</dt><dd>${ago(item.updatedAt)}</dd>`}
+      ${reason && html`<dt>${t("col_state")}</dt><dd class="bad">${reason}</dd>`}
+      ${folder && html`<dt>${t("fact_folder")}</dt><dd class="path">${folder}</dd>`}
+    </dl>
+    <div class="grow"></div>
+    ${there && html`<button class="btn accent" onClick=${() => call("open_path", { path: item.location }).catch(failed)}>${t("open")}</button>
+      <button class="btn" onClick=${() => call("reveal_path", { path: item.location }).catch(failed)}><${Icon} name="folder-open" size=${17} />${t("show_in_folder")}</button>`}
+  </aside>`;
+}
+
+const wideWindow = window.matchMedia("(min-width: 1320px)");
+/** True while the window has room for the picked file beside the list. */
+function useWide() {
+  const [wide, setWide] = useState(wideWindow.matches);
+  useEffect(() => {
+    const look = () => setWide(wideWindow.matches);
+    wideWindow.addEventListener("change", look);
+    return () => wideWindow.removeEventListener("change", look);
+  }, []);
+  return wide;
 }
 
 /** [disabled] greys the row out, and [why] says in its place what has to be done before it works. */
@@ -322,10 +387,22 @@ export function DevicePage({ device }) {
   };
   const sshReason = !device.online ? t("ssh_why_offline") : t("ssh_why_" + device.platform);
 
+  const openMouse = () => set({ page: "settings", settingsWanted: { section: "mouse", at: Date.now() } });
+  // The webcam of the phone. A group with one button in it took a whole line, so it sits with the screen, unless the phone
+  // can also take a photo or a scan for this computer: then the three of them are the camera.
+  const webcamButton = html`<button class=${"btn" + (webcamOn ? " on" : "") + (state.platform === "linux" ? "" : " grey")} disabled=${!device.online && !webcamOn} title=${t("webcam_tip")}
+          onClick=${() => (webcamOn ? call("webcam_stop", { id: device.id }).catch(failed)
+            : state.platform !== "linux" ? say(t("webcam_not_here"))
+            : !hasCap("camera.host") ? say(t("live_update_phone"))
+            : call("webcam_start", { id: device.id, name: device.name }).then(() => say(t("webcam_asked", device.name))).catch(failed))}>
+          <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>`;
+
   return html`<div class="wrap">
-    <div class="card" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
+    ${/* The head and what plays, side by side where there is room and under each other where there is not. */ null}
+    <div class="headbox"><div class="headrow">
+    <div class="card headcard" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
       <div class="head">
-        <${DeviceGlyph} device=${device} size=${72} />
+        <${DeviceArt} device=${device} />
         <div class="info grow">
           <div class="title ellipsis">${device.name}</div>
           <div class="chips">${deviceChips(device)}</div>
@@ -333,8 +410,10 @@ export function DevicePage({ device }) {
         </div>
         ${battery && html`<${BatteryRing} battery=${battery} size=${72} connected=${device.online} />`}
       </div>
-      <${HeadPlayers} device=${device} players=${players} />
     </div>
+
+    <${PlayersCard} device=${device} players=${players} />
+    </div></div>
 
     <${Offers} device=${device} />
 
@@ -365,6 +444,7 @@ export function DevicePage({ device }) {
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} title=${t("live_camera_tip")} onClick=${() => (hasCap("camera.host") ? show("camera") : say(t("live_update_phone")))}>
           <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
+        ${device.platform === "android" && !hasCap("capture") && webcamButton}
         <${LockButton} device=${device} />
       <//>`}
       ${device.platform === "android" && html`<${ActionGroup} title=${t("group_sound")}>
@@ -384,13 +464,8 @@ export function DevicePage({ device }) {
         <${OutputButton} device=${device} />
         <${PlaySoundButton} device=${device} />
       <//>`}
-      ${device.platform === "android" && html`<${ActionGroup} title=${t("group_camera")} wide>
-        <button class=${"btn" + (webcamOn ? " on" : "") + (state.platform === "linux" ? "" : " grey")} disabled=${!device.online && !webcamOn} title=${t("webcam_tip")}
-          onClick=${() => (webcamOn ? call("webcam_stop", { id: device.id }).catch(failed)
-            : state.platform !== "linux" ? say(t("webcam_not_here"))
-            : !hasCap("camera.host") ? say(t("live_update_phone"))
-            : call("webcam_start", { id: device.id, name: device.name }).then(() => say(t("webcam_asked", device.name))).catch(failed))}>
-          <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>
+      ${device.platform === "android" && hasCap("capture") && html`<${ActionGroup} title=${t("group_camera")} wide>
+        ${webcamButton}
         ${hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
           <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
         <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
@@ -413,6 +488,10 @@ export function DevicePage({ device }) {
       <${SettingRow} icon="bell" title=${t("show_its_notifications")} sub=${t("show_its_notifications_sub")} on=${device.notifications} onChange=${(v) => setting({ notifications: v })} />
       ${hasCap("screen.view") && html`<${ScreenPolicyRows} device=${device} />`}
       <${SettingRow} icon="download" title=${t("accept_automatically")} sub=${t("accept_automatically_sub")} on=${device.autoAccept} onChange=${(v) => setting({ autoAccept: v })} />
+      <div class="setting link" role="button" tabindex="0" onClick=${() => openMouse()}
+        onKeyDown=${(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMouse(); } }}>
+        <${Icon} name="pointer" size=${20} /><div class="grow"><div class="t">${t("tab_mouse")}</div><div class="s">${t("mouse_link_sub")}</div></div><${Icon} name="chevron-right" size=${18} />
+      </div>
     </div>
 
     ${transfers.length > 0 && html`<h2>${t("recent")}</h2><div class="card flush">${transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}
@@ -860,6 +939,9 @@ export function SharedPage() {
   // Rows chosen with Ctrl or Shift, to open, remove or trash at once. While any is chosen a click chooses instead of opening.
   const [chosen, setChosen] = useState(new Set());
   const range = useRef({ anchor: null, kept: new Set() });
+  // With room for it, a click picks a file to show beside the list and a double click opens it; without, a click opens it.
+  const wide = useWide();
+  const [pickedId, setPickedId] = useState(null);
   const day = 86400000;
   const within = { today: day, week: 7 * day, month: 30 * day };
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -903,8 +985,16 @@ export function SharedPage() {
       return;
     }
     range.current = { anchor: item.id, kept: new Set() };
-    if (item.state === "done" && item.location) call("open_path", { path: item.location }).catch(failed);
+    if (wide) return setPickedId(item.id);
+    openItem(item);
   };
+  const openItem = (item) => { if (item.state === "done" && item.location) call("open_path", { path: item.location }).catch(failed); };
+  const shown = wide && items.length ? items.find((x) => x.id === pickedId) || items[0] : null;
+  // What the three tiles at the top say: today, what is waiting for an answer, and what went wrong.
+  const today = state.transfers.filter((x) => Date.now() - (x.startedAt || 0) < day);
+  const todayBytes = today.filter((x) => x.state === "done").reduce((n, x) => n + (x.total || 0), 0);
+  const failedCount = state.transfers.filter((x) => x.state === "failed").length;
+  const offer = state.offers[0];
   const openable = picked.filter((x) => x.state === "done" && x.location);
   const trashable = picked.filter((x) => x.state === "done" && x.incoming && x.location);
   const removeChosen = () => call("transfers_remove", { ids: [...chosen] }).then(() => {
@@ -920,24 +1010,39 @@ export function SharedPage() {
       if (moved.length < trashable.length) say(t("trash_some_failed"));
     }).catch(failed);
   };
-  return html`<div class="wrap">
-    <div style="display:flex;align-items:flex-end;gap:12px">
-      <div class="grow"><h1>${t("title_shared")}</h1><p class="lead">${t("lead_shared")}</p></div>
+  return html`<div class="wrap shared">
+    <div style="display:flex;align-items:center;gap:12px">
+      <h1 class="grow">${t("title_shared")}</h1>
       <button class="btn" onClick=${() => call("open_downloads").catch(failed)}><${Icon} name="folder-open" size=${17} />${t("open_folder")}</button>
     </div>
-    ${state.halfway.length > 0 && html`<div class="card flush" style="margin-top:10px">${state.halfway.map((x) => html`<${HalfwayRow} item=${x} key=${x.from + "-" + x.offer} />`)}</div>`}
-    ${state.transfers.length === 0
+    ${state.halfway.length > 0 && html`<div class="card flush">${state.halfway.map((x) => html`<${HalfwayRow} item=${x} key=${x.from + "-" + x.offer} />`)}</div>`}
+    ${state.transfers.length === 0 && !offer
       ? (state.halfway.length === 0 && html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_yet")}</div></div>`)
       : html`
-        <input type="search" placeholder=${t("search_name")} value=${query} onInput=${(e) => setQuery(e.target.value)}
-          style="margin:10px 0 8px;width:100%;box-sizing:border-box;padding:9px 16px;border-radius:999px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;font:inherit;outline:none" />
+        <div class="tiles">
+          <button class=${"tile t1 click" + (period === "today" ? " on" : "")} aria-pressed=${period === "today"} onClick=${() => setPeriod(period === "today" ? "always" : "today")}>
+            <span class="tk">${t("period_today")}</span><span class="big">${today.length}</span><span class="ts">${t("shared_today_sub", fmtSize(todayBytes))}</span>
+          </button>
+          <div class="tile t2">
+            <span class="tk">${t("shared_waiting")}</span>
+            <div class="tw"><span class="big">${state.offers.length}</span>
+              ${offer ? html`<span class="grow"><span class="tn ellipsis">${offer.items[0].name}${offer.items.length > 1 ? " +" + (offer.items.length - 1) : ""}</span>
+                <span class="ts ellipsis">${fmtSize(offer.items.reduce((n, i) => n + (i.size || 0), 0))} · ${offer.fromName}</span></span>` : html`<span class="ts">${t("shared_waiting_none")}</span>`}</div>
+            ${offer && html`<div class="tb">
+              <button class="btn small accent" onClick=${() => call("accept_offer", { from: offer.from, offer: offer.offer }).catch(failed)}>${t("accept")}</button>
+              <button class="btn small" onClick=${() => call("decline_offer", { from: offer.from, offer: offer.offer }).catch(failed)}>${t("decline")}</button></div>`}
+          </div>
+          <button class=${"tile t3 click" + (onlyFailed ? " on" : "")} aria-pressed=${onlyFailed} onClick=${() => setOnlyFailed(!onlyFailed)}>
+            <span class="tk">${t("failed")}</span><span class="big">${failedCount}</span><span class="ts">${t("shared_failed_sub")}</span>
+          </button>
+        </div>
+        <input type="search" class="searchfield" placeholder=${t("search_name")} value=${query} onInput=${(e) => setQuery(e.target.value)} />
         <div class="chips">
           <${FilterChip} icon="files" label=${nameOf(kinds, kind, t("filter_type"))} active=${kind !== "all"} options=${kinds} value=${kind} onPick=${setKind} />
           <${FilterChip} icon="devices" label=${peer === "all" ? t("filter_device") : nameOf(peers, peer, "?")} active=${peer !== "all"}
             options=${[{ key: "all", label: t("all_devices") }, ...peers]} value=${peer} onPick=${setPeer} />
           <${FilterChip} icon="arrow-down" label=${direction === "all" ? t("filter_direction") : nameOf(directions, direction, "")} active=${direction !== "all"} options=${directions} value=${direction} onPick=${setDirection} />
           <${FilterChip} icon="hourglass" label=${period === "always" ? t("filter_when") : nameOf(periods, period, "")} active=${period !== "always"} options=${periods} value=${period} onPick=${setPeriod} />
-          <button class=${"chip" + (onlyFailed ? " on" : "")} onClick=${() => setOnlyFailed(!onlyFailed)}><${Icon} name="alert-triangle" size=${15} /><span>${t("failed")}</span></button>
           ${filtering && html`<button class="chip" onClick=${clear}><${Icon} name="x" size=${15} /><span>${t("clear_filters")}</span></button>`}
         </div>
         ${items.length === 0
@@ -950,7 +1055,13 @@ export function SharedPage() {
               <button class=${"btn small danger" + (trashable.length ? "" : " dim")} onClick=${trashChosen}><${Icon} name="trash" size=${15} />${t("move_to_trash")}</button>
               <button class="ib" title=${t("stop_choosing")} onClick=${() => setChosen(new Set())}><${Icon} name="x" size=${17} /></button>
             </div>`}
-            <div class="card flush">${items.map((x) => html`<${TransferRow} item=${x} key=${x.id} chosen=${chosen.has(x.id)} onClick=${(e) => clicked(x, e)} />`)}</div>`}`}
+            <div class="sharedsplit">
+              <div class="card flush table">
+                <div class="thead"><span class="hk"></span><span class="grow">${t("col_name")}</span><span class="col size">${t("col_size")}</span><span class="col when">${t("col_when")}</span><span class="col state">${t("col_state")}</span><span class="hm"></span></div>
+                ${items.map((x) => html`<${TransferRow} item=${x} key=${x.id} columns=${true} chosen=${chosen.has(x.id)} selected=${shown && shown.id === x.id} onClick=${(e) => clicked(x, e)} onDblClick=${() => openItem(x)} />`)}
+              </div>
+              ${shown && html`<${SharedDetail} item=${shown} />`}
+            </div>`}`}
   </div>`;
 }
 
@@ -1116,13 +1227,19 @@ function FilesHostSection({ s, patch: patchSettings }) {
 }
 
 // The settings, in sections like the settings of the Mac: what belongs together is together, and a section is a page of its own.
+// By subject, not by the part of the app that made them: what this computer does, what the phone brings here, what is shared,
+// what is shown and steered, and what is heard.
 const SECTIONS = [
-  ["general", "tab_general", "settings"], ["features", "tab_features", "circle-check"], ["clipboard", "tab_clipboard", "clipboard"], ["files", "tab_files", "files"], ["remote", "tab_remote", "device-desktop"],
-  ["mouse", "tab_mouse", "pointer"], ["quickshare", "tab_quickshare", "quickshare"], ["health", "tab_health", "moon"], ["updates", "tab_updates", "download"], ["about", "about", "info-circle"],
+  ["computer", "tab_computer", "device-desktop"], ["phone", "tab_phone", "device-mobile"], ["sharing", "tab_sharing", "send"], ["control", "tab_control", "pointer"],
+  ["sound", "sound_media", "volume"], ["features", "tab_features", "circle-check"], ["about", "tab_about", "info-circle"],
 ];
+// Where the sections of before went, for a place that still asks for one by its old name: the search of the desktop, a row on
+// the page of a device, the tab that was open the last time.
+const MOVED = { general: "computer", clipboard: "sharing", files: "sharing", quickshare: "sharing", remote: "control", mouse: "control", health: "phone", updates: "about" };
+const sectionFor = (id) => (MOVED[id] || id);
 
 function rememberedSection() {
-  try { return SECTIONS.some(([id]) => id === localStorage.getItem("settingsSection")) ? localStorage.getItem("settingsSection") : "general"; } catch { return "general"; }
+  try { const id = sectionFor(localStorage.getItem("settingsSection")); return SECTIONS.some(([known]) => known === id) ? id : "computer"; } catch { return "computer"; }
 }
 
 export function SettingsPage() {
@@ -1135,7 +1252,11 @@ export function SettingsPage() {
     if (!wanted) return;
     // Taken once, so opening Settings later starts where the person left it.
     state.settingsWanted = null;
-    if (SECTIONS.some(([id]) => id === wanted.section)) open(wanted.section);
+    const id = sectionFor(wanted.section);
+    if (!SECTIONS.some(([known]) => known === id)) return;
+    open(id);
+    // A subject holds more than one part now: the one that was asked for is brought into view.
+    requestAnimationFrame(() => { const part = document.getElementById("set-" + wanted.section); if (part) part.scrollIntoView({ block: "start" }); });
   }, [wanted && wanted.at]);
   const patch = async (change) => { set({ settings: await call("set_settings", { patch: change }) }); setLanguage(state.settings.language, state.systemLanguage); };
   return html`<div class="wrap settings">
@@ -1146,16 +1267,18 @@ export function SettingsPage() {
           <${Icon} name=${icon} size=${17} /><span>${t(label)}</span></button>`)}
       </nav>
       <div class="settings-content" key=${section}>
-        ${section === "general" && html`<${GeneralSettings} s=${s} patch=${patch} />`}
+        ${section === "computer" && html`<${GeneralSettings} s=${s} patch=${patch} part="computer" />`}
+        ${section === "phone" && html`<div class="settings-stack"><${GeneralSettings} s=${s} patch=${patch} part="phone" /><div id="set-health"><${HealthSection} /></div></div>`}
+        ${section === "sharing" && html`<div class="settings-stack"><${GeneralSettings} s=${s} patch=${patch} part="files" />
+          <div id="set-files"><${FilesHostSection} s=${s} patch=${patch} /></div>
+          <div id="set-quickshare"><${QuickShareSection} s=${s} patch=${patch} /></div>
+          <div id="set-clipboard"><${ClipboardSettings} s=${s} patch=${patch} /></div></div>`}
+        ${section === "control" && html`<div class="settings-stack"><div id="set-remote"><${RemoteSettings} s=${s} patch=${patch} /></div>
+          <${GeneralSettings} s=${s} patch=${patch} part="camera" />
+          <div id="set-mouse"><${MouseSection} s=${s} patch=${patch} /></div></div>`}
+        ${section === "sound" && html`<${GeneralSettings} s=${s} patch=${patch} part="sound" />`}
         ${section === "features" && html`<${FeaturesSettings} />`}
-        ${section === "clipboard" && html`<${ClipboardSettings} s=${s} patch=${patch} />`}
-        ${section === "files" && html`<${FilesHostSection} s=${s} patch=${patch} />`}
-        ${section === "remote" && html`<${RemoteSettings} s=${s} patch=${patch} />`}
-        ${section === "mouse" && html`<${MouseSection} s=${s} patch=${patch} />`}
-        ${section === "quickshare" && html`<${QuickShareSection} s=${s} patch=${patch} />`}
-        ${section === "health" && html`<${HealthSection} />`}
-        ${section === "updates" && html`<${UpdateSettings} s=${s} patch=${patch} />`}
-        ${section === "about" && html`<${AboutSettings} />`}
+        ${section === "about" && html`<div class="settings-stack"><div id="set-updates"><${UpdateSettings} s=${s} patch=${patch} /></div><${AboutSettings} /></div>`}
       </div>
     </div>
   </div>`;
@@ -1227,11 +1350,12 @@ function FocusSettings({ s, patch }) {
     </div>`;
 }
 
-function GeneralSettings({ s, patch }) {
+/** The settings that were one long list under General, each now with the subject it belongs to: [part] says which of them. */
+function GeneralSettings({ s, patch, part }) {
   const [name, setName] = useState(state.self ? state.self.name : "");
   const delays = ["low", "normal", "smooth"];
   const saved = (text) => say(text);
-  return html`<div style="display:flex;flex-direction:column;gap:12px">
+  if (part === "computer") return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("this_pc")}</h2>
     <div class="card" style="display:flex;gap:10px;align-items:center">
       <label class="muted" for="pcname">${t("pc_name")}</label>
@@ -1240,57 +1364,24 @@ function GeneralSettings({ s, patch }) {
     </div>
     <div class="small muted">${t("pc_name_sub")}</div>
 
-    <h2>${t("behaviour")}</h2>
+    <h2>${t("startup")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="power" title=${t("start_with_windows")} sub=${t("start_with_windows_sub")} on=${state.autostart}
+      <${SettingRow} icon="power" title=${t("start_with_windows")} on=${state.autostart}
         onChange=${async (v) => { try { set({ autostart: await call("set_autostart", { enabled: v }) }); } catch (e) { failed(e); } }} />
       <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
-      <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
-      <${SettingRow} icon="phone" title=${t("pause_during_calls")} sub=${t("pause_during_calls_sub")} on=${s.pauseDuringCalls} onChange=${(v) => patch({ pauseDuringCalls: v })} />
-      <${SettingRow} icon="bolt" title=${t("battery_alerts")} sub=${t("battery_alerts_sub")} on=${s.batteryAlerts} onChange=${(v) => patch({ batteryAlerts: v })} />
-      <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
-      <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
       <${SettingRow} icon="coffee" title=${t("keep_awake")} sub=${t("keep_awake_sub")} on=${s.keepAwake && state.canKeepAwake} grey=${!state.canKeepAwake}
         onChange=${(v) => (v && !state.canKeepAwake ? say(t("keep_awake_why")) : patch({ keepAwake: v }))} />
-      ${(state.platform === "windows" || state.hasLid) && html`<${SettingRow} icon="device-laptop" title=${t("keep_awake_lid")} sub=${t("keep_awake_lid_sub")}
+      ${(state.platform === "windows" || state.hasLid) && html`<${SettingRow} icon="device-laptop" title=${t("keep_awake_lid")}
         on=${s.keepAwakeLid !== false} disabled=${!s.keepAwake || !state.canKeepAwake} onChange=${(v) => patch({ keepAwakeLid: v })} />`}
-      <${SettingRow} icon="key" title=${t("unlock_afar")} sub=${t("unlock_afar_sub")} on=${s.unlockFromAfar && state.canUnlock} grey=${!state.canUnlock}
-        onChange=${(v) => (v && !state.canUnlock ? say(t("unlock_afar_why")) : patch({ unlockFromAfar: v }))} />
+    </div>
+
+    <h2>${t("connection")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
-      <${SettingRow} icon="camera" title=${html`${t("camera_obs")} <span class="muted" title=${t("camera_obs_info", OBS_ADDRESS)} style="cursor:help">ⓘ</span>`} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })}>
-        <div style="display:flex;gap:8px;align-items:center">
-          ${s.cameraToObs && html`<button class="btn small" title=${OBS_ADDRESS} onClick=${() => navigator.clipboard.writeText(OBS_ADDRESS).then(() => say(t("camera_obs_copied"))).catch(failed)}>${t("copy_address")}</button>`}
-          <${Switch} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })} label=${t("camera_obs")} />
-        </div>
-      <//>
     </div>
 
     ${state.platform === "linux" && html`<${SearchSettings} s=${s} patch=${patch} />`}
-
-    <${FocusSettings} s=${s} patch=${patch} />
-
-    <h2>${t("sound_media")}</h2>
-    <div class="card flush">
-      <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
-      <${SettingRow} icon="music" title=${t("share_media")} sub=${t("share_media_sub")} on=${s.shareMedia} onChange=${(v) => patch({ shareMedia: v })} />
-      <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
-      <${SettingRow} icon="hourglass" title=${t("sound_delay")} sub=${t("sound_delay_sub")} disabled=${!s.phoneSound}>
-        <select value=${s.soundDelay || "normal"} disabled=${!s.phoneSound} onChange=${(e) => patch({ soundDelay: e.target.value })}>
-          ${delays.map((d) => html`<option value=${d}>${t("delay_" + d)}</option>`)}
-        </select>
-      <//>
-      <${FindSoundRow} SettingRow=${SettingRow} />
-    </div>
-
-    <h2>${t("received_files")}</h2>
-    <div class="card flush">
-      <${SettingRow} icon="download" title=${t("download_folder")} sub=${state.downloadDir}>
-        <div style="display:flex;gap:6px">
-          <button class="btn small" onClick=${async () => { const dir = await call("choose_download_dir"); if (dir) set({ downloadDir: dir }); }}>${t("change")}</button>
-          <button class="btn small" onClick=${() => call("open_downloads").catch(failed)}>${t("open_folder")}</button>
-        </div>
-      <//>
-    </div>
 
     <h2>${t("language")}</h2>
     <div class="card flush">
@@ -1310,6 +1401,53 @@ function GeneralSettings({ s, patch }) {
         <button class="btn small" onClick=${() => call("settings_import").then((opened) => opened && set({ dialog: { kind: "restore", ...opened } })).catch(failed)}>${t("backup_import_button")}</button>
       <//>
     </div>
+  </div>`;
+  if (part === "phone") return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("tab_phone")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="bell" title=${t("phone_notifications")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
+      <${SettingRow} icon="clipboard" title=${t("copy_codes")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
+      <${SettingRow} icon="bolt" title=${t("battery_alerts")} sub=${t("battery_alerts_sub")} on=${s.batteryAlerts} onChange=${(v) => patch({ batteryAlerts: v })} />
+      <${SettingRow} icon="phone" title=${t("pause_during_calls")} on=${s.pauseDuringCalls} onChange=${(v) => patch({ pauseDuringCalls: v })} />
+      <${SettingRow} icon="key" title=${t("unlock_afar")} sub=${t("unlock_afar_sub")} on=${s.unlockFromAfar && state.canUnlock} grey=${!state.canUnlock}
+        onChange=${(v) => (v && !state.canUnlock ? say(t("unlock_afar_why")) : patch({ unlockFromAfar: v }))} />
+    </div>
+
+    <${FocusSettings} s=${s} patch=${patch} />
+  </div>`;
+  if (part === "sound") return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("sound_media")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
+      <${SettingRow} icon="music" title=${t("share_media")} sub=${t("share_media_sub")} on=${s.shareMedia} onChange=${(v) => patch({ shareMedia: v })} />
+      <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
+      <${SettingRow} icon="hourglass" title=${t("sound_delay")} sub=${t("sound_delay_sub")} disabled=${!s.phoneSound}>
+        <select value=${s.soundDelay || "normal"} disabled=${!s.phoneSound} onChange=${(e) => patch({ soundDelay: e.target.value })}>
+          ${delays.map((d) => html`<option value=${d}>${t("delay_" + d)}</option>`)}
+        </select>
+      <//>
+      <${FindSoundRow} SettingRow=${SettingRow} />
+    </div>
+  </div>`;
+  if (part === "files") return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("received_files")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="download" title=${t("download_folder")} sub=${state.downloadDir}>
+        <div style="display:flex;gap:6px">
+          <button class="btn small" onClick=${async () => { const dir = await call("choose_download_dir"); if (dir) set({ downloadDir: dir }); }}>${t("change")}</button>
+          <button class="btn small" onClick=${() => call("open_downloads").catch(failed)}>${t("open_folder")}</button>
+        </div>
+      <//>
+    </div>
+  </div>`;
+  // The camera of a phone for OBS: it is about what this computer shows, so it sits with the screen.
+  return html`<div class="card flush">
+      <${SettingRow} icon="camera" title=${html`${t("camera_obs")} <span class="muted" title=${t("camera_obs_info", OBS_ADDRESS)} style="cursor:help">ⓘ</span>`} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })}>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${s.cameraToObs && html`<button class="btn small" title=${OBS_ADDRESS} onClick=${() => navigator.clipboard.writeText(OBS_ADDRESS).then(() => say(t("camera_obs_copied"))).catch(failed)}>${t("copy_address")}</button>`}
+          <${Switch} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })} label=${t("camera_obs")} />
+        </div>
+      <//>
   </div>`;
 }
 
