@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -414,8 +415,10 @@ class EngineHost(
     /** Sends content shared into the app. Returns how many devices it went to. */
     suspend fun sendUris(uris: List<Uri>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean = true): Int {
         val engine = engine ?: return 0
-        val files = uris.mapNotNull { describe(it, hold) }
-        if (files.isEmpty() || targets.isEmpty()) return 0
+        if (uris.isEmpty() || targets.isEmpty()) return 0
+        // Opening a file of another app can mean fetching it first (a photo only in the cloud): never on the main thread.
+        val files = withContext(Dispatchers.IO) { uris.mapNotNull { describe(it, hold) } }
+        if (files.isEmpty()) return 0
         val report = engine.sendFiles(targets, files, origin)
         report.sentTo.firstOrNull()?.let { batchStarted(report.offer, it, false, files.size * report.sentTo.size) }
         return report.sentTo.size
