@@ -46,6 +46,12 @@ object CodeGrant {
     /** Whether a code in a text can get off this phone at all. */
     fun canSeeCodes(context: Context): Boolean = !needed || allowed(context) || SmsAccess.canRead(context)
 
+    /**
+     * Codes can only come from the messages themselves: Android hides them in notifications and nothing lifts that. What the store does not
+     * have (chat messages over RCS, and texts Android holds back from apps that read) does not reach the computers then.
+     */
+    fun readsTextsOnly(context: Context): Boolean = needed && !allowed(context) && SmsAccess.canRead(context)
+
     /** Makes the app-op follow the switch, when Shizuku is there to do it. */
     suspend fun sync(context: Context) = lock.withLock {
         if (!needed) return@withLock

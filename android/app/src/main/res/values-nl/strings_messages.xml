@@ -19,4 +19,5 @@
     <string name="perm_messages">Sms\'jes</string>
     <string name="perm_messages_why">Om je gesprekken op je computers te tonen en daarvandaan sms\'jes te sturen.</string>
     <string name="settings_codes_hidden">Android verbergt codes in meldingen. Tik om Tandem je sms\'jes te laten lezen.</string>
+    <string name="settings_codes_texts_only">Leest alleen de sms\'jes zelf. Chatberichten (RCS) en berichten die Android achterhoudt mis je. Met Shizuku lukt dat wel.</string>
 </resources>
