@@ -99,7 +99,8 @@ Ernstig:
   niet af (`android/app/build.gradle.kts:102`). Voorstel: `BundleCompat.getParcelable`, en R-V8.
 - **R-B5. Mac: de knoppen in het Controlecentrum doen niets** (zeker). `M/Platform/ControlBridge.swift:50`: `current()` zet de
   sleutel niet in `control-state.json`, de extensie stuurt dus geen sleutel mee (`macos/ControlExtension/Controls.swift:33`) en
-  `perform` stopt op regel 74. Voorstel: `key: key` meegeven.
+  `perform` stopt op regel 74. Voorstel: `key: key` meegeven. Bevestigd op de echte Mac (2026-11-14): `control-state.json` van
+  de draaiende app (0.3.15) heeft geen `key`.
 - **R-B6. Android: een bestand naar twee apparaten tegelijk mislukt** (zeker). `A/engine/AndroidFiles.kt:28`: elke lezer krijgt een
   kopie van dezelfde descriptor, en kopieen delen een leespositie; de `lseek(0)` van de een zet de ander terug. De controlesom
   klopt niet, het wordt opnieuw geprobeerd en mislukt weer. Voorstel: in de kern op positie lezen (R-V7).
@@ -365,7 +366,40 @@ Meer ideeen (2026-11-14):
   Voorbeeld: je zit achter de Mac en wilt een video van je telefoon op de Linux-pc hebben. Nu haal je hem eerst naar de Mac en stuur
   je hem door: twee keer overdragen en twee keer opslag. Hiermee zegt de Mac tegen de telefoon: stuur dit naar de Linux-pc.
 
-### R-T. Testen op echte toestellen (voorstel, nog niets gedaan)
+Horloge (2026-11-14, gevraagd door Mark, nog niet gekozen; niets hiervan staat al in de horlogelijsten hieronder):
+
+- **R-I23. Vergrendel als je wegloopt, ontgrendel als je terugkomt** (middel tot groot). Het horloge weet of het om je pols zit en
+  ontgrendeld is. Valt de link met de computer weg of loop je weg (stappen, zoals bij "Telefoon vergeten"), dan vergrendelt de
+  computer. Kom je terug met het horloge om, dan ontgrendelt hij, zoals een Apple Watch bij een Mac. Eerst alleen vergrendelen: dat
+  kan geen kwaad. Ontgrendelen pas daarna, standaard uit, en alleen met het horloge om en ontgrendeld.
+- **R-I24. De kroon als draaiknop voor de computer** (klein tot middel). Draaien scrolt, zoomt of schuift door de tijdlijn van
+  DaVinci, per app te kiezen op de computer; drukken is afspelen of pauze. Bouwt op het volume met de kroon. Iets anders dan
+  "presenteren met de kroon", dat niet gekozen is.
+- **R-I25. Meldingen volgen je** (middel). Zit je achter een computer (toetsenbord of muis in de laatste minuut), dan trillen het
+  horloge en de telefoon niet voor een melding die ook op die computer staat. Loop je weg, dan wel weer. Een plek tegelijk die om
+  aandacht vraagt.
+- **R-I26. Seintjes op de pols over je apparaten** (klein). De laptop is bijna leeg, een grote overdracht is klaar of mislukt, de
+  Mac staat nog open terwijl je weg bent. Via de meldingen die de telefoon al doorgeeft.
+- **R-I27. Hartslag in beeld bij een opname** (klein). De live hartslag van het horloge, die al naar de computers gaat, als klein
+  getal of lijntje dat OBS kan tonen, naast de telefooncamera als bron.
+- **R-I28. Zoeker op de pols** (middel). Bij de cameraknop, die al gekozen is: een klein live beeld van de telefooncamera op het
+  horloge, zodat je de telefoon neerzet en ziet wat er in beeld is.
+- **R-I29. Dicteren naar de computer** (klein tot middel). Spreek op het horloge en de tekst wordt getypt waar de cursor op de
+  computer staat. Er wordt niets bewaard; iets anders dan de spraaknotitie, die niet gekozen is.
+
+Verder (2026-11-14, nog niet gekozen):
+
+- **R-I30. Regels** (middel tot groot). Een pagina "als dit, dan dat" over apparaten heen: als de telefoon thuiskomt, een gesprek
+  begint, bedtijd begint of de laptop van de lader gaat, dan vergrendelen, wakker houden, media pauzeren, de geluidsstand zetten of
+  een seintje geven. Vervangt de losse schakelaars die er nu voor elk geval zijn.
+- **R-I31. Open op het andere apparaat** (klein). In het deelmenu van Android en bij rechtsklik op de computers: het bestand gaat
+  over en opent daar meteen. Voor links bestaat dit al (`open` in `ShareText`), voor bestanden niet.
+- **R-I32. Sneller sturen zonder gedeeld netwerk** (groot). Zitten twee apparaten niet op hetzelfde netwerk, dan voor een grote
+  overdracht vanzelf de hotspot van de telefoon of Wi-Fi Direct gebruiken, in plaats van de omweg of Bluetooth.
+
+### R-T. Testen op echte toestellen (voorstel)
+
+Stand 2026-11-14: de Mac en de Oppo (Android 17, Tandem 0.3.15, aan adb) mogen gebruikt worden; de Xperia niet. Gedaan: R-B5.
 
 Niets hiervan is op een toestel gezien. Mark kan de Xperia en de Oppo aan adb leggen en toegang geven tot de Linux-laptop en een
 Windows-pc. Voorstel voor de volgorde, steeds met de dev-app en een eigen datamap:
