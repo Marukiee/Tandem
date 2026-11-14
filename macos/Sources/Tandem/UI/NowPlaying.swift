@@ -1,74 +1,96 @@
 import SwiftUI
 import TandemCore
 
-/// What a phone is playing, with the buttons to control it, at the bottom of the header card of its page. Also when this Mac shows the
-/// same track (Spotify on a computer shows the track of the account wherever it plays).
-struct NowPlayingCard: View {
+/// What a device plays, with the buttons to control it, on a card of its own under the head of its page. Also when this Mac shows the
+/// same track (Spotify on a computer shows the track of the account wherever it plays). With more than one player there is a tab per
+/// app above it, and the one that plays has a speaker beside its name.
+struct PlayersCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
-    /// The player the person picked from the small rows, until it goes away.
+    /// The player the person picked from the tabs, until it goes away.
     @LocalState private var chosen: String?
+    @Namespace private var tabs
 
     var body: some View {
         let players = model.reach(of: device).reachable ? model.visibleMedia(for: device.id) : []
-        // One player gets the whole card: the one that was picked, otherwise what plays, otherwise the first. The
-        // others are small rows in one card below it, so three players take little more room than one.
-        let main = players.first { $0.id == chosen } ?? players.first { $0.playing } ?? players.first
-        let others = players.filter { $0.id != main?.id }
-        // The model changes outside any animation, so the player brings its own: it slides in when something starts
-        // to play and out when it stops. The page animates the card around it on the same change (DeviceDetail).
+        // The one that was picked, otherwise what plays, otherwise the first.
+        let current = players.first { $0.id == chosen } ?? players.first { $0.playing } ?? players.first
+        // The model changes outside any animation, so the card brings its own: it slides in when something starts
+        // to play and out when it stops. The page makes room for it on the same change (DeviceDetail).
         Group {
-            if let main {
-                VStack(spacing: 10) {
-                    PlayerCard(device: device, player: main)
-                    if !others.isEmpty {
-                        OtherPlayers(device: device, players: others) { picked in withAnimation(.tandem) { chosen = picked.id } }
+            if let current {
+                Card(radius: Metrics.card, padding: 16) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if players.count > 1 {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    ForEach(players, id: \.id) { player in
+                                        PlayerTab(player: player, on: player.id == current.id, namespace: tabs) {
+                                            withAnimation(.tandem) { chosen = player.id }
+                                        }
+                                    }
+                                }
+                            }
+                            .scrollClipDisabled()
+                            .transition(.opacity.combined(with: .offset(y: -6)))
+                        }
+                        // Stacked, so the player that leaves and the one that comes cross-fade in the same place.
+                        ZStack(alignment: .top) {
+                            PlayerCard(device: device, player: current)
+                                .id(current.id)
+                                .transition(.opacity)
+                        }
                     }
                 }
-                // The gap to the chips belongs to the player, so it opens and closes with it instead of snapping.
-                .padding(.top, 18)
-                // A short slide: a move from the top edge would travel over the name and the chips.
+                // A short slide: a move from the top edge would travel over the head.
                 .transition(.opacity.combined(with: .offset(y: -10)))
             }
         }
         .animation(.tandem, value: players.map(\.id))
+        .animation(.tandem, value: current?.id)
     }
 }
 
-/// The players that are not in front, one line each: a small cover, what plays, and the play button. A tap on the
-/// line brings that player to the front.
-private struct OtherPlayers: View {
-    @Environment(EngineModel.self) private var model
-    let device: TandemDevice
-    let players: [TandemMediaPlayer]
-    let pick: (TandemMediaPlayer) -> Void
+/// The tab of one player: the name of its app, with a speaker while it plays. The one in front is filled, and the fill slides from
+/// tab to tab.
+private struct PlayerTab: View {
+    let player: TandemMediaPlayer
+    let on: Bool
+    let namespace: Namespace.ID
+    let action: () -> Void
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
 
     var body: some View {
-        // A soft fill and not a card: it sits inside the header card already.
-        VStack(spacing: 0) {
-            ForEach(players, id: \.id) { player in
-                HStack(spacing: 10) {
-                    PlayerCover(player: player, size: 36)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(player.title.isEmpty ? player.app : player.title).font(.callout.weight(.medium)).lineLimit(1)
-                        Text([player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    // The same round button as the player above it.
-                    RoundIconButton(symbol: player.playing ? "pause.fill" : "play.fill", size: 30) {
-                        model.sendMedia(.toggle, player: player, to: device.id)
-                    }
-                    .help(player.playing ? "Pause" : "Play")
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if player.playing {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .transition(.scale.combined(with: .opacity))
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 5)
-                .contentShape(Rectangle())
-                .onTapGesture { pick(player) }
+                Text(player.app.isEmpty ? player.title : player.app)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .lineLimit(1)
             }
+            .fadingForeground(Color.secondary, to: Color.white, when: on)
+            .padding(.horizontal, 12)
+            .frame(height: 28)
+            .background {
+                ZStack {
+                    Capsule().fill(Color.primary.opacity(hovering && hoverEnabled && !on ? 0.12 : 0.06))
+                    if on { Capsule().fill(Palette.indigo).matchedGeometryEffect(id: "tab", in: namespace) }
+                }
+            }
+            .contentShape(.capsule)
         }
-        .padding(8)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .buttonStyle(.bouncy)
+        .onHover { hovering = $0 }
+        .animation(.hover(hovering), value: hovering)
+        .animation(.tandem, value: player.playing)
+        .accessibilityLabel(Text(player.app.isEmpty ? player.title : player.app))
+        .accessibilityValue(player.playing ? Text("Playing now") : Text(""))
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -80,7 +102,6 @@ private struct PlayerCard: View {
     private var subtitle: String { [player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · ") }
 
     var body: some View {
-        // No surface of its own: it is the bottom of the header card.
         CoverBeside(spacing: 14) {
             PlayerCover(player: player, size: nil)
             VStack(alignment: .leading, spacing: 8) {

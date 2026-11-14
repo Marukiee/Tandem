@@ -71,6 +71,8 @@
 "Could not move the file to the Trash" = "Kon het bestand niet naar de prullenmand verplaatsen";
 "Path copied" = "Pad gekopieerd";
 "The file is no longer there" = "Het bestand is er niet meer";
+"No longer there" = "Is er niet meer";
+"Playing now" = "Speelt nu";
 "Files you send and receive. Click one to open it, right click for more." = "Bestanden die je verstuurt en ontvangt. Klik om er een te openen, klik met rechts voor meer.";
 "Send files" = "Bestanden sturen";
 "Send clipboard" = "Klembord sturen";
@@ -983,8 +985,12 @@
 "The sweep is heard best in a room with echoes. The bell and the beep only tell the side when the other device stands clearly nearer to one speaker." = "De sweep wordt het best gehoord in een kamer met galm. Het belletje en de piep vinden de kant alleen als het andere apparaat duidelijk dichter bij een speaker staat.";
 "Finding the side by sound" = "De kant vinden met geluid";
 "This Mac plays a short sound from its left and its right speaker, and the other device listens with its microphone. A second screen goes on that side too." = "Deze Mac speelt een kort geluid uit zijn linker en rechter speaker, en het andere apparaat luistert met zijn microfoon. Een tweede scherm komt ook aan die kant.";
-"Where it stands" = "Waar het staat";
-"A second screen goes on this side, and so does this computer for the shared mouse" = "Een tweede scherm komt aan deze kant, en deze computer ook voor de gedeelde muis";
+"%@ stands left of this Mac" = "%@ staat links van deze Mac";
+"%@ stands right of this Mac" = "%@ staat rechts van deze Mac";
+"A second screen goes there, and the mouse crosses there" = "Een tweede scherm komt daar, en de muis steekt daar over";
+"Put it left" = "Links zetten";
+"Put it right" = "Rechts zetten";
+"Which computers share them, and how the screens stand" = "Welke computers ze delen, en hoe de schermen staan";
 "Left" = "Links";
 "Right" = "Rechts";
 "%@ stands on the left" = "%@ staat links";

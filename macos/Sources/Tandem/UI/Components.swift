@@ -279,25 +279,28 @@ extension ButtonStyle where Self == TandemGlassStyle {
 
 // MARK: Round icon buttons for the menu bar panel
 
-/// An action as a row on a card: the symbol in a disc and the name next to it, as the tiles of the menu bar panel. Under the pointer the
-/// row deepens and the disc fills; an action that is on keeps the filled disc and says its name in the tint.
+/// An action as a row on a card: the symbol in a disc and the name next to it, as the tiles of the menu bar panel. The disc has the
+/// colour of its group. Under the pointer only the row deepens; an action that is on, and the main one, has the disc filled with the
+/// accent and says its name in it.
 private struct ActionRow: View {
     let title: LocalizedStringKey
     let symbol: String
     let on: Bool
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @Environment(\.actionTone) private var tone
     @LocalState private var hovering = false
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        let filled = on || (hovering && enabled)
         HStack(spacing: 10) {
             ZStack {
-                Circle().fill(filled ? Palette.indigo : Palette.indigo.opacity(0.15))
+                Circle().fill(tone.fill)
+                Circle().fill(Palette.indigo).opacity(on ? 1 : 0)
                 Image(systemName: symbol)
                     .font(.system(size: 13, weight: .semibold))
                     .contentTransition(.symbolEffect(.replace))
-                    .fadingForeground(Palette.indigo, to: Color.white, when: filled)
+                    .fadingForeground(tone.ink, to: Color.white, when: on)
             }
             .frame(width: 30, height: 30)
             Text(title)
@@ -308,11 +311,11 @@ private struct ActionRow: View {
         }
         .padding(.horizontal, 6)
         .frame(height: 42)
-        .background(shape.fill(Color.primary.opacity(hovering && enabled ? 0.07 : 0)))
+        .background(shape.fill(Color.primary.opacity(hovering && enabled && hoverEnabled ? 0.07 : 0)))
         .contentShape(shape)
         .opacity(enabled ? 1 : 0.45)
         .onHover { hovering = $0 }
-        .animation(.tandemFade, value: hovering)
+        .animation(.hover(hovering), value: hovering)
         .animation(.tandemFade, value: on)
     }
 }
@@ -320,6 +323,8 @@ private struct ActionRow: View {
 extension EnvironmentValues {
     /// Action buttons on a card of a group draw themselves as rows, as on the page of a device.
     @Entry var actionButtonsAsRows = false
+    /// The colour of the discs of the actions in a group.
+    @Entry var actionTone = Tone.indigo
     /// Round icon buttons in a row that share out its width as equal rounded keys, as under a device in the menu bar panel.
     @Entry var iconButtonsFill = false
 }
@@ -665,11 +670,53 @@ enum TransferReason {
     }
 }
 
+/// How a kind of file looks in a row: the colour of its tile and the symbol on it.
+extension SharedKind {
+    var tone: Tone {
+        switch self {
+        case .pictures: .indigo
+        case .videos: .rose
+        case .documents: .mint
+        case .audio: .peach
+        case .all, .archives, .other: .plain
+        }
+    }
+
+    var tileSymbol: String { self == .other || self == .all ? "doc" : symbol }
+}
+
+/// Why a row did not end as a file that is here, as a label at its end, directly before its three dots.
+struct ReasonLabel: View {
+    let text: String
+    var tint: Color = Palette.urgent
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(tint.opacity(0.14), in: .capsule)
+            // The name of the file gives way, the reason is never cut.
+            .fixedSize()
+    }
+}
+
 /// What a transfer looks like. Interaction lives in `TransferEntry`.
 struct TransferRow: View {
     let item: TransferItem
     let peerName: String
+    /// On the page Shared the size, the time and how it stands each have a column of their own.
+    var columns = false
+    /// Chosen among others: the tile says so.
+    var chosen = false
     @Environment(EngineModel.self) private var model
+
+    /// The widths of the columns, shared with the head of the table.
+    static let sizeWidth: CGFloat = 72
+    static let whenWidth: CGFloat = 112
+    static let stateWidth: CGFloat = 170
 
     var body: some View {
         HStack(spacing: 12) {
@@ -678,19 +725,9 @@ struct TransferRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
-                Group {
-                    switch item.state {
-                    case .active:
-                        Text("\(formatBytes(item.done)) of \(formatBytes(item.total))  \(formatSpeed(item.speed))")
-                    case .done:
-                        if missing {
-                            Text("The file is no longer there")
-                        } else {
-                            Text(item.incoming ? "From \(peerName)" : "To \(peerName)")
-                        }
-                    case .failed:
-                        Text(TransferReason.text(item.error, incoming: item.incoming, peerName: peerName))
-                    }
+                HStack(spacing: 4) {
+                    Image(systemName: item.incoming ? "arrow.down" : "arrow.up").font(.system(size: 9, weight: .bold))
+                    Text(detail)
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -702,34 +739,99 @@ struct TransferRow: View {
                         .transition(.opacity)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 0)
+            if columns {
+                // A narrow window keeps the name and the state: the size and the time are the first to go.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        column(item.total > 0 ? formatBytes(item.total) : "", width: Self.sizeWidth)
+                        column(when, width: Self.whenWidth)
+                        state.frame(width: Self.stateWidth, alignment: .leading)
+                    }
+                    state
+                }
+            } else if let reason {
+                ReasonLabel(text: reason.text, tint: reason.tint)
+                    .transition(.opacity)
+            }
         }
         .padding(.vertical, 6)
         .animation(.tandem, value: item.state)
+        .animation(.tandemFade, value: chosen)
         .task(id: item.state == .done ? item.location : nil) { await loadThumbnail() }
         // A file that is here can be dragged out of the list, into Finder, a mail or any app that takes files (R-D13).
         .modifier(FileDrag(path: model.canOpen(item) ? model.filePath(item) : nil))
     }
 
+    private func column(_ text: String, width: CGFloat) -> some View {
+        Text(text)
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(width: width, alignment: .leading)
+    }
+
+    /// How it stands, in the last column: the reason it is not here, otherwise how far it is or which way it went.
+    @ViewBuilder
+    private var state: some View {
+        if let reason {
+            ReasonLabel(text: reason.text, tint: reason.tint)
+        } else {
+            Text(item.state == .active ? "\(Int(item.fraction * 100))%" : (item.incoming ? String(localized: "Received") : String(localized: "Sent")))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    /// The line under the name: who it was with, and in a list without columns how big it is and when it was.
+    private var detail: String {
+        let with = item.incoming ? String(localized: "From \(peerName)") : String(localized: "To \(peerName)")
+        if item.state == .active {
+            return String(localized: "\(formatBytes(item.done)) of \(formatBytes(item.total))  \(formatSpeed(item.speed))")
+        }
+        if columns { return with }
+        let size = item.state == .done && item.total > 0 ? formatBytes(item.total) : nil
+        return [with, size, when].compactMap { $0 }.joined(separator: " \u{00B7} ")
+    }
+
+    private var when: String { item.updated.formatted(.relative(presentation: .named)) }
+
+    /// Why it is not a file that is here: it failed, or it arrived and is gone since.
+    private var reason: (text: String, tint: Color)? {
+        if item.state == .failed {
+            return (TransferReason.text(item.error, incoming: item.incoming, peerName: peerName), Palette.urgent)
+        }
+        if missing { return (String(localized: "No longer there"), Color.secondary) }
+        return nil
+    }
+
     @LocalState private var thumbnail: NSImage?
 
-    /// The picture of the file when there is one to show, otherwise what state it is in.
+    /// The picture of the file when there is one to show, otherwise a tile that says what kind of file it is.
     @ViewBuilder
     private var leading: some View {
-        if let thumbnail {
+        let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
+        if chosen {
+            ZStack {
+                shape.fill(Palette.indigo)
+                Image(systemName: "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+            }
+            .transition(.scale(scale: 0.8).combined(with: .opacity))
+        } else if let thumbnail {
             Image(nsImage: thumbnail)
                 .resizable()
                 .scaledToFill()
                 .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .clipShape(shape)
         } else {
+            let kind = SharedKind.of(item.name)
             ZStack {
-                Circle().fill(iconTint.opacity(0.16))
-                Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(iconTint)
-                    .contentTransition(.symbolEffect(.replace))
+                shape.fill(kind.tone.fill)
+                Image(systemName: kind.tileSymbol)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(kind.tone.ink)
             }
         }
     }
@@ -749,44 +851,82 @@ struct TransferRow: View {
         thumbnail = made?.nsImage
     }
 
-    /// A file that arrived and is gone now: no check but a cross, so the list does not promise what is not there.
+    /// A file that arrived and is gone now: the row says so, so the list does not promise what is not there.
     private var missing: Bool { item.state == .done && item.location != nil && !model.canOpen(item) }
+}
 
-    private var symbol: String {
-        switch item.state {
-        case .active: item.incoming ? "arrow.down" : "arrow.up"
-        case .done: missing ? "xmark" : "checkmark"
-        case .failed: "exclamationmark"
-        }
-    }
+/// The name of a round button, shown above it the moment the pointer is on it, not after the wait of a tooltip.
+struct InstantName: ViewModifier {
+    let name: LocalizedStringKey
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @Environment(\.isEnabled) private var isEnabled
+    @LocalState private var hovering = false
 
-    private var iconTint: Color {
-        switch item.state {
-        case .active: Palette.indigo
-        case .done: missing ? Palette.urgent : .green
-        case .failed: Palette.urgent
-        }
+    func body(content: Content) -> some View {
+        content
+            .onHover { hovering = $0 }
+            .overlay(alignment: .top) {
+                if hovering && hoverEnabled && isEnabled {
+                    Text(name)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.primary.opacity(0.9), in: .rect(cornerRadius: 8, style: .continuous))
+                        .fixedSize()
+                        // Above the button, clear of it.
+                        .alignmentGuide(.top) { $0[.bottom] + 5 }
+                        .transition(.opacity.combined(with: .offset(y: 3)))
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .animation(.hover(hovering), value: hovering)
+            .accessibilityLabel(Text(name))
     }
 }
 
-/// A small button at the end of a row (pin, delete): the bare symbol in grey, at the size the lists of the system use, with no plate
-/// behind it, and its name as a tooltip.
+extension View {
+    func instantName(_ name: LocalizedStringKey) -> some View { modifier(InstantName(name: name)) }
+}
+
+/// The disc of a small round button at the end of a row: nothing at rest, a faint fill under the pointer, the same for a button
+/// and for a menu.
+private struct RowButtonDisc: View {
+    let symbol: String
+    let hovering: Bool
+    var pressed = false
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+
+    /// One size for every round button of a row.
+    static let size: CGFloat = 28
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.secondary)
+            .frame(width: Self.size, height: Self.size)
+            .background(Circle().fill(Color.primary.opacity(pressed ? 0.16 : (hovering && isEnabled && hoverEnabled ? 0.09 : 0))))
+            .contentShape(Circle())
+            .opacity(isEnabled ? 1 : 0.4)
+            .animation(.hover(hovering), value: hovering)
+    }
+}
+
+/// A small button at the end of a row (pin, delete): the symbol in grey on a disc that fades in under the pointer, with its name
+/// shown at once.
 struct RowActionButton: View {
     let symbol: String
     let help: LocalizedStringKey
     let action: () -> Void
+    @LocalState private var hovering = false
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .medium))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
-        .foregroundStyle(.secondary)
-        .help(help)
-        .accessibilityLabel(Text(help))
+        Button(action: action) { RowButtonDisc(symbol: symbol, hovering: hovering) }
+            .buttonStyle(.bouncy)
+            .onHover { hovering = $0 }
+            .instantName(help)
     }
 }
 
@@ -795,23 +935,20 @@ struct RowMenuButton<Content: View>: View {
     var symbol = "ellipsis"
     let help: LocalizedStringKey
     @ViewBuilder var content: Content
+    @LocalState private var hovering = false
 
     var body: some View {
         Menu {
             content
         } label: {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .medium))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
+            RowButtonDisc(symbol: symbol, hovering: hovering)
         }
         .menuStyle(.button)
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
-        .foregroundStyle(.secondary)
         .fixedSize()
-        .help(help)
-        .accessibilityLabel(Text(help))
+        .onHover { hovering = $0 }
+        .instantName(help)
     }
 }
 
@@ -826,17 +963,21 @@ struct TransferEntry: View {
     var chosen = false
     /// What a click does instead of opening, for a page where rows can be chosen; nil opens.
     var onTap: (() -> Void)?
+    /// As a line of the table on the page Shared.
+    var columns = false
+    /// The row whose file is shown beside the list.
+    var picked = false
     @FocusState private var focused: Bool
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Metrics.cardInner, style: .continuous)
         HStack(spacing: 6) {
-            TransferRow(item: item, peerName: peerName)
-            // The three dots of the Android app: everything the right click offers, where it can be seen.
+            TransferRow(item: item, peerName: peerName, columns: columns, chosen: chosen)
+            // Everything that can be done with it, where it can be seen: the same as the right click.
             RowMenuButton(help: "More") { TransferMenu(item: item) }
         }
         .padding(.horizontal, 10)
-        .hoverHighlight(radius: Metrics.cardInner, tint: focused || chosen ? Palette.indigo : .primary, selected: focused || chosen)
+        .hoverHighlight(radius: Metrics.cardInner, tint: focused || chosen || picked ? Palette.indigo : .primary, selected: focused || chosen || picked)
         .contentShape(shape)
         .onTapGesture {
             focused = true
@@ -869,23 +1010,23 @@ struct TransferMenu: View {
         let available = model.canOpen(item)
         // While it runs the one thing to do is stop it.
         if item.state == .active {
-            Button("Cancel transfer", role: .destructive) { model.cancelTransfer(item) }
+            Button("Cancel transfer", systemImage: "xmark", role: .destructive) { model.cancelTransfer(item) }
             Divider()
         }
-        Button("Open") { model.open(item) }
+        Button("Open", systemImage: "arrow.up.forward.square") { model.open(item) }
             .disabled(!available)
-        Button("Open File Location") { model.reveal(item) }
+        Button("Open File Location", systemImage: "folder") { model.reveal(item) }
             .disabled(!available)
-        Button("Copy path") { model.copyPath(item) }
+        Button("Copy path", systemImage: "doc.on.doc") { model.copyPath(item) }
             .disabled(item.location == nil)
         Divider()
-        Button("Remove from List") {
+        Button("Remove from List", systemImage: "minus.circle") {
             withAnimation(.tandem) { model.removeFromList([item.id]) }
         }
         .disabled(item.state == .active)
         // Only what arrived on this Mac. A file that was sent is the person's own original.
         if item.incoming {
-            Button("Move File to Trash…", role: .destructive) { model.requestTrash(item) }
+            Button("Move File to Trash…", systemImage: "trash", role: .destructive) { model.requestTrash(item) }
                 .disabled(!available)
         }
     }

@@ -22,6 +22,9 @@ struct DeviceDetail: View {
         ScrollView {
             VStack(spacing: 18) {
                 header
+                // What it plays, on a card of its own. Its own id, so a player picked on one device is not the pick on the next.
+                PlayersCard(device: device)
+                    .id(device.id)
                 // Only what sits under the header is swapped when the device changes.
                 // Stacked, so the old and the new one cross-fade in the same place.
                 ZStack(alignment: .top) {
@@ -87,7 +90,7 @@ struct DeviceDetail: View {
                         Divider()
                         Button("Use the default icon") { model.setIcon(nil, for: device.id) }
                     } label: {
-                        DeviceGlyph(platform: device.platform, online: device.online, size: 80, deviceID: device.id)
+                        DeviceArt(device: device)
                     }
                     .menuStyle(.button)
                     .buttonStyle(.plain)
@@ -146,18 +149,11 @@ struct DeviceDetail: View {
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
-
-                // What it plays, in the card: the card grows when it starts and shrinks when it stops. Its own id, so a
-                // player picked on one device is not the pick on the next.
-                NowPlayingCard(device: device)
-                    .id(device.id)
             }
         }
-        // While the card shrinks the player is still on its way out, and is not drawn over what sits below the card.
-        .clipShape(RoundedRectangle(cornerRadius: Metrics.card, style: .continuous))
     }
 
-    /// The players shown in the header, as the page sees them, so the card around them grows and shrinks on the same change.
+    /// The players shown under the head, as the page sees them, so the room for their card opens and closes on the same change.
     private var shownPlayers: [String] {
         model.reach(of: device).reachable ? model.visibleMedia(for: device.id).map(\.id) : []
     }
@@ -274,7 +270,7 @@ struct DeviceDetail: View {
             .help("Browse files on \(device.name)")
         }
         if isComputer || device.platform == .android {
-            ActionGroup(title: "Screen") {
+            ActionGroup(title: "Screen", tone: .rose) {
                 LiveActionRow(device: device)
                 // Lock and unlock are one place: what is locked and can be opened from here offers that instead.
                 if isComputer, device.online, device.status.unlock == true, device.status.locked == true {
@@ -285,7 +281,7 @@ struct DeviceDetail: View {
             }
         }
         if device.platform == .android {
-            ActionGroup(title: "Sound") {
+            ActionGroup(title: "Sound", tone: .mint) {
                 // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking
                 // the phone in the sound menu.
                 let speaking = model.speaker.device == device.id
@@ -319,7 +315,7 @@ struct DeviceDetail: View {
         }
         // What is done with that computer itself. Four rows, like the other groups: what it cannot do is grey and says why when pressed.
         if isComputer {
-            ActionGroup(title: "Computer") {
+            ActionGroup(title: "Computer", tone: .mint) {
                 // It can be logged in to from here. The button looks the same whether that is set up there or not: someone may not want
                 // it, so what is missing is only said when the button is pressed.
                 GlassActionButton(title: "Terminal", symbol: "terminal") {
@@ -451,6 +447,11 @@ struct DeviceDetail: View {
                 if device.isComputer || device.platform == .android {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     SideRow(device: device)
+                    Divider().opacity(0.4).padding(.horizontal, 14)
+                    SettingsLinkRow(
+                        symbol: "cursorarrow.motionlines", title: "Mouse and keyboard",
+                        subtitle: "Which computers share them, and how the screens stand", section: .pointer
+                    )
                 }
             }
         }
@@ -608,6 +609,8 @@ struct DropZone: View {
 /// draw themselves as rows (see `actionButtonsAsRows`).
 struct ActionGroup<Content: View>: View {
     let title: LocalizedStringKey
+    /// The colour of the discs in it, so the groups are told apart at a glance.
+    var tone: Tone = .indigo
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -624,6 +627,7 @@ struct ActionGroup<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
         .environment(\.actionButtonsAsRows, true)
+        .environment(\.actionTone, tone)
     }
 }
 
@@ -715,7 +719,8 @@ struct HotspotCard: View {
 }
 
 /// On which side of this Mac the device stands: chosen by hand, or found by sound. A second screen goes on that side, and a computer is put
-/// there for the shared mouse.
+/// there for the shared mouse. The title says what holds and the picture at the end of the row shows it: a press on the free place puts
+/// the device there.
 private struct SideRow: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
@@ -723,8 +728,14 @@ private struct SideRow: View {
     @LocalState private var finding = false
 
     var body: some View {
-        SettingRow(symbol: "rectangle.lefthalf.inset.filled.arrow.left", title: "Where it stands", subtitle: "A second screen goes on this side, and so does this computer for the shared mouse") {
-            HStack(spacing: 10) {
+        // Nothing chosen yet is right, as a second screen and the shared mouse take it.
+        let left = side == "left"
+        SettingRow(
+            symbol: left ? "rectangle.lefthalf.inset.filled.arrow.left" : "rectangle.righthalf.inset.filled.arrow.right",
+            title: left ? "\(device.name) stands left of this Mac" : "\(device.name) stands right of this Mac",
+            subtitle: "A second screen goes there, and the mouse crosses there"
+        ) {
+            HStack(spacing: 12) {
                 if device.caps.contains("side.listen") {
                     Button(finding ? "Listening…" : "Find by sound") {
                         finding = true
@@ -738,14 +749,78 @@ private struct SideRow: View {
                     .buttonStyle(.tandemGlass)
                     .disabled(!device.online || finding)
                 }
-                Picker("", selection: Binding(get: { side ?? "right" }, set: { side = $0; DeviceSides.set($0, for: device.id) })) {
-                    Text("Left").tag("left")
-                    Text("Right").tag("right")
+                SidePicture(
+                    kind: DeviceKind(symbol: model.deviceIcons[device.id] ?? device.platform.symbol),
+                    left: left
+                ) { picked in
+                    side = picked
+                    DeviceSides.set(picked, for: device.id)
                 }
-                .pickerStyle(.segmented)
-                .fixedSize()
             }
         }
         .onAppear { side = DeviceSides.side(of: device.id) }
+    }
+}
+
+/// This Mac with a place left and right of it, and the device in one of them. A press on the other place moves it there, and it
+/// slides over with a spring.
+private struct SidePicture: View {
+    let kind: DeviceKind
+    let left: Bool
+    let pick: (String) -> Void
+
+    private static let slot = CGSize(width: 28, height: 34)
+    private static let mac: CGFloat = 36
+    private static let gap: CGFloat = 4
+    /// This Mac as what it is: one with a battery is a laptop.
+    private static let thisMac: DeviceKind = PowerReader.battery() != nil ? .laptop : .desktop
+
+    var body: some View {
+        ZStack {
+            HStack(spacing: Self.gap) {
+                place("left", taken: left)
+                DeviceDrawing(kind: Self.thisMac, lit: false, height: 30)
+                    .frame(width: Self.mac)
+                place("right", taken: !left)
+            }
+            DeviceDrawing(kind: kind, lit: true, height: 26)
+                .offset(x: (left ? -1 : 1) * (Self.mac / 2 + Self.gap + Self.slot.width / 2))
+                .allowsHitTesting(false)
+                .animation(.tandemSpringy, value: left)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func place(_ name: String, taken: Bool) -> some View {
+        Button { if !taken { pick(name) } } label: {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.25), style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+                .opacity(taken ? 0 : 1)
+                .frame(width: Self.slot.width, height: Self.slot.height)
+                .hoverHighlight(radius: 8)
+                .animation(.tandemFade, value: taken)
+        }
+        .buttonStyle(.bouncy)
+        .disabled(taken)
+        .instantName(name == "left" ? "Put it left" : "Put it right")
+    }
+}
+
+/// A row of the settings card that leads to a part of Settings: the whole row is the button, with a chevron at its end.
+private struct SettingsLinkRow: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
+    let section: SettingsSection
+
+    var body: some View {
+        Button { AppScenes.showSettings(section) } label: {
+            SettingRow(symbol: symbol, title: title, subtitle: subtitle) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }

@@ -374,6 +374,7 @@ enum DebugSupport {
         if phone {
             status.sound = .vibrate
             status.lock = false
+            status.battery = TandemBattery(level: 78, charging: false, powerSave: false)
             status.watch = TandemWatchStatus(
                 paired: true, online: true, level: 62, charging: false, ringing: false, name: nil, sleeping: false,
                 settings: TandemWatchSettings(mouse: true, sleepQuiet: true, smartWake: true, heartAllDay: true, stepGoal: 8000)
@@ -389,16 +390,43 @@ enum DebugSupport {
         }
         let device = TandemDevice(
             id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: kind != "linux-away", route: nil, rttMs: 7, status: status,
-            appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
+            appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera", "side.listen"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
             autoAccept: true, notificationsEnabled: true, ble: false, features: []
         )
+        // What only shows with something to show: two players (the second one plays), and files that arrived, failed and are underway.
+        if kind == "android" {
+            let model = EngineModel.shared
+            model.remoteMedia["debug"] = EngineModel.RemoteMedia(players: [
+                TandemMediaPlayer(id: "spotify", app: "Spotify", title: "Everything In Its Right Place", artist: "Radiohead", album: "Kid A", playing: false,
+                                  positionMs: 61_000, durationMs: 251_000, canPrev: true, canNext: true, canSeek: true, art: 0),
+                TandemMediaPlayer(id: "casts", app: "Pocket Casts", title: "De Dag", artist: "NPO Radio 1", album: "", playing: true,
+                                  positionMs: 420_000, durationMs: 1_260_000, canPrev: true, canNext: true, canSeek: true, art: 0),
+            ], at: Date())
+            let now = Date()
+            func file(_ id: String, _ name: String, _ size: UInt64, incoming: Bool, _ state: TransferItem.State, error: String? = nil, ago: Double) -> TransferItem {
+                TransferItem(id: "debug-\(id)", peer: "debug", name: name, done: state == .active ? size / 3 : size, total: size, incoming: incoming,
+                             state: state, location: nil, error: error, started: now, updated: now.addingTimeInterval(-ago), speed: state == .active ? 8_400_000 : 0)
+            }
+            model.transfers = [
+                file("a", "Clip 3.mov", 120_000_000, incoming: true, .active, ago: 0),
+                file("b", "IMG_2041.jpg", 2_400_000, incoming: true, .done, ago: 300),
+                file("c", "Offerte 2026.pdf", 840_000, incoming: false, .failed, error: "connection lost", ago: 3600),
+                file("d", "Muziek.zip", 64_000_000, incoming: false, .failed, error: "declined", ago: 7200),
+                file("e", "Voice memo.m4a", 1_200_000, incoming: false, .done, ago: 86_400),
+            ]
+        }
         let page = kind == "watch"
             ? AnyView(WatchDetail(phone: device))
             : AnyView(DeviceDetail(device: device))
         // The page of the watch is long: all of it in one snapshot.
-        let height: CGFloat = kind == "watch" ? 1180 : 640
-        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: 760, height: height))
-        let window = NSWindow(contentRect: NSRect(x: 120, y: 40, width: 760, height: height), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        var height: CGFloat = kind == "watch" ? 1180 : 640
+        // `TANDEM_DEBUG_TALL=<points>`: the page that high in a window without a title bar, which may be taller than the screen, so a
+        // long page fits in one snapshot.
+        let tall = variable("TANDEM_DEBUG_TALL").flatMap { Double($0) }
+        if let tall { height = CGFloat(tall) }
+        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: 760, height: height)
+            .background(Color(nsColor: .windowBackgroundColor)))
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 40, width: 760, height: height), styleMask: tall == nil ? [.titled, .closable] : [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = "Device page (debug)"
         window.contentView = host
