@@ -659,6 +659,15 @@ impl Journal {
         found.into_iter().map(|(_, key)| key).collect()
     }
 
+    /// The outgoing offers that went to `peer` and that it pulled nothing of yet.
+    pub fn unpulled_by(&self, peer: &DeviceId) -> Vec<Key> {
+        self.book()
+            .iter()
+            .filter(|(_, entry)| !entry.record.incoming && entry.record.peer(peer).is_some_and(|p| p.stage == Stage::Offered))
+            .map(|(key, _)| *key)
+            .collect()
+    }
+
     /// Every device something waits in the queue for (P3).
     pub fn queued_peers(&self) -> HashSet<DeviceId> {
         let book = self.book();

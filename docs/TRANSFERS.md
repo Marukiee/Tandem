@@ -250,6 +250,12 @@ altijd uit, ook als hij uit staat. De Mac zet hem aan. Android en Linux/Windows 
   versturen mislukte. Alleen voor `Files`, `Screenshot`, `Photo` en `Other` (`transfer::queues`); klembord, `Capture` en `Drag` horen bij
   een moment en wachten niet. `SendReport::queued` (ffi `TandemSendReport.queued`) zegt voor wie het wacht; `offline` blijft alles wat niet
   verbonden was.
+- Valt de verbinding weg voordat de ontvanger iets ophaalde (`offered`, elk bestand `waiting` en 0 bytes), dan gaat het aanbod terug in de
+  wachtrij: `send_to` geeft Ok zodra het bericht in het kanaal staat, dus het kan nooit aangekomen zijn. Een ontvanger die het wel had
+  slaat het tweede aanbod over (hetzelfde nummer), en een pull van een ontvanger in de wachtrij wordt gewoon bediend. Alleen als de
+  wachtrij aan staat.
+- Elke verandering die de wachtrij zelf maakt (uitgegaan, terug in de wachtrij) geeft `TransfersChanged`, zodat het paneel niet "Wacht op"
+  blijft zeggen voor een apparaat dat al verbonden is.
 - Bij `Connected` (en elke 5 seconden voor verbonden apparaten, als vangnet) kijkt de afzender elke bron na (`size` en
   `source_modified_ms`). Weg of veranderd: dat bestand voor die ontvanger `failed` met `gone` of `changed`, een `Finished` per bestand,
   en het wordt niet bediend (een pull krijgt een weigering die de nieuwe ontvanger als dezelfde code ziet). Daarna gaat het aanbod uit

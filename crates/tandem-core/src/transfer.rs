@@ -308,6 +308,37 @@ impl Inner {
         }
     }
 
+    /// The connection with `peer` went. An offer is handed to the connection before it is written, so one it pulled nothing of may never
+    /// have got there: it goes back in the queue and goes out again when `peer` is back (a receiver that had it already leaves the second
+    /// one out, as the same offer twice). Without this it would wait for a yes that cannot come and lapse after hours instead of days.
+    pub(crate) fn requeue_unpulled(&self, peer: DeviceId) {
+        if !self.queue_offline.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
+        let mut moved = false;
+        for key in self.journal.unpulled_by(&peer) {
+            moved |= self
+                .journal
+                .change(key, |record| {
+                    let origin = record.origin;
+                    let receiver = record.peer_mut(&peer).filter(|p| p.stage == Stage::Offered)?;
+                    let untouched = receiver.items.iter().all(|item| item.state == ItemState::Waiting && item.done == 0);
+                    if !queues(origin) || !untouched {
+                        return None;
+                    }
+                    receiver.stage = Stage::Queued;
+                    receiver.offered_ms = 0;
+                    Some(())
+                })
+                .flatten()
+                .is_some();
+        }
+        if moved {
+            info!(%peer, "offers it pulled nothing of are back in the queue");
+            self.emit(Event::TransfersChanged);
+        }
+    }
+
     /// Sends the queue to every device it waits for that is connected now. The connect itself does this; this catches an offer whose
     /// send failed because the connection went at that moment.
     pub(crate) fn send_queued_to_connected(self: &Arc<Self>) {
@@ -1096,7 +1127,8 @@ impl Inner {
         let found = self
             .journal
             .read(key, |record| {
-                let receiver = record.peer(&peer).filter(|p| p.open())?;
+                // A receiver in the queue that pulls had the offer after all (it went back in the queue when the connection dropped).
+                let receiver = record.peer(&peer).filter(|p| p.pending())?;
                 // Found gone or changed before it went out (P3) or on a resume (P2): it ended for this device, and serving what is
                 // there now would hand over something that was never sent.
                 let ended = receiver
@@ -1149,8 +1181,8 @@ impl Inner {
             .journal
             .touch(key, |record| {
                 // Stopped since it was looked up: stays stopped, and the token below ends the serving at once.
-                let receiver = record.peer_mut(&peer).filter(|p| p.open())?;
-                let first = receiver.stage == Stage::Offered;
+                let receiver = record.peer_mut(&peer).filter(|p| p.pending())?;
+                let first = matches!(receiver.stage, Stage::Offered | Stage::Queued);
                 receiver.stage = Stage::Accepted;
                 let progress = receiver.items.get_mut(request.index as usize)?;
                 progress.state = ItemState::Running;
