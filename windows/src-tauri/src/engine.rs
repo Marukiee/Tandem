@@ -112,6 +112,7 @@ pub fn start(app: AppHandle) {
                 crate::wifi::start(&app);
                 crate::focus::start(&app);
                 events::refresh_devices(&app);
+                crate::halfway::refresh(&app);
                 let _ = app.emit("engine-ready", ());
             }
             Err(reason) => {

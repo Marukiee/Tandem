@@ -89,6 +89,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             refresh_devices(app);
             // The other computer is told how big this screen is, so it can draw it and find its way back.
             crate::arrange::announce(app, &id);
+            crate::halfway::refresh(app);
             crate::side::connected(app, id);
         }
         TandemEvent::DevicesChanged | TandemEvent::CircleChanged => refresh_devices(app),
@@ -177,7 +178,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             progress(app, offer, index, &peer, incoming, &name, done, total)
         }
         TandemEvent::Finished { offer, index, peer, incoming, name, size, location, error } => {
-            if incoming && (crate::drag::finished(app, &peer, offer, &name, &location, &error) || crate::insert::finished(app, &peer, offer, &location, &error)
+            if incoming && (crate::halfway::swallows(&peer, offer, &error) || crate::drag::finished(app, &peer, offer, &name, &location, &error) || crate::insert::finished(app, &peer, offer, &location, &error)
                 || crate::clipfiles::finished(app, &peer, offer, &location, &error)) {
                 // Taken by a drop, an insert or the clipboard, which say it themselves: the row its progress made goes, or it stood at full
                 // forever (seen 2026-11-02 with screenshots from the phone).
@@ -490,8 +491,19 @@ fn finished(
     if incoming && error.is_none() {
         toast(app, &i18n::t1(app, "received", name), &i18n::t1(app, "received_from", &device_name(app, peer)));
     } else if let Some(reason) = error {
-        toast(app, &i18n::t1(app, "failed", name), &reason);
+        toast(app, &i18n::t1(app, "failed", name), &reason_text(app, &reason, incoming, peer));
     }
+}
+
+/// The words for a reason that has them; any other reason is shown as the core wrote it.
+fn reason_text(app: &AppHandle, reason: &str, incoming: bool, peer: &str) -> String {
+    let key = match reason {
+        "gone" => "reason_gone",
+        "changed" => "reason_changed",
+        "no space" => "reason_no_space",
+        _ => return reason.to_string(),
+    };
+    i18n::t1(app, &format!("{key}_{}", if incoming { "in" } else { "out" }), &device_name(app, peer))
 }
 
 pub fn now_ms() -> u64 {
