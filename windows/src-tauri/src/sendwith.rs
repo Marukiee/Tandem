@@ -305,13 +305,20 @@ mod linux {
             let _ = std::fs::remove_file(&extension);
             put(&script, &format!("#!/bin/sh\n# Tandem: send with Tandem\nexec {} --send \"$@\"\n", quoted(program)), true);
         }
+        // A device id goes into a command line, so only one that looks like an id is written.
+        let devices: Vec<&(String, String)> = devices.iter().filter(|(id, _)| super::plain_id(id)).collect();
         if on_path("dolphin") && !devices.is_empty() {
             let mut text = format!(
-                "[Desktop Entry]\nType=Service\nMimeType=application/octet-stream;all/allfiles;\nX-KDE-Submenu={label}\nIcon=nl.markmaaktmedia.tandem\nActions={}\n",
+                "[Desktop Entry]\nType=Service\nMimeType=application/octet-stream;all/allfiles;\nX-KDE-Submenu={}\nIcon=nl.markmaaktmedia.tandem\nActions={}\n",
+                super::entry_value(label),
                 (0..devices.len()).map(|n| format!("device{n};")).collect::<String>()
             );
             for (n, (id, name)) in devices.iter().enumerate() {
-                text.push_str(&format!("\n[Desktop Action device{n}]\nName={name}\nIcon=nl.markmaaktmedia.tandem\nExec={} --send --to {id} %F\n", quoted(program)));
+                text.push_str(&format!(
+                    "\n[Desktop Action device{n}]\nName={}\nIcon=nl.markmaaktmedia.tandem\nExec={} --send --to {id} %F\n",
+                    super::entry_value(name),
+                    quoted(program)
+                ));
             }
             put(&dolphin, &text, true);
         } else {
@@ -319,8 +326,10 @@ mod linux {
         }
         if on_path("nemo") {
             for (n, (id, name)) in devices.iter().enumerate() {
+                // Nemo also reads `%` in a name as the start of a token, such as %N for the name of the selected file.
                 let text = format!(
-                    "[Nemo Action]\nName={label}: {name}\nExec={} --send --to {id} %F\nIcon-Name=nl.markmaaktmedia.tandem\nSelection=notnone\nExtensions=nodirs;\n",
+                    "[Nemo Action]\nName={}\nExec={} --send --to {id} %F\nIcon-Name=nl.markmaaktmedia.tandem\nSelection=notnone\nExtensions=nodirs;\n",
+                    super::entry_value(&format!("{label}: {name}")).replace('%', "%%"),
                     quoted(program)
                 );
                 put(&nemo.join(format!("tandem-send-{n}.nemo_action")), &text, false);
@@ -393,26 +402,77 @@ mod windows {
         if !on || devices.is_empty() {
             return;
         }
-        let quote = |s: &str| s.replace('\'', "''");
-        let mut script = String::from("$s = New-Object -ComObject WScript.Shell;");
-        for (id, name) in devices {
-            let clean: String = name.chars().filter(|c| !"\\/:*?\"<>|".contains(*c)).collect();
-            let link = folder.join(format!("{clean} (Tandem).lnk"));
-            script.push_str(&format!(
-                "$l = $s.CreateShortcut('{}'); $l.TargetPath = '{}'; $l.Arguments = '--send --to {}'; $l.IconLocation = '{},0'; $l.Save();",
-                quote(&link.to_string_lossy()),
-                quote(&program.to_string_lossy()),
-                quote(id),
-                quote(&program.to_string_lossy())
-            ));
+        for (id, name) in devices.iter().filter(|(id, _)| super::plain_id(id)) {
+            let link = folder.join(format!("{} (Tandem).lnk", crate::names::windows_safe(name)));
+            if !shortcut(&link, program, id) {
+                log::info!("send with: the shortcut in Send to for {id} could not be made");
+            }
         }
+    }
+
+    /// The script never changes: the values reach it as environment variables, so no name can end a string in it and run
+    /// something of its own. PowerShell also takes the curly apostrophe macOS puts in "Mark’s MacBook Pro" as a quote.
+    const SHORTCUT: &str = "$ErrorActionPreference = 'Stop'; $l = (New-Object -ComObject WScript.Shell).CreateShortcut($env:TANDEM_LINK); \
+        $l.TargetPath = $env:TANDEM_PROGRAM; $l.Arguments = '--send --to ' + $env:TANDEM_DEVICE; \
+        $l.IconLocation = $env:TANDEM_PROGRAM + ',0'; $l.Save()";
+
+    fn shortcut(link: &Path, program: &Path, id: &str) -> bool {
         // No window of its own: CREATE_NO_WINDOW.
-        let made = std::process::Command::new("powershell")
-            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        std::process::Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-Command", SHORTCUT])
+            .env("TANDEM_LINK", link)
+            .env("TANDEM_PROGRAM", program)
+            .env("TANDEM_DEVICE", id)
             .creation_flags(0x0800_0000)
-            .status();
-        if !made.is_ok_and(|s| s.success()) {
-            log::info!("send with: the shortcuts in Send to could not be made");
+            .status()
+            .is_ok_and(|s| s.success())
+    }
+}
+
+/// Whether a device id is only letters, digits, `-` and `_`, as the ids of the core are: it goes into a command line.
+#[cfg_attr(not(any(target_os = "linux", windows)), allow(dead_code))]
+fn plain_id(id: &str) -> bool {
+    !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+/// A value for a desktop entry (the files of Dolphin and Nemo): a backslash, a line break and a tab become the escapes the format
+/// knows, so a name can never start a line or a key of its own. The core already takes them out of names; this is the second lock.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn entry_value(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for (n, c) in text.chars().enumerate() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            // A space at the start would be dropped by the reader.
+            ' ' if n == 0 => out.push_str("\\s"),
+            c if c.is_control() => {}
+            c => out.push(c),
         }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{entry_value, plain_id};
+
+    #[test]
+    fn a_name_cannot_start_a_line_in_a_desktop_entry() {
+        assert_eq!(entry_value("Mark’s MacBook Pro"), "Mark’s MacBook Pro");
+        assert_eq!(entry_value("Mac\nExec=rm -rf ~"), "Mac\\nExec=rm -rf ~");
+        assert_eq!(entry_value("a\\b\tc\r"), "a\\\\b\\tc\\r");
+        assert_eq!(entry_value(" lead"), "\\slead");
+        assert_eq!(entry_value("bell\u{7}"), "bell");
+    }
+
+    #[test]
+    fn only_plain_ids_go_into_a_command() {
+        assert!(plain_id("3f9a0c21b7"));
+        assert!(!plain_id(""));
+        assert!(!plain_id("x; rm -rf ~"));
+        assert!(!plain_id("a'b"));
     }
 }
