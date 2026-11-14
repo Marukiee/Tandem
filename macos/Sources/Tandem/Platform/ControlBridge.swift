@@ -54,7 +54,8 @@ final class ControlBridge {
             extending: !ScreenHost.shared.extended.isEmpty,
             ringing: EngineModel.shared.ringing.contains { $0 == phone?.id },
             extendTarget: extendDevice?.name,
-            phone: phone?.name
+            phone: phone?.name,
+            key: key
         )
     }
 
