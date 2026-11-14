@@ -111,39 +111,89 @@ function Offers({ device }) {
   </div>`);
 }
 
-const FILE_KINDS = [
-  ["picture", "photo", /\.(jpe?g|png|gif|webp|heic|bmp|svg)$/i],
-  ["video", "video", /\.(mp4|mov|mkv|avi|webm|m4v)$/i],
-  ["sound", "music", /\.(mp3|m4a|flac|wav|ogg|opus|aac)$/i],
-  ["paper", "file", /\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|odt|csv)$/i],
-];
-/** What a file is by its name, as [kind, icon]: the kind gives the tile its colour. */
-export const fileKind = (name) => { const hit = FILE_KINDS.find(([, , test]) => test.test(name || "")); return hit ? [hit[0], hit[1]] : ["other", "file"]; };
+// How each kind of file looks in a row, as [colour, icon]. The kinds are those the page Shared filters by (kindOf).
+const KIND_LOOK = { pictures: ["picture", "photo"], videos: ["video", "video"], audio: ["sound", "music"], documents: ["paper", "file"] };
+const fileKind = (name) => KIND_LOOK[kindOf(name || "")] || ["other", "file"];
 
-export function TransferRow({ item, chosen, onClick }) {
+/** A file that went or came. On the page Shared it is a line of a table ([columns]): size, when and how it stands each in a
+    column of their own. Everything that can be done with it is under its three dots. */
+export function TransferRow({ item, chosen, selected, columns, onClick, onDblClick }) {
   const peer = state.devices.find((d) => d.id === item.peer);
   const active = item.state === "active";
   const bad = item.state === "failed";
   const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
   const reason = bad ? (["cancelled", "declined", "expired"].includes(item.error) ? t(item.error) : item.error || t("failed")) : null;
   const detail = active ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "") : bad ? null : fmtSize(item.total);
+  const when = !active && item.updatedAt ? ago(item.updatedAt) : null;
   const [kind, icon] = fileKind(item.name);
   const there = item.state === "done" && item.incoming && item.location;
-  return html`<div class=${"item transfer" + (chosen ? " chosen" : "") + (onClick ? " pickable" : "")} onMouseDown=${noTextPick} onClick=${onClick}>
-    ${chosen ? html`<span class="kind chosen"><${Icon} name="check" size=${17} /></span>` : html`<span class=${"kind k-" + kind}><${Icon} name=${icon} size=${17} /></span>`}
+  const tile = chosen ? html`<span class="kind chosen"><${Icon} name="check" size=${17} /></span>` : html`<span class=${"kind k-" + kind}><${Icon} name=${icon} size=${17} /></span>`;
+  const arrow = html`<${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${12} class="dir" />`;
+  const menu = html`<${RowMenu} label=${t("more")} items=${[
+    active && { icon: "x", label: t("cancel_transfer"), danger: true, run: () => call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed) },
+    there && { icon: "external-link", label: t("open"), run: () => call("open_path", { path: item.location }).catch(failed) },
+    there && { icon: "folder-open", label: t("show_in_folder"), run: () => call("reveal_path", { path: item.location }).catch(failed) },
+    !active && { icon: "x", label: t("remove_from_list"), run: () => call("transfers_remove", { ids: [item.id] }).then(() => set({ transfers: state.transfers.filter((x) => x.id !== item.id) })).catch(failed) },
+  ]} />`;
+  const cls = "item transfer" + (chosen ? " chosen" : "") + (selected ? " selected" : "") + (onClick ? " pickable" : "");
+  if (columns) return html`<div class=${cls + " cols"} onMouseDown=${noTextPick} onClick=${onClick} onDblClick=${onDblClick}>
+    ${tile}
     <div class="grow">
       <div class="ellipsis" style="font-weight:500">${item.name}</div>
-      <div class="small muted ellipsis"><${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${12} class="dir" />${[peer && peer.name, detail, !active && item.updatedAt ? ago(item.updatedAt) : null].filter(Boolean).join(" · ")}</div>
+      <div class="small muted ellipsis">${arrow}${t(item.incoming ? "from_device" : "to_device", peer ? peer.name : "?")}</div>
+      ${active && html`<div class="prog"><i style=${`width:${pct}%`}></i></div>`}
+    </div>
+    <span class="col size small muted">${item.total ? fmtSize(item.total) : ""}</span>
+    <span class="col when small muted">${when || ""}</span>
+    <span class="col state">${reason ? html`<span class="reason">${reason}</span>` : html`<span class="small muted">${active ? pct + "%" : t(item.incoming ? "dir_received" : "dir_sent")}</span>`}</span>
+    ${menu}
+  </div>`;
+  return html`<div class=${cls} onMouseDown=${noTextPick} onClick=${onClick}>
+    ${tile}
+    <div class="grow">
+      <div class="ellipsis" style="font-weight:500">${item.name}</div>
+      <div class="small muted ellipsis">${arrow}${[peer && peer.name, detail, when].filter(Boolean).join(" · ")}</div>
       ${active && html`<div class="prog"><i style=${`width:${pct}%`}></i></div>`}
     </div>
     ${reason && html`<span class="reason">${reason}</span>`}
-    <${RowMenu} label=${t("more")} items=${[
-      active && { icon: "x", label: t("cancel_transfer"), danger: true, run: () => call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed) },
-      there && { icon: "external-link", label: t("open"), run: () => call("open_path", { path: item.location }).catch(failed) },
-      there && { icon: "folder-open", label: t("show_in_folder"), run: () => call("reveal_path", { path: item.location }).catch(failed) },
-      !active && { icon: "x", label: t("remove_from_list"), run: () => call("transfers_remove", { ids: [item.id] }).catch(failed) },
-    ]} />
+    ${menu}
   </div>`;
+}
+
+/** The file that is picked on the page Shared, beside the list when the window is wide enough for both. */
+function SharedDetail({ item }) {
+  const peer = state.devices.find((d) => d.id === item.peer);
+  const [kind, icon] = fileKind(item.name);
+  const bad = item.state === "failed";
+  const reason = bad ? (["cancelled", "declined", "expired"].includes(item.error) ? t(item.error) : item.error || t("failed")) : null;
+  const there = item.state === "done" && item.incoming && item.location;
+  const folder = item.location ? item.location.replace(/[\\/][^\\/]*$/, "") : null;
+  return html`<aside class="card detail" key=${item.id}>
+    <div class=${"preview kind k-" + kind}><${Icon} name=${icon} size=${34} /></div>
+    <div class="dname">${item.name}</div>
+    <dl class="facts">
+      <dt>${t(item.incoming ? "fact_from" : "fact_to")}</dt><dd>${peer ? peer.name : "?"}</dd>
+      ${item.total > 0 && html`<dt>${t("col_size")}</dt><dd>${fmtSize(item.total)}</dd>`}
+      ${item.updatedAt && html`<dt>${t("col_when")}</dt><dd>${ago(item.updatedAt)}</dd>`}
+      ${reason && html`<dt>${t("col_state")}</dt><dd class="bad">${reason}</dd>`}
+      ${folder && html`<dt>${t("fact_folder")}</dt><dd class="path">${folder}</dd>`}
+    </dl>
+    <div class="grow"></div>
+    ${there && html`<button class="btn accent" onClick=${() => call("open_path", { path: item.location }).catch(failed)}>${t("open")}</button>
+      <button class="btn" onClick=${() => call("reveal_path", { path: item.location }).catch(failed)}><${Icon} name="folder-open" size=${17} />${t("show_in_folder")}</button>`}
+  </aside>`;
+}
+
+const wideWindow = window.matchMedia("(min-width: 1320px)");
+/** True while the window has room for the picked file beside the list. */
+function useWide() {
+  const [wide, setWide] = useState(wideWindow.matches);
+  useEffect(() => {
+    const look = () => setWide(wideWindow.matches);
+    wideWindow.addEventListener("change", look);
+    return () => wideWindow.removeEventListener("change", look);
+  }, []);
+  return wide;
 }
 
 /** [disabled] greys the row out, and [why] says in its place what has to be done before it works. */
@@ -855,6 +905,9 @@ export function SharedPage() {
   // Rows chosen with Ctrl or Shift, to open, remove or trash at once. While any is chosen a click chooses instead of opening.
   const [chosen, setChosen] = useState(new Set());
   const range = useRef({ anchor: null, kept: new Set() });
+  // With room for it, a click picks a file to show beside the list and a double click opens it; without, a click opens it.
+  const wide = useWide();
+  const [pickedId, setPickedId] = useState(null);
   const day = 86400000;
   const within = { today: day, week: 7 * day, month: 30 * day };
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -898,8 +951,16 @@ export function SharedPage() {
       return;
     }
     range.current = { anchor: item.id, kept: new Set() };
-    if (item.state === "done" && item.location) call("open_path", { path: item.location }).catch(failed);
+    if (wide) return setPickedId(item.id);
+    openItem(item);
   };
+  const openItem = (item) => { if (item.state === "done" && item.location) call("open_path", { path: item.location }).catch(failed); };
+  const shown = wide && items.length ? items.find((x) => x.id === pickedId) || items[0] : null;
+  // What the three tiles at the top say: today, what is waiting for an answer, and what went wrong.
+  const today = state.transfers.filter((x) => Date.now() - (x.startedAt || 0) < day);
+  const todayBytes = today.filter((x) => x.state === "done").reduce((n, x) => n + (x.total || 0), 0);
+  const failedCount = state.transfers.filter((x) => x.state === "failed").length;
+  const offer = state.offers[0];
   const openable = picked.filter((x) => x.state === "done" && x.location);
   const trashable = picked.filter((x) => x.state === "done" && x.incoming && x.location);
   const removeChosen = () => call("transfers_remove", { ids: [...chosen] }).then(() => {
@@ -915,23 +976,38 @@ export function SharedPage() {
       if (moved.length < trashable.length) say(t("trash_some_failed"));
     }).catch(failed);
   };
-  return html`<div class="wrap">
-    <div style="display:flex;align-items:flex-end;gap:12px">
-      <div class="grow"><h1>${t("title_shared")}</h1><p class="lead">${t("lead_shared")}</p></div>
+  return html`<div class="wrap shared">
+    <div style="display:flex;align-items:center;gap:12px">
+      <h1 class="grow">${t("title_shared")}</h1>
       <button class="btn" onClick=${() => call("open_downloads").catch(failed)}><${Icon} name="folder-open" size=${17} />${t("open_folder")}</button>
     </div>
-    ${state.transfers.length === 0
+    ${state.transfers.length === 0 && !offer
       ? html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_yet")}</div></div>`
       : html`
-        <input type="search" placeholder=${t("search_name")} value=${query} onInput=${(e) => setQuery(e.target.value)}
-          style="margin:10px 0 8px;width:100%;box-sizing:border-box;padding:9px 16px;border-radius:999px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;font:inherit;outline:none" />
+        <div class="tiles">
+          <button class=${"tile t1 click" + (period === "today" ? " on" : "")} aria-pressed=${period === "today"} onClick=${() => setPeriod(period === "today" ? "always" : "today")}>
+            <span class="tk">${t("period_today")}</span><span class="big">${today.length}</span><span class="ts">${t("shared_today_sub", fmtSize(todayBytes))}</span>
+          </button>
+          <div class="tile t2">
+            <span class="tk">${t("shared_waiting")}</span>
+            <div class="tw"><span class="big">${state.offers.length}</span>
+              ${offer ? html`<span class="grow"><span class="tn ellipsis">${offer.items[0].name}${offer.items.length > 1 ? " +" + (offer.items.length - 1) : ""}</span>
+                <span class="ts ellipsis">${fmtSize(offer.items.reduce((n, i) => n + (i.size || 0), 0))} · ${offer.fromName}</span></span>` : html`<span class="ts">${t("shared_waiting_none")}</span>`}</div>
+            ${offer && html`<div class="tb">
+              <button class="btn small accent" onClick=${() => call("accept_offer", { from: offer.from, offer: offer.offer }).catch(failed)}>${t("accept")}</button>
+              <button class="btn small" onClick=${() => call("decline_offer", { from: offer.from, offer: offer.offer }).catch(failed)}>${t("decline")}</button></div>`}
+          </div>
+          <button class=${"tile t3 click" + (onlyFailed ? " on" : "")} aria-pressed=${onlyFailed} onClick=${() => setOnlyFailed(!onlyFailed)}>
+            <span class="tk">${t("failed")}</span><span class="big">${failedCount}</span><span class="ts">${t("shared_failed_sub")}</span>
+          </button>
+        </div>
+        <input type="search" class="searchfield" placeholder=${t("search_name")} value=${query} onInput=${(e) => setQuery(e.target.value)} />
         <div class="chips">
           <${FilterChip} icon="files" label=${nameOf(kinds, kind, t("filter_type"))} active=${kind !== "all"} options=${kinds} value=${kind} onPick=${setKind} />
           <${FilterChip} icon="devices" label=${peer === "all" ? t("filter_device") : nameOf(peers, peer, "?")} active=${peer !== "all"}
             options=${[{ key: "all", label: t("all_devices") }, ...peers]} value=${peer} onPick=${setPeer} />
           <${FilterChip} icon="arrow-down" label=${direction === "all" ? t("filter_direction") : nameOf(directions, direction, "")} active=${direction !== "all"} options=${directions} value=${direction} onPick=${setDirection} />
           <${FilterChip} icon="hourglass" label=${period === "always" ? t("filter_when") : nameOf(periods, period, "")} active=${period !== "always"} options=${periods} value=${period} onPick=${setPeriod} />
-          <button class=${"chip" + (onlyFailed ? " on" : "")} onClick=${() => setOnlyFailed(!onlyFailed)}><${Icon} name="alert-triangle" size=${15} /><span>${t("failed")}</span></button>
           ${filtering && html`<button class="chip" onClick=${clear}><${Icon} name="x" size=${15} /><span>${t("clear_filters")}</span></button>`}
         </div>
         ${items.length === 0
@@ -944,7 +1020,13 @@ export function SharedPage() {
               <button class=${"btn small danger" + (trashable.length ? "" : " dim")} onClick=${trashChosen}><${Icon} name="trash" size=${15} />${t("move_to_trash")}</button>
               <button class="ib" title=${t("stop_choosing")} onClick=${() => setChosen(new Set())}><${Icon} name="x" size=${17} /></button>
             </div>`}
-            <div class="card flush">${items.map((x) => html`<${TransferRow} item=${x} key=${x.id} chosen=${chosen.has(x.id)} onClick=${(e) => clicked(x, e)} />`)}</div>`}`}
+            <div class="sharedsplit">
+              <div class="card flush table">
+                <div class="thead"><span class="hk"></span><span class="grow">${t("col_name")}</span><span class="col size">${t("col_size")}</span><span class="col when">${t("col_when")}</span><span class="col state">${t("col_state")}</span><span class="hm"></span></div>
+                ${items.map((x) => html`<${TransferRow} item=${x} key=${x.id} columns=${true} chosen=${chosen.has(x.id)} selected=${shown && shown.id === x.id} onClick=${(e) => clicked(x, e)} onDblClick=${() => openItem(x)} />`)}
+              </div>
+              ${shown && html`<${SharedDetail} item=${shown} />`}
+            </div>`}`}
   </div>`;
 }
 

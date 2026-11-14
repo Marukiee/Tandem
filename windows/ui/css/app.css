@@ -863,3 +863,45 @@ button.health-title:not(:disabled) { cursor: pointer; }
 
 /* A subject in Settings that holds more than one part. */
 .settings-stack { display: flex; flex-direction: column; gap: 26px; }
+
+/* ---- Shared: three tiles that say how it stands and filter, a table, and the picked file beside it ---- */
+:root { --tone-1: #e3e2fb; --on-tone-1: #2a2980; }
+@media (prefers-color-scheme: dark) { :root { --tone-1: #30305e; --on-tone-1: #dcdbff; } }
+.page > .wrap.shared { max-width: 1080px; }
+.tiles { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 10px; }
+.tile { min-width: 0; min-height: 108px; padding: 14px 16px; border: 0; border-radius: 20px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; text-align: left; font: inherit; cursor: default;
+  transition: box-shadow 0.12s, transform 0.3s var(--spring); }
+.tile.t1 { background: var(--tone-1); color: var(--on-tone-1); }
+.tile.t2 { background: var(--tone-2); color: var(--on-tone-2); }
+.tile.t3 { background: var(--tone-4); color: var(--on-tone-4); }
+.tile.click:hover { box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 28%, transparent); }
+.tile.click:active { transform: scale(0.98); transition-duration: 0.12s, 0.06s; }
+.tile.on, .tile.on:hover { box-shadow: inset 0 0 0 2px currentColor; }
+.tile .tk { font: 700 12px var(--font); opacity: 0.78; }
+.tile .big { font: 700 40px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.tile .ts { font-size: 12.5px; opacity: 0.85; }
+.tile .tn { display: block; font-weight: 600; }
+.tile .tw { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tile .tw .ts { display: block; }
+.tile .tb { display: flex; gap: 8px; }
+.tile .btn:not(.accent) { background: color-mix(in srgb, currentColor 12%, transparent); border-color: transparent; color: inherit; }
+.searchfield { width: 100%; box-sizing: border-box; padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: inherit; font: inherit; outline: none; transition: border-color 0.12s; }
+.searchfield:focus { border-color: var(--accent); }
+.wrap.shared .chips { margin: 0; }
+.sharedsplit { display: flex; gap: 12px; align-items: flex-start; }
+.sharedsplit > .table { flex: 1; min-width: 0; }
+.thead { display: flex; align-items: center; gap: 12px; padding: 6px 12px 4px; font: 700 12px var(--font); color: var(--text-3); }
+.thead .hk { width: 34px; flex: none; } .thead .hm { width: 32px; flex: none; }
+.col { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col.size { width: 72px; } .col.when { width: 116px; } .col.state { width: 168px; }
+.item.transfer.selected { background: var(--hover); }
+.card.detail { position: sticky; top: 0; flex: none; width: 240px; min-height: 300px; padding: 14px; display: flex; flex-direction: column; gap: 10px; animation: detail-in 0.32s var(--spring); }
+@keyframes detail-in { from { opacity: 0; transform: translateX(10px); } }
+.detail .preview { width: auto; height: 104px; border-radius: 14px; }
+.detail .dname { font-weight: 600; overflow-wrap: anywhere; }
+.detail .facts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 12.5px; }
+.detail .facts dt { color: var(--text-3); } .detail .facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.detail .btn { justify-content: center; }
+/* Narrow: the name gives way, the reason is never cut. */
+@media (max-width: 860px) { .col.when, .col.size { display: none; } .col.state { width: auto; overflow: visible; } .thead { display: none; } }
+@media (max-width: 640px) { .tiles { grid-template-columns: 1fr 1fr; } .tile.t2 { grid-column: 1 / -1; order: -1; } }
