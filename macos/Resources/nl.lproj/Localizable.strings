@@ -1575,3 +1575,6 @@
 
 /* Bluetooth off on the phone of the watch */
 "Bluetooth off on %@" = "Bluetooth staat uit op %@";
+
+/* A name in the files of another device that would land outside the folder */
+"Not saved: the other device gave a name that points outside the folder (%@)." = "Niet bewaard: het andere apparaat gaf een naam die buiten de map wijst (%@).";
