@@ -60,9 +60,32 @@ Regels: kernpakketten na elkaar (ze raken allemaal `proto.rs`, `ffi.rs` en `tran
 pakket zonder test. Een licht model zegt niet zelf dat iets af is. Goed opwarmwerk voor het lichte model, elk een bestand met een
 duidelijke oplossing: R-B4, R-B5, R-B7, R-B8, R-B17, R-B20, R-D1, R-D2. Eerst doen, want de pakketten bouwen erop: R-B8, R-V6, R-V7.
 
-Aansturing (voorstel, 2026-11-14): een eigen sessie per pakket, vers gestart met dit bestand als opdracht, elk in een eigen
-werkmap met een eigen PR. Kernpakketten en ontwerp op Opus, schillen en de opwarmronde op Sonnet. Tegelijk kan alleen wat geen
-bestanden deelt: de opwarmronde in de apps, P1 in de kern, en het ontwerp van P6 in `mock.js`.
+Aansturing (afgesproken met Mark, 2026-11-14): een sessie stuurt, en start per ronde hooguit drie bouwsessies die elkaars
+bestanden niet raken, elk vers gestart, in een eigen werkmap (`.claude/worktrees/` in de repo, vanaf de nieuwste main) en met een
+eigen PR. Kern en ontwerp op Opus (high), schillen en kleine fixes op Sonnet (medium). De sturende sessie leest elke PR na, voegt
+hem samen als de CI groen is (rebase), werkt daarna dit bestand en `docs/TESTLIJST.md` bij, en start dan vanzelf de volgende ronde.
+Meer sessies tegelijk maakt het niet sneller af: de limiet van het abonnement is de rem, niet het aantal sessies.
+
+Wat elke bouwsessie meekrijgt: `AGENTS.md` en `CLAUDE.md` lezen en volgen; nooit in `/Users/mark/Documents/Apps/Tandem` zelf
+werken; `docs/ROADMAP.md`, `docs/TESTLIJST.md` en `changelog.json` niet aanraken; de PR eindigt met "Te testen door Mark"; alleen
+de debug-app op de Oppo (`3B164V0127K00000`), die gedeeld wordt, dus liever een eigen emulator; nooit de Xperia; eerlijk zeggen
+wat een test bewijst, wat gezien is en wat alleen gecompileerd is.
+
+Rondes:
+
+- **Ronde 1 (klaar, PR 4 tot 8):** de zekere bugs, beveiliging, het delen op Android, en P1.
+- **Ronde 2 (gestart 2026-11-14):** (a) kern en Mac: eerst een gewone overdracht op main controleren, dan R-V12, P2 en P5 met de
+  Mac als voorbeeld; (b) Android: R-B19, R-B21, R-B25, R-B28, R-B32, R-V1, R-V3, R-V4; (c) Linux en Windows: R-B10, R-B18, R-B24,
+  R-B29, R-D11, R-V5. Los daarvan: de updatebanner die de navigatiebalk verschuift.
+- **Ronde 3 (start vanzelf na ronde 2):** (a) kern en Mac: P3 en P3b, en R-V13 (vaste codes voor redenen); (b) Android en Linux en
+  Windows: de schillen van P2 en P5 naar het voorbeeld van de Mac, zoals `docs/TRANSFERS.md` het beschrijft; (c) Mac: R-B11,
+  R-B16, R-B23, R-B26 en het slepen vanaf en naar de Mac (R-D5 tot R-D8, R-D12, R-D13, R-D16, R-D17, R-D18).
+- **Ronde 4 (start vanzelf na ronde 3):** (a) kern en Mac: P4 en P9, en de kleine kernpunten R-B12, R-B13 en de rest van R-B27;
+  (b) Android en Linux en Windows: de schillen van P3 en P3b, en op Android slepen in en uit de app (R-D4 a en b); (c) P6: de
+  poort in de kern en een proef van de pagina Circle in `mock.js`, waarna Mark kiest.
+- **Ronde 5 (wacht op Mark):** P7 en de rest van P8, de schillen van P4 en P9, en de sleeppunten voor Linux en Windows (R-D10,
+  R-D14, R-D15). Alleen te beoordelen op echte computers: vraagt toegang tot de Linux-laptop en een Windows-pc. Ook wachtend op
+  een keuze van Mark: het ontwerp van de pagina Circle, en R-B31.
 
 Pakketten, in deze volgorde:
 
