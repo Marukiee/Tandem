@@ -182,10 +182,11 @@ class TandemService : LifecycleService() {
                     event.items.sumOf { it.size.toLong() } <= EngineHost.CLIPBOARD_FILES_LIMIT
                 // On mobile data large files wait for a yes, also a copy and also from a device that may send without asking.
                 val held = runCatching { host.engine?.offerHeld(event.from, event.offer) }.getOrNull() == true
+                // Also a copy that waits: after the yes it still lands on the clipboard, not as a file that came in.
+                if (copied) clipboardOffers += event.offer
                 if (held && device != null) {
                     postOffer(device.name, event.from, event.offer.toLong(), event.items.size, event.items.sumOf { it.size.toLong() })
                 } else if (copied) {
-                    clipboardOffers += event.offer
                     runCatching { host.engine?.acceptOffer(event.from, event.offer) }
                 } else if (dragged) runCatching { host.engine?.acceptOffer(event.from, event.offer) }
                 else if (device != null && !device.autoAccept) postOffer(device.name, event.from, event.offer.toLong(), event.items.size)

@@ -375,10 +375,16 @@ impl Inner {
                 _ = self.beat_changed.notified() => continue,
             }
             if plan.asks {
-                if session.tx.send(Msg::Ping { nonce: crate::engine::rand_u64() }).await.is_err() {
-                    return;
+                // Toward a phone in a pocket once more before giving up: over mobile data a radio that slept for minutes may miss one.
+                for attempt in 0..=plan.retries {
+                    if session.tx.send(Msg::Ping { nonce: crate::engine::rand_u64() }).await.is_err() {
+                        return;
+                    }
+                    tokio::time::sleep(plan.answer_within).await;
+                    if attempt < plan.retries && session.conn.stats().udp_rx.datagrams != heard {
+                        break;
+                    }
                 }
-                tokio::time::sleep(plan.answer_within).await;
             }
             let now = session.conn.stats().udp_rx.datagrams;
             if now != heard {
@@ -680,6 +686,8 @@ pub(crate) struct BeatPlan {
     pub every: Duration,
     pub answer_within: Duration,
     pub asks: bool,
+    /// Questions asked again before the side that asks gives up.
+    pub retries: u32,
 }
 
 /// `me` and `them`: this device and the other one are phones with the screen off. `beats`: the other one keeps its connections this way
@@ -689,7 +697,7 @@ pub(crate) fn beat_plan(me: bool, them: bool, beats: bool, dialer: bool, tuning:
     let every = if me || them { tuning.beat_quiet } else { tuning.beat_awake };
     let answer_within = if them { tuning.answer_within_quiet } else { tuning.answer_within };
     let asks = !beats || if me == them { dialer } else { !me };
-    BeatPlan { every, answer_within, asks }
+    BeatPlan { every, answer_within, asks, retries: u32::from(them) }
 }
 
 /// Asks a connection whether the other end still answers, and closes it if not.
@@ -731,11 +739,14 @@ mod tests {
     fn a_phone_with_its_screen_off_is_asked_seldom_and_by_the_other() {
         let tuning = crate::tls::Tuning::default();
         // Both awake: every half minute, the one that dialed asks.
-        assert_eq!(beat_plan(false, false, true, true, tuning), BeatPlan { every: tuning.beat_awake, answer_within: tuning.answer_within, asks: true });
+        assert_eq!(
+            beat_plan(false, false, true, true, tuning),
+            BeatPlan { every: tuning.beat_awake, answer_within: tuning.answer_within, asks: true, retries: 0 }
+        );
         assert!(!beat_plan(false, false, true, false, tuning).asks);
         // The other is a phone with its screen off: seldom, this side asks, and gives it time to wake.
         let toward_quiet = beat_plan(false, true, true, false, tuning);
-        assert_eq!(toward_quiet, BeatPlan { every: tuning.beat_quiet, answer_within: tuning.answer_within_quiet, asks: true });
+        assert_eq!(toward_quiet, BeatPlan { every: tuning.beat_quiet, answer_within: tuning.answer_within_quiet, asks: true, retries: 1 });
         // This one is: seldom, and it only answers.
         let quiet_here = beat_plan(true, false, true, true, tuning);
         assert_eq!((quiet_here.every, quiet_here.asks), (tuning.beat_quiet, false));

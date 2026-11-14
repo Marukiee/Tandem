@@ -512,8 +512,12 @@ class EngineHost(
 
     /** On mobile data the core asks about large files first, also from a device that may send without asking (see TandemService). */
     private fun tellMetered() {
-        val connectivity = context.getSystemService(android.net.ConnectivityManager::class.java)
-        engine?.setMetered(connectivity?.isActiveNetworkMetered == true)
+        val connectivity = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return
+        val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork)
+        // A VPN (Tailscale) may call itself free while it runs over mobile data: the mobile data underneath is what counts.
+        val metered = connectivity.isActiveNetworkMetered ||
+            capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true
+        engine?.setMetered(metered)
     }
 
     fun pushStatus(status: TandemStatus) {
