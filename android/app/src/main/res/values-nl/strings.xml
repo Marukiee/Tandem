@@ -257,6 +257,7 @@
         <item quantity="one">%1$d bestand</item>
         <item quantity="other">%1$d bestanden</item>
     </plurals>
+    <string name="offer_metered">%1$s via mobiele data</string>
     <plurals name="offer_files">
         <item quantity="one">%1$s wil %2$d bestand sturen</item>
         <item quantity="other">%1$s wil %2$d bestanden sturen</item>

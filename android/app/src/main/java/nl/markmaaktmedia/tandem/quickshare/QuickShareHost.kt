@@ -161,7 +161,9 @@ class QuickShareHost(
         // Multicast packets are dropped by the radio unless an app asks for them: without this nobody is found.
         lock = (app.getSystemService(Context.WIFI_SERVICE) as WifiManager).createMulticastLock("tandem-quickshare").apply {
             setReferenceCounted(false)
-            acquire()
+            // Only with the screen on, as in screenChanged: started with it off (after a restart in a pocket), it would hold the lock
+            // until the screen went on and off once.
+            if (app.getSystemService(android.os.PowerManager::class.java).isInteractive) acquire()
         }
         try {
             service = TandemQuickShare.start(nameOf(), TandemQsKind.PHONE, this@QuickShareHost)

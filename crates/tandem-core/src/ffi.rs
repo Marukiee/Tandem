@@ -527,6 +527,8 @@ impl From<TandemStatus> for Status {
             lock: s.lock,
             watch: s.watch.map(Into::into),
             bt_address: s.bt_address,
+            // Said by the engine itself (`set_quiet`).
+            quiet: None,
             // The features go their own way, with `set_features`.
             features: None,
         }
@@ -1746,6 +1748,23 @@ impl TandemEngine {
     pub fn network_changed(&self) {
         let _guard = self.runtime.enter();
         self.engine.network_changed();
+    }
+
+    /// A phone says whether its screen is off: the others then check on it every few minutes instead of every half minute.
+    pub fn set_quiet(&self, quiet: bool) {
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.set_quiet(quiet).await });
+    }
+
+    /// Whether this device is on a network that costs (mobile data). Large files are then asked about first, also from a device that may
+    /// send without asking: `offer_held` says which.
+    pub fn set_metered(&self, on: bool) {
+        self.engine.set_metered(on);
+    }
+
+    /// Whether the offer `offer` of `from` waits for the person because this device is on mobile data and it is large.
+    pub fn offer_held(&self, from: String, offer: u64) -> bool {
+        DeviceId::parse(&from).map(|id| self.engine.offer_held(id, offer)).unwrap_or(false)
     }
 
     /// Signs with this device's identity key. Used for proofs that cannot travel over

@@ -1109,3 +1109,43 @@ async fn a_copy_on_the_phone_meanwhile_is_not_undone_by_the_one_it_missed() {
     .await;
     assert!(arrived.is_err(), "the older clipboard of the mac replaced the newer one of the phone: {arrived:?}");
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn on_mobile_data_a_large_copy_waits_for_the_person() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+    phone.engine.set_metered(true);
+
+    let source_dir = tempfile::tempdir().unwrap();
+    let send = |name: &str, size: usize, seed: u8| {
+        let path = source_dir.path().join(name);
+        std::fs::write(&path, random_bytes(size, seed)).unwrap();
+        vec![OutgoingFile { source: path.to_string_lossy().into_owned(), name: name.to_string(), size: 0, mime: "image/png".into() }]
+    };
+    let mut phone_events = phone.engine.subscribe();
+
+    // Small: taken as always.
+    mac.engine.send_files(&[phone.engine.id()], send("small.png", 200_000, 2), ShareOrigin::Clipboard).await.unwrap();
+    expect(&mut phone_events, "the small copy arrived", |e| match e {
+        Event::Finished(done) if done.incoming && done.name == "small.png" => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // Large: it waits, until the person says yes.
+    let report = mac.engine.send_files(&[phone.engine.id()], send("large.png", 11 * 1024 * 1024, 3), ShareOrigin::Clipboard).await.unwrap();
+    let mac_id = mac.engine.id();
+    wait_until("the large copy was offered", || phone.engine.offer_held(mac_id, report.offer)).await;
+    tokio::time::sleep(Duration::from_millis(600)).await;
+    while let Ok(event) = phone_events.try_recv() {
+        assert!(!matches!(event, Event::Progress(_) | Event::Finished(_)), "nothing of it may come before the person says yes: {event:?}");
+    }
+    phone.engine.accept_offer(mac_id, report.offer).unwrap();
+    expect(&mut phone_events, "the large copy arrived after yes", |e| match e {
+        Event::Finished(done) if done.incoming && done.name == "large.png" => Some(()),
+        _ => None,
+    })
+    .await;
+}

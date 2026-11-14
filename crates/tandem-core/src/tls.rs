@@ -29,20 +29,36 @@ pub const ALPN_PAIR_CODE: &[u8] = b"tandem-pair-code/1";
 /// The name we present in the handshake. It carries no meaning: trust is the key.
 pub const SERVER_NAME: &str = "tandem";
 
-/// How aggressively a connection stays alive. A keep-alive of one side also resets the timer of the other, so the shortest on the connection
-/// is what counts: the same for everyone, or a computer on a charger keeps waking the phone. Connection trouble that an app notices (another
-/// network, a wake) is checked at once and does not wait for this.
+/// How a connection stays alive. QUIC's own keep-alive is off: the engine checks with `Msg::Ping` at a pace that fits the two devices
+/// (see `Inner::heartbeat`), every half minute while both are awake and every few minutes toward a phone with its screen off, which a
+/// keep-alive of either side would otherwise wake every 25 seconds (seen on an Oppo, 2026-11-14). A device of an older version still sends
+/// QUIC keep-alives of its own, and its shorter idle timeout counts on that connection. Trouble that an app notices (another network, a
+/// wake) is checked at once and does not wait for any of this.
 #[derive(Clone, Copy, Debug)]
 pub struct Tuning {
-    pub keep_alive: Duration,
+    /// QUIC's own keep-alive. None: off, the engine's heartbeat does it.
+    pub keep_alive: Option<Duration>,
+    /// What QUIC waits for before it gives a silent connection up: well above the slowest heartbeat, as a last resort.
     pub idle_timeout: Duration,
+    /// How often two devices that are both awake make sure they still hear each other.
+    pub beat_awake: Duration,
+    /// The same when either of them is a phone with its screen off (`Status::quiet`).
+    pub beat_quiet: Duration,
+    /// How long the answer to such a check may take.
+    pub answer_within: Duration,
+    /// The same toward a phone with its screen off, whose radio may first have to wake for it.
+    pub answer_within_quiet: Duration,
 }
 
 impl Default for Tuning {
     fn default() -> Self {
         Tuning {
-            keep_alive: Duration::from_secs(25),
-            idle_timeout: Duration::from_secs(70),
+            keep_alive: None,
+            idle_timeout: Duration::from_secs(600),
+            beat_awake: Duration::from_secs(25),
+            beat_quiet: Duration::from_secs(240),
+            answer_within: Duration::from_secs(5),
+            answer_within_quiet: Duration::from_secs(15),
         }
     }
 }
@@ -67,7 +83,7 @@ fn transport(tuning: Tuning) -> Arc<quinn::TransportConfig> {
     config.max_concurrent_bidi_streams(128u32.into());
     // A frame of live video is a stream of its own, and a few dozen can be on their way at once.
     config.max_concurrent_uni_streams(128u32.into());
-    config.keep_alive_interval(Some(tuning.keep_alive));
+    config.keep_alive_interval(tuning.keep_alive);
     config.max_idle_timeout(quinn::IdleTimeout::try_from(tuning.idle_timeout).ok());
     // Large windows so a single file stream can fill a fast Wi-Fi link.
     config.stream_receive_window((16u32 * 1024 * 1024).into());

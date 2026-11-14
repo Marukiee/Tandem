@@ -19,6 +19,10 @@ use crate::proto::{
     self, Hello, InputMsg, MAX_CONTROL_FRAME, MAX_SMALL_FRAME, Msg, STREAM_CONTROL, STREAM_FILE, STREAM_FS, decode_msg,
 };
 
+/// The device checks its connections itself (`Inner::heartbeat`) and says when it is a phone with its screen off (`Status::quiet`). A device
+/// without it is of an older version: it sends QUIC keep-alives of its own and never asks, so this device always does the asking.
+pub const BEAT_CAP: &str = "beat";
+
 pub(crate) struct Session {
     pub peer: DeviceId,
     pub conn: quinn::Connection,
@@ -341,17 +345,65 @@ impl Inner {
             }
         };
 
+        let heartbeat = self.clone().heartbeat(session.clone());
+
         tokio::select! {
             _ = reader => {}
             _ = writer => {}
             _ = files => {}
             _ = frames => {}
             _ = datagrams => {}
+            _ = heartbeat => {}
             _ = conn.closed() => {}
             _ = self.cancel.cancelled() => {}
         }
         conn.close(0u32.into(), b"bye");
         self.session_ended(&session);
+    }
+
+    /// Makes sure this device and the other one still hear each other, at a pace that fits the two (see `beat_plan`): one side asks
+    /// (`Msg::Ping`) and the other answers, and both look whether anything at all came in. Returns, closing the connection, when the other
+    /// stays silent: after one unanswered question for the side that asks, after two rounds without a word for the other.
+    async fn heartbeat(self: Arc<Self>, session: Arc<Session>) {
+        let mut heard = session.conn.stats().udp_rx.datagrams;
+        let mut silent = 0u32;
+        loop {
+            let plan = self.beat_plan(&session);
+            tokio::select! {
+                _ = tokio::time::sleep(plan.every) => {}
+                // The pace changed: start the round again at the new one.
+                _ = self.beat_changed.notified() => continue,
+            }
+            if plan.asks {
+                if session.tx.send(Msg::Ping { nonce: crate::engine::rand_u64() }).await.is_err() {
+                    return;
+                }
+                tokio::time::sleep(plan.answer_within).await;
+            }
+            let now = session.conn.stats().udp_rx.datagrams;
+            if now != heard {
+                heard = now;
+                silent = 0;
+                continue;
+            }
+            silent += 1;
+            if plan.asks || silent >= 2 {
+                debug!(peer = %session.peer, asked = plan.asks, "no word from it any more");
+                session.conn.close(4u32.into(), b"no answer");
+                return;
+            }
+        }
+    }
+
+    fn beat_plan(&self, session: &Session) -> BeatPlan {
+        let me = self.quiet.load(Ordering::Relaxed);
+        let (them, beats) = {
+            let peers = self.peers.lock().unwrap();
+            peers.get(&session.peer).map_or((false, false), |peer| {
+                (peer.status.quiet == Some(true), peer.hello.as_ref().is_some_and(|h| h.caps.iter().any(|c| c == BEAT_CAP)))
+            })
+        };
+        beat_plan(me, them, beats, session.dialer, self.cfg.tuning)
     }
 
     fn is_current(&self, id: DeviceId, serial: u64) -> bool {
@@ -415,7 +467,12 @@ impl Inner {
                     let mut peers = self.peers.lock().unwrap();
                     peers.get_mut(&id).and_then(|peer| {
                         let before = peer.status.battery;
+                        let was_quiet = peer.status.quiet;
                         peer.status.merge(&status);
+                        // Only a real change: a status said again on a new connection must not start every heartbeat over.
+                        if peer.status.quiet != was_quiet {
+                            self.beat_changed.notify_waiters();
+                        }
                         let after = peer.status.battery?;
                         let mut said = self.battery_said.lock().unwrap();
                         let said = said.entry(id).or_default();
@@ -617,6 +674,24 @@ impl Inner {
     }
 }
 
+/// How a connection is kept: how often, how long an answer may take, and whether this side asks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct BeatPlan {
+    pub every: Duration,
+    pub answer_within: Duration,
+    pub asks: bool,
+}
+
+/// `me` and `them`: this device and the other one are phones with the screen off. `beats`: the other one keeps its connections this way
+/// too. Seldom when either is quiet, so a phone in a pocket is woken every few minutes and not every half minute. One side asks: the one
+/// that is awake, or the one that dialed when both are the same; toward a device of an older version always this one, which never asks.
+pub(crate) fn beat_plan(me: bool, them: bool, beats: bool, dialer: bool, tuning: crate::tls::Tuning) -> BeatPlan {
+    let every = if me || them { tuning.beat_quiet } else { tuning.beat_awake };
+    let answer_within = if them { tuning.answer_within_quiet } else { tuning.answer_within };
+    let asks = !beats || if me == them { dialer } else { !me };
+    BeatPlan { every, answer_within, asks }
+}
+
 /// Asks a connection whether the other end still answers, and closes it if not.
 fn probe(session: Arc<Session>) {
     tokio::spawn(async move {
@@ -651,6 +726,25 @@ fn retire(conn: quinn::Connection) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_phone_with_its_screen_off_is_asked_seldom_and_by_the_other() {
+        let tuning = crate::tls::Tuning::default();
+        // Both awake: every half minute, the one that dialed asks.
+        assert_eq!(beat_plan(false, false, true, true, tuning), BeatPlan { every: tuning.beat_awake, answer_within: tuning.answer_within, asks: true });
+        assert!(!beat_plan(false, false, true, false, tuning).asks);
+        // The other is a phone with its screen off: seldom, this side asks, and gives it time to wake.
+        let toward_quiet = beat_plan(false, true, true, false, tuning);
+        assert_eq!(toward_quiet, BeatPlan { every: tuning.beat_quiet, answer_within: tuning.answer_within_quiet, asks: true });
+        // This one is: seldom, and it only answers.
+        let quiet_here = beat_plan(true, false, true, true, tuning);
+        assert_eq!((quiet_here.every, quiet_here.asks), (tuning.beat_quiet, false));
+        // Two phones in pockets: the one that dialed asks.
+        assert!(beat_plan(true, true, true, true, tuning).asks);
+        assert!(!beat_plan(true, true, true, false, tuning).asks);
+        // A device of an older version never asks: this one always does.
+        assert!(beat_plan(true, false, false, false, tuning).asks);
+    }
 
     #[test]
     fn audio_datagrams_round_trip() {

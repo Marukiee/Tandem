@@ -141,6 +141,12 @@ pub(crate) struct Inner {
     pub last_announce_hour: AtomicU64,
     my_addresses: Mutex<Vec<std::net::IpAddr>>,
     said_back: Mutex<Option<Instant>>,
+    /// This device is on a network that costs, as its app says (`set_metered`): large files are asked about first.
+    pub(crate) metered: AtomicBool,
+    /// This device is a phone with its screen off, as its app says (`set_quiet`).
+    pub(crate) quiet: AtomicBool,
+    /// This device or another one became quiet or awake: every heartbeat looks again at its pace (see `Inner::heartbeat`).
+    pub(crate) beat_changed: Notify,
     /// When the devices that are away were last (or will next be) tried because the network changed (see `hurry`).
     last_hurry: Mutex<Option<Instant>>,
     pub ble: Mutex<crate::ble::BleHub>,
@@ -237,6 +243,9 @@ impl Engine {
             last_announce_hour: AtomicU64::new(discovery::current_hour()),
             my_addresses: Mutex::new(Vec::new()),
             said_back: Mutex::new(None),
+            metered: AtomicBool::new(false),
+            quiet: AtomicBool::new(false),
+            beat_changed: Notify::new(),
             last_hurry: Mutex::new(None),
             ble: Mutex::new(Default::default()),
             audio: RwLock::new(None),
@@ -526,6 +535,35 @@ impl Engine {
         self.inner.accept_offer(from, offer_id)
     }
 
+    /// The app of a phone says whether its screen is off. The others hear it in the status and check on it every few minutes instead of
+    /// every half minute, so it is not woken for nothing.
+    pub async fn set_quiet(&self, quiet: bool) {
+        if self.inner.quiet.swap(quiet, Ordering::Relaxed) == quiet {
+            return;
+        }
+        let change = Status { quiet: Some(quiet), ..Status::default() };
+        self.inner.my_status.lock().unwrap().merge(&change);
+        self.inner.beat_changed.notify_waiters();
+        self.inner.broadcast(Msg::Status(change)).await;
+    }
+
+    /// The packets that went over the connection with `id` so far, sent and received: how chatty it is, for a test or a look.
+    pub fn traffic(&self, id: &DeviceId) -> Option<(u64, u64)> {
+        let session = self.inner.session_of(id)?;
+        let stats = session.conn.stats();
+        Some((stats.udp_tx.datagrams, stats.udp_rx.datagrams))
+    }
+
+    /// The app says whether this device is on a network that costs (mobile data, a hotspot it pays for).
+    pub fn set_metered(&self, on: bool) {
+        self.inner.metered.store(on, Ordering::Relaxed);
+    }
+
+    /// Whether an offer waits for the person because this device is on mobile data and it is large (see `transfer::METERED_ASK_BYTES`).
+    pub fn offer_held(&self, from: DeviceId, offer_id: u64) -> bool {
+        self.inner.offer_held(from, offer_id)
+    }
+
     /// Stops a transfer that is running, as the sender (`incoming` false) or as the receiver.
     pub async fn cancel_transfer(&self, peer: DeviceId, offer_id: u64, incoming: bool) {
         self.inner.cancel_transfer(peer, offer_id, incoming).await;
@@ -668,7 +706,7 @@ impl Inner {
     /// What this device can do for the others: what the app says, always letting them look at its files, and keeping health records.
     pub fn caps(&self) -> Vec<String> {
         let mut caps = self.cfg.caps.clone();
-        for always in ["files", crate::health::CAP] {
+        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP] {
             if !caps.iter().any(|c| c == always) {
                 caps.push(always.into());
             }

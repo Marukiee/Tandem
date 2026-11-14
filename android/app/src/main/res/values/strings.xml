@@ -260,6 +260,7 @@
         <item quantity="one">%1$d file</item>
         <item quantity="other">%1$d files</item>
     </plurals>
+    <string name="offer_metered">%1$s over mobile data</string>
     <plurals name="offer_files">
         <item quantity="one">%1$s wants to send %2$d file</item>
         <item quantity="other">%1$s wants to send %2$d files</item>

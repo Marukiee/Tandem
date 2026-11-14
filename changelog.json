@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.3.17",
+    "date": "2026-11-14",
+    "en": {
+      "title": "Quiet in your pocket",
+      "new": [
+        "On mobile data, large files from another device wait until you say yes"
+      ],
+      "fixed": [
+        "A phone with its screen off is woken far less often by your other devices",
+        "Quick Share no longer keeps the Wi-Fi awake when it starts with the screen off"
+      ]
+    },
+    "nl": {
+      "title": "Stil in je zak",
+      "new": [
+        "Op mobiele data wachten grote bestanden van een ander apparaat tot je ja zegt"
+      ],
+      "fixed": [
+        "Een telefoon met het scherm uit wordt veel minder vaak gewekt door je andere apparaten",
+        "Quick Share houdt de wifi niet meer wakker als het start met het scherm uit"
+      ]
+    }
+  },
+  {
     "version": "0.3.16",
     "date": "2026-11-13",
     "en": {

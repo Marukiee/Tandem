@@ -46,7 +46,13 @@ class StatusReporter(
         override fun onReceive(context: Context, intent: Intent) {
             // A phone that slept was away for the others, who only try it again after a while: it tries them itself as soon as it is
             // in a hand again, so a computer's pointer can come over at once.
-            if (intent.action == Intent.ACTION_SCREEN_ON || intent.action == Intent.ACTION_USER_PRESENT) host.onNetworkChanged()
+            // Awake first, so the others go back to checking on it often before it asks them whether they are still there.
+            if (intent.action == Intent.ACTION_SCREEN_ON || intent.action == Intent.ACTION_USER_PRESENT) {
+                host.screenChanged(true)
+                host.onNetworkChanged()
+            }
+            // With the screen off the others check on this phone every few minutes instead of every half minute.
+            if (intent.action == Intent.ACTION_SCREEN_OFF) host.screenChanged(false)
             // How it sounds was just changed, perhaps from another device that waits to show it.
             val sound = intent.action == AudioManager.RINGER_MODE_CHANGED_ACTION || intent.action == NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED
             schedule(if (sound) 150 else 1500)

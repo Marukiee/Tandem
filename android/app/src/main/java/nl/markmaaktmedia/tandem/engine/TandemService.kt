@@ -180,7 +180,11 @@ class TandemService : LifecycleService() {
                 // A picture or files copied on a device that shares the clipboard with this phone: taken without asking, for the clipboard.
                 val copied = event.origin == uniffi.tandem_core.TandemShareOrigin.Clipboard && device?.clipboardEnabled == true &&
                     event.items.sumOf { it.size.toLong() } <= EngineHost.CLIPBOARD_FILES_LIMIT
-                if (copied) {
+                // On mobile data large files wait for a yes, also a copy and also from a device that may send without asking.
+                val held = runCatching { host.engine?.offerHeld(event.from, event.offer) }.getOrNull() == true
+                if (held && device != null) {
+                    postOffer(device.name, event.from, event.offer.toLong(), event.items.size, event.items.sumOf { it.size.toLong() })
+                } else if (copied) {
                     clipboardOffers += event.offer
                     runCatching { host.engine?.acceptOffer(event.from, event.offer) }
                 } else if (dragged) runCatching { host.engine?.acceptOffer(event.from, event.offer) }
@@ -473,7 +477,8 @@ class TandemService : LifecycleService() {
         )
     }
 
-    private fun postOffer(deviceName: String, from: String, offer: Long, count: Int) {
+    /** [meteredBytes]: the files wait because this phone is on mobile data, and the question says how much it would use. */
+    private fun postOffer(deviceName: String, from: String, offer: Long, count: Int, meteredBytes: Long? = null) {
         val manager = getSystemService(NotificationManager::class.java)
         fun action(kind: String) = PendingIntent.getBroadcast(
             this, (offer + kind.hashCode()).toInt(),
@@ -486,6 +491,9 @@ class TandemService : LifecycleService() {
             NotificationCompat.Builder(this, Channels.INCOMING)
                 .setSmallIcon(R.drawable.ic_stat_tandem)
                 .setContentTitle(resources.getQuantityString(R.plurals.offer_files, count, deviceName, count))
+                .apply {
+                    meteredBytes?.let { setContentText(getString(R.string.offer_metered, android.text.format.Formatter.formatShortFileSize(this@TandemService, it))) }
+                }
                 .addAction(0, getString(R.string.action_accept), action(ActionReceiver.ACCEPT))
                 .addAction(0, getString(R.string.action_decline), action(ActionReceiver.DECLINE))
                 .setAutoCancel(true)

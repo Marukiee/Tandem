@@ -60,8 +60,15 @@ pub(crate) struct OutOffer {
     pub cancel: CancellationToken,
 }
 
+/// On mobile data, files above this are not taken without asking, also from a device that may send without asking (a large copy on a
+/// computer would otherwise cost the data of the phone without anyone seeing it).
+pub const METERED_ASK_BYTES: u64 = 10 * 1024 * 1024;
+
 pub(crate) struct InOffer {
     pub offer: ShareOffer,
+    /// Not taken by itself although the device may send without asking: this device is on a network that costs (mobile data) and the
+    /// files are large, so the person is asked first. See `METERED_ASK_BYTES`.
+    pub held: bool,
     pub started: std::sync::atomic::AtomicBool,
     /// Set when the person on either side stops the transfer: every file of it stops and its partial files go.
     pub cancel: CancellationToken,
@@ -114,15 +121,23 @@ impl Inner {
     }
 
     pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, offer: ShareOffer) {
-        let auto = self.settings.read().unwrap().for_device(&from).auto_accept;
+        let size: u64 = offer.items.iter().map(|item| item.size).sum();
+        let held = self.metered.load(std::sync::atomic::Ordering::Relaxed) && size > METERED_ASK_BYTES;
+        let auto = self.settings.read().unwrap().for_device(&from).auto_accept && !held;
         let event = Event::ShareOffered { from, offer: offer.clone() };
-        let entry = Arc::new(InOffer { offer, started: std::sync::atomic::AtomicBool::new(false), cancel: CancellationToken::new() });
+        let entry =
+            Arc::new(InOffer { offer, held, started: std::sync::atomic::AtomicBool::new(false), cancel: CancellationToken::new() });
         self.in_offers.lock().unwrap().insert((from, entry.offer.id), entry.clone());
         // After the insert: an app that accepts straight from the event must find the offer.
         self.emit(event);
         if auto {
             self.begin_receive(from, entry);
         }
+    }
+
+    /// Whether the offer `offer` of `from` waits for the person because this device is on mobile data (see `InOffer::held`).
+    pub(crate) fn offer_held(&self, from: DeviceId, offer: u64) -> bool {
+        self.in_offers.lock().unwrap().get(&(from, offer)).is_some_and(|entry| entry.held)
     }
 
     /// Stops a transfer, from either side, and tells the other device so it stops too. The files already done stay.

@@ -252,6 +252,8 @@ class EngineHost(
                 )
                 val started = TandemEngine.start(config, AndroidVault(context), AndroidFiles(context), Sink())
                 engine = started
+                tellMetered()
+                screenChanged(context.getSystemService(android.os.PowerManager::class.java)?.isInteractive != false)
                 audioSink?.let { started.setAudioSink(it) }
                 mediaViewer?.let { started.setMediaViewer(it) }
                 _state.value = EngineState.Running
@@ -503,12 +505,24 @@ class EngineHost(
         }
     }
 
+    /** The screen went on or off: with it off the others check on this phone seldom, so it is not woken every half minute. */
+    fun screenChanged(on: Boolean) {
+        engine?.setQuiet(!on)
+    }
+
+    /** On mobile data the core asks about large files first, also from a device that may send without asking (see TandemService). */
+    private fun tellMetered() {
+        val connectivity = context.getSystemService(android.net.ConnectivityManager::class.java)
+        engine?.setMetered(connectivity?.isActiveNetworkMetered == true)
+    }
+
     fun pushStatus(status: TandemStatus) {
         val current = engine ?: return
         scope.launch(Dispatchers.IO) { runCatching { current.updateStatus(status) } }
     }
 
     fun onNetworkChanged() {
+        tellMetered()
         engine?.networkChanged()
         networkMoved.tryEmit(Unit)
     }

@@ -352,6 +352,10 @@ pub struct Status {
     /// The Bluetooth address of a computer, so a watch can be its mouse straight over Bluetooth (by way of the phone it learns it).
     #[serde(default)]
     pub bt_address: Option<String>,
+    /// A phone with its screen off: the others check on it seldom, so it is not woken every half minute (see `Inner::heartbeat`).
+    /// Set by the engine (`Engine::set_quiet`), not by the app.
+    #[serde(default)]
+    pub quiet: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -486,7 +490,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet);
     }
 }
 
