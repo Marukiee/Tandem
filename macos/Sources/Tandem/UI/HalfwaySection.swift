@@ -1,27 +1,6 @@
 import SwiftUI
 import TandemCore
 
-/// On top of the page Shared: transfers that stopped halfway before Tandem started again, each with "Go on or throw away?" (P2).
-struct HalfwaySection: View {
-    @Environment(EngineModel.self) private var model
-    private let halfway = HalfwayTransfers.shared
-
-    var body: some View {
-        let waiting = halfway.waiting.filter { model.sharedDeviceFilter == nil || $0.from == model.sharedDeviceFilter }
-        if !waiting.isEmpty {
-            Card(radius: Metrics.card, padding: Metrics.cardInset) {
-                VStack(spacing: 2) {
-                    ForEach(waiting, id: \.self) { transfer in
-                        HalfwayRow(transfer: transfer)
-                            .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .scale(scale: 0.96).combined(with: .opacity)))
-                    }
-                }
-            }
-            .transition(.scale(scale: 0.97, anchor: .top).combined(with: .opacity))
-        }
-    }
-}
-
 /// One transfer that stopped halfway: what it is, how far it got, and the two answers. Laid out like a row of the transfers under it.
 struct HalfwayRow: View {
     @Environment(EngineModel.self) private var model
