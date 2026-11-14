@@ -74,6 +74,10 @@ pub struct TransferRecord {
     /// Incoming: not taken by itself, because this device was on mobile data and it is large (see `transfer::METERED_ASK_BYTES`).
     #[serde(default)]
     pub held: bool,
+    /// The device on whose request this offer was made, when that is not this one (P9: A asks B to send to C). Outgoing at B: A,
+    /// which hears the progress. Incoming at C: A, as the offer says. `None` for an offer someone made here.
+    #[serde(default)]
+    pub requested_by: Option<DeviceId>,
 }
 
 fn other_origin() -> ShareOrigin {
@@ -225,6 +229,7 @@ impl TransferRecord {
             items,
             peers: peers.iter().map(|id| PeerProgress::new(*id, Stage::Offered, count, now)).collect(),
             held: false,
+            requested_by: None,
         }
     }
 
@@ -242,6 +247,7 @@ impl TransferRecord {
             items,
             peers: vec![PeerProgress::new(from, Stage::Offered, count, now)],
             held,
+            requested_by: None,
         }
     }
 
@@ -709,5 +715,6 @@ mod tests {
         assert_eq!(record.peers[0].stage, Stage::Unknown);
         assert_eq!(record.peers[0].items[0].state, ItemState::Done);
         assert_eq!(record.items[0].path, "");
+        assert_eq!(record.requested_by, None);
     }
 }

@@ -3,7 +3,7 @@
 Bestanden sturen gaat met een aanbod (`ShareOffer`): de afzender biedt aan, de ontvanger haalt elk bestand zelf op
 (`FileRequest` met een offset), zie `docs/PROTOCOL.md`. Sinds P1 (2026-11-14) staat elk aanbod, in en uit, in het
 overdrachtsboek in de datamap: wat erin zit, voor wie, en hoe ver elk bestand is. Daarop bouwen hervatten na een herstart
-(P2), de wachtrij (P3), het paneel Onderweg en Inkomend (P3b) en echte mappen (P4). Code: `crates/tandem-core/src/journal.rs`
+(P2), de wachtrij (P3), het paneel Onderweg en Inkomend (P3b), echte mappen (P4) en sturen tussen twee andere apparaten (P9). Code: `crates/tandem-core/src/journal.rs`
 (het boek) en `transfer.rs` (sturen en ontvangen). Tests: `crates/tandem-core/tests/transfers.rs` en de tests onderin
 `journal.rs`.
 
@@ -24,6 +24,7 @@ geschreven met `Store::write`.
 | `peers[]` | uit: een per ontvanger; in: een, de afzender. Per apparaat `device`, `stage`, `offered_ms` en `items[]` |
 | `peers[].items[]` | per bestand voor dat apparaat: `state`, `done` (bytes), `error`, `location` (in: waar het staat) |
 | `held` | in: wachtte op een ja omdat dit apparaat op mobiele data zat en het groot was |
+| `requested_by` | het apparaat op wiens verzoek dit aanbod gemaakt is, als dat niet dit apparaat is (P9); anders leeg |
 
 `stage` per apparaat: `queued` (P3: nog niet verstuurd, het apparaat was weg), `offered` (verstuurd of binnen, nog niets
 opgehaald; binnenkomend wacht het op een ja), `accepted` (ja gezegd, of de ontvanger haalde op), `closed` (gestopt, geweigerd
@@ -149,6 +150,27 @@ het al: `RecordItem::path`. De ontvanger maakt de mappen, elk deel door de naamc
 dus hervatten werkt voor mappen vanzelf.
 
 Klaar als een kerntest drie lagen, een lege map en een naam die naar buiten wil dekt, en een oude ontvanger nog de zip krijgt.
+
+### P9. Sturen tussen twee andere apparaten
+
+Vanaf A zeg je tegen B: stuur dit naar C. B controleert dat A die bestanden mag lezen (`FilePolicy`, zoals bij Bestanden) en
+dat C in de circle zit, en stuurt ze dan zelf naar C als gewoon aanbod. C beslist zoals altijd voor B. B geeft de voortgang door
+aan A.
+
+- Een bericht van A naar B, bijvoorbeeld `ShareOnBehalf { id, to, paths }` met de paden uit de mappen die B aan A toont. Een
+  oude B kent het niet en slaat het over, dus A wacht met een tijdslimiet op antwoord en zegt dan dat B het niet kan (een cap
+  `relay` voorkomt dat het geprobeerd wordt).
+- B maakt een gewoon uitgaand aanbod met `requested_by: A` in het boek. Dat veld staat al in het formaat (P1), leeg voor alles
+  wat iemand op B zelf stuurt.
+- `ShareOffer` krijgt `requested_by` (`#[serde(default)]`), zodat C "op verzoek van A" kan tonen; C zet het ook in zijn boek. Een
+  oude C leest het niet en ziet een gewoon aanbod van B.
+- B stuurt A de voortgang en het einde per bestand (een klein bericht met aanbod, nummer, bytes en `TransferDone::error`), en
+  A toont dat als uitgaand bij zichzelf met C als ontvanger. Stop op A gaat via B (`cancel_transfer` op B voor C).
+- Na P6 vraagt B ook de poort `allowed(A, send_for)`; het paneel (P3b) toont het aanbod op alle drie.
+
+Klaar als een kerntest met drie apparaten dekt: A laat B een bestand naar C sturen en het komt heel aan, A ziet de voortgang en
+het einde; B weigert een pad dat A niet mag lezen en een C buiten de circle, met een reden bij A; C ziet `requested_by: A`; stop
+op A stopt het bij C; een oude B (die het bericht niet kent) geeft A een nette melding.
 
 ## Na R-V7 voor de Android-app
 
