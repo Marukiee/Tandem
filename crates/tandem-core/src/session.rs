@@ -441,6 +441,7 @@ impl Inner {
             self.live_peer_down(id);
             self.emit(Event::Disconnected { id });
             self.emit(Event::DevicesChanged);
+            self.requeue_unpulled(id);
             self.poke.notify_one();
         }
     }

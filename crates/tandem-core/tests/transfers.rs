@@ -771,3 +771,40 @@ async fn the_panel_sees_halfway_waiting_queued_failed_and_running_transfers() {
 fn ask_first_engine(receiver: &Engine, sender: DeviceId) {
     receiver.set_device_settings(&sender, DeviceSettings { auto_accept: false, ..Default::default() }).unwrap();
 }
+
+/// P3: an offer is handed to the connection before it is written, so when the connection drops before the receiver pulled anything it
+/// goes back in the queue and out again when the receiver is back; a receiver that had it already does not ask twice, and gets it whole.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_offer_nothing_was_pulled_of_goes_back_in_the_queue_when_the_connection_drops() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+    ask_first(&mac, &phone);
+    phone.engine.set_queue_offline(true);
+    let source = tempfile::tempdir().unwrap();
+    let data = random_bytes(400_000, 80);
+    let mut mac_events = mac.engine.subscribe();
+    let report = phone.engine.send_files(&[mac.engine.id()], vec![outgoing(source.path(), "again.bin", &data)], ShareOrigin::Files).await.unwrap();
+    assert_eq!(report.sent_to, [mac.engine.id()]);
+    assert_eq!(offered(&mut mac_events).await, report.offer);
+    assert_eq!(stage_of(&phone.engine, report.offer, mac.engine.id()), Some(Stage::Offered));
+
+    mac.engine.shutdown().await;
+    wait_until("back in the queue", || stage_of(&phone.engine, report.offer, mac.engine.id()) == Some(Stage::Queued)).await;
+
+    let mac_again = restart(&mac, "Mac").await;
+    let mut events = mac_again.subscribe();
+    mac_again.add_address(&phone.engine.id(), &format!("127.0.0.1:{}", phone.engine.port())).unwrap();
+    wait_until("out again", || stage_of(&phone.engine, report.offer, mac.engine.id()) == Some(Stage::Offered)).await;
+    mac_again.accept_offer(phone.engine.id(), report.offer).unwrap();
+    let done = expect(&mut events, "the file arrives", |e| match e {
+        Event::ShareOffered { .. } => panic!("the Mac had the offer already and must not be asked twice"),
+        Event::Finished(done) if done.incoming => Some(done.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(done.error, None);
+    assert_eq!(std::fs::read(done.location.unwrap()).unwrap(), data);
+}
+
