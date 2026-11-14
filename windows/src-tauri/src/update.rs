@@ -281,6 +281,14 @@ pub fn install(app: &AppHandle) {
         State::Available(r) | State::Failed { release: Some(r), .. } => r.clone(),
         _ => return,
     };
+    // A release that is not newer than this program is never installed, however it came to be waiting: an older build that is signed is
+    // still an older build.
+    let current = app.package_info().version.to_string();
+    if !is_newer(&release.version, &current) {
+        log::warn!("refused to install {} over {current}", release.version);
+        set(app, State::UpToDate);
+        return;
+    }
     // A package of the distribution (or a program that is not an AppImage) cannot replace itself: the page of the release is the way.
     if !can_update_itself() {
         set(app, State::Failed { reason: "This copy of Tandem comes from a package, so update it with your package manager or download the new version.".into(), release: Some(release) });
@@ -288,10 +296,10 @@ pub fn install(app: &AppHandle) {
     }
     let app = app.clone();
     std::thread::spawn(move || match fetch_and_check(&app, &release) {
-        Ok(file) => {
+        Ok((dir, bytes)) => {
             set(&app, State::Installing(release.clone()));
-            log::info!("installing {}", file.display());
-            if let Err(reason) = put_in_place(&file) {
+            log::info!("installing version {}", release.version);
+            if let Err(reason) = put_in_place(&bytes, &dir) {
                 set(&app, State::Failed { reason, release: Some(release) });
                 return;
             }
@@ -306,24 +314,28 @@ pub fn install(app: &AppHandle) {
     });
 }
 
+/// `bytes` are the ones that were checked: they are written out here once more, to a file that is new, and that file is what runs. The
+/// download itself is never run, so nothing can be swapped between the check and the start.
 #[cfg(windows)]
-fn put_in_place(installer: &Path) -> Result<(), String> {
+fn put_in_place(bytes: &[u8], dir: &Path) -> Result<(), String> {
+    let installer = dir.join(installer_name());
+    crate::private::write_new(&installer, bytes, 0o755).map_err(|e| format!("the installer cannot be written: {e}"))?;
     // Passive: it shows its own progress. Run: it starts Tandem when it is done. Update: it knows this program
     // is running and takes it away first.
-    let mut command = Command::new(installer);
+    let mut command = Command::new(&installer);
     command.args(["/P", "/R", "/UPDATE"]);
     command.spawn().map(|_| ()).map_err(|error| format!("the installer could not start: {error}"))
 }
 
 #[cfg(not(windows))]
-fn put_in_place(new: &Path) -> Result<(), String> {
-    use std::os::unix::fs::PermissionsExt;
+fn put_in_place(bytes: &[u8], _dir: &Path) -> Result<(), String> {
     let target = appimage_path().ok_or("This copy of Tandem is not an AppImage, so it cannot replace itself")?;
     // Next to the old one, so the swap is a rename inside one folder: the program that runs keeps its file, and the new one is whole
     // the moment it is there.
     let beside = target.with_extension("update");
-    std::fs::copy(new, &beside).map_err(|e| format!("the new version cannot be put next to the old one: {e}"))?;
-    std::fs::set_permissions(&beside, std::fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
+    // What an earlier try left there goes first: the new file is made fresh, so it is never written through a link.
+    let _ = std::fs::remove_file(&beside);
+    crate::private::write_new(&beside, bytes, 0o755).map_err(|e| format!("the new version cannot be put next to the old one: {e}"))?;
     std::fs::rename(&beside, &target).map_err(|e| format!("the new version cannot replace the old one: {e}"))?;
     // Started on its own, so it outlives this program, and with the environment of a desktop, not the one this AppImage made for itself.
     // Only once this program is gone: started next to it, the new one found it running and handed over to it (one Tandem at a time),
@@ -337,11 +349,11 @@ fn put_in_place(new: &Path) -> Result<(), String> {
     restart.spawn().map(|_| ()).map_err(|e| format!("the new version could not start: {e}"))
 }
 
-fn fetch_and_check(app: &AppHandle, release: &Release) -> Result<PathBuf, String> {
-    let dir = std::env::temp_dir().join("Tandem-update");
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).map_err(|e| format!("no room to download in {}: {e}", dir.display()))?;
-    let target = dir.join(format!("Tandem-{}-{}", release.version, installer_name()));
+/// Downloads into a folder of its own that only this user can enter, and gives the folder and the bytes that passed the checks.
+fn fetch_and_check(app: &AppHandle, release: &Release) -> Result<(PathBuf, Vec<u8>), String> {
+    let base = crate::private::base(app);
+    let dir = crate::private::fresh_dir(&base, "Tandem-update").map_err(|e| format!("no room to download in {}: {e}", base.display()))?;
+    let target = dir.join("download.part");
 
     set(app, State::Downloading { release: release.clone(), done: 0 });
     let mut fetched = Err("the download has no address".to_string());
@@ -357,6 +369,7 @@ fn fetch_and_check(app: &AppHandle, release: &Release) -> Result<PathBuf, String
     fetched?;
 
     let bytes = std::fs::read(&target).map_err(|e| format!("the download cannot be read: {e}"))?;
+    let _ = std::fs::remove_file(&target);
     if !release.hash_url.is_empty() {
         let expected = parse_hash(&String::from_utf8_lossy(&curl_any(&release.hash_url)?)).ok_or("the checksum of the release is not readable")?;
         if expected != sha256_hex(&bytes) {
@@ -371,7 +384,7 @@ fn fetch_and_check(app: &AppHandle, release: &Release) -> Result<PathBuf, String
     if !signed_by_the_update_key(&bytes, &signature) {
         return Err("The download is not signed by Tandem, so it is not installed".into());
     }
-    Ok(target)
+    Ok((dir, bytes))
 }
 
 // ---- curl ----------------------------------------------------------------------------
