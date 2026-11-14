@@ -116,13 +116,17 @@ fn answer(app: &AppHandle, from: &str, offer: u64, go_on: bool) {
         crate::tray::show_main(app);
         return;
     }
-    let result = if go_on { resume(app, from, offer) } else { discard(app, from, offer); Ok(()) };
+    let result = if go_on { resume(app, from, offer) } else { discard(app, from, offer) };
     if let Err(text) = result {
         events::toast(app, "Tandem", &text);
     }
 }
 
 fn resume(app: &AppHandle, from: &str, offer: u64) -> Result<(), String> {
+    // A second click on a button that was just answered: the row is going, there is nothing to say.
+    if !book().held().waiting.iter().any(|t| t["from"] == from && offer_of(t) == offer) {
+        return Ok(());
+    }
     // The button is grey while the sender is away, and says why when it is used.
     if events::device(app, from).and_then(|d| d["online"].as_bool()) != Some(true) {
         return Err(i18n::t1(app, "halfway_away_toast", &sender_name(app, from)));
@@ -133,15 +137,20 @@ fn resume(app: &AppHandle, from: &str, offer: u64) -> Result<(), String> {
             settle(app, from, offer);
             Ok(())
         }
+        // The page showed the sender as connected or the transfer as waiting a moment too long: the rows are read again, and the
+        // person gets words in their own language instead of the ones of the core.
         Err(error) => {
+            log::warn!("could not go on with the transfer {offer} from {from}: {error}");
             refresh(app);
-            Err(error.to_string())
+            let connected = events::device(app, from).and_then(|d| d["online"].as_bool()) == Some(true);
+            Err(i18n::t1(app, if connected { "halfway_gone" } else { "halfway_away_toast" }, &sender_name(app, from)))
         }
     }
 }
 
-fn discard(app: &AppHandle, from: &str, offer: u64) {
-    let Ok(engine) = app.state::<AppState>().engine() else { return };
+fn discard(app: &AppHandle, from: &str, offer: u64) -> Result<(), String> {
+    // Without the engine nothing can be thrown away: the row stays, and the person is told why the button did nothing.
+    let engine = app.state::<AppState>().engine().map_err(|_| i18n::t(app, "halfway_no_engine"))?;
     book().held().thrown_away.insert(key(from, offer));
     settle(app, from, offer);
     let (app, from) = (app.clone(), from.to_string());
@@ -149,6 +158,7 @@ fn discard(app: &AppHandle, from: &str, offer: u64) {
         let _ = engine.discard_transfer(from, offer).await;
         refresh(&app);
     });
+    Ok(())
 }
 
 /// Takes the transfer off the page and its notification away.
@@ -184,8 +194,7 @@ pub fn halfway_go_on(app: AppHandle, from: String, offer: String) -> Result<(), 
 
 #[tauri::command]
 pub fn halfway_throw_away(app: AppHandle, from: String, offer: String) -> Result<(), String> {
-    discard(&app, &from, offer.parse().map_err(|_| "bad offer".to_string())?);
-    Ok(())
+    discard(&app, &from, offer.parse().map_err(|_| "bad offer".to_string())?)
 }
 
 #[cfg(test)]
