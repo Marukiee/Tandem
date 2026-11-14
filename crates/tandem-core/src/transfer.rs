@@ -886,6 +886,8 @@ impl Inner {
             })
             .flatten();
         let Some(item) = found else {
+            let why = self.journal.read(key, |record| record.peer(&peer).map(|p| p.stage));
+            info!(%peer, offer = request.offer, index = request.index, ?why, "a pull of an offer that is not open for that device, refused");
             let reply = FileResponse { ok: false, error: Some(NO_LONGER_AVAILABLE.into()), size: 0 };
             proto::send(&mut send, &reply).await?;
             let _ = send.finish();

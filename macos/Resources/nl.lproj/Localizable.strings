@@ -1586,3 +1586,25 @@
 /* Why a transfer ended, on its row */
 "Cancelled" = "Geannuleerd";
 "Declined" = "Geweigerd";
+
+/* A transfer that stopped halfway before Tandem started again (P2), on the page Shared and in a notification */
+"A transfer from %@ stopped halfway" = "Een overdracht van %@ stopte halverwege";
+"%@. Go on or throw away?" = "%@. Verder gaan of weggooien?";
+"Stopped halfway, %@ of %@ from %@. Go on or throw away?" = "Halverwege gestopt, %1$@ van %2$@ van %3$@. Verder gaan of weggooien?";
+"Stopped halfway. %@ is not connected." = "Halverwege gestopt. %@ is niet verbonden.";
+"%@ is not connected. Open Tandem there to go on." = "%@ is niet verbonden. Open Tandem daar om verder te gaan.";
+"%@ and %lld more" = "%1$@ en nog %2$lld";
+"the other device" = "het andere apparaat";
+"Go on" = "Verder gaan";
+"Throw away" = "Weggooien";
+
+/* Why a transfer ended, on its row (P2, P5) */
+"No longer on %@" = "Niet meer op %@";
+"Changed on %@ since it was sent" = "Veranderd op %@ sinds het gestuurd werd";
+"Changed since it was sent" = "Veranderd sinds het gestuurd werd";
+"Not enough space on this Mac" = "Niet genoeg ruimte op deze Mac";
+"Not enough space on %@" = "Niet genoeg ruimte op %@";
+
+/* Before sending files to a device that reports less free space (P5) */
+"It has less free space than these files take. If they do not fit, it refuses them." = "Daar is minder ruimte vrij dan deze bestanden innemen. Passen ze niet, dan weigert het ze.";
+"Send anyway" = "Toch sturen";

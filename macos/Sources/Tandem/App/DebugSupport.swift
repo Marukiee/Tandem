@@ -157,6 +157,14 @@ enum DebugSupport {
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { trySend(30) }
         }
+        // `TANDEM_DEBUG_HALFWAY=goon|throwaway`: answers the first transfer that stopped halfway as its button would, after six seconds.
+        if let answer = variable("TANDEM_DEBUG_HALFWAY") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
+                let halfway = HalfwayTransfers.shared
+                guard let first = halfway.waiting.first else { return }
+                if answer == "goon" { halfway.goOn(first) } else { halfway.throwAway(first) }
+            }
+        }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
         }

@@ -269,6 +269,7 @@ final class EngineModel {
         ready = true
         refreshDevices()
         refreshHealth()
+        HalfwayTransfers.shared.refresh()
         FeatureReport.start()
         LocalNetwork.start()
 
@@ -497,6 +498,7 @@ final class EngineModel {
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
             if case let .connected(id) = event {
+                HalfwayTransfers.shared.refresh()
                 CallWindow.shared.phoneReachable(id, true)
                 hotspot.deviceConnected(id)
                 PointerShare.shared.announce(to: id)
@@ -585,6 +587,7 @@ final class EngineModel {
         case let .finished(offer, index, peer, incoming, name, size, location, error):
             // Taken by a drop on the edge or by the clipboard: those say it themselves, but the row its progress made must still go, or it
             // stood at full forever next to the finished file (seen 2026-11-02 with screenshots from the phone).
+            if incoming, HalfwayTransfers.shared.swallows(offer: offer, from: peer) { break }
             if incoming, DragLanding.shared.finished(offer: offer, from: peer, name: name, location: location, error: error)
                 || ClipboardFiles.shared.finished(offer: offer, from: peer, location: location, error: error) {
                 transfers.removeAll { $0.id == transferID(offer: offer, index: index, incoming: incoming) }
@@ -1231,15 +1234,40 @@ final class EngineModel {
                         mime: FileKind.mimeType(for: prepared)
                     ))
                 }
-                let report = try await engine.sendFiles(targets: ids, files: files, origin: origin)
-                if report.sentTo.isEmpty {
-                    showToast(String(localized: "That device is not connected right now"))
-                } else if !report.offline.isEmpty {
-                    showToast(String(localized: "\(report.offline.count) device(s) were offline and did not get it"))
+                // Asked before it goes, so nobody waits for files that the other side refuses for space (P5).
+                let short = (try? engine.shortOfSpace(targets: ids, files: files)) ?? []
+                if !short.isEmpty {
+                    let names = short.compactMap { device($0)?.name }.joined(separator: ", ")
+                    GlassQuestion.shared.ask(
+                        symbol: "externaldrive.badge.exclamationmark",
+                        title: String(localized: "Not enough space on \(names)"),
+                        body: String(localized: "It has less free space than these files take. If they do not fit, it refuses them."),
+                        answers: [
+                            GlassQuestion.Answer(title: "Cancel") {},
+                            GlassQuestion.Answer(title: "Send anyway", prominent: true) { [weak self] in
+                                Task { await self?.sendPrepared(engine: engine, files: files, to: ids, origin: origin) }
+                            },
+                        ]
+                    )
+                    return
                 }
+                await sendPrepared(engine: engine, files: files, to: ids, origin: origin)
             } catch {
                 showToast(error.localizedDescription)
             }
+        }
+    }
+
+    private func sendPrepared(engine: TandemEngine, files: [TandemOutgoingFile], to ids: [String], origin: TandemShareOrigin) async {
+        do {
+            let report = try await engine.sendFiles(targets: ids, files: files, origin: origin)
+            if report.sentTo.isEmpty {
+                showToast(String(localized: "That device is not connected right now"))
+            } else if !report.offline.isEmpty {
+                showToast(String(localized: "\(report.offline.count) device(s) were offline and did not get it"))
+            }
+        } catch {
+            showToast(error.localizedDescription)
         }
     }
 

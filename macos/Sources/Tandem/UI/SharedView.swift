@@ -59,13 +59,16 @@ struct SharedView: View {
                 if !chosen.isEmpty {
                     chosenBar.transition(.opacity.combined(with: .move(edge: .top)))
                 }
+                HalfwaySection()
                 if model.transfers.isEmpty {
+                    if HalfwayTransfers.shared.waiting.isEmpty {
                     ContentUnavailableView(
                         "Nothing yet",
                         systemImage: "arrow.up.arrow.down",
                         description: Text("Files you send and receive show up here.")
                     )
                     .frame(maxWidth: .infinity, minHeight: 260)
+                    }
                 } else {
                     // The search and the filters on one row, like the other pages; the filters go under it when the window is narrow.
                     // The pills as tall as the search field.
@@ -102,6 +105,7 @@ struct SharedView: View {
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: items.map(\.id))
             .animation(.tandem, value: chosen.isEmpty)
+            .animation(.tandem, value: HalfwayTransfers.shared.waiting)
         }
         .onAppear {
             guard let count = DebugSupport.sharedChosen else { return }
