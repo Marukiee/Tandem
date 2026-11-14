@@ -10,6 +10,8 @@ export const state = {
   devices: [],
   transfers: [],
   offers: [],
+  // Incoming transfers that stopped halfway and wait for Go on or Throw away.
+  halfway: [],
   notifications: [],
   players: {},
   art: {},

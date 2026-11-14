@@ -10,6 +10,7 @@ import { ActivityDetail, HealthOverview, HeartDetail, SleepDetail, WatchGlance }
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 import { filesFolder } from "./drops.js";
+import { sendChecked } from "./space.js";
 
 const failed = (e) => say(String(e && e.message ? e.message : e));
 /** Where the camera of a phone goes for OBS: the port of `tsout` in the core. */
@@ -24,7 +25,7 @@ export function afterSend(result) {
 
 export async function sendPaths(ids, paths) {
   if (!ids.length || !paths.length) return;
-  try { afterSend(await call("send_paths", { ids, paths })); } catch (e) { failed(e); }
+  try { const result = await sendChecked("send_paths", { ids, paths }); if (result) afterSend(result); } catch (e) { failed(e); }
 }
 
 // ---- Pairing ------------------------------------------------------------------------
@@ -111,13 +112,43 @@ function Offers({ device }) {
   </div>`);
 }
 
+/** Why a file did not get there, in words. A reason the core gave that has none is shown as it is. */
+function failedText(item, peer) {
+  if (["cancelled", "declined", "expired"].includes(item.error)) return t(item.error);
+  const reason = { "gone": "gone", "changed": "changed", "no space": "no_space" }[item.error];
+  if (reason) return t(`reason_${reason}_${item.incoming ? "in" : "out"}`, peer ? peer.name : t("halfway_other_device"));
+  return item.error || t("failed");
+}
+
+/** A transfer that stopped halfway before this start: nothing goes on until the person says so. */
+function HalfwayRow({ item }) {
+  const device = state.devices.find((d) => d.id === item.from);
+  const online = Boolean(device && device.online);
+  const name = device ? device.name : t("halfway_other_device");
+  const title = item.more ? t("halfway_more", item.name, item.more) : item.name;
+  const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
+  const goOn = () => (online ? call("halfway_go_on", { from: item.from, offer: item.offer }).catch(failed) : say(t("halfway_away_toast", name)));
+  return html`<div class=${"item halfway" + (online ? "" : " away")}>
+    <span class="glyph on" style="width:34px;height:34px"><${Icon} name="player-pause" size=${16} /></span>
+    <div class="grow">
+      <div style="font-weight:500;overflow-wrap:anywhere">${title}</div>
+      <div class="small muted">${online ? t("halfway_row", fmtSize(item.done), fmtSize(item.total), name) : t("halfway_row_away", name)}</div>
+      <div class="prog"><i style=${`width:${pct}%`}></i></div>
+    </div>
+    <div class="halfway-buttons">
+      <button class="btn small" onClick=${() => call("halfway_throw_away", { from: item.from, offer: item.offer }).catch(failed)}>${t("halfway_throw_away")}</button>
+      <button class=${"btn accent small" + (online ? "" : " dim")} onClick=${goOn}>${t("halfway_go_on")}</button>
+    </div>
+  </div>`;
+}
+
 export function TransferRow({ item, chosen, onClick }) {
   const peer = state.devices.find((d) => d.id === item.peer);
   const active = item.state === "active";
   const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
   const detail = active
     ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "")
-    : item.state === "failed" ? (["cancelled", "declined", "expired"].includes(item.error) ? t(item.error) : item.error || t("failed")) : fmtSize(item.total);
+    : item.state === "failed" ? failedText(item, peer) : fmtSize(item.total);
   return html`<div class=${"item" + (chosen ? " chosen" : "") + (onClick ? " pickable" : "")} onMouseDown=${noTextPick} onClick=${onClick}>
     ${chosen ? html`<${Icon} name="check" size=${18} class="accent-text" />` : html`<${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${18} class=${item.state === "failed" ? "bad" : ""} />`}
     <div class="grow">
@@ -246,7 +277,7 @@ export function DevicePage({ device }) {
   const transfers = state.transfers.filter((x) => x.peer === device.id).slice(0, 5);
   const ids = [device.id];
 
-  const send = async () => { try { afterSend(await call("pick_and_send", { ids })); } catch (e) { failed(e); } };
+  const send = async () => { try { const result = await sendChecked("pick_and_send", { ids }); if (result) afterSend(result); } catch (e) { failed(e); } };
   const clipboard = async () => {
     try { await call("send_clipboard", { ids }); say(t("clipboard_sent")); }
     catch (e) { failed(e === "no-text" ? t("no_text") : e); }
@@ -894,8 +925,9 @@ export function SharedPage() {
       <div class="grow"><h1>${t("title_shared")}</h1><p class="lead">${t("lead_shared")}</p></div>
       <button class="btn" onClick=${() => call("open_downloads").catch(failed)}><${Icon} name="folder-open" size=${17} />${t("open_folder")}</button>
     </div>
+    ${state.halfway.length > 0 && html`<div class="card flush" style="margin-top:10px">${state.halfway.map((x) => html`<${HalfwayRow} item=${x} key=${x.from + "-" + x.offer} />`)}</div>`}
     ${state.transfers.length === 0
-      ? html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_yet")}</div></div>`
+      ? (state.halfway.length === 0 && html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_yet")}</div></div>`)
       : html`
         <input type="search" placeholder=${t("search_name")} value=${query} onInput=${(e) => setQuery(e.target.value)}
           style="margin:10px 0 8px;width:100%;box-sizing:border-box;padding:9px 16px;border-radius:999px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;font:inherit;outline:none" />
