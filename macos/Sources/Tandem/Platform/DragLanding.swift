@@ -59,6 +59,8 @@ final class DragLanding {
             EngineModel.shared.showToast(String(localized: "\(name) from \(from) is in \(placed.deletingLastPathComponent().lastPathComponent)"))
             // Said where it is: the file is shown in Finder, so it is easy to find.
             NSWorkspace.shared.activateFileViewerSelecting([placed])
+            // Allowed before Tandem asked ahead: the question comes now, after the drop, so the next one goes to the window in front.
+            if finderInFront { FinderFolder.askAhead() }
         }
     }
 
@@ -88,17 +90,6 @@ final class DragLanding {
     nonisolated private static func dropFolder(finderInFront: Bool) -> URL {
         let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first ?? FileManager.default.homeDirectoryForCurrentUser
         guard finderInFront else { return desktop }
-        let script = NSAppleScript(source: """
-        tell application "Finder"
-            if (count of Finder windows) > 0 then
-                return POSIX path of (target of front Finder window as alias)
-            end if
-        end tell
-        return ""
-        """)
-        var problem: NSDictionary?
-        let text = script?.executeAndReturnError(&problem).stringValue ?? ""
-        if !text.isEmpty, FileManager.default.fileExists(atPath: text) { return URL(fileURLWithPath: text, isDirectory: true) }
-        return desktop
+        return FinderFolder.front() ?? desktop
     }
 }
