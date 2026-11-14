@@ -140,6 +140,8 @@ impl Inner {
             conn.close(1u32.into(), b"bad protocol version");
             return Err(Error::protocol("peer speaks protocol 0"));
         }
+        // The name in the hello is what the apps show (before the one in the circle), so it is cleaned here, once.
+        let hello = Hello { name: crate::circle::clean_device_name(&hello.name), ..hello };
         // Above live video, so a keyframe request or a key press is never stuck behind frames.
         let _ = send.set_priority(CONTROL_PRIORITY);
         let (tx, rx) = mpsc::channel::<Msg>(256);

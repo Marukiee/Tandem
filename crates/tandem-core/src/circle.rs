@@ -27,6 +27,49 @@ use crate::ids::{DeviceId, Platform, bytes_array, now_ms};
 const CONTEXT: &[u8] = b"tandem-circle-statement-v1";
 const MAX_STATEMENTS: usize = 1024;
 
+/// The longest device name that is kept, in characters: room for "Mark’s MacBook Pro (Work)" in any language, short enough
+/// for a menu.
+pub const MAX_NAME_CHARS: usize = 64;
+
+/// A device name as every app may show it and write it into a file: line breaks, tabs and runs of spaces become one space,
+/// other control characters and the invisible marks that turn text around go, the ends are trimmed, and it is at most
+/// [`MAX_NAME_CHARS`] long. Names come from other devices, in statements they signed and in their hello, so this runs
+/// where a name comes in and an app never sees a raw one (a line break in a name gave a desktop entry a key of its own).
+pub fn clean_device_name(name: &str) -> String {
+    let mut out = String::with_capacity(name.len().min(MAX_NAME_CHARS * 4));
+    let mut count = 0;
+    let mut gap = false;
+    for c in name.chars() {
+        if c.is_whitespace() {
+            gap = true;
+            continue;
+        }
+        if c.is_control() || invisible_mark(c) {
+            continue;
+        }
+        if gap && count > 0 {
+            if count + 1 >= MAX_NAME_CHARS {
+                break;
+            }
+            out.push(' ');
+            count += 1;
+        }
+        gap = false;
+        if count >= MAX_NAME_CHARS {
+            break;
+        }
+        out.push(c);
+        count += 1;
+    }
+    out
+}
+
+/// Marks that show nothing but change how the text around them reads: the bidi controls (an override makes
+/// "Mac\u{202E}gpj.exe" read as "Macexe.jpg"), a zero width space and a byte order mark. The joiners stay, emoji need them.
+fn invisible_mark(c: char) -> bool {
+    matches!(c, '\u{061C}' | '\u{200B}' | '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}' | '\u{FEFF}')
+}
+
 pub type StatementId = [u8; 16];
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,7 +195,7 @@ impl Circle {
             1,
             Action::Add {
                 subject: identity.public_key(),
-                name: name.to_string(),
+                name: clean_device_name(name),
                 platform,
             },
         );
@@ -214,7 +257,7 @@ impl Circle {
             self.next_seq(),
             Action::Add {
                 subject,
-                name: name.to_string(),
+                name: clean_device_name(name),
                 platform,
             },
         );
@@ -238,7 +281,7 @@ impl Circle {
             self.next_seq(),
             Action::Rename {
                 subject: identity.id(),
-                name: name.to_string(),
+                name: clean_device_name(name),
             },
         );
         self.insert(statement.clone());
@@ -350,6 +393,8 @@ fn derive(ordered: &[&Statement], known_removed: &BTreeMap<DeviceId, u64>, root:
             && known_removed.get(author).is_none_or(|&removed| seq <= removed)
     }
 
+    // Names are cleaned here and not only when signing: a statement of another device (an older version, or one that lies)
+    // can carry any name, and the signature must stay valid, so the statement itself keeps what was signed.
     for statement in ordered {
         let author = statement.author_id();
         match &statement.action {
@@ -365,7 +410,7 @@ fn derive(ordered: &[&Statement], known_removed: &BTreeMap<DeviceId, u64>, root:
                             Member {
                                 id: subject_id,
                                 public_key: *subject,
-                                name: name.clone(),
+                                name: clean_device_name(name),
                                 platform: *platform,
                                 added_by: subject_id,
                                 added_at: statement.ts,
@@ -382,7 +427,7 @@ fn derive(ordered: &[&Statement], known_removed: &BTreeMap<DeviceId, u64>, root:
                         Member {
                             id: subject_id,
                             public_key: *subject,
-                            name: name.clone(),
+                            name: clean_device_name(name),
                             platform: *platform,
                             added_by: author,
                             added_at: statement.ts,
@@ -404,7 +449,7 @@ fn derive(ordered: &[&Statement], known_removed: &BTreeMap<DeviceId, u64>, root:
                     && view.name_seq.get(subject).is_none_or(|&seq| statement.seq > seq)
                 {
                     if let Some(member) = view.admitted.get_mut(subject) {
-                        member.name = name.clone();
+                        member.name = clean_device_name(name);
                     }
                     view.name_seq.insert(*subject, statement.seq);
                 }
@@ -575,5 +620,67 @@ mod tests {
         );
         circle.merge([vandal]);
         assert_eq!(circle.member(&b.id()).unwrap().name, "Work Mac");
+    }
+
+    #[test]
+    fn a_name_is_one_trimmed_line_of_visible_text() {
+        assert_eq!(clean_device_name("Mark’s MacBook Pro"), "Mark’s MacBook Pro");
+        assert_eq!(clean_device_name("  Work\n\nExec=rm -rf ~ \t"), "Work Exec=rm -rf ~");
+        assert_eq!(clean_device_name("a\u{2028}b\r\nc"), "a b c");
+        assert_eq!(clean_device_name("bell\u{7}\u{0}er"), "beller");
+        assert_eq!(clean_device_name("Mac\u{202E}gpj.exe"), "Macgpj.exe");
+        assert_eq!(clean_device_name("\u{FEFF}\u{200B}Pixel"), "Pixel");
+        // The joiner of an emoji stays.
+        assert_eq!(clean_device_name("👩\u{200D}💻 laptop"), "👩\u{200D}💻 laptop");
+        assert_eq!(clean_device_name(" \n\t "), "");
+    }
+
+    #[test]
+    fn a_long_name_is_cut_on_a_character_and_never_ends_in_a_space() {
+        let long = "é".repeat(200);
+        let cleaned = clean_device_name(&long);
+        assert_eq!(cleaned.chars().count(), MAX_NAME_CHARS);
+        assert!(cleaned.chars().all(|c| c == 'é'));
+        // A space that would be the last character is left out.
+        let edge = format!("{} b", "a".repeat(MAX_NAME_CHARS - 1));
+        assert_eq!(clean_device_name(&edge), "a".repeat(MAX_NAME_CHARS - 1));
+    }
+
+    #[test]
+    fn names_are_cleaned_when_signing_and_renaming() {
+        let (a, _) = device("a");
+        let (b, _) = device("b");
+        let mut circle = Circle::genesis(&a, " Phone\n", Platform::Android);
+        assert_eq!(circle.member(&a.id()).unwrap().name, "Phone");
+        let statement = circle.vouch_for(&a, b.public_key(), "Mac\nBook", Platform::MacOs).unwrap();
+        assert!(matches!(&statement.action, Action::Add { name, .. } if name == "Mac Book"));
+        circle.rename_self(&b, &format!("Work\t{}", "x".repeat(100))).unwrap();
+        let name = circle.member(&b.id()).unwrap().name.clone();
+        assert!(name.starts_with("Work x") && name.chars().count() == MAX_NAME_CHARS);
+    }
+
+    #[test]
+    fn a_raw_name_signed_elsewhere_is_cleaned_in_the_view_and_keeps_its_signature() {
+        let (a, _) = device("a");
+        let (b, _) = device("b");
+        let mut circle = Circle::genesis(&a, "Phone", Platform::Android);
+        // An older version or a device that lies signs a name with a line break; the statement must still count.
+        let raw = Statement::create(
+            &a,
+            circle.next_seq(),
+            Action::Add { subject: b.public_key(), name: "Mac\nExec=evil".into(), platform: Platform::Linux },
+        );
+        let mut other = circle.clone();
+        assert!(other.merge([raw.clone()]));
+        assert!(other.is_member(&b.public_key()));
+        assert_eq!(other.member(&b.id()).unwrap().name, "Mac Exec=evil");
+        let rename = Statement::create(&b, other.next_seq(), Action::Rename { subject: b.id(), name: "\u{202E}Linux\r\n".into() });
+        other.merge([rename]);
+        assert_eq!(other.member(&b.id()).unwrap().name, "Linux");
+        // The statement itself still holds what was signed, so it verifies on every other device too.
+        let rebuilt = Circle::from_statements(other.statements());
+        assert!(rebuilt.statements().into_iter().any(|s| s.id() == raw.id()));
+        circle.merge(other.statements());
+        assert_eq!(circle.member(&b.id()).unwrap().name, "Linux");
     }
 }
