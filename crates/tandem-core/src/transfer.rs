@@ -8,7 +8,7 @@
 //! resume both sides re-read the part they already have locally to keep the hash
 //! honest, which costs a disk read and no network.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -53,11 +53,24 @@ pub struct SendReport {
 }
 
 pub(crate) struct OutOffer {
-    pub targets: HashSet<DeviceId>,
+    /// Each receiver with its own token, a child of `cancel`: stopping one receiver leaves the others running (R-B8).
+    pub targets: HashMap<DeviceId, CancellationToken>,
     pub items: Vec<OutgoingFile>,
     pub created: Instant,
-    /// Set when the person on either side stops the transfer: what is being served stops at the next piece.
+    /// Set once no receiver is left: what is being served stops at the next piece.
     pub cancel: CancellationToken,
+}
+
+impl OutOffer {
+    /// Stops serving `peer`, and the whole offer once nobody is left. Whether `peer` was still a receiver.
+    fn drop_target(&mut self, peer: &DeviceId) -> bool {
+        let Some(token) = self.targets.remove(peer) else { return false };
+        token.cancel();
+        if self.targets.is_empty() {
+            self.cancel.cancel();
+        }
+        true
+    }
 }
 
 /// On mobile data, files above this are not taken without asking, also from a device that may send without asking (a large file from a
@@ -106,10 +119,9 @@ impl Inner {
             .map(|f| ShareItem { name: f.name.clone(), size: f.size, mime: f.mime.clone(), modified: None })
             .collect();
 
-        self.out_offers.lock().unwrap().insert(
-            offer_id,
-            OutOffer { targets: online.iter().copied().collect(), items: files, created: Instant::now(), cancel: CancellationToken::new() },
-        );
+        let cancel = CancellationToken::new();
+        let targets = online.iter().map(|id| (*id, cancel.child_token())).collect();
+        self.out_offers.lock().unwrap().insert(offer_id, OutOffer { targets, items: files, created: Instant::now(), cancel });
 
         let offer = ShareOffer { id: offer_id, origin, items };
         let mut sent_to = Vec::new();
@@ -148,8 +160,7 @@ impl Inner {
                 entry.cancel.cancel();
             }
         } else if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer) {
-            out.targets.remove(&peer);
-            out.cancel.cancel();
+            out.drop_target(&peer);
         }
         let _ = self.send_to(&peer, Msg::ShareCancel { id: offer }).await;
     }
@@ -159,10 +170,39 @@ impl Inner {
         if let Some(entry) = self.in_offers.lock().unwrap().get(&(peer, offer)) {
             entry.cancel.cancel();
         }
-        if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer)
-            && out.targets.remove(&peer) && out.targets.is_empty() {
-                out.cancel.cancel();
+        if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer) {
+            out.drop_target(&peer);
+        }
+    }
+
+    /// The answer of a receiver to an offer. Only a no is sent: it was declined, or it expired there before anyone said yes. The
+    /// sender hears it as one finished file each, so nothing waits there for an answer that came (R-B14).
+    pub(crate) fn on_share_reply(&self, peer: DeviceId, reply: ShareReply) {
+        debug!(%peer, offer = reply.id, accepted = reply.accepted, "share reply");
+        if reply.accepted {
+            return;
+        }
+        let items: Vec<OutgoingFile> = {
+            let mut offers = self.out_offers.lock().unwrap();
+            let Some(out) = offers.get_mut(&reply.id) else { return };
+            if !out.drop_target(&peer) {
+                return;
             }
+            out.items.clone()
+        };
+        let reason = reply.reason.filter(|r| !r.trim().is_empty()).unwrap_or_else(|| "declined".to_string());
+        for (index, item) in items.into_iter().enumerate() {
+            self.emit(Event::Finished(TransferDone {
+                offer: reply.id,
+                index: index as u32,
+                peer,
+                incoming: false,
+                name: item.name,
+                size: item.size,
+                location: None,
+                error: Some(reason.clone()),
+            }));
+        }
     }
 
     /// Starts receiving an offer that was waiting for a yes.
@@ -430,8 +470,8 @@ impl Inner {
 
         let (item, cancel) = {
             let offers = self.out_offers.lock().unwrap();
-            match offers.get(&request.offer).filter(|o| o.targets.contains(&peer)) {
-                Some(o) => (o.items.get(request.index as usize).cloned(), Some(o.cancel.clone())),
+            match offers.get(&request.offer).and_then(|o| Some((o, o.targets.get(&peer)?))) {
+                Some((o, token)) => (o.items.get(request.index as usize).cloned(), Some(token.clone())),
                 None => (None, None),
             }
         };
@@ -460,7 +500,9 @@ impl Inner {
         }
         proto::send(&mut send, &FileResponse { ok: true, error: None, size }).await?;
 
-        let mut file = tokio::fs::File::from_std(opened);
+        // Read by position, never through the offset of the descriptor: Android hands out duplicates of one descriptor, which share
+        // that offset, so two receivers of one file would move each other's reads (R-B6).
+        let file = Arc::new(opened);
         let mut hasher = blake3::Hasher::new();
         let mut buf = vec![0u8; CHUNK];
 
@@ -469,7 +511,8 @@ impl Inner {
         let mut skipped = 0u64;
         while skipped < request.offset {
             let want = (request.offset - skipped).min(buf.len() as u64) as usize;
-            let n = file.read(&mut buf[..want]).await?;
+            let n;
+            (buf, n) = read_chunk(&file, buf, skipped, want).await?;
             if n == 0 {
                 return Err(Error::transfer("file is shorter than the resume point"));
             }
@@ -495,7 +538,8 @@ impl Inner {
                 }));
                 return Err(Error::transfer("cancelled"));
             }
-            let n = file.read(&mut buf[..want]).await?;
+            let n;
+            (buf, n) = read_chunk(&file, buf, done, want).await?;
             if n == 0 {
                 return Err(Error::transfer("file changed while sending"));
             }
@@ -563,6 +607,31 @@ impl Inner {
             }
         }
     }
+}
+
+/// Reads up to `want` bytes at `offset` on a blocking thread, handing the buffer back with the count. Zero means the end.
+async fn read_chunk(file: &Arc<std::fs::File>, mut buf: Vec<u8>, offset: u64, want: usize) -> Result<(Vec<u8>, usize)> {
+    let file = file.clone();
+    tokio::task::spawn_blocking(move || loop {
+        match read_at(&file, &mut buf[..want], offset) {
+            Ok(n) => return Ok((buf, n)),
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e.into()),
+        }
+    })
+    .await
+    .map_err(|e| Error::transfer(e.to_string()))?
+}
+
+#[cfg(unix)]
+fn read_at(file: &std::fs::File, buf: &mut [u8], offset: u64) -> std::io::Result<usize> {
+    std::os::unix::fs::FileExt::read_at(file, buf, offset)
+}
+
+/// `seek_read` moves the offset of the handle as well, which is harmless here: every read says where it starts.
+#[cfg(windows)]
+fn read_at(file: &std::fs::File, buf: &mut [u8], offset: u64) -> std::io::Result<usize> {
+    std::os::windows::fs::FileExt::seek_read(file, buf, offset)
 }
 
 /// The folder in the data folder for pictures on their way to the clipboard.
