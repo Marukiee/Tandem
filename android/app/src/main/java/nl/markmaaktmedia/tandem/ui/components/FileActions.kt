@@ -102,6 +102,7 @@ fun rememberTransferActions(item: nl.markmaaktmedia.tandem.engine.TransferItem, 
                 val offer = item.id.substringBefore('-').toULongOrNull()
                 val graph = context.graph
                 if (offer != null) graph.scope.launch { runCatching { graph.host.engine?.cancelTransfer(item.peer, offer, item.incoming) } }
+                if (offer != null && !item.incoming) nl.markmaaktmedia.tandem.engine.AndroidFiles.cancelled(offer, item.peer)
             }) else null,
         )
     }
