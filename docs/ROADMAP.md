@@ -18,9 +18,10 @@ Korte paden: `K/` = `crates/tandem-core/src/`, `M/` = `macos/Sources/Tandem/`, `
 
 ### R-P. Gekozen door Mark (2026-11-14), en hoe het gebouwd wordt
 
-Mark koos acht functies: de wachtrij, neerzetten met een plaatshouder, de telefoon bij slepen, echte mappen, hervatten na een
-herstart, vertrouwen per apparaat met een pagina Circle, vrije ruimte vooraf, en een paneel Onderweg en Inkomend. Niet nu: de
-plank aan de schermrand (R-I7). Geschrapt: de gedeelde klembordgeschiedenis (R-I10). De bugs (R-B) en de rest zijn nog niet gekozen.
+Mark koos negen functies: de wachtrij, neerzetten met een plaatshouder, de telefoon bij slepen, echte mappen, hervatten na een
+herstart, vertrouwen per apparaat met een pagina Circle, vrije ruimte vooraf, een paneel Onderweg en Inkomend, en sturen tussen
+twee andere apparaten. Niet nu: de plank aan de schermrand (R-I7). Geschrapt: de gedeelde klembordgeschiedenis (R-I10). Komt er
+nooit: een pagina Regels (R-I30). De bugs (R-B) en de rest zijn nog niet gekozen.
 
 Werkwijze, zodat een lichter model het meeste kan bouwen zonder dat de kwaliteit zakt:
 
@@ -72,6 +73,11 @@ Pakketten, in deze volgorde:
   echte computers te beoordelen; niet voor een licht model.
 - **P8. De telefoon doet mee met slepen** (R-I3, R-D4). Stap (a) en (b) zijn afgebakend en geschikt voor het lichte model; stap
   (c), het kaartje bij de aanwijzer, na P7. Zie ook R-I16.
+- **P9. Sturen tussen twee andere apparaten** (R-I22, gekozen 2026-11-14). Vanaf apparaat A zeg je tegen B: stuur dit naar C.
+  Kern: een bericht van A naar B met de paden (uit de mappen die B aan A toont) en het doel. B controleert dat A die bestanden mag
+  lezen (`FilePolicy`) en dat C in de circle zit, en stuurt ze dan zelf naar C als gewoon aanbod, met "op verzoek van A" erbij. C
+  beslist zoals altijd voor B. B geeft de voortgang door aan A. In de apps: bij Bestanden van een ander apparaat een knop "Stuur
+  naar" met de andere apparaten. Na P6, zodat de poort van het vertrouwen er is; het paneel (P3b) toont hem.
 
 ### R-B. Bugs en beveiliging
 
@@ -365,37 +371,24 @@ Meer ideeen (2026-11-14):
   zonder omweg over de Mac. Bestanden op afstand bestaan al; dit is een opdracht aan het ene apparaat om bij het andere op te halen.
   Voorbeeld: je zit achter de Mac en wilt een video van je telefoon op de Linux-pc hebben. Nu haal je hem eerst naar de Mac en stuur
   je hem door: twee keer overdragen en twee keer opslag. Hiermee zegt de Mac tegen de telefoon: stuur dit naar de Linux-pc.
+  **Gekozen door Mark (2026-11-14)**, zie P9.
 
-Horloge (2026-11-14, gevraagd door Mark, nog niet gekozen; niets hiervan staat al in de horlogelijsten hieronder):
-
-- **R-I23. Vergrendel als je wegloopt, ontgrendel als je terugkomt** (middel tot groot). Het horloge weet of het om je pols zit en
-  ontgrendeld is. Valt de link met de computer weg of loop je weg (stappen, zoals bij "Telefoon vergeten"), dan vergrendelt de
-  computer. Kom je terug met het horloge om, dan ontgrendelt hij, zoals een Apple Watch bij een Mac. Eerst alleen vergrendelen: dat
-  kan geen kwaad. Ontgrendelen pas daarna, standaard uit, en alleen met het horloge om en ontgrendeld.
-- **R-I24. De kroon als draaiknop voor de computer** (klein tot middel). Draaien scrolt, zoomt of schuift door de tijdlijn van
-  DaVinci, per app te kiezen op de computer; drukken is afspelen of pauze. Bouwt op het volume met de kroon. Iets anders dan
-  "presenteren met de kroon", dat niet gekozen is.
-- **R-I25. Meldingen volgen je** (middel). Zit je achter een computer (toetsenbord of muis in de laatste minuut), dan trillen het
-  horloge en de telefoon niet voor een melding die ook op die computer staat. Loop je weg, dan wel weer. Een plek tegelijk die om
-  aandacht vraagt.
-- **R-I26. Seintjes op de pols over je apparaten** (klein). De laptop is bijna leeg, een grote overdracht is klaar of mislukt, de
-  Mac staat nog open terwijl je weg bent. Via de meldingen die de telefoon al doorgeeft.
-- **R-I27. Hartslag in beeld bij een opname** (klein). De live hartslag van het horloge, die al naar de computers gaat, als klein
-  getal of lijntje dat OBS kan tonen, naast de telefooncamera als bron.
-- **R-I28. Zoeker op de pols** (middel). Bij de cameraknop, die al gekozen is: een klein live beeld van de telefooncamera op het
-  horloge, zodat je de telefoon neerzet en ziet wat er in beeld is.
-- **R-I29. Dicteren naar de computer** (klein tot middel). Spreek op het horloge en de tekst wordt getypt waar de cursor op de
-  computer staat. Er wordt niets bewaard; iets anders dan de spraaknotitie, die niet gekozen is.
+Horloge (2026-11-14): Mark vond deze ideeen niet goed genoeg, dus niet opnieuw voorstellen: vergrendelen bij weglopen en
+ontgrendelen bij terugkomen, de kroon als draaiknop voor de computer, meldingen die je volgen, seintjes op de pols over je
+apparaten, hartslag in beeld bij een opname, een zoeker op de pols, dicteren naar de computer.
 
 Verder (2026-11-14, nog niet gekozen):
 
-- **R-I30. Regels** (middel tot groot). Een pagina "als dit, dan dat" over apparaten heen: als de telefoon thuiskomt, een gesprek
-  begint, bedtijd begint of de laptop van de lader gaat, dan vergrendelen, wakker houden, media pauzeren, de geluidsstand zetten of
-  een seintje geven. Vervangt de losse schakelaars die er nu voor elk geval zijn.
+- **R-I30. Regels** (een pagina "als dit, dan dat"): komt er nooit (Mark, 2026-11-14). Niet opnieuw voorstellen.
 - **R-I31. Open op het andere apparaat** (klein). In het deelmenu van Android en bij rechtsklik op de computers: het bestand gaat
   over en opent daar meteen. Voor links bestaat dit al (`open` in `ShareText`), voor bestanden niet.
-- **R-I32. Sneller sturen zonder gedeeld netwerk** (groot). Zitten twee apparaten niet op hetzelfde netwerk, dan voor een grote
-  overdracht vanzelf de hotspot van de telefoon of Wi-Fi Direct gebruiken, in plaats van de omweg of Bluetooth.
+- **R-I32. Sneller sturen zonder gedeeld netwerk** (groot). Zitten telefoon en computer niet op hetzelfde netwerk (onderweg, of
+  een gastnetwerk dat apparaten van elkaar scheidt), dan gaat er nu alleen iets over als Tailscale aan staat; Bluetooth doet alleen
+  kleine berichten, geen bestanden. Idee: voor een bestand zet de telefoon een tijdelijk eigen wifi-netwerk op (te onderzoeken:
+  `LocalOnlyHotspot` van Android, zonder internet, zonder mobiele data en zonder dat een instelling verandert), geeft naam en
+  wachtwoord over Bluetooth door, de computer stapt over, het bestand gaat op wifi-snelheid, en daarna gaat de computer terug naar
+  zijn eigen netwerk. De prijs: de computer is zolang van het internet af. Tussen twee computers zonder telefoon kan het zo niet.
+  Mark: klinkt goed (2026-11-14), nog niet gekozen.
 
 ### R-T. Testen op echte toestellen (voorstel)
 
