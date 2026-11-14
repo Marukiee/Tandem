@@ -20,6 +20,8 @@ static OFFERS: Mutex<Option<HashSet<(String, u64)>>> = Mutex::new(None);
 struct Carried {
     from: String,
     offers: HashSet<u64>,
+    /// How many files of these offers are not in yet. The drag of the system on Windows starts when this is zero, with all of them.
+    coming: usize,
     waiting: Vec<(String, String, PathBuf)>,
 }
 static CARRIED: Mutex<Option<Carried>> = Mutex::new(None);
@@ -30,7 +32,7 @@ static DROPPED: Mutex<Vec<(String, u64)>> = Mutex::new(Vec::new());
 static ABANDONED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// An offer of files came in. Taken here when it has the drag origin and comes from the computer that shares its pointer with this one.
-pub fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigin) -> bool {
+pub fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigin, count: usize) -> bool {
     if !matches!(origin, TandemShareOrigin::Drag) || !(input::shared_is(from) || capture::is_remote(from)) {
         return false;
     }
@@ -44,8 +46,9 @@ pub fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigi
         match carried.as_mut().filter(|c| c.from == from) {
             Some(c) => {
                 c.offers.insert(offer);
+                c.coming += count;
             }
-            None => *carried = Some(Carried { from: from.to_string(), offers: HashSet::from([offer]), waiting: Vec::new() }),
+            None => *carried = Some(Carried { from: from.to_string(), offers: HashSet::from([offer]), coming: count, waiting: Vec::new() }),
         }
     }
     true
@@ -68,39 +71,31 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, name: &str, location: &
         }
     }
     let from = events::device_name(app, peer);
-    let (Some(path), None) = (location, error) else {
-        events::say(app, &i18n::t1(app, "insert_failed", &from));
-        return true;
+    let arrived = match (location, error) {
+        (Some(path), None) => Some(PathBuf::from(path)),
+        _ => None,
     };
+    if arrived.is_none() {
+        events::say(app, &i18n::t1(app, "insert_failed", &from));
+    }
     if let Some(carried) = CARRIED.lock().unwrap().as_mut().filter(|c| c.from == peer && c.offers.contains(&offer)) {
-        // Windows: the drag goes on as a drag of the system, so the file lands wherever the button comes up (a folder, a field of a
-        // website). Not dropped anywhere: it is put away as before.
-        #[cfg(windows)]
-        {
-            let (handle, who, label, file) = (app.clone(), from.clone(), name.to_string(), PathBuf::from(path));
-            ABANDONED.store(false, std::sync::atomic::Ordering::SeqCst);
-            let started = tandem_winsys::dragsource::start(vec![file.clone()], move |dropped| {
-                if dropped {
-                    return;
-                }
-                if ABANDONED.load(std::sync::atomic::Ordering::SeqCst) {
-                    let _ = std::fs::remove_file(&file);
-                } else {
-                    land(&handle, &who, &label, &file);
-                }
-            });
-            if started {
-                return true;
-            }
+        // A file that failed is not coming any more either, or the others would wait for it for ever.
+        carried.coming = carried.coming.saturating_sub(1);
+        if let Some(path) = arrived {
+            carried.waiting.push((from, name.to_string(), path));
         }
-        carried.waiting.push((from, name.to_string(), PathBuf::from(path)));
+        #[cfg(windows)]
+        if carried.coming == 0 {
+            carry(app, carried);
+        }
         return true;
     }
+    let Some(path) = arrived else { return true };
     // Still being dragged: the person has not let go yet, so it is put down when the button comes up and not under their hand.
     if input::left_down() {
-        WAITING.lock().unwrap().push((from, name.to_string(), PathBuf::from(path)));
+        WAITING.lock().unwrap().push((from, name.to_string(), path));
     } else {
-        let placed = land(app, &from, name, Path::new(path));
+        let placed = land(app, &from, name, &path);
         // Let go here a moment ago, and the file only came in now: it gets the card too, while the pointer is still here.
         #[cfg(target_os = "linux")]
         if input::shared_is(peer) {
@@ -110,6 +105,36 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, name: &str, location: &
         drop(placed);
     }
     true
+}
+
+/// Windows: the drag goes on as a drag of the system, so the files land wherever the button comes up (a folder, a field of a website).
+/// The system takes one drag at a time, so it starts once, when the last file of the offers is in, with all of them under the pointer.
+/// Not dropped anywhere: they are put away as before. When it cannot start they wait for the button.
+#[cfg(windows)]
+fn carry(app: &AppHandle, carried: &mut Carried) {
+    if carried.waiting.is_empty() {
+        return;
+    }
+    let files: Vec<PathBuf> = carried.waiting.iter().map(|(_, _, path)| path.clone()).collect();
+    let (handle, kept) = (app.clone(), carried.waiting.clone());
+    ABANDONED.store(false, std::sync::atomic::Ordering::SeqCst);
+    let started = tandem_winsys::dragsource::start(files, move |dropped| {
+        if dropped {
+            return;
+        }
+        if ABANDONED.load(std::sync::atomic::Ordering::SeqCst) {
+            for (_, _, path) in &kept {
+                let _ = std::fs::remove_file(path);
+            }
+        } else {
+            for (who, label, path) in &kept {
+                land(&handle, who, label, path);
+            }
+        }
+    });
+    if started {
+        carried.waiting.clear();
+    }
 }
 
 /// Files that came in while the button was still down.
