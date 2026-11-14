@@ -174,9 +174,9 @@ impl ItemState {
     /// The reason a file that ended this way carries in `TransferDone::error`: short words the apps may translate, like "cancelled".
     pub fn reason(self) -> Option<&'static str> {
         match self {
-            ItemState::Cancelled => Some("cancelled"),
-            ItemState::Declined => Some("declined"),
-            ItemState::Expired => Some("expired"),
+            ItemState::Cancelled => Some(crate::transfer::REASON_CANCELLED),
+            ItemState::Declined => Some(crate::transfer::REASON_DECLINED),
+            ItemState::Expired => Some(crate::transfer::REASON_EXPIRED),
             _ => None,
         }
     }
