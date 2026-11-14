@@ -57,12 +57,16 @@ final class DragCarrier {
         return true
     }
 
-    /// No press came: the files step aside, so the next click lands where it was meant.
+    /// No press came: the files step aside, so the next click lands where it was meant. While the button is still held (files of one
+    /// drag still coming in) it keeps looking, and steps aside as soon as the button is let go without a drag.
     private func restartToCard() {
         toCard?.cancel()
         toCard = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(3))
-            guard let self, !Task.isCancelled, self.carrying, !self.dragging, NSEvent.pressedMouseButtons & 1 == 0 else { return }
+            while let self, !Task.isCancelled, self.carrying, !self.dragging, NSEvent.pressedMouseButtons & 1 != 0 {
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+            guard let self, !Task.isCancelled, self.carrying, !self.dragging else { return }
             self.onCard = true
             self.show()
         }
