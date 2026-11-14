@@ -58,7 +58,17 @@ class PointerIn(
         }
     }
 
-    private val metrics get() = context.resources.displayMetrics
+    // The whole screen like `RemoteInput`, read on every use so a turn of the phone counts: the resources can leave out the system bars,
+    // and the pointer then ended up lower or higher than the tap that follows it.
+    private val displays = context.getSystemService(android.hardware.display.DisplayManager::class.java)
+    private val real = android.util.DisplayMetrics()
+
+    @Suppress("DEPRECATION")
+    private val metrics: android.util.DisplayMetrics
+        get() {
+            displays.getDisplay(android.view.Display.DEFAULT_DISPLAY)?.getRealMetrics(real) ?: return context.resources.displayMetrics
+            return real
+        }
 
     /** One point of the Mac's mouse is a little more than a dp of this screen, so a hand covers the screen about as far as on the Mac. */
     private val gain get() = metrics.density * 1.4f
