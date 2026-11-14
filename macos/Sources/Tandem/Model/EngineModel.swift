@@ -459,6 +459,7 @@ final class EngineModel {
         // Every open or hidden view that shows a device is redone when this is set, also when nothing changed.
         let fresh = engine.devices()
         if fresh != devices { devices = fresh }
+        PointerShare.shared.circleChanged(Set(fresh.map(\.id)))
         // A phone that was there and just turned on taking this Mac's mouse (its switch or its tile) has its side measured now. One that
         // only came back is checked as a device that connects.
         for device in devices where Self.takesPointer(device) && refusing.contains(device.id) { SideWatch.shared.pointerAllowed(device.id) }
