@@ -10,7 +10,7 @@ use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
-use crate::state::AppState;
+use crate::state::{AppState, Held};
 use crate::{capture, clip, events, logfile, media, model, settings, tray, update};
 
 type Reply<T> = Result<T, String>;
@@ -23,14 +23,14 @@ fn shown(e: impl std::fmt::Display) -> String {
 #[tauri::command]
 pub fn get_state(app: AppHandle, window: tauri::WebviewWindow, state: State<'_, AppState>) -> Value {
     let engine = state.engine.read().unwrap().clone();
-    let data = state.data.lock().unwrap();
+    let data = state.data.held();
     json!({
         "ready": engine.is_some(),
-        "error": state.error.lock().unwrap().clone(),
+        "error": state.error.held().clone(),
         // The battery of this computer is for the rings of the panel, read now: the panel asks again each time it opens.
         "self": engine.as_ref().map(|e| json!({ "id": e.id(), "name": e.name(), "port": e.port(),
             "battery": tandem_winsys::battery().map(|b| json!({ "level": b.level, "charging": b.charging, "powerSave": b.saver })) })),
-        "openDevice": if window.label() == "main" { OPEN_DEVICE.lock().unwrap().take() } else { None },
+        "openDevice": if window.label() == "main" { OPEN_DEVICE.held().take() } else { None },
         "version": app.package_info().version.to_string(),
         "devices": data.devices,
         "transfers": data.transfers,
@@ -390,7 +390,7 @@ pub async fn send_clipboard(state: State<'_, AppState>, ids: Vec<String>) -> Rep
 // ---- Receiving ----------------------------------------------------------------------
 
 fn forget_offer(app: &AppHandle, from: &str, offer: &str) {
-    app.state::<AppState>().data.lock().unwrap().offers.retain(|o| !(o["from"] == from && o["offer"] == offer));
+    app.state::<AppState>().data.held().offers.retain(|o| !(o["from"] == from && o["offer"] == offer));
     let _ = tauri::Emitter::emit(app, "offer-gone", json!({ "from": from, "offer": offer }));
 }
 
@@ -434,7 +434,7 @@ pub async fn media_command(
 
 #[tauri::command]
 pub fn clear_notifications(state: State<'_, AppState>) {
-    state.data.lock().unwrap().notifications.clear();
+    state.data.held().notifications.clear();
 }
 
 // ---- Settings and the shell ---------------------------------------------------------
@@ -442,7 +442,7 @@ pub fn clear_notifications(state: State<'_, AppState>) {
 #[tauri::command]
 pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) -> Value {
     {
-        let mut current = state.settings.lock().unwrap();
+        let mut current = state.settings.held();
         if let Some(v) = patch["closeToTray"].as_bool() {
             current.close_to_tray = v;
         }
@@ -639,14 +639,43 @@ pub async fn choose_download_dir(app: AppHandle) -> Reply<Option<String>> {
         .map_err(shown)?;
     let Some(folder) = folder.and_then(|f| f.into_path().ok()) else { return Ok(None) };
     let text = folder.to_string_lossy().into_owned();
-    app.state::<AppState>().settings.lock().unwrap().download_dir = text.clone();
+    app.state::<AppState>().settings.held().download_dir = text.clone();
     settings::save(&app);
     Ok(Some(text))
 }
 
+/// Files the app handed to a window that are not on the list of transfers: a file of another device opened from the page Files.
+static HANDED_OUT: std::sync::Mutex<Vec<PathBuf>> = std::sync::Mutex::new(Vec::new());
+
+/// Lets `open_path` open this file later, as one the app itself put there.
+pub fn hand_out(path: &std::path::Path) {
+    let mut list = HANDED_OUT.held();
+    list.push(path.to_path_buf());
+    // Only the last ones matter: they are what a person just opened.
+    let excess = list.len().saturating_sub(64);
+    list.drain(..excess);
+}
+
+/// Opens a file the app itself handed out: one on the list of transfers, one in the download folder, or one it just saved. Any other path
+/// is refused, so a window that was made to ask for something else (a page that went wrong, a link) cannot start a program with it.
 #[tauri::command]
 pub fn open_path(app: AppHandle, path: String) -> Reply<()> {
+    let mut known: Vec<PathBuf> = app.state::<AppState>().data.held().transfers.iter().filter_map(|t| t["location"].as_str()).map(PathBuf::from).collect();
+    known.extend(HANDED_OUT.held().iter().cloned());
+    if !may_open(std::path::Path::new(&path), &settings::download_dir(&app), &known) {
+        log::warn!("refused to open a path the app did not hand out");
+        return Err(crate::i18n::t(&app, "open_refused"));
+    }
     app.opener().open_path(path, None::<&str>).map_err(shown)
+}
+
+/// Whether `path` is one of `known`, or lies inside `downloads`. Both sides are made whole first, so `..` or a link cannot lead out.
+fn may_open(path: &std::path::Path, downloads: &std::path::Path, known: &[PathBuf]) -> bool {
+    let Ok(path) = path.canonicalize() else { return false };
+    if downloads.canonicalize().is_ok_and(|folder| path.starts_with(folder)) {
+        return true;
+    }
+    known.iter().filter_map(|k| k.canonicalize().ok()).any(|k| k == path)
 }
 
 #[tauri::command]
@@ -658,7 +687,7 @@ pub fn reveal_path(app: AppHandle, path: String) -> Reply<()> {
 #[tauri::command]
 pub fn transfers_remove(app: AppHandle, ids: Vec<String>) -> Reply<()> {
     let state = app.state::<AppState>();
-    state.data.lock().unwrap().transfers.retain(|t| !(ids.iter().any(|id| t["id"] == id.as_str()) && t["state"] != "active"));
+    state.data.held().transfers.retain(|t| !(ids.iter().any(|id| t["id"] == id.as_str()) && t["state"] != "active"));
     Ok(())
 }
 
@@ -681,7 +710,7 @@ pub fn transfers_trash(app: AppHandle, ids: Vec<String>) -> Reply<Vec<String>> {
         .filter(|(_, path)| to_trash(path).map_err(|e| log::warn!("could not move {path} to the trash: {e}")).is_ok())
         .map(|(id, _)| id)
         .collect();
-    state.data.lock().unwrap().transfers.retain(|t| !moved.iter().any(|id| t["id"] == id.as_str()));
+    state.data.held().transfers.retain(|t| !moved.iter().any(|id| t["id"] == id.as_str()));
     Ok(moved)
 }
 
@@ -736,7 +765,7 @@ pub fn show_main(app: AppHandle, device: Option<String>) {
         if app.get_webview_window("main").is_some() {
             let _ = app.emit_to("main", "open-device", id);
         } else {
-            *OPEN_DEVICE.lock().unwrap() = Some(id);
+            *OPEN_DEVICE.held() = Some(id);
         }
     }
     tray::show_main(&app);
@@ -817,5 +846,29 @@ pub fn portal_forget(app: AppHandle) {
         for name in ["portal-input.token", "portal-screen.token"] {
             let _ = std::fs::remove_file(dir.join(name));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::may_open;
+    use std::path::PathBuf;
+
+    #[test]
+    fn only_what_the_app_handed_out_is_opened() {
+        let base = std::env::temp_dir().join(format!("tandem-open-test-{}", std::process::id()));
+        let downloads = base.join("Downloads");
+        std::fs::create_dir_all(downloads.join("sub")).unwrap();
+        std::fs::write(downloads.join("sub").join("photo.jpg"), b"x").unwrap();
+        std::fs::write(base.join("saved.txt"), b"x").unwrap();
+        std::fs::write(base.join("other.sh"), b"x").unwrap();
+        let known = vec![base.join("saved.txt")];
+        assert!(may_open(&downloads.join("sub").join("photo.jpg"), &downloads, &known));
+        assert!(may_open(&base.join("saved.txt"), &downloads, &known));
+        assert!(!may_open(&base.join("other.sh"), &downloads, &known));
+        // A way out of the download folder by `..` is seen for what it is.
+        assert!(!may_open(&downloads.join("..").join("other.sh"), &downloads, &known));
+        assert!(!may_open(&PathBuf::from("/no/such/file"), &downloads, &known));
+        let _ = std::fs::remove_dir_all(&base);
     }
 }

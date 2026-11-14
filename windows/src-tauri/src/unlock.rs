@@ -8,7 +8,7 @@ use std::time::Duration;
 use tandem_core::ffi::{TandemMediaPermission, TandemStatus};
 use tauri::{AppHandle, Manager};
 
-use crate::state::AppState;
+use crate::state::{AppState, Held};
 use crate::{events, i18n, settings};
 
 /// logind is there to ask: only on Linux, and only where `loginctl` is.
@@ -41,7 +41,7 @@ static TOLD: Mutex<Option<(Option<bool>, Option<bool>)>> = Mutex::new(None);
 pub fn announce(app: &AppHandle) {
     let offer = offered(app);
     let now = (available().then_some(offer), Some(offer && crate::lid::locked()));
-    let mut told = TOLD.lock().unwrap();
+    let mut told = TOLD.held();
     if *told == Some(now) {
         return;
     }
