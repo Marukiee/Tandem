@@ -80,6 +80,7 @@ pub fn tell(title: &str, body: &str, buttons: &[(&str, &str)], pick: impl Fn(&st
 
 fn notify(title: &str, body: &str, buttons: &[(&str, &str)], urgency: u8, pick: Pick) -> Option<u32> {
     let connection = connection()?;
+    let body = as_body(body);
     let mut actions: Vec<&str> = Vec::new();
     for (key, label) in buttons {
         actions.push(key);
@@ -94,12 +95,34 @@ fn notify(title: &str, body: &str, buttons: &[(&str, &str)], urgency: u8, pick: 
             "/org/freedesktop/Notifications",
             Some("org.freedesktop.Notifications"),
             "Notify",
-            &("Tandem", 0u32, "nl.markmaaktmedia.tandem", title, body, actions, hints, 0i32),
+            &("Tandem", 0u32, "nl.markmaaktmedia.tandem", title, body.as_str(), actions, hints, 0i32),
         )
         .ok()?;
     let id: u32 = reply.body().deserialize().ok()?;
     PICKS.lock().unwrap().get_or_insert_with(HashMap::new).insert(id, pick);
     Some(id)
+}
+
+/// `text` as the body of a notification, also one sent by another library (the plain notices of the app): the title is plain text by the
+/// standard, the body can be markup, and is then escaped when the service says it reads it.
+pub fn as_body(text: &str) -> String {
+    match connection() {
+        Some(connection) if reads_markup(connection) => crate::markup_escaped(text),
+        _ => text.to_string(),
+    }
+}
+
+/// Whether the notification service reads the body as markup (`body-markup` among its capabilities). Asked once: the service of a desktop
+/// does not change while it runs.
+fn reads_markup(connection: &Connection) -> bool {
+    static MARKUP: OnceLock<bool> = OnceLock::new();
+    *MARKUP.get_or_init(|| {
+        connection
+            .call_method(Some("org.freedesktop.Notifications"), "/org/freedesktop/Notifications", Some("org.freedesktop.Notifications"), "GetCapabilities", &())
+            .ok()
+            .and_then(|reply| reply.body().deserialize::<Vec<String>>().ok())
+            .is_some_and(|caps| caps.iter().any(|c| c == "body-markup"))
+    })
 }
 
 /// Opens the folder of a file in the file manager with the file selected (`org.freedesktop.FileManager1`), in front when a token from a

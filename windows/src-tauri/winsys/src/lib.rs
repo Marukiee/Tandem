@@ -178,6 +178,24 @@ fn percent_decode(text: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// Text for a notification service that reads the body as markup (GNOME and KDE say so): a `<` in a text message would start a tag, and
+/// a stranger could put a link in. `&` goes first, or the others would be escaped twice.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn markup_escaped(text: &str) -> String {
+    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
+#[cfg(test)]
+mod markup_tests {
+    #[test]
+    fn a_body_with_marks_is_shown_as_it_was_written() {
+        assert_eq!(super::markup_escaped("a < b && c > d"), "a &lt; b &amp;&amp; c &gt; d");
+        assert_eq!(super::markup_escaped("<a href=\"x\">hi</a>"), "&lt;a href=\"x\"&gt;hi&lt;/a&gt;");
+        assert_eq!(super::markup_escaped("&lt;"), "&amp;lt;");
+        assert_eq!(super::markup_escaped("plain"), "plain");
+    }
+}
+
 #[cfg(test)]
 mod uri_tests {
     use super::*;

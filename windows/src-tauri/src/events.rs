@@ -11,8 +11,11 @@ use tauri_plugin_notification::NotificationExt;
 
 use crate::{clip, i18n, input, media, model, settings, state::AppState};
 
-/// A notification on the desktop of Windows.
+/// A notification on the desktop.
 pub fn toast(app: &AppHandle, title: &str, body: &str) {
+    // A text message or a name from a stranger is shown as written, not read as markup by GNOME or KDE.
+    #[cfg(target_os = "linux")]
+    let body = &tandem_winsys::notify::as_body(body);
     let _ = app.notification().builder().title(title).body(body).show();
 }
 
