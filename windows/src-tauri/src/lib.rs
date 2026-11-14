@@ -68,6 +68,7 @@ mod state;
 mod tailscale;
 mod tray;
 mod update;
+mod private;
 mod wifi;
 #[cfg(feature = "native-video")]
 mod video;
