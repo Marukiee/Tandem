@@ -32,7 +32,10 @@ en voor Linux en Windows volgen in ronde 3 (b); hun changelogregels komen er dan
 
 **Ronde 3, voor een deel samengevoegd (PR 17 en 18, changelog 0.3.18).** PR 17: het Mac-deel van R-B35, en R-B11, R-B16, R-B23 en
 R-B26, met een nieuw doel `TandemLogic` voor logica die zonder AppKit te testen is. PR 18: de schermen van P2 en P5 op Android. Nog
-bezig: P3, P3b en R-V13 (PR 19), P2, P5 en R-B35 op Linux en Windows, en het slepen op de Mac.
+bezig: P3, P3b en R-V13 (PR 19). Daarna ook samengevoegd: PR 21, het slepen op de Mac (R-D5 tot R-D8, R-D12, R-D13 en R-D16; van
+R-D17 loopt het lezen van de sleep nog op de hoofdlus, en R-D18 houdt de sleep niet in leven als het sturen mislukt), en PR 22: P2, P5
+en R-B35 op Linux en Windows. Klein vervolg uit PR 22: een schijf die niet meer te lezen is meldt een heel groot getal als vrije
+ruimte, omdat de kern "onbekend" niet opnieuw kan horen (`T/storage.rs`, `UNKNOWN`); beter is een kern die dat wel kan.
 
 **Releases.** `v0.3.16` en `v0.3.17` zijn getagd maar niet uitgekomen: Apple weigert het notariseren van de Mac-app met "A required
 agreement is missing or has expired". Mark moet de nieuwe overeenkomst van het Apple Developer Program accepteren; daarna kan de
@@ -42,6 +45,8 @@ Gevonden bij het nakijken van die PR's, nog te doen:
 
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
+  Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
+  soorten als `runs_something` in `T/browse.rs`); documenten openen gewoon. Nog te bouwen.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
@@ -486,7 +491,7 @@ Verder (2026-11-14, nog niet gekozen):
   `LocalOnlyHotspot` van Android, zonder internet, zonder mobiele data en zonder dat een instelling verandert), geeft naam en
   wachtwoord over Bluetooth door, de computer stapt over, het bestand gaat op wifi-snelheid, en daarna gaat de computer terug naar
   zijn eigen netwerk. De prijs: de computer is zolang van het internet af. Tussen twee computers zonder telefoon kan het zo niet.
-  Mark: klinkt goed (2026-11-14), nog niet gekozen.
+  Mark: klinkt goed, maar hoeft nog niet gebouwd te worden (2026-11-14).
 
 ### R-T. Testen op echte toestellen (voorstel)
 

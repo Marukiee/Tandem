@@ -6,10 +6,12 @@
       "title": "Pick up where it stopped",
       "new": [
         "Android: a transfer that stopped halfway asks whether to go on or throw it away",
-        "Android asks before sending files to a device that has no room for them"
+        "Android asks before sending files to a device that has no room for them",
+        "Linux and Windows: a transfer that stopped halfway asks whether to go on or throw it away, and the app asks before sending to a device without room"
       ],
       "fixed": [
-        "The Mac remembers how big your other screens are",
+        "Your computers remember how big your other screens are",
+        "Dragging files from and to the Mac over the edge of the screen is more reliable",
         "Sending a folder from the Mac no longer freezes the window",
         "The Mac updater refuses a download it cannot check"
       ]
@@ -18,10 +20,12 @@
       "title": "Verder waar het stopte",
       "new": [
         "Android: een overdracht die halverwege stopte vraagt of je verder gaat of hem weggooit",
-        "Android vraagt het voordat je bestanden stuurt naar een apparaat zonder ruimte"
+        "Android vraagt het voordat je bestanden stuurt naar een apparaat zonder ruimte",
+        "Linux en Windows: een overdracht die halverwege stopte vraagt of je verder gaat of hem weggooit, en de app vraagt het voordat je stuurt naar een apparaat zonder ruimte"
       ],
       "fixed": [
-        "De Mac onthoudt hoe groot je andere schermen zijn",
+        "Je computers onthouden hoe groot je andere schermen zijn",
+        "Bestanden slepen van en naar de Mac over de rand van het scherm gaat betrouwbaarder",
         "Een map sturen vanaf de Mac laat het venster niet meer vastlopen",
         "De updater van de Mac weigert een download die hij niet kan controleren"
       ]
