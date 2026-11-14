@@ -14,6 +14,7 @@ pub mod health_insights;
 pub mod hotspot;
 pub mod identity;
 pub mod ids;
+pub mod journal;
 pub mod live;
 pub mod local;
 pub mod media;
