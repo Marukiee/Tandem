@@ -247,6 +247,15 @@ function snapMock(a) {
   return gaps.length ? { edge: gaps[0][0], offset: Math.round(gaps[0][2]) } : null;
 }
 
+/** A copy that takes a moment, with the progress browse.rs sends, so the bar on the page of the files can be seen. */
+async function mockCopy(name, number, count) {
+  const total = 24000000;
+  for (let done = 0; done <= total; done += 6000000) {
+    emit("fs-progress", { name, number, count, done, total });
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
 export async function call(command, args) {
   await new Promise((r) => setTimeout(r, 40));
   if (command.startsWith("sms_")) return smsAnswer(command, args);
@@ -268,23 +277,37 @@ export async function call(command, args) {
     case "webcam_start": case "webcam_stop": return "1";
     case "tour_pending": return new URLSearchParams(location.search).get("page") === "tour";
     case "display_state": return [];
-    case "fs_roots": return [{ name: "Phone", write: false }];
+    case "fs_roots": return [{ name: "Phone", write: true }];
     case "files_sidebar": return !!args.on;
     case "fs_list": return args.path === "/Phone"
       ? [{ name: "DCIM", dir: true, size: 0, modifiedMs: 1730000000000, readonly: false }, { name: "Download", dir: true, size: 0, modifiedMs: 1730000000000, readonly: false },
-         { name: "notes.txt", dir: false, size: 2048, modifiedMs: 1730000000000, readonly: false }]
+         { name: "notes.txt", dir: false, size: 2048, modifiedMs: 1730000000000, readonly: false }, { name: "Setup.exe", dir: false, size: 5200000, modifiedMs: 1730000000000, readonly: false }]
       : [{ name: "IMG_0001.jpg", dir: false, size: 3400000, modifiedMs: 1730000000000, readonly: false }, { name: "clip.mp4", dir: false, size: 48200000, modifiedMs: 1730000000000, readonly: false }];
     // A copy that takes a few seconds, with the progress browse.rs sends, so the bar on the page of the files can be seen.
     case "fs_get": return (async () => {
-      const files = args.paths.filter((_, i) => !args.folders[i]);
-      for (const [i, path] of files.entries()) {
-        const total = 24000000;
-        for (let done = 0; done <= total; done += 3000000) {
-          emit("fs-progress", { name: path.split("/").pop(), number: i + 1, count: files.length, done, total });
-          await new Promise((r) => setTimeout(r, 120));
+      // A folder holds three files here; with a folder among them the number of files is not known beforehand.
+      const count = args.folders.some(Boolean) ? 0 : args.paths.length;
+      let number = 0;
+      for (const [i, path] of args.paths.entries()) {
+        for (let n = 0; n < (args.folders[i] ? 3 : 1); n++) {
+          number++;
+          await mockCopy(args.folders[i] ? `photo-${n + 1}.jpg` : path.split("/").pop(), number, count);
         }
       }
-      return { saved: files, skippedFolders: args.paths.length - files.length };
+      return { saved: args.paths, files: number };
+    })();
+    // A kind that can start a program comes back with a question, as browse.rs does.
+    case "fs_open": return (async () => {
+      const name = args.path.split("/").pop();
+      if (/\.(exe|msi|bat|cmd|ps1|lnk|sh|desktop|appimage|deb|rpm|jar)$/i.test(name) && !args.confirmed) return { ask: true, name };
+      await mockCopy(name, 1, 1);
+      return { opened: true };
+    })();
+    case "fs_put": case "fs_put_pick": return (async () => {
+      const paths = args.paths || ["/home/mark/Pictures/picked.jpg"];
+      for (const [i, path] of paths.entries()) await mockCopy(path.split(/[\\/]/).pop(), i + 1, paths.length);
+      (window.mockUploads = window.mockUploads || []).push({ folder: args.folder, paths });
+      return { sent: paths.length };
     })();
     case "clip_history_search": return [
       { id: 3, text: "https://example.com/some/long/link", from: "Pixel 9", at_ms: Date.now() - 120000, pinned: true },
