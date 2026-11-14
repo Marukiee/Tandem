@@ -84,13 +84,16 @@ class AndroidFiles(private val context: Context) : TandemFiles {
         /** The core forgets an offer after six hours; what nobody fetched by then is let go too. */
         private const val OFFER_LIFE_MS = (6 * 60 + 10) * 60_000L
 
+        /** An offer that waits in the queue for a device that is away (P3) lives seven days in the core. */
+        private const val QUEUED_LIFE_MS = (7 * 24 * 60 + 10) * 60_000L
+
         private val lock = Any()
 
         // In the order they were opened, so a full table lets go of the oldest one, not of one picked at random.
         private val held = LinkedHashMap<String, ParcelFileDescriptor>()
 
         /** Per offer: the source of each file, and the devices that still have to fetch it. */
-        private class Offer(val sources: List<String>, val waiting: List<MutableSet<String>>, val at: Long)
+        private class Offer(val sources: List<String>, val waiting: List<MutableSet<String>>, val at: Long, val life: Long)
 
         private val offers = HashMap<ULong, Offer>()
 
@@ -110,13 +113,17 @@ class AndroidFiles(private val context: Context) : TandemFiles {
             }
         }
 
-        /** The offer [offer] went out with these files to [peers]; each file stays open until every one of them has it. */
-        fun offered(offer: ULong, sources: List<String>, peers: List<String>) {
+        /**
+         * The offer [offer] went out with these files to [peers] and waits in the queue for [queued]; each file stays open until every one
+         * of them has it. A queued device may be away for days, so the file is kept as long as the core keeps the offer.
+         */
+        fun offered(offer: ULong, sources: List<String>, peers: List<String>, queued: List<String> = emptyList()) {
             synchronized(lock) {
                 sweep()
-                if (peers.isNotEmpty()) {
-                    val waiting = sources.indices.map { index -> peers.filterTo(mutableSetOf()) { early.remove(Triple(offer, index, it)) == null } }
-                    offers[offer] = Offer(sources, waiting, System.currentTimeMillis())
+                val all = (peers + queued).distinct()
+                if (all.isNotEmpty()) {
+                    val waiting = sources.indices.map { index -> all.filterTo(mutableSetOf()) { early.remove(Triple(offer, index, it)) == null } }
+                    offers[offer] = Offer(sources, waiting, System.currentTimeMillis(), if (queued.isNotEmpty()) QUEUED_LIFE_MS else OFFER_LIFE_MS)
                 }
                 sources.forEach(::releaseIfUnused)
             }
@@ -157,6 +164,15 @@ class AndroidFiles(private val context: Context) : TandemFiles {
             }
         }
 
+        /** Whether [source] can still be opened: a file of another app may have lost its grant, and a copy may have been cleaned up. */
+        fun canRead(context: Context, source: String): Boolean = synchronized(lock) { held.containsKey(source) } || runCatching {
+            if (source.startsWith("content://") || source.startsWith("file://")) {
+                context.contentResolver.openFileDescriptor(Uri.parse(source), "r")?.use { true } ?: false
+            } else {
+                File(source).canRead()
+            }
+        }.getOrDefault(false)
+
         private val RELEASING = setOf("cancelled", "declined", "expired", "gone", "changed", "no space")
 
         private val main = Handler(Looper.getMainLooper())
@@ -177,7 +193,7 @@ class AndroidFiles(private val context: Context) : TandemFiles {
         private fun sweep() {
             val now = System.currentTimeMillis()
             early.entries.removeAll { now - it.value > 60_000L }
-            val old = offers.filterValues { now - it.at > OFFER_LIFE_MS }
+            val old = offers.filterValues { now - it.at > it.life }
             if (old.isEmpty()) return
             old.keys.forEach(offers::remove)
             old.values.flatMap { it.sources }.toSet().forEach(::releaseIfUnused)
