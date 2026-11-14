@@ -48,6 +48,55 @@ pub fn locked() -> Option<bool> {
     proxy.get_property::<bool>("LockedHint").ok()
 }
 
+/// Whether logind knows the lid itself, and so says when it opens or closes. Some machines only have the button in `/proc/acpi`.
+pub fn signalled() -> bool {
+    logind().is_some()
+}
+
+/// Listens to logind on the system bus: the lid (`LidClosed`), the lock of a session (`LockedHint`), and sleep (`PrepareForSleep`). `on`
+/// hears each. False when the bus or the subscription is not there; when the bus goes away later, `on` hears [`crate::LoginChange::Ended`].
+pub fn watch(on: impl Fn(crate::LoginChange) + Send + 'static) -> bool {
+    use crate::LoginChange;
+    use zbus::blocking::MessageIterator;
+    let Ok(connection) = zbus::blocking::Connection::system() else { return false };
+    // No sender in the rule: the signals come from the unique name of logind, not the well-known one, and every path below login1 is
+    // wanted, since "session/auto" is only an alias and the signals of the session come from its real path.
+    let Ok(rule) = zbus::MatchRule::builder().msg_type(zbus::message::Type::Signal).path_namespace("/org/freedesktop/login1").map(|b| b.build()) else {
+        return false;
+    };
+    let Ok(messages) = MessageIterator::for_match_rule(rule, &connection, Some(64)) else { return false };
+    std::thread::Builder::new()
+        .name("tandem-logind".into())
+        .spawn(move || {
+            // Kept here, so the subscription lives as long as the thread.
+            let _connection = connection;
+            for message in messages {
+                let Ok(message) = message else { continue };
+                let header = message.header();
+                match header.member().map(|m| m.as_str()) {
+                    Some("PrepareForSleep") => {
+                        if let Ok(going) = message.body().deserialize::<bool>() {
+                            on(LoginChange::Sleep(going));
+                        }
+                    }
+                    Some("PropertiesChanged") => {
+                        type Changed = (String, std::collections::HashMap<String, zbus::zvariant::OwnedValue>, Vec<String>);
+                        let Ok((interface, changed, invalidated)) = message.body().deserialize::<Changed>() else { continue };
+                        let has = |name: &str| changed.contains_key(name) || invalidated.iter().any(|n| n == name);
+                        if interface == "org.freedesktop.login1.Manager" && has("LidClosed") {
+                            on(LoginChange::Lid);
+                        } else if interface == "org.freedesktop.login1.Session" && has("LockedHint") {
+                            on(LoginChange::Lock);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            on(LoginChange::Ended);
+        })
+        .is_ok()
+}
+
 fn logind() -> Option<bool> {
     use zbus::blocking::proxy::Builder;
     use zbus::proxy::CacheProperties;

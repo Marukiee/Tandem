@@ -29,8 +29,11 @@ pub fn start(app: AppHandle) {
         .name("tandem-unlock".into())
         .spawn(move || loop {
             announce(&app);
-            // Only while it is offered does the lock matter to anyone, so only then is logind asked.
-            std::thread::sleep(Duration::from_secs(if offered(&app) { 2 } else { 30 }));
+            // Only while it is offered does the lock matter to anyone, so only then is logind asked; and not even then when lid.rs hears
+            // the lock from logind and tells the others itself. Until the engine has taken the first word, it is tried again soon.
+            let first = TOLD.held().is_none();
+            let quick = first || (offered(&app) && !crate::lid::listening());
+            std::thread::sleep(Duration::from_secs(if quick { 2 } else { 30 }));
         })
         .ok();
 }

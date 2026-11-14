@@ -621,6 +621,8 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
     crate::focus::configure(&app);
     crate::keepawake::configure(&app);
     crate::unlock::announce(&app);
+    // Whether a closed lid keeps the pointer of others out is a setting too: looked at again now, not at the next signal.
+    crate::lid::nudge();
     json!(settings::get(&app))
 }
 

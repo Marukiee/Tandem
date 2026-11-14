@@ -178,6 +178,43 @@ fn percent_decode(text: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// What logind said changed, heard by [`watch_login`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LoginChange {
+    Lid,
+    Lock,
+    /// True just before the computer sleeps, false when it has woken.
+    Sleep(bool),
+    /// The bus went away: nothing more will be heard.
+    Ended,
+}
+
+/// Linux: tells `on` when the lid, the lock or sleep changes, from the signals of logind, so nothing has to look every second. False
+/// where that cannot be done (other systems, no system bus), and the caller then looks by itself.
+pub fn watch_login(on: impl Fn(LoginChange) + Send + 'static) -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        lid::watch(on)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = on;
+        false
+    }
+}
+
+/// Whether a closed lid is among what [`watch_login`] hears. Where logind does not know the lid, it is still looked at.
+pub fn lid_signalled() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        lid::signalled()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
+}
+
 /// Text for a notification service that reads the body as markup (GNOME and KDE say so): a `<` in a text message would start a tag, and
 /// a stranger could put a link in. `&` goes first, or the others would be escaped twice.
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
