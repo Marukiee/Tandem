@@ -78,7 +78,16 @@ const state = {
     // The reasons the core gives in its own words, which the page shows in the words of the person.
     { id: "4-0-out", peer: "phone", name: "Vakantiefilm 2026 definitieve versie.mov", incoming: false, state: "failed", error: "declined", done: 0, total: 2400000000, updatedAt: now - 90000000, startedAt: now - 90000000 },
     { id: "5-0-out", peer: "mac", name: "Notulen.docx", incoming: false, state: "failed", error: "expired", done: 0, total: 52000, updatedAt: now - 100000000, startedAt: now - 100000000 },
+    { id: "8-0-in", peer: "phone", name: "Opname.wav", incoming: true, state: "failed", error: "gone", done: 300, total: 900, updatedAt: now - 120000000, startedAt: now - 120000000 },
+    { id: "9-1-in", peer: "mac", name: "Ontwerp.psd", incoming: true, state: "failed", error: "changed", done: 300, total: 900, updatedAt: now - 130000000, startedAt: now - 130000000 },
+    { id: "9-2-out", peer: "mac", name: "Archief.zip", incoming: false, state: "failed", error: "no space", done: 0, total: 900000000, updatedAt: now - 140000000, startedAt: now - 140000000 },
+    { id: "9-3-out", peer: "phone", name: "Oud.pdf", incoming: false, state: "failed", error: "gone", done: 0, total: 9000, updatedAt: now - 150000000, startedAt: now - 150000000 },
     { id: "6-0-in", peer: "phone", name: "Scan_0042.pdf", incoming: true, state: "failed", error: "cancelled", done: 300, total: 900, updatedAt: now - 110000000, startedAt: now - 110000000 },
+  ],
+  // Transfers that stopped halfway: one whose sender is connected and one whose sender is away (`?halfway=no` for none).
+  halfway: new URLSearchParams(location.search).get("halfway") === "no" ? [] : [
+    { from: "phone", offer: "21", name: "Vakantiefilm 2026 definitieve versie.mov", more: 2, done: 1100000000, total: 2400000000, updatedMs: now - 3600000 },
+    { from: "linux", offer: "22", name: "Back-up.tar", more: 0, done: 40000000, total: 160000000, updatedMs: now - 7200000 },
   ],
   offers: empty ? [] : [{ from: "mac", fromName: "MacBook Pro", offer: "7", origin: "files", items: [{ name: "Foto's vakantie.zip", size: 48000000, mime: "application/zip" }] }],
   notifications: empty ? [] : [
@@ -196,6 +205,7 @@ function emit(event, payload) {
 // A pick in the search of the desktop, as the app reports it: `?open=settings/mouse`, `?open=messages/phone/1` or `?open=device/mac` at the
 // start, and `mockEmit("search-open", {...})` from the console while the page is open.
 window.mockEmit = emit;
+function snapshotHalfway() { return state.halfway; }
 function searchOpen() {
   const [page, a, b] = (new URLSearchParams(location.search).get("open") || "").split("/");
   if (!page) return null;
@@ -367,8 +377,18 @@ export async function call(command, args) {
     case "send_clipboard": return args.ids.length;
     case "wifi_here": return "Thuis";
     case "wifi_share": return "Wi-Fi sent to " + (devices.find((d) => d.id === args.id)?.name ?? "?");
+    case "halfway_list": return snapshotHalfway();
+    case "halfway_go_on": case "halfway_throw_away": {
+      state.halfway = snapshotHalfway().filter((x) => !(x.from === args.from && x.offer === args.offer));
+      emit("halfway", state.halfway);
+      return null;
+    }
     case "pick_and_send":
     case "send_paths": {
+      // `?short=yes`: the other device has less room than the files take, so the page asks before sending.
+      if (new URLSearchParams(location.search).get("short") === "yes" && !args.force) {
+        return { short: [{ id: args.ids[0], name: (devices.find((d) => d.id === args.ids[0]) || {}).name || "?" }], paths: args.paths || ["C:\\Voorbeeld\\Groot.mov"] };
+      }
       // Which devices a drop went to, for a look at drops.js.
       (window.mockSends = window.mockSends || []).push(args.ids);
       const id = "9-0-out";

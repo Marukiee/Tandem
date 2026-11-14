@@ -111,6 +111,7 @@ export async function connect() {
   // that comes while the first look is taken must not be lost. The look itself then overwrites whatever came early.
   await follow();
   apply(await call("get_state"));
+  call("halfway_list").then((halfway) => set({ halfway })).catch(() => {});
   const media = await call("get_players");
   set({ players: media.players, art: media.art });
 
@@ -131,6 +132,7 @@ async function follow() {
   await listen("open-page", (page) => set({ page }));
   await listen("transfer", (item) => set({ transfers: upsert(state.transfers, item) }));
   await listen("transfer_gone", (id) => set({ transfers: state.transfers.filter((t) => t.id !== id) }));
+  await listen("halfway", (halfway) => set({ halfway }));
   await listen("offer", (offer) => set({ offers: [...state.offers, offer] }));
   await listen("offer-gone", ({ from, offer }) => set({ offers: state.offers.filter((o) => !(o.from === from && o.offer === offer)) }));
   await listen("notification", (n) => set({ notifications: [n, ...state.notifications.filter((x) => !(x.device === n.device && x.key === n.key))].slice(0, 200) }));

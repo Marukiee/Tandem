@@ -392,6 +392,10 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .item .item-actions .iconbtn:not(.on) { opacity: 0.55; }
 .item:hover .item-actions .iconbtn, .item .item-actions .iconbtn:focus-visible { opacity: 1; }
 .item + .item { border-top: 1px solid var(--line); border-radius: 0; }
+.halfway { flex-wrap: wrap; }
+.halfway .grow { min-width: 200px; }
+.halfway-buttons { display: flex; gap: 8px; margin-left: auto; }
+.halfway.away .prog { opacity: 0.4; }
 .prog { height: 4px; border-radius: 2px; background: var(--line-strong); margin-top: 6px; overflow: hidden; }
 .prog > i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.15s linear; }
 .empty { text-align: center; color: var(--text-2); padding: 46px 20px; }
