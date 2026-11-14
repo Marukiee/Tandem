@@ -89,6 +89,12 @@ class ShareTargetActivity : ComponentActivity() {
         val picked = intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)?.let { ShareShortcuts.parse(this, it) }
         picked?.let { Log.i(TAG, "shared with a shortcut, picked in the share sheet: ${it.proven}") }
         if (picked?.proven == true) {
+            // Nothing else to show here, but the question about free space (P5) needs a screen to be asked on.
+            setContent {
+                TandemTheme(graph.prefs.appearance.collectAppearance(), applySystemBarStyle = false) {
+                    nl.markmaaktmedia.tandem.ui.components.SpaceQuestion()
+                }
+            }
             directSend(shared, picked.target)
             return
         }
