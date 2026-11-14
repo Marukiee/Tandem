@@ -36,6 +36,22 @@ pub async fn fs_list(state: State<'_, AppState>, id: String, path: String) -> Re
         .collect::<Vec<_>>()))
 }
 
+/// The last part of a path from the listing of another device, as a name in a folder here. That device chose the name, so one that
+/// climbs out of the folder or names another place (`..`, a backslash, a drive letter, a control character) is refused.
+fn local_name(remote: &str) -> Reply<String> {
+    let name = remote.rsplit('/').next().unwrap_or("");
+    let bytes = name.as_bytes();
+    let drive = bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':';
+    if name.is_empty() || name == "." || name == ".." || name.contains('\\') || drive || name.chars().any(char::is_control) {
+        return Err(format!("refused the name {name:?} from the other device"));
+    }
+    // A colon would name a stream of another file on Windows, and some characters cannot be in a name there at all.
+    #[cfg(windows)]
+    return Ok(crate::names::windows_safe(name));
+    #[cfg(not(windows))]
+    Ok(name.to_string())
+}
+
 /// A name that is free in the folder: `photo.jpg`, then `photo (2).jpg`, and so on.
 fn free_name(folder: &Path, name: &str) -> PathBuf {
     let first = folder.join(name);
@@ -87,9 +103,13 @@ pub async fn fs_get(app: AppHandle, state: State<'_, AppState>, id: String, path
             skipped += 1;
             continue;
         }
-        let name = remote.rsplit('/').next().unwrap_or("file");
-        let target = free_name(&folder, name);
-        let progress = Arc::new(CopyProgress { app: app.clone(), name: name.to_string(), number: saved.len() + 1, count, last: Mutex::new(None) });
+        let name = local_name(remote)?;
+        let target = free_name(&folder, &name);
+        // The second lock: whatever the name, the file lands in the folder itself and nowhere else.
+        if target.parent() != Some(folder.as_path()) {
+            return Err(format!("refused the name {name:?} from the other device"));
+        }
+        let progress = Arc::new(CopyProgress { app: app.clone(), name: name.clone(), number: saved.len() + 1, count, last: Mutex::new(None) });
         engine.fs_download(id.clone(), remote.clone(), target.to_string_lossy().into_owned(), Some(progress)).await.map_err(shown)?;
         saved.push(target.to_string_lossy().into_owned());
     }
@@ -98,7 +118,16 @@ pub async fn fs_get(app: AppHandle, state: State<'_, AppState>, id: String, path
 
 #[cfg(test)]
 mod tests {
-    use super::free_name;
+    use super::{free_name, local_name};
+
+    #[test]
+    fn a_name_from_another_device_stays_in_the_folder() {
+        assert_eq!(local_name("/Pictures/photo.jpg").unwrap(), "photo.jpg");
+        assert_eq!(local_name("notes.txt").unwrap(), "notes.txt");
+        for bad in ["/Pictures/..", "/a/.", "/a/", "", "..\\..\\evil.exe", "C:evil.exe", "/a/c:\\x", "/a/line\nbreak"] {
+            assert!(local_name(bad).is_err(), "{bad:?} should be refused");
+        }
+    }
 
     #[test]
     fn a_taken_name_gets_a_number_before_the_extension() {

@@ -234,12 +234,14 @@ final class FilesBrowser {
 
     /// A file to a folder of its own in the temporary files, and then to whatever opens it.
     private func openFile(_ entry: TandemFsEntry) {
+        let safe = Self.safeName(entry.name)
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("TandemFiles", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let target = folder.appendingPathComponent(entry.name)
+        let target = folder.appendingPathComponent(safe ?? "file")
         let remote = child(entry.name)
         run(title: entry.name, total: entry.size) { engine, id, progress in
+            guard safe != nil, Self.isDirectly(target, in: folder) else { throw UnsafeName(name: entry.name) }
             try await engine.fsDownload(id: id, path: remote, to: target.path, progress: progress)
             await MainActor.run { _ = NSWorkspace.shared.open(target) }
         }
@@ -251,8 +253,10 @@ final class FilesBrowser {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         for entry in chosen {
             let remote = child(entry.name)
-            let target = Self.uniqueURL(in: folder, name: entry.name)
+            let safe = Self.safeName(entry.name)
+            let target = Self.uniqueURL(in: folder, name: safe ?? "file")
             run(title: entry.name, total: entry.size) { engine, id, progress in
+                guard safe != nil, Self.isDirectly(target, in: folder) else { throw UnsafeName(name: entry.name) }
                 if entry.dir {
                     try await Self.downloadFolder(engine: engine, id: id, remote: remote, to: target)
                 } else {
@@ -267,7 +271,9 @@ final class FilesBrowser {
         try FileManager.default.createDirectory(at: local, withIntermediateDirectories: true)
         for item in try await engine.fsList(id: id, path: remote) {
             let path = (remote == "/" ? "" : remote) + "/" + item.name
-            let target = local.appendingPathComponent(item.name)
+            guard let name = safeName(item.name) else { throw UnsafeName(name: item.name) }
+            let target = local.appendingPathComponent(name)
+            guard isDirectly(target, in: local) else { throw UnsafeName(name: item.name) }
             if item.dir {
                 try await downloadFolder(engine: engine, id: id, remote: path, to: target)
             } else {
@@ -423,6 +429,24 @@ final class FilesBrowser {
 
     // MARK: Names
 
+    /// A name from the listing of the other device, as the name of something in a folder here. That device chose it, so a
+    /// name that climbs out of the folder or names another place is refused: a separator, `..`, a drive letter, a control
+    /// character.
+    nonisolated static func safeName(_ name: String) -> String? {
+        let scalars = Array(name.unicodeScalars)
+        let drive = scalars.count >= 2 && scalars[0].isASCII && scalars[0].properties.isAlphabetic && scalars[1] == ":"
+        let control = scalars.contains { $0.properties.generalCategory == .control }
+        if name.isEmpty || name == "." || name == ".." || name.contains("/") || name.contains("\\") || drive || control {
+            return nil
+        }
+        return name
+    }
+
+    /// The second lock: whatever the name, the joined path is an item of the folder itself.
+    nonisolated static func isDirectly(_ target: URL, in folder: URL) -> Bool {
+        target.standardizedFileURL.deletingLastPathComponent().path == folder.standardizedFileURL.path
+    }
+
     private nonisolated static func uniqueURL(in folder: URL, name: String) -> URL {
         var candidate = folder.appendingPathComponent(name)
         var number = 2
@@ -446,4 +470,10 @@ final class FilesBrowser {
             number += 1
         }
     }
+}
+
+/// A name from another device that would have landed outside the folder it was meant for.
+struct UnsafeName: LocalizedError {
+    let name: String
+    var errorDescription: String? { String(localized: "Not saved: the other device gave a name that points outside the folder (\(name)).") }
 }
