@@ -145,6 +145,18 @@ enum DebugSupport {
                 )
             }
         }
+        // `TANDEM_DEBUG_SEND=<path>`: sends that file to the first device that comes online, for a transfer test without clicking.
+        if let path = variable("TANDEM_DEBUG_SEND") {
+            func trySend(_ left: Int) {
+                let model = EngineModel.shared
+                if let device = model.devices.first(where: \.online) {
+                    model.send(urls: [URL(fileURLWithPath: path)], to: [device.id])
+                } else if left > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { trySend(left - 1) }
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { trySend(30) }
+        }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
         }
