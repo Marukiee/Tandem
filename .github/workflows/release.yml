@@ -389,6 +389,7 @@ jobs:
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
+          name: Tandem ${{ needs.meta.outputs.version }}
           body_path: notes.md
           make_latest: ${{ needs.meta.outputs.prerelease != 'true' }}
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
