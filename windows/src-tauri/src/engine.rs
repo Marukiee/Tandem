@@ -75,6 +75,7 @@ impl TandemFiles for Files {
             std::fs::copy(temp, &target).map_err(io_failure)?;
             let _ = std::fs::remove_file(temp);
         }
+        crate::zone::mark_from_elsewhere(&target);
         Ok(target.to_string_lossy().into_owned())
     }
 }

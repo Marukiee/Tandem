@@ -1,3 +1,4 @@
+import CoreServices
 import Foundation
 import TandemCore
 import UniformTypeIdentifiers
@@ -24,6 +25,7 @@ final class MacFiles: TandemFiles, @unchecked Sendable {
             try FileManager.default.copyItem(at: source, to: target)
             try? FileManager.default.removeItem(at: source)
         }
+        Quarantine.mark(target)
         return target.path
     }
 
@@ -47,6 +49,18 @@ final class MacFiles: TandemFiles, @unchecked Sendable {
             counter += 1
         } while FileManager.default.fileExists(atPath: candidate.path)
         return candidate
+    }
+}
+
+/// The mark macOS gives a download, on everything that lands from another device. Gatekeeper then asks before an app or a script
+/// from it runs, as it does for one from a browser: a `photo.command` no longer starts without a question.
+enum Quarantine {
+    static func mark(_ url: URL) {
+        let properties: [String: Any] = [
+            kLSQuarantineAgentNameKey as String: "Tandem",
+            kLSQuarantineTypeKey as String: kLSQuarantineTypeOtherDownload as String,
+        ]
+        try? (url as NSURL).setResourceValue(properties, forKey: .quarantinePropertiesKey)
     }
 }
 

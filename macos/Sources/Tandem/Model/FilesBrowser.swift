@@ -232,9 +232,11 @@ final class FilesBrowser {
         }
     }
 
-    /// A file to a folder of its own in the temporary files, and then to whatever opens it.
+    /// A file to a folder of its own in the temporary files, and then to whatever opens it. A kind that can run something
+    /// is asked about first: it comes from another device and would otherwise start with one click.
     private func openFile(_ entry: TandemFsEntry) {
         let safe = Self.safeName(entry.name)
+        if let safe, Self.runsSomething(safe), !confirmOpen(safe) { return }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("TandemFiles", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -243,8 +245,20 @@ final class FilesBrowser {
         run(title: entry.name, total: entry.size) { engine, id, progress in
             guard safe != nil, Self.isDirectly(target, in: folder) else { throw UnsafeName(name: entry.name) }
             try await engine.fsDownload(id: id, path: remote, to: target.path, progress: progress)
+            Quarantine.mark(target)
             await MainActor.run { _ = NSWorkspace.shared.open(target) }
         }
+    }
+
+    private func confirmOpen(_ name: String) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Open \(name)?")
+        alert.informativeText = String(localized: "It comes from \(deviceName) and can start a program on this Mac.")
+        alert.addButton(withTitle: String(localized: "Open"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     /// Files and folders to the folder of this Mac where received files go, folders with everything in them.
@@ -261,6 +275,7 @@ final class FilesBrowser {
                     try await Self.downloadFolder(engine: engine, id: id, remote: remote, to: target)
                 } else {
                     try await engine.fsDownload(id: id, path: remote, to: target.path, progress: progress)
+                    Quarantine.mark(target)
                 }
                 await MainActor.run { NSWorkspace.shared.activateFileViewerSelecting([target]) }
             }
@@ -269,6 +284,8 @@ final class FilesBrowser {
 
     private nonisolated static func downloadFolder(engine: TandemEngine, id: String, remote: String, to local: URL) async throws {
         try FileManager.default.createDirectory(at: local, withIntermediateDirectories: true)
+        // On the folder too: a folder called `Something.app` is an app to the Finder.
+        Quarantine.mark(local)
         for item in try await engine.fsList(id: id, path: remote) {
             let path = (remote == "/" ? "" : remote) + "/" + item.name
             guard let name = safeName(item.name) else { throw UnsafeName(name: item.name) }
@@ -278,6 +295,7 @@ final class FilesBrowser {
                 try await downloadFolder(engine: engine, id: id, remote: path, to: target)
             } else {
                 try await engine.fsDownload(id: id, path: path, to: target.path, progress: nil)
+                Quarantine.mark(target)
             }
         }
     }
@@ -445,6 +463,19 @@ final class FilesBrowser {
     /// The second lock: whatever the name, the joined path is an item of the folder itself.
     nonisolated static func isDirectly(_ target: URL, in folder: URL) -> Bool {
         target.standardizedFileURL.deletingLastPathComponent().path == folder.standardizedFileURL.path
+    }
+
+    /// Kinds that start something when opened: apps, installers, scripts, and the links that open them.
+    nonisolated static func runsSomething(_ name: String) -> Bool {
+        let ext = (name as NSString).pathExtension.lowercased()
+        let known: Set<String> = [
+            "app", "command", "tool", "terminal", "pkg", "mpkg", "workflow", "action", "scpt", "scptd", "applescript",
+            "sh", "zsh", "bash", "csh", "ksh", "py", "rb", "pl", "jar", "fileloc", "inetloc", "webloc", "mobileconfig",
+            "prefpane", "saver", "plugin", "kext", "dylib",
+        ]
+        if known.contains(ext) { return true }
+        guard !ext.isEmpty, let type = UTType(filenameExtension: ext) else { return false }
+        return type.conforms(to: .executable) || type.conforms(to: .script) || type.conforms(to: .application)
     }
 
     private nonisolated static func uniqueURL(in folder: URL, name: String) -> URL {

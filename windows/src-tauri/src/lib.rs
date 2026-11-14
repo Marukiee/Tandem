@@ -51,6 +51,7 @@ mod players;
 mod messages;
 mod model;
 mod names;
+mod zone;
 mod output;
 mod pointer_ready;
 mod power;

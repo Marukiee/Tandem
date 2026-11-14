@@ -111,6 +111,7 @@ pub async fn fs_get(app: AppHandle, state: State<'_, AppState>, id: String, path
         }
         let progress = Arc::new(CopyProgress { app: app.clone(), name: name.clone(), number: saved.len() + 1, count, last: Mutex::new(None) });
         engine.fs_download(id.clone(), remote.clone(), target.to_string_lossy().into_owned(), Some(progress)).await.map_err(shown)?;
+        crate::zone::mark_from_elsewhere(&target);
         saved.push(target.to_string_lossy().into_owned());
     }
     Ok(json!({ "saved": saved, "skippedFolders": skipped }))
