@@ -301,7 +301,6 @@ private struct WatchHealthCard: View {
         let insights = model.healthInsights
         let night = model.healthRecords.first { $0.isNight }
         let stepsDay = insights?.week.last { $0.steps != nil }
-        let settings = phone.status.watch?.settings
         // The heart rate now, while this card is on screen and the watch is with its phone: asked again every half minute, as the
         // phone stops by itself without that.
         let watchHere = phone.online && phone.status.watch?.online == true
@@ -362,16 +361,6 @@ private struct WatchHealthCard: View {
                     .padding([.horizontal, .bottom], 6)
                     }
                 }
-                // The one setting that is changed from day to day, as a pill under the numbers like on the phone.
-                if let settings {
-                    HStack {
-                        WakePill(on: settings.smartWake) { model.setWatchSettings(phone.id, TandemWatchSettingsChange(smartWake: !settings.smartWake)) }
-                            .disabled(!phone.online)
-                            .help(phone.online ? "Wake me gently" : "Its phone is not connected")
-                        Spacer()
-                    }
-                    .padding([.horizontal, .bottom], 6)
-                }
             }
         }
         .task(id: watchHere) {
@@ -382,27 +371,6 @@ private struct WatchHealthCard: View {
             }
         }
         .onDisappear { model.watchHeartLive(phone.id, on: false) }
-    }
-}
-
-/// A pill that switches waking gently: filled when on, so what is on is seen at a glance.
-private struct WakePill: View {
-    let on: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Label("Wake gently", systemImage: on ? "checkmark" : "alarm")
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(on ? Color.white : Color.primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 9)
-                .background(on ? Palette.indigo : Palette.indigo.opacity(0.14), in: .capsule)
-                .contentShape(.capsule)
-        }
-        .buttonStyle(.plain)
-        .animation(.tandemFade, value: on)
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
