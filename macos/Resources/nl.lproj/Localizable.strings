@@ -1597,12 +1597,31 @@
 "Go on" = "Verder gaan";
 "Throw away" = "Weggooien";
 
+/* What is underway and incoming, on top of the page Shared (P3b), and the queue for devices that are away (P3) */
+"Underway" = "Onderweg";
+"Incoming" = "Inkomend";
+"Waits for %@. It goes as soon as %@ is back." = "Wacht op %1$@. Het gaat zodra %2$@ terug is.";
+"Waits for %@. It goes as soon as it is back." = "Wacht op %@. Het gaat zodra het terug is.";
+"Waits for a yes on %@" = "Wacht op een ja van %@";
+"%@ wants to send this, %@" = "%1$@ wil dit sturen, %2$@";
+"%@ of %@ from %@" = "%1$@ van %2$@ van %3$@";
+"%@ of %@ to %@" = "%1$@ van %2$@ naar %3$@";
+"Send again" = "Opnieuw sturen";
+"Do not send" = "Niet sturen";
+"Hide" = "Verberg";
+
 /* Why a transfer ended, on its row (P2, P5) */
 "No longer on %@" = "Niet meer op %@";
 "Changed on %@ since it was sent" = "Veranderd op %@ sinds het gestuurd werd";
 "Changed since it was sent" = "Veranderd sinds het gestuurd werd";
 "Not enough space on this Mac" = "Niet genoeg ruimte op deze Mac";
 "Not enough space on %@" = "Niet genoeg ruimte op %@";
+
+/* Why a transfer ended, on its row (R-V13) */
+"The connection with %@ dropped" = "De verbinding met %@ viel weg";
+"It arrived damaged. Send it again." = "Het kwam beschadigd aan. Stuur het opnieuw.";
+"Could not be saved on this Mac" = "Kon niet worden bewaard op deze Mac";
+"Could not be saved on %@" = "Kon niet worden bewaard op %@";
 
 /* Before sending files to a device that reports less free space (P5) */
 "It has less free space than these files take. If they do not fit, it refuses them." = "Daar is minder ruimte vrij dan deze bestanden innemen. Passen ze niet, dan weigert het ze.";

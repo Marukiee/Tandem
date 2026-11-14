@@ -29,6 +29,9 @@ pub(crate) const WAITING_KEPT: Duration = Duration::from_secs(6 * 3600);
 /// A transfer that stopped halfway (the engine stopped, or the sender went away for good) with its partial files, so it can be
 /// picked up again (P2). As long as partial files were kept before there was a journal.
 pub(crate) const UNFINISHED_KEPT: Duration = Duration::from_secs(3 * 24 * 3600);
+/// An offer that waits in the queue for a device that was away (P3), counted from when it was made. Longer than an offer waits for a
+/// yes: a laptop that stays shut over a weekend still gets what was sent to it on Friday.
+pub(crate) const QUEUED_KEPT: Duration = Duration::from_secs(7 * 24 * 3600);
 /// A transfer that ended, for a list of what came and went, and for a receiver that pulls once more after a failed checksum.
 pub(crate) const ENDED_KEPT: Duration = Duration::from_secs(6 * 3600);
 /// The most ended transfers kept, whatever their age: a phone that sends a hundred screenshots a day must not grow a hundred files.
@@ -174,9 +177,9 @@ impl ItemState {
     /// The reason a file that ended this way carries in `TransferDone::error`: short words the apps may translate, like "cancelled".
     pub fn reason(self) -> Option<&'static str> {
         match self {
-            ItemState::Cancelled => Some("cancelled"),
-            ItemState::Declined => Some("declined"),
-            ItemState::Expired => Some("expired"),
+            ItemState::Cancelled => Some(crate::transfer::REASON_CANCELLED),
+            ItemState::Declined => Some(crate::transfer::REASON_DECLINED),
+            ItemState::Expired => Some(crate::transfer::REASON_EXPIRED),
             _ => None,
         }
     }
@@ -196,6 +199,11 @@ impl PeerProgress {
     /// Whether files may still be served to it or pulled from it.
     pub fn open(&self) -> bool {
         matches!(self.stage, Stage::Offered | Stage::Accepted)
+    }
+
+    /// Open, or waiting in the queue to be offered (P3): something can still happen, so a stop has something to stop.
+    pub fn pending(&self) -> bool {
+        self.open() || self.stage == Stage::Queued
     }
 
     pub fn unfinished(&self) -> bool {
@@ -219,9 +227,15 @@ impl PeerProgress {
 }
 
 impl TransferRecord {
-    pub fn outgoing(offer: u64, origin: ShareOrigin, items: Vec<RecordItem>, peers: &[DeviceId]) -> TransferRecord {
+    /// `peers` get the offer now; `queued` are away and get it when they come back (P3).
+    pub fn outgoing(offer: u64, origin: ShareOrigin, items: Vec<RecordItem>, peers: &[DeviceId], queued: &[DeviceId]) -> TransferRecord {
         let now = now_ms();
         let count = items.len();
+        let peers = peers
+            .iter()
+            .map(|id| PeerProgress::new(*id, Stage::Offered, count, now))
+            .chain(queued.iter().map(|id| PeerProgress::new(*id, Stage::Queued, count, 0)))
+            .collect();
         TransferRecord {
             format: FORMAT,
             offer,
@@ -230,7 +244,7 @@ impl TransferRecord {
             created_ms: now,
             updated_ms: now,
             items,
-            peers: peers.iter().map(|id| PeerProgress::new(*id, Stage::Offered, count, now)).collect(),
+            peers,
             held: false,
             requested_by: None,
         }
@@ -633,6 +647,37 @@ impl Journal {
         found
     }
 
+    /// The outgoing offers in which `peer` waits in the queue (P3), the oldest first, so they arrive in the order they were sent.
+    pub fn queued_for(&self, peer: &DeviceId) -> Vec<Key> {
+        let mut found: Vec<(u64, Key)> = self
+            .book()
+            .iter()
+            .filter(|(_, entry)| !entry.record.incoming && entry.record.peer(peer).is_some_and(|p| p.stage == Stage::Queued))
+            .map(|(key, entry)| (entry.record.created_ms, *key))
+            .collect();
+        found.sort_by_key(|(created, _)| *created);
+        found.into_iter().map(|(_, key)| key).collect()
+    }
+
+    /// Every device something waits in the queue for (P3).
+    pub fn queued_peers(&self) -> HashSet<DeviceId> {
+        let book = self.book();
+        book.values()
+            .filter(|entry| !entry.record.incoming)
+            .flat_map(|entry| entry.record.peers.iter().filter(|p| p.stage == Stage::Queued).map(|p| p.device))
+            .collect()
+    }
+
+    /// What outgoing offers that have not ended still read from. A copy in `outgoing/` that one of them points at must stay, however
+    /// old it is: a queued offer can wait for days (P3).
+    pub fn sources_in_use(&self) -> HashSet<String> {
+        let book = self.book();
+        book.values()
+            .filter(|entry| !entry.record.incoming && !entry.record.ended())
+            .flat_map(|entry| entry.record.items.iter().map(|item| item.source.clone()))
+            .collect()
+    }
+
     /// The partial files that belong to an incoming file that has not ended. Anything else in `PARTIAL_DIR` can never be finished.
     pub fn partials_in_use(&self) -> HashSet<String> {
         let book = self.book();
@@ -664,8 +709,7 @@ impl Journal {
                 for peer in &mut record.peers {
                     let lapsed = match peer.stage {
                         Stage::Offered => age(peer.offered_ms.max(record.created_ms)) > WAITING_KEPT,
-                        // Its own rules come with the queue (P3).
-                        Stage::Queued => false,
+                        Stage::Queued => age(record.created_ms) > QUEUED_KEPT,
                         _ => peer.unfinished() && age(record.updated_ms) > UNFINISHED_KEPT,
                     };
                     if !lapsed {
@@ -683,7 +727,8 @@ impl Journal {
             }
             // An incoming offer that expired is of no use to anyone; an outgoing one stays a while to show what happened.
             let ended = record.ended();
-            if (ended && record.incoming && changed) || (ended && age(record.updated_ms) > ENDED_KEPT) {
+            // One that ended just now stays a while like any other, so the panel (P3b) can show it expired.
+            if (ended && record.incoming && changed) || (ended && !changed && age(record.updated_ms) > ENDED_KEPT) {
                 gone.push(*key);
             } else if changed {
                 record.updated_ms = now_ms;
@@ -763,7 +808,7 @@ mod tests {
         let transfers = dir.path().join(DIR);
         std::fs::create_dir_all(&transfers).unwrap();
         std::fs::write(transfers.join("out-0000000000000001.cbor"), b"not cbor").unwrap();
-        let mut newer = TransferRecord::outgoing(2, ShareOrigin::Files, vec![item("x", 1)], &[DeviceId::from_bytes([1; 16])]);
+        let mut newer = TransferRecord::outgoing(2, ShareOrigin::Files, vec![item("x", 1)], &[DeviceId::from_bytes([1; 16])], &[]);
         newer.format = FORMAT + 1;
         std::fs::write(transfers.join("out-0000000000000002.cbor"), crate::proto::encode(&newer).unwrap()).unwrap();
 
@@ -789,6 +834,38 @@ mod tests {
         assert_eq!(lapses[0].items.len(), 2);
         assert!(journal.records().is_empty());
         assert!(!dir.path().join(DIR).join(Key::In(peer, 9).file_name()).exists());
+    }
+
+    /// P3: an offer queued for a device that stays away waits 7 days from when it was made, longer than one that waits for a yes, and
+    /// then ends as expired, once, for that device only; its source in `outgoing/` is kept until then.
+    #[test]
+    fn a_queued_offer_expires_after_seven_days_for_that_device_only() {
+        let dir = tempfile::tempdir().unwrap();
+        let (away, here) = (DeviceId::from_bytes([4; 16]), DeviceId::from_bytes([5; 16]));
+        let journal = Journal::load(dir.path()).unwrap();
+        let mut file = item("a", 1);
+        file.source = "/data/outgoing/1-a".into();
+        journal.insert(TransferRecord::outgoing(7, ShareOrigin::Files, vec![file], &[here], &[away]));
+        let created = journal.read(Key::Out(7), |r| r.created_ms).unwrap();
+        assert_eq!(journal.queued_for(&away), [Key::Out(7)]);
+        assert!(journal.queued_for(&here).is_empty());
+        assert!(journal.sources_in_use().contains("/data/outgoing/1-a"));
+
+        // The device that was here never pulled: its offer lapses after the usual 6 hours, the queue does not.
+        let lapses = journal.expire(created + WAITING_KEPT.as_millis() as u64 + 1);
+        assert_eq!(lapses.iter().map(|l| l.peer).collect::<Vec<_>>(), [here]);
+        assert_eq!(journal.queued_for(&away), [Key::Out(7)]);
+        assert!(journal.expire(created + QUEUED_KEPT.as_millis() as u64 - 1000).is_empty());
+
+        let lapses = journal.expire(created + QUEUED_KEPT.as_millis() as u64 + 1);
+        assert_eq!(lapses.len(), 1);
+        assert_eq!((lapses[0].peer, lapses[0].incoming, lapses[0].tell_sender), (away, false, false));
+        assert_eq!(lapses[0].items.len(), 1);
+        let record = journal.read(Key::Out(7), |r| r.clone()).unwrap();
+        let away_now = record.peer(&away).unwrap();
+        assert_eq!((away_now.stage, away_now.items[0].state), (Stage::Closed, ItemState::Expired));
+        assert!(journal.queued_for(&away).is_empty());
+        assert!(journal.expire(created + QUEUED_KEPT.as_millis() as u64 + 2).is_empty(), "it ends once");
     }
 
     fn many_files(count: usize) -> ShareOffer {

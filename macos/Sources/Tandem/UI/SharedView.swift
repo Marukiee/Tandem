@@ -59,9 +59,9 @@ struct SharedView: View {
                 if !chosen.isEmpty {
                     chosenBar.transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                HalfwaySection()
+                UnderwaySection()
                 if model.transfers.isEmpty {
-                    if HalfwayTransfers.shared.waiting.isEmpty {
+                    if HalfwayTransfers.shared.waiting.isEmpty && UnderwayTransfers.shared.all.isEmpty {
                     ContentUnavailableView(
                         "Nothing yet",
                         systemImage: "arrow.up.arrow.down",
@@ -106,6 +106,7 @@ struct SharedView: View {
             .animation(.tandem, value: items.map(\.id))
             .animation(.tandem, value: chosen.isEmpty)
             .animation(.tandem, value: HalfwayTransfers.shared.waiting)
+            .animation(.tandem, value: UnderwayTransfers.shared.all)
         }
         .onAppear {
             guard let count = DebugSupport.sharedChosen else { return }
