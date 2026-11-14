@@ -132,8 +132,9 @@ class AndroidFiles(private val context: Context) : TandemFiles {
          * only a file that arrived or was cancelled counts.
          */
         fun finished(offer: ULong, index: Int, peer: String, error: String?) {
-            // Declined and expired end it for that device as well: it will not fetch the file any more.
-            if (error != null && error !in setOf("cancelled", "declined", "expired")) return
+            // These end it for that device as well: it will not fetch the file any more. Gone, changed and no space come from
+            // the resume check and the free-space check of the core.
+            if (error != null && error !in RELEASING) return
             synchronized(lock) {
                 val entry = offers[offer]
                 if (entry == null) {
@@ -155,6 +156,8 @@ class AndroidFiles(private val context: Context) : TandemFiles {
                 entry.sources.forEach(::releaseLater)
             }
         }
+
+        private val RELEASING = setOf("cancelled", "declined", "expired", "gone", "changed", "no space")
 
         private val main = Handler(Looper.getMainLooper())
 

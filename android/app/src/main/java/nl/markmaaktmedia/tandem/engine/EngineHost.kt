@@ -204,6 +204,12 @@ class EngineHost(
     @Volatile
     var mediaViewer: uniffi.tandem_core.TandemMediaViewer? = null
 
+    /** The question before sending files to a device with too little free space (P5). */
+    val spaceAsker = SpaceAsker(scope)
+
+    /** Incoming transfers that stopped halfway, waiting on Go on or Throw away (P2). */
+    val halfway = HalfwayTransfers(context, this, scope)
+
     val myId: String get() = engine?.id().orEmpty()
     val myName: String get() = engine?.name().orEmpty()
 
@@ -267,6 +273,7 @@ class EngineHost(
                 _state.value = EngineState.Running
                 refreshDevices()
                 refreshHealth()
+                halfway.refresh()
             } catch (e: Exception) {
                 Log.e(TAG, "engine failed to start", e)
                 _state.value = EngineState.Failed(e.message ?: e.toString())
@@ -314,7 +321,11 @@ class EngineHost(
         if (event is TandemEvent.Disconnected) context.graph.pointerIn.deviceGone(event.id)
         when (event) {
             is TandemEvent.DevicesChanged, is TandemEvent.Connected, is TandemEvent.Disconnected,
-            is TandemEvent.CircleChanged, is TandemEvent.Paired -> refreshDevices()
+            is TandemEvent.CircleChanged, is TandemEvent.Paired -> {
+                refreshDevices()
+                // The sender is here again: Go on may work now.
+                if (event is TandemEvent.Connected) halfway.refresh()
+            }
 
             is TandemEvent.HealthChanged -> refreshHealth()
 
@@ -416,6 +427,8 @@ class EngineHost(
     }
 
     private fun finishTransfer(e: TandemEvent.Finished) {
+        // A transfer the person threw away ends as cancelled; they chose that, so it gets no row.
+        if (e.incoming && e.error == "cancelled" && halfway.swallows(e.offer, e.peer)) return
         val id = key(e.offer, e.index, e.incoming)
         _transfers.update { list ->
             val old = list.firstOrNull { it.id == id }
@@ -444,13 +457,24 @@ class EngineHost(
 
     // ---- Actions --------------------------------------------------------------
 
-    /** Sends content shared into the app. Returns how many devices it went to. */
-    suspend fun sendUris(uris: List<Uri>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean = true): Int {
+    /**
+     * Sends content shared into the app. Returns how many devices it went to, or [SEND_CANCELLED] when a device is short of space
+     * and the person said Cancel. With [askSpace] that question comes first (P5), only for files a person picked: not for a drag, a
+     * copy or a screenshot, which the other side refuses by itself if they do not fit.
+     */
+    suspend fun sendUris(uris: List<Uri>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean = true, askSpace: Boolean = false): Int {
         val engine = engine ?: return 0
         if (uris.isEmpty() || targets.isEmpty()) return 0
         // Opening a file of another app can mean fetching it first (a photo only in the cloud): never on the main thread.
         val files = withContext(Dispatchers.IO) { uris.mapNotNull { describe(it, hold) } }
         if (files.isEmpty()) return 0
+        if (askSpace && origin == TandemShareOrigin.Files) {
+            val short = withContext(Dispatchers.IO) { runCatching { engine.shortOfSpace(targets, files) }.getOrDefault(emptyList()) }
+            if (short.isNotEmpty() && !spaceAsker.ask(short.map { device(it)?.name ?: it })) {
+                if (hold) AndroidFiles.abandoned(files.map { it.source })
+                return SEND_CANCELLED
+            }
+        }
         val report = try {
             engine.sendFiles(targets, files, origin)
         } catch (e: Exception) {
@@ -584,6 +608,9 @@ class EngineHost(
         /** After a file of a set is done, this long with nothing of it running means the set is over. */
         private const val IDLE_BATCH_MS = 15_000L
         private const val TAG = "EngineHost"
+        /** What [sendUris] returns when the person cancelled the send. */
+        const val SEND_CANCELLED = -1
+
         /** The same as on the Mac: what a copy may send by itself. */
         const val CLIPBOARD_FILES_LIMIT = 50L * 1024 * 1024
     }
