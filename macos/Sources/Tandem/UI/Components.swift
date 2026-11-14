@@ -646,6 +646,25 @@ struct PillSpinner: View {
 
 // MARK: Transfers
 
+/// Why a file ended without arriving, in the words of the person. The core gives a fixed code (R-V13, docs/TRANSFERS.md); anything
+/// else is an older version talking, whose words are not shown as they are.
+enum TransferReason {
+    static func text(_ code: String?, incoming: Bool, peerName: String) -> String {
+        switch code {
+        case "cancelled": String(localized: "Cancelled")
+        case "declined": String(localized: "Declined")
+        case "expired": String(localized: "Expired")
+        case "gone": incoming ? String(localized: "No longer on \(peerName)") : String(localized: "The file is no longer there")
+        case "changed": incoming ? String(localized: "Changed on \(peerName) since it was sent") : String(localized: "Changed since it was sent")
+        case "no space": incoming ? String(localized: "Not enough space on this Mac") : String(localized: "Not enough space on \(peerName)")
+        case "connection lost": String(localized: "The connection with \(peerName) dropped")
+        case "checksum failed": String(localized: "It arrived damaged. Send it again.")
+        case "not saved": incoming ? String(localized: "Could not be saved on this Mac") : String(localized: "Could not be saved on \(peerName)")
+        default: String(localized: "Failed")
+        }
+    }
+}
+
 /// What a transfer looks like. Interaction lives in `TransferEntry`.
 struct TransferRow: View {
     let item: TransferItem
@@ -670,16 +689,7 @@ struct TransferRow: View {
                             Text(item.incoming ? "From \(peerName)" : "To \(peerName)")
                         }
                     case .failed:
-                        // The reasons the core gives in its own words, in the words of the person.
-                        switch item.error {
-                        case "cancelled": Text("Cancelled")
-                        case "declined": Text("Declined")
-                        case "expired": Text("Expired")
-                        case "gone": item.incoming ? Text("No longer on \(peerName)") : Text("The file is no longer there")
-                        case "changed": item.incoming ? Text("Changed on \(peerName) since it was sent") : Text("Changed since it was sent")
-                        case "no space": item.incoming ? Text("Not enough space on this Mac") : Text("Not enough space on \(peerName)")
-                        default: Text(item.error ?? String(localized: "Failed"))
-                        }
+                        Text(TransferReason.text(item.error, incoming: item.incoming, peerName: peerName))
                     }
                 }
                 .font(.caption)
