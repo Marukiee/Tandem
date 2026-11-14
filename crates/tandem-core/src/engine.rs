@@ -1067,6 +1067,7 @@ impl Inner {
             self.notice_tailscale_arriving();
             self.dial_due_peers();
             self.expire_transfers();
+            self.send_queued_to_connected();
             self.sync_pairing_announcement();
             if self.addrs_dirty.swap(false, Ordering::Relaxed) {
                 self.persist_addresses();
