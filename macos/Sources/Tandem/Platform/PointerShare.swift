@@ -320,7 +320,9 @@ final class PointerShare {
         let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
         let callback: CGEventTapCallBack = { _, type, event, _ in
             // The tap sits on the main run loop, so this is the main thread.
+            let started = CACurrentMediaTime()
             let swallow = MainActor.assumeIsolated { PointerShare.shared.see(type, event) }
+            MainActor.assumeIsolated { PointerShare.shared.measure(CACurrentMediaTime() - started, event: event) }
             return swallow ? nil : Unmanaged.passUnretained(event)
         }
         guard let created = CGEvent.tapCreate(tap: .cghidEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask, callback: callback, userInfo: nil) else { return }
@@ -337,6 +339,30 @@ final class PointerShare {
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
         tap = nil
         source = nil
+    }
+
+    @ObservationIgnored private var slowLoggedAt = Date.distantPast
+    @ObservationIgnored private var measured = 0
+
+    /// The whole mouse of this Mac waits for this tap, which runs on the main thread of Tandem (R-D17). Slow events are written to the
+    /// pointer log, at most every few seconds: how long the callback took, and, for one event in 20, how long it waited before it got
+    /// here (the main thread busy with something else).
+    fileprivate func measure(_ took: CFTimeInterval, event: CGEvent) {
+        measured += 1
+        var waited = 0.0
+        if measured % 20 == 0, let stamp = NSEvent(cgEvent: event)?.timestamp {
+            waited = ProcessInfo.processInfo.systemUptime - stamp
+        }
+        guard took > 0.008 || (waited > 0.03 && waited < 10), Date().timeIntervalSince(slowLoggedAt) > 5 else { return }
+        slowLoggedAt = Date()
+        PointerLog.write(String(format: "slow mouse event: %.1f ms in the tap, waited %.1f ms before it", took * 1000, waited * 1000))
+    }
+
+    /// When the pointer last came over from each computer: that one started using this Mac, or this Mac's own pointer came back from it.
+    @ObservationIgnored private var arrivedAt: [String: Date] = [:]
+
+    func sinceArrival(from device: String) -> TimeInterval? {
+        arrivedAt[device].map { Date().timeIntervalSince($0) }
     }
 
     /// What the hands did. True when the event is for the other computer and has to go no further here.
@@ -379,7 +405,8 @@ final class PointerShare {
                 reconnectAway(edge: push.edge, position: push.position)
                 continue
             }
-            if dragged, NSPasteboard(name: .drag).changeCount == lastDragCount || dragContents() == nil { continue }
+            // Only the types are looked at here, inside the tap: reading the contents waits for the crossing (see `goOver`).
+            if dragged, NSPasteboard(name: .drag).changeCount == lastDragCount || DragReading.kind() == nil { continue }
             goOver(to: crossing.id, edge: push.edge, along: CGFloat(crossing.along))
             return true
         }
@@ -412,43 +439,51 @@ final class PointerShare {
         if let size = sizes[device] {
             remoteTracker = RemoteTracker(width: Double(size.width), height: Double(size.height), edge: edge, along: Double(along))
         }
-        // A drag in progress (a photo, a file, selected text) goes over with the pointer.
+        // A drag in progress (a photo, a file, selected text) goes over with the pointer. Its kind is known from the types; what it holds
+        // is read after this event, outside the tap.
         let dragging = NSEvent.pressedMouseButtons & 1 != 0
-        let carried = dragging ? dragContents() : nil
-        carrying = carried != nil
+        let kind = dragging ? DragReading.kind() : nil
+        carrying = kind != nil
         carriedDrag = carrying
         if carrying { lastDragCount = NSPasteboard(name: .drag).changeCount }
-        PointerLog.write("goes over to \(model.device(device)?.name ?? device) by \(edge), carrying: \(carrying)")
+        PointerLog.write("goes over to \(model.device(device)?.name ?? device) by \(edge), carrying: \(kind.map { "\($0)" } ?? "nothing")")
         CGAssociateMouseAndMouseCursorPosition(0)
         CursorHider.hide()
         watch(device)
         // After the event that crossed: whether a check is due asks the sound system, which is no work for the tap.
         Task { @MainActor in SideWatch.shared.pointerWentOver(device) }
-        Task {
-            try? await engine.sendPointerShare(target: device, msg: .enter(edge: tandemEdge(edge), along: Float(along)))
-            // After the pointer, so the other computer takes it in first and knows these come from the person at the mouse.
-            guard let carried else { return }
-            try? await Task.sleep(for: .milliseconds(250))
-            switch carried {
-            case let .files(urls): EngineModel.shared.send(urls: urls, to: [device], origin: .drag)
-            case let .text(text): try? await engine.sendPointerShare(target: device, msg: .carry(text: text))
-            }
-        }
-        // Only once the pointer stayed over there: a device that hands it straight back (see `.leave`) showed the pill for a moment,
-        // as if the pointer had gone, every time the edge was pushed.
         let name = model.device(device)?.name ?? String(localized: "another computer")
-        let chipped = carried.map(chip)
+        let crossed = Date()
         Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(350))
-            guard self?.remote?.device == device else { return }
-            PointerAwayPill.show(device: name, carrying: chipped)
+            try? await engine.sendPointerShare(target: device, msg: .enter(edge: Self.edge(edge), along: Float(along)))
+            guard let kind else {
+                // Only once the pointer stayed over there: a device that hands it straight back (see `.leave`) showed the pill for a
+                // moment, as if the pointer had gone, every time the edge was pushed.
+                try? await Task.sleep(for: .milliseconds(350))
+                guard self?.remote?.device == device else { return }
+                PointerAwayPill.show(device: name)
+                return
+            }
+            // After the pointer, so the other computer takes it in first and knows these come from the person at the mouse.
+            try? await Task.sleep(for: .milliseconds(250))
+            let carried = await DragReading.read(kind)
+            switch carried {
+            case let .files(urls)?: await EngineModel.shared.send(urls: urls, to: [device], origin: .drag)?.value
+            case let .text(text)?: try? await engine.sendPointerShare(target: device, msg: .carry(text: text))
+            case nil: PointerLog.write("the drag held nothing that could be read")
+            }
+            guard let self else { return }
+            // The drag here ends only now that the offer is out: had sending failed, it would have been gone already (R-D18).
+            if self.carrying { self.endLocalDrag() }
+            let wait = 0.35 - Date().timeIntervalSince(crossed)
+            if wait > 0 { try? await Task.sleep(for: .milliseconds(Int(wait * 1000))) }
+            guard self.remote?.device == device else { return }
+            PointerAwayPill.show(device: name, carrying: carried.map(self.chip))
         }
-        // The drag on this Mac ends at the edge, so its picture does not stay behind on this screen while the pointer is over there.
-        if carrying { endLocalDrag() }
     }
 
     /// The chip in the pill for what is carried: a picture or the icon of the file, and its name.
-    private func chip(_ dragged: Dragged) -> PointerAwayPill.Carried {
+    private func chip(_ dragged: DragReading.Carried) -> PointerAwayPill.Carried {
         switch dragged {
         case let .files(urls):
             let first = urls[0]
@@ -460,28 +495,6 @@ final class PointerShare {
             let line = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? text
             return PointerAwayPill.Carried(title: line.count > 48 ? String(line.prefix(48)) + "..." : line, symbol: "text.quote", image: nil)
         }
-    }
-
-    private enum Dragged {
-        case files([URL])
-        case text(String)
-    }
-
-    /// What is being dragged: files (also a picture, which is written to a file), or text.
-    private func dragContents() -> Dragged? {
-        let board = NSPasteboard(name: .drag)
-        if let urls = board.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
-            return .files(urls)
-        }
-        if let text = board.string(forType: .string), !text.isEmpty { return .text(text) }
-        if let image = NSImage(pasteboard: board), let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Tandem drag", isDirectory: true)
-            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let file = folder.appendingPathComponent(String(localized: "Picture") + " \(Int(Date().timeIntervalSince1970)).png")
-            if (try? png.write(to: file)) != nil { return .files([file]) }
-        }
-        if let url = board.string(forType: .URL), !url.isEmpty { return .text(url) }
-        return nil
     }
 
     /// Asks the computer that has the pointer every half second whether it is still there. When it says nothing for two seconds (its
@@ -529,6 +542,7 @@ final class PointerShare {
         } ?? savedLocation
         PointerLog.write("comes back from \(model.device(remote.device)?.name ?? remote.device), button down: \(NSEvent.pressedMouseButtons & 1 != 0), carried drag: \(carriedDrag)")
         if carriedDrag { lastDragCount = NSPasteboard(name: .drag).changeCount }
+        arrivedAt[remote.device] = Date()
         self.remote = nil
         watchTask?.cancel()
         watchTask = nil
@@ -539,6 +553,8 @@ final class PointerShare {
         CGAssociateMouseAndMouseCursorPosition(1)
         CursorHider.show()
         PointerAwayPill.hide()
+        // Back before what it carried was sent: with the button still down the drag simply goes on here; let go, it is ended.
+        if carrying, NSEvent.pressedMouseButtons & 1 == 0 { endLocalDrag() }
         carrying = false
         carriedDrag = false
         heldButtons = []
@@ -600,8 +616,8 @@ final class PointerShare {
             heldButtons.remove(0)
             send(.button(button: 0, down: false))
             if carriedDrag {
+                // `carrying` stays: the drag on this Mac is ended once what it holds is sent (see `goOver`).
                 carriedDrag = false
-                carrying = false
                 lastDragCount = NSPasteboard(name: .drag).changeCount
                 PointerLog.write("the carried drag was let go over there")
                 PointerAwayPill.dropped()
@@ -678,6 +694,7 @@ final class PointerShare {
                 return
             }
             controlledBy = device
+            arrivedAt[device] = Date()
             enteredBy = opposite(edgeName(edge))
             controllerHeardAt = Date()
             controllerLeftDown = false
@@ -783,7 +800,7 @@ final class PointerShare {
                 let fraction = Float(min(max(along, 0), 1))
                 // Files dragged into the edge go along to that computer, as when the pointer of this Mac carries them over: the drag
                 // here is called off first, so nothing is dropped at the edge. Anything else held (a window, a selection) is let go.
-                if controllerLeftDown, NSPasteboard(name: .drag).changeCount != controllerPressCount, case let .files(urls)? = dragContents() {
+                if controllerLeftDown, NSPasteboard(name: .drag).changeCount != controllerPressCount, case let urls = DragReading.files(), !urls.isEmpty {
                     handingOver = true
                     let source = CGEventSource(stateID: .hidSystemState)
                     for down in [true, false] {

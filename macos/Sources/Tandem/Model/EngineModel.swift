@@ -570,7 +570,7 @@ final class EngineModel {
             // The answer to "Insert from phone" is taken without asking and has its own panel.
             if InsertFromPhone.shared.owns(offer: offer) { break }
             // Files dropped on the edge by the computer that shares its pointer with this one: taken at once, and put where the drop was.
-            if case .drag = origin, DragLanding.shared.take(offer: offer, from: from) { break }
+            if case .drag = origin, DragLanding.shared.take(offer: offer, from: from, count: items.count) { break }
             // A picture or files copied on a device that shares the clipboard with this Mac: on the pasteboard, without asking.
             if case .clipboard = origin, ClipboardFiles.shared.take(offer: offer, from: from, size: items.reduce(0) { $0 + $1.size }) { break }
             if let device = device(from), !device.autoAccept {
@@ -1220,9 +1220,11 @@ final class EngineModel {
 
     // MARK: Sending
 
-    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) {
-        guard let engine, !urls.isEmpty, !ids.isEmpty else { return }
-        Task {
+    /// The task ends once the offer is out (or failed), for a drag that must not end before that.
+    @discardableResult
+    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) -> Task<Void, Never>? {
+        guard let engine, !urls.isEmpty, !ids.isEmpty else { return nil }
+        return Task {
             do {
                 var files: [TandemOutgoingFile] = []
                 for url in urls {
