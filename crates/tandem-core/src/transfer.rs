@@ -69,6 +69,8 @@ const RESUME_WAIT: Duration = Duration::from_secs(15);
 pub const REASON_GONE: &str = "gone";
 /// The file changed at the sender since it was offered, so the part that came in no longer fits it.
 pub const REASON_CHANGED: &str = "changed";
+/// The receiver has less free space than the files take (P5).
+pub const REASON_NO_SPACE: &str = "no space";
 /// What a sender answers a pull of an offer it does not have. Older receivers show it as it is, so it stays a sentence.
 const NO_LONGER_AVAILABLE: &str = "that offer is no longer available";
 
@@ -148,6 +150,12 @@ impl Inner {
         let held = self.metered.load(std::sync::atomic::Ordering::Relaxed) && size > METERED_ASK_BYTES;
         let auto = self.settings.read().unwrap().for_device(&from).auto_accept && !held;
         let run = self.journal.insert(TransferRecord::incoming(from, &offer, held));
+        // Nobody is asked about what cannot fit (P5); the files end at once, here and at the sender.
+        if self.too_big_here(key) {
+            run.started.store(true, std::sync::atomic::Ordering::SeqCst);
+            self.refuse_for_space(from, key);
+            return;
+        }
         // After the insert: an app that accepts straight from the event must find the offer.
         self.emit(Event::ShareOffered { from, offer });
         if auto {
@@ -243,7 +251,11 @@ impl Inner {
             return;
         }
         let reason = reply.reason.filter(|r| !r.trim().is_empty()).unwrap_or_else(|| "declined".to_string());
-        let state = if reason == "expired" { ItemState::Expired } else { ItemState::Declined };
+        let state = match reason.as_str() {
+            "expired" => ItemState::Expired,
+            REASON_NO_SPACE => ItemState::Failed,
+            _ => ItemState::Declined,
+        };
         for (index, item) in self.stop_outgoing(peer, reply.id, state, Some(reason.clone())) {
             self.emit(Event::Finished(TransferDone {
                 offer: reply.id,
@@ -288,6 +300,11 @@ impl Inner {
 
     fn begin_receive(self: &Arc<Self>, from: DeviceId, key: Key, run: Arc<Run>) {
         if run.started.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            return;
+        }
+        // The free space can have gone since the offer came in.
+        if self.too_big_here(key) {
+            self.refuse_for_space(from, key);
             return;
         }
         self.journal.change(key, |record| {
@@ -336,6 +353,10 @@ impl Inner {
             self.end_incoming(from, offer, Some(&answer.gone), REASON_GONE, false);
         }
         if run.cancel.is_cancelled() {
+            return;
+        }
+        if self.too_big_here(key) {
+            self.refuse_for_space(from, key);
             return;
         }
         self.receive_all(from, key, run).await;
@@ -478,6 +499,57 @@ impl Inner {
                 error: Some(reason.to_string()),
             }));
         }
+    }
+
+    /// The bytes still to come for an incoming offer are more than the free space this device last reported in its status (P5). A
+    /// file that is half here counts for what is missing.
+    fn too_big_here(&self, key: Key) -> bool {
+        let Some(free) = self.my_status.lock().unwrap().free_storage else { return false };
+        let needed = self
+            .journal
+            .read(key, |record| {
+                let Some(sender) = record.peers.first() else { return 0 };
+                sender
+                    .items
+                    .iter()
+                    .zip(&record.items)
+                    .filter(|(progress, _)| !progress.state.is_final())
+                    .map(|(progress, item)| item.size.saturating_sub(progress.done))
+                    .sum::<u64>()
+            })
+            .unwrap_or(0);
+        needed > free
+    }
+
+    /// Refuses an incoming offer that does not fit (P5): its files end here with `no space`, and the sender hears the same reason.
+    fn refuse_for_space(self: &Arc<Self>, from: DeviceId, key: Key) {
+        let Key::In(_, offer) = key else { return };
+        info!(%from, offer, "an offer is larger than the free space here, refused");
+        self.end_incoming(from, offer, None, REASON_NO_SPACE, true);
+        let this = self.clone();
+        tokio::spawn(async move {
+            let reply = ShareReply { id: offer, accepted: false, reason: Some(REASON_NO_SPACE.to_string()) };
+            let _ = this.send_to(&from, Msg::ShareReply(reply)).await;
+        });
+    }
+
+    /// See `Engine::short_of_space`.
+    pub(crate) fn short_of_space(&self, targets: &[DeviceId], files: &[OutgoingFile]) -> Vec<DeviceId> {
+        let total: u64 = files
+            .iter()
+            .map(|file| {
+                if file.size > 0 {
+                    file.size
+                } else {
+                    self.files.open_read(&file.source).and_then(|f| f.metadata()).map(|m| m.len()).unwrap_or(0)
+                }
+            })
+            .sum();
+        self.devices()
+            .into_iter()
+            .filter(|device| targets.contains(&device.id) && device.status.free_storage.is_some_and(|free| total > free))
+            .map(|device| device.id)
+            .collect()
     }
 
     fn peer_has_cap(&self, id: &DeviceId, cap: &str) -> bool {

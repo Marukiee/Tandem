@@ -555,3 +555,38 @@ async fn a_file_that_changed_at_the_sender_is_reported_and_the_rest_comes() {
     assert_eq!(done[1].error.as_deref(), Some("changed"));
     assert!(!mac.data.join("incoming").join(format!("{}-{offer:016x}-1.part", phone.engine.id())).exists());
 }
+
+/// P5: a receiver refuses an offer larger than its free space before anything is pulled or asked, and the sender hears why; the
+/// sender can see it coming from the free space the receiver reports.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_offer_larger_than_the_free_space_is_refused_up_front() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+    ask_first(&mac, &phone);
+    mac.engine.update_status(tandem_core::proto::Status { free_storage: Some(1_000_000), ..Default::default() }).await;
+
+    let source = tempfile::tempdir().unwrap();
+    let small = vec![outgoing(source.path(), "small.bin", &random_bytes(1000, 40))];
+    let large = vec![outgoing(source.path(), "large.bin", &random_bytes(2_000_000, 41))];
+    wait_until("the phone knows the free space of the Mac", || {
+        phone.engine.devices().iter().any(|d| d.id == mac.engine.id() && d.status.free_storage == Some(1_000_000))
+    })
+    .await;
+    assert!(phone.engine.short_of_space(&[mac.engine.id()], &small).is_empty());
+    assert_eq!(phone.engine.short_of_space(&[mac.engine.id()], &large), [mac.engine.id()]);
+
+    let mut phone_events = phone.engine.subscribe();
+    let mut mac_events = mac.engine.subscribe();
+    phone.engine.send_files(&[mac.engine.id()], large, ShareOrigin::Files).await.unwrap();
+    let refused = expect(&mut mac_events, "the Mac refuses", |e| match e {
+        Event::ShareOffered { .. } => panic!("the person must not be asked about what cannot fit"),
+        Event::Finished(done) if done.incoming => Some(done.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(refused.error.as_deref(), Some("no space"));
+    assert_eq!(finished_with(&mut phone_events, false, "the phone hears why").await.error.as_deref(), Some("no space"));
+    assert!(!mac.downloads.join("large.bin").exists());
+}
