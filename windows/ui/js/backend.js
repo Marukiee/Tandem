@@ -22,14 +22,35 @@ export async function listen(event, handler) {
   return (await pretend()).listen(event, handler);
 }
 
-/** Files dropped on the window by the shell, as paths. */
+/**
+ * Files dragged over and dropped on this window by the shell: `onHover(over, at)` while a drag hangs over it, `onDrop(paths, at)` when it
+ * is let go. `at` is where, in CSS pixels of the window. Only the drags of this window: a plain listener hears those of every window, so a
+ * drop on the tray panel would also reach the main window. In a plain browser `mockDrag(x, y)` and `mockDrop(paths, x, y)` stand in.
+ */
 export async function listenDrops(onHover, onDrop) {
-  if (!native) return;
-  await tauri.event.listen("tauri://drag-enter", () => onHover(true));
-  await tauri.event.listen("tauri://drag-leave", () => onHover(false));
+  if (!native) {
+    window.mockDrag = (x, y) => onHover(x != null, x != null ? { x, y } : null);
+    window.mockDrop = (paths, x, y) => { onHover(false, null); onDrop(paths, { x, y }); };
+    return;
+  }
+  // The position comes in physical pixels.
+  const at = (p) => (p && p.position ? { x: p.position.x / devicePixelRatio, y: p.position.y / devicePixelRatio } : null);
+  const webview = tauri.webview && tauri.webview.getCurrentWebview && tauri.webview.getCurrentWebview();
+  if (webview && webview.onDragDropEvent) {
+    await webview.onDragDropEvent((e) => {
+      const p = e.payload;
+      if (p.type === "drop") { onHover(false, null); onDrop(p.paths || [], at(p)); }
+      else if (p.type === "leave") onHover(false, null);
+      else onHover(true, at(p));
+    });
+    return;
+  }
+  await tauri.event.listen("tauri://drag-enter", (e) => onHover(true, at(e.payload)));
+  await tauri.event.listen("tauri://drag-over", (e) => onHover(true, at(e.payload)));
+  await tauri.event.listen("tauri://drag-leave", () => onHover(false, null));
   await tauri.event.listen("tauri://drag-drop", (e) => {
-    onHover(false);
-    onDrop(e.payload.paths || []);
+    onHover(false, null);
+    onDrop(e.payload.paths || [], at(e.payload));
   });
 }
 

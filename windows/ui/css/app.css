@@ -117,6 +117,9 @@ button { font: inherit; color: inherit; }
   background: var(--accent);
 }
 .row.dim { opacity: 0.62; }
+/* Where a drag that hangs over the window would land (drops.js). */
+.row.drop-at { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+main.drop-at { box-shadow: inset 0 0 0 2px var(--accent); background: var(--accent-soft); }
 .row .name { font-weight: 600; }
 .row .sub { font-size: 12px; color: var(--text-2); }
 .row .sub.ok { color: var(--ok); }
