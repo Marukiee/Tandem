@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.graphics.Path
 import android.graphics.RectF
 import android.os.Build
+import androidx.core.os.BundleCompat
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -139,7 +140,7 @@ class MirrorListener : NotificationListenerService() {
 
     /** A notification that Android emptied for an app like this one is rebuilt by the system, so it says it comes from Android itself. */
     private fun hiddenByAndroid(sbn: StatusBarNotification): Boolean {
-        val info: ApplicationInfo? = sbn.notification.extras.getParcelable("android.appInfo", ApplicationInfo::class.java)
+        val info: ApplicationInfo? = BundleCompat.getParcelable(sbn.notification.extras, "android.appInfo", ApplicationInfo::class.java)
         return info?.packageName == "android" && sbn.packageName != "android"
     }
 
@@ -152,7 +153,7 @@ class MirrorListener : NotificationListenerService() {
 
         // The app's own label, taken from the notification itself so no package
         // visibility permission is needed.
-        val info: ApplicationInfo? = extras.getParcelable("android.appInfo", ApplicationInfo::class.java)
+        val info: ApplicationInfo? = BundleCompat.getParcelable(extras, "android.appInfo", ApplicationInfo::class.java)
         val hidden = hiddenByAndroid(sbn)
         val appName = when {
             !hidden -> info?.loadLabel(packageManager)?.toString() ?: sbn.packageName
@@ -198,7 +199,7 @@ class MirrorListener : NotificationListenerService() {
 
     /** The launcher icon of the app, as a rounded square: the system mask is not applied when an adaptive icon is drawn by hand. */
     private fun appIconPng(sbn: StatusBarNotification): ByteArray? {
-        val info: ApplicationInfo? = sbn.notification.extras.getParcelable("android.appInfo", ApplicationInfo::class.java)
+        val info: ApplicationInfo? = BundleCompat.getParcelable(sbn.notification.extras, "android.appInfo", ApplicationInfo::class.java)
         val drawable = info?.loadIcon(packageManager) ?: runCatching { packageManager.getApplicationIcon(sbn.packageName) }.getOrNull() ?: return null
         val size = 128
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -258,7 +259,7 @@ class MirrorListener : NotificationListenerService() {
                 .filter { it.notification.category == Notification.CATEGORY_CALL || it.notification.extras.containsKey(Notification.EXTRA_CALL_PERSON) }
                 .maxByOrNull { it.postTime }
                 ?.notification ?: return@runCatching null
-            val person = call.extras.getParcelable(Notification.EXTRA_CALL_PERSON, android.app.Person::class.java)?.name?.toString()
+            val person = BundleCompat.getParcelable(call.extras, Notification.EXTRA_CALL_PERSON, android.app.Person::class.java)?.name?.toString()
             (person ?: call.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString())?.trim()?.takeIf { it.isNotEmpty() }
         }.getOrNull()
 
