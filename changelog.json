@@ -6,7 +6,9 @@
       "title": "Quiet in your pocket",
       "new": [
         "On mobile data, files above 50 MB from another device wait until you say yes",
-        "Files on Linux and Windows: download whole folders, open a file, and upload"
+        "Files on Linux and Windows: download whole folders, open a file, and upload",
+        "Mac: a transfer that stopped halfway asks whether to go on or throw it away",
+        "A device refuses files it has no room for, and the Mac asks before sending them"
       ],
       "fixed": [
         "A phone with its screen off is woken far less often by your other devices",
@@ -28,7 +30,9 @@
       "title": "Stil in je zak",
       "new": [
         "Op mobiele data wachten bestanden boven 50 MB van een ander apparaat tot je ja zegt",
-        "Bestanden op Linux en Windows: hele mappen downloaden, een bestand openen en uploaden"
+        "Bestanden op Linux en Windows: hele mappen downloaden, een bestand openen en uploaden",
+        "Mac: een overdracht die halverwege stopte vraagt of je verder gaat of hem weggooit",
+        "Een apparaat weigert bestanden waar het geen ruimte voor heeft, en de Mac vraagt het voor het sturen"
       ],
       "fixed": [
         "Een telefoon met het scherm uit wordt veel minder vaak gewekt door je andere apparaten",
