@@ -402,14 +402,7 @@ private struct MenuDeviceRow: View {
         .animation(.tandemSpringy, value: targeted)
         .animation(.tandem, value: device.online)
         .animation(.tandemFade, value: hint == nil)
-        .dropDestination(for: URL.self) { urls, _ in
-            guard device.online else {
-                model.showToast(String(localized: "That device is not connected right now"))
-                return false
-            }
-            model.send(urls: urls, to: [device.id])
-            return true
-        } isTargeted: { targeted = $0 }
+        .deviceDrop(device, model: model, targeted: $targeted)
     }
 
     /// The pointer of this Mac goes over the edge to this computer, or no longer: on, it goes on the side the computer was last found on
