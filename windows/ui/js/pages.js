@@ -2,7 +2,7 @@
 import { html, useEffect, useRef, useState } from "../vendor/preact-htm.js";
 import { call, listen, native } from "./backend.js";
 import { ArrangementEditor } from "./arrange.js";
-import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, fmtSize, platformIcon, watchPhoneId } from "./components.js";
+import { BatteryRing, Chip, DeviceArt, DeviceGlyph, PlayersCard, RowMenu, Switch, ago, deviceChips, fmtSize, platformIcon, watchPhoneId } from "./components.js";
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { MicButton, OutputButton } from "./output.js";
@@ -111,23 +111,38 @@ function Offers({ device }) {
   </div>`);
 }
 
+const FILE_KINDS = [
+  ["picture", "photo", /\.(jpe?g|png|gif|webp|heic|bmp|svg)$/i],
+  ["video", "video", /\.(mp4|mov|mkv|avi|webm|m4v)$/i],
+  ["sound", "music", /\.(mp3|m4a|flac|wav|ogg|opus|aac)$/i],
+  ["paper", "file", /\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|odt|csv)$/i],
+];
+/** What a file is by its name, as [kind, icon]: the kind gives the tile its colour. */
+export const fileKind = (name) => { const hit = FILE_KINDS.find(([, , test]) => test.test(name || "")); return hit ? [hit[0], hit[1]] : ["other", "file"]; };
+
 export function TransferRow({ item, chosen, onClick }) {
   const peer = state.devices.find((d) => d.id === item.peer);
   const active = item.state === "active";
+  const bad = item.state === "failed";
   const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
-  const detail = active
-    ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "")
-    : item.state === "failed" ? (["cancelled", "declined", "expired"].includes(item.error) ? t(item.error) : item.error || t("failed")) : fmtSize(item.total);
-  return html`<div class=${"item" + (chosen ? " chosen" : "") + (onClick ? " pickable" : "")} onMouseDown=${noTextPick} onClick=${onClick}>
-    ${chosen ? html`<${Icon} name="check" size=${18} class="accent-text" />` : html`<${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${18} class=${item.state === "failed" ? "bad" : ""} />`}
+  const reason = bad ? (["cancelled", "declined", "expired"].includes(item.error) ? t(item.error) : item.error || t("failed")) : null;
+  const detail = active ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "") : bad ? null : fmtSize(item.total);
+  const [kind, icon] = fileKind(item.name);
+  const there = item.state === "done" && item.incoming && item.location;
+  return html`<div class=${"item transfer" + (chosen ? " chosen" : "") + (onClick ? " pickable" : "")} onMouseDown=${noTextPick} onClick=${onClick}>
+    ${chosen ? html`<span class="kind chosen"><${Icon} name="check" size=${17} /></span>` : html`<span class=${"kind k-" + kind}><${Icon} name=${icon} size=${17} /></span>`}
     <div class="grow">
       <div class="ellipsis" style="font-weight:500">${item.name}</div>
-      <div class="small muted ellipsis" style=${item.state === "failed" ? "color:var(--bad)" : ""}>${peer ? peer.name + " · " : ""}${detail}${!active && item.updatedAt ? " · " + ago(item.updatedAt) : ""}</div>
+      <div class="small muted ellipsis"><${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${12} class="dir" />${[peer && peer.name, detail, !active && item.updatedAt ? ago(item.updatedAt) : null].filter(Boolean).join(" · ")}</div>
       ${active && html`<div class="prog"><i style=${`width:${pct}%`}></i></div>`}
     </div>
-    ${active && html`<button class="ib" title=${t("cancel_transfer")} onClick=${(e) => e.stopPropagation() || call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed)}><${Icon} name="x" size=${18} /></button>`}
-    ${item.state === "done" && item.incoming && item.location && html`
-      <button class="ib" title=${t("show_in_folder")} onClick=${(e) => e.stopPropagation() || call("reveal_path", { path: item.location }).catch(failed)}><${Icon} name="folder-open" size=${18} /></button>`}
+    ${reason && html`<span class="reason">${reason}</span>`}
+    <${RowMenu} label=${t("more")} items=${[
+      active && { icon: "x", label: t("cancel_transfer"), danger: true, run: () => call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed) },
+      there && { icon: "external-link", label: t("open"), run: () => call("open_path", { path: item.location }).catch(failed) },
+      there && { icon: "folder-open", label: t("show_in_folder"), run: () => call("reveal_path", { path: item.location }).catch(failed) },
+      !active && { icon: "x", label: t("remove_from_list"), run: () => call("transfers_remove", { ids: [item.id] }).catch(failed) },
+    ]} />
   </div>`;
 }
 
@@ -291,10 +306,20 @@ export function DevicePage({ device }) {
   };
   const sshReason = !device.online ? t("ssh_why_offline") : t("ssh_why_" + device.platform);
 
+  const openMouse = () => set({ page: "settings", settingsWanted: { section: "mouse", at: Date.now() } });
+  // The webcam of the phone. A group with one button in it took a whole line, so it sits with the screen, unless the phone
+  // can also take a photo or a scan for this computer: then the three of them are the camera.
+  const webcamButton = html`<button class=${"btn" + (webcamOn ? " on" : "") + (state.platform === "linux" ? "" : " grey")} disabled=${!device.online && !webcamOn} title=${t("webcam_tip")}
+          onClick=${() => (webcamOn ? call("webcam_stop", { id: device.id }).catch(failed)
+            : state.platform !== "linux" ? say(t("webcam_not_here"))
+            : !hasCap("camera.host") ? say(t("live_update_phone"))
+            : call("webcam_start", { id: device.id, name: device.name }).then(() => say(t("webcam_asked", device.name))).catch(failed))}>
+          <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>`;
+
   return html`<div class="wrap">
     <div class="card" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
       <div class="head">
-        <${DeviceGlyph} device=${device} size=${72} />
+        <${DeviceArt} device=${device} />
         <div class="info grow">
           <div class="title ellipsis">${device.name}</div>
           <div class="chips">${deviceChips(device)}</div>
@@ -302,8 +327,9 @@ export function DevicePage({ device }) {
         </div>
         ${battery && html`<${BatteryRing} battery=${battery} size=${72} connected=${device.online} />`}
       </div>
-      <${HeadPlayers} device=${device} players=${players} />
     </div>
+
+    <${PlayersCard} device=${device} players=${players} />
 
     <${Offers} device=${device} />
 
@@ -334,6 +360,7 @@ export function DevicePage({ device }) {
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} title=${t("live_camera_tip")} onClick=${() => (hasCap("camera.host") ? show("camera") : say(t("live_update_phone")))}>
           <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
+        ${device.platform === "android" && !hasCap("capture") && webcamButton}
         <${LockButton} device=${device} />
       <//>`}
       ${device.platform === "android" && html`<${ActionGroup} title=${t("group_sound")}>
@@ -353,13 +380,8 @@ export function DevicePage({ device }) {
         <${OutputButton} device=${device} />
         <${PlaySoundButton} device=${device} />
       <//>`}
-      ${device.platform === "android" && html`<${ActionGroup} title=${t("group_camera")} wide>
-        <button class=${"btn" + (webcamOn ? " on" : "") + (state.platform === "linux" ? "" : " grey")} disabled=${!device.online && !webcamOn} title=${t("webcam_tip")}
-          onClick=${() => (webcamOn ? call("webcam_stop", { id: device.id }).catch(failed)
-            : state.platform !== "linux" ? say(t("webcam_not_here"))
-            : !hasCap("camera.host") ? say(t("live_update_phone"))
-            : call("webcam_start", { id: device.id, name: device.name }).then(() => say(t("webcam_asked", device.name))).catch(failed))}>
-          <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>
+      ${device.platform === "android" && hasCap("capture") && html`<${ActionGroup} title=${t("group_camera")} wide>
+        ${webcamButton}
         ${hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
           <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
         <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
@@ -382,6 +404,10 @@ export function DevicePage({ device }) {
       <${SettingRow} icon="bell" title=${t("show_its_notifications")} sub=${t("show_its_notifications_sub")} on=${device.notifications} onChange=${(v) => setting({ notifications: v })} />
       ${hasCap("screen.view") && html`<${ScreenPolicyRows} device=${device} />`}
       <${SettingRow} icon="download" title=${t("accept_automatically")} sub=${t("accept_automatically_sub")} on=${device.autoAccept} onChange=${(v) => setting({ autoAccept: v })} />
+      <div class="setting link" role="button" tabindex="0" onClick=${() => openMouse()}
+        onKeyDown=${(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMouse(); } }}>
+        <${Icon} name="pointer" size=${20} /><div class="grow"><div class="t">${t("tab_mouse")}</div><div class="s">${t("mouse_link_sub")}</div></div><${Icon} name="chevron-right" size=${18} />
+      </div>
     </div>
 
     ${transfers.length > 0 && html`<h2>${t("recent")}</h2><div class="card flush">${transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}

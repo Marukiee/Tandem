@@ -151,8 +151,8 @@
   cursor: default;
   transition: transform 0.12s, opacity 0.15s, background 0.15s;
 }
-.sms-send:hover { transform: scale(1.06); }
-.sms-send:active { transform: scale(0.94); }
+.sms-send:hover { filter: brightness(1.08); }
+.sms-send:active { transform: scale(0.96); }
 .sms-send[disabled] { background: var(--line-strong); pointer-events: none; }
 
 .sms-suggestions { flex: 1; overflow: auto; padding: 8px; }

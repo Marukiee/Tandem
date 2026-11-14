@@ -11,6 +11,7 @@ import { MessagesPage, offersMessages } from "./messages.js";
 import { CallDialog, useCallAsk } from "./calls.js";
 import { TourPage, maybeShowTour } from "./tour.js";
 import { dropPaths, markDropTarget } from "./drops.js";
+import { watchTips } from "./tips.js";
 
 /** The update, in the sidebar above its lower rows: what is out, how far the download is, and what went wrong. */
 // The watch only talks to its phone, but it is a device of its own: its page goes by way of the phone.
@@ -318,3 +319,4 @@ await listenDrops(
   (paths, at) => { set({ dropping: false }); dropPaths(paths, at); },
 );
 render(html`<${App} />`, document.getElementById("root"));
+watchTips();

@@ -54,6 +54,48 @@ export function DeviceGlyph({ device, size = 40, ring = false }) {
   return html`<span class=${"ringed" + (battery ? (battery.level <= 15 ? " low" : "") : " none")} style=${`width:${size}px;height:${size}px;--level:${battery ? battery.level : 0}`}>${glyph}</span>`;
 }
 
+/** The device drawn as what it is, at the head of its page: a phone, a laptop or a screen on a foot. */
+export function DeviceArt({ device }) {
+  const kind = { "device-mobile": "phone", "device-laptop": "laptop" }[platformIcon(device.platform)] || "desktop";
+  const shape = {
+    phone: html`<rect x="13" y="2" width="38" height="68" rx="9" class="body" /><circle cx="32" cy="9.5" r="1.8" class="dot" />`,
+    laptop: html`<rect x="9" y="12" width="46" height="34" rx="5" class="body" /><path d="M3 54h58" class="line" />`,
+    desktop: html`<rect x="5" y="9" width="54" height="38" rx="5" class="body" /><path d="M32 47v10M21 59h22" class="line" />`,
+  }[kind];
+  return html`<svg class=${"devart" + (device.online ? " on" : "")} viewBox="0 0 64 72" width="64" height="72" aria-hidden="true">
+    <defs><linearGradient id=${"devart-" + kind} x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="from" /><stop offset="1" class="to" /></linearGradient></defs>
+    <g style=${`--fill:url(#devart-${kind})`}>${shape}</g>
+  </svg>`;
+}
+
+// One menu at a time: opening the next closes the one that was open.
+let closeOpenMenu = null;
+
+/** The three dots of a row: everything that can be done with it, in one menu. An item is { icon, label, run, danger }. */
+export function RowMenu({ items, label }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return undefined;
+    const shut = () => setOpen(false);
+    const key = (e) => { if (e.key === "Escape") shut(); };
+    if (closeOpenMenu) closeOpenMenu();
+    closeOpenMenu = shut;
+    // Closed by a press anywhere else; the press on the dots themselves is dealt with by the button.
+    setTimeout(() => document.addEventListener("click", shut), 0);
+    document.addEventListener("keydown", key);
+    return () => { document.removeEventListener("click", shut); document.removeEventListener("keydown", key); if (closeOpenMenu === shut) closeOpenMenu = null; };
+  }, [open]);
+  const shown = items.filter(Boolean);
+  if (!shown.length) return null;
+  return html`<span class="menuwrap" onClick=${(e) => e.stopPropagation()} onMouseDown=${(e) => e.stopPropagation()}>
+    <button class=${"ib" + (open ? " open" : "")} title=${label} aria-label=${label} aria-haspopup="menu" aria-expanded=${open} onClick=${() => setOpen(!open)}><${Icon} name="dots" size=${18} /></button>
+    ${open && html`<div class="rowmenu" role="menu">
+      ${shown.map((it) => html`<button role="menuitem" class=${"menuitem" + (it.danger ? " danger" : "")} onClick=${() => { setOpen(false); it.run(); }}>
+        <${Icon} name=${it.icon} size=${16} /><span>${it.label}</span></button>`)}
+    </div>`}
+  </span>`;
+}
+
 /** A number that runs to its new value instead of jumping, so a battery that charges up or drains reads as moving. */
 function useCountUp(target, ms = 520) {
   const [shown, setShown] = useState(target);
@@ -165,6 +207,32 @@ export function HeadPlayers({ device, players }) {
   return html`<div class=${"head-players" + (live ? " open" : "")} onTransitionEnd=${shut}>
     <div class="in" inert=${!live}><div class="list">
       ${shown.map((p) => html`<${PlayerCard} key=${p.id} device=${device} player=${p} />`)}
+    </div></div>
+  </div>`;
+}
+
+/** What plays on a device, on a card of its own under its head. With more than one player there is a tab per app, and the one
+    that plays has a speaker beside its name. It opens and closes the way the players in the head did. */
+export function PlayersCard({ device, players }) {
+  const live = players.length > 0;
+  const last = useRef(players);
+  const [, cleared] = useState(0);
+  const [chosen, setChosen] = useState(null);
+  if (live) last.current = players;
+  const shown = live ? players : last.current;
+  const current = shown.find((p) => p.id === chosen) || shown.find((p) => p.playing) || shown[0];
+  const shut = (e) => {
+    if (live || e.target !== e.currentTarget || e.propertyName !== "grid-template-rows") return;
+    last.current = [];
+    cleared((n) => n + 1);
+  };
+  return html`<div class=${"head-players players-card" + (live ? " open" : "")} onTransitionEnd=${shut}>
+    <div class="in" inert=${!live}><div class="card list">
+      ${shown.length > 1 && html`<div class="ptabs" role="tablist">
+        ${shown.map((p) => html`<button role="tab" key=${p.id} class=${"ptab" + (current && p.id === current.id ? " on" : "")} aria-selected=${current && p.id === current.id}
+          title=${p.playing ? t("playing_now") : null} onClick=${() => setChosen(p.id)}>${p.playing && html`<${Icon} name="volume" size=${13} />`}<span>${p.app}</span></button>`)}
+      </div>`}
+      ${current && html`<${PlayerCard} key=${current.id} device=${device} player=${current} />`}
     </div></div>
   </div>`;
 }
