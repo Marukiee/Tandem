@@ -18,6 +18,10 @@ final class DragCarrier {
     static let shared = DragCarrier()
 
     private var files: [URL] = []
+    /// Of the offer the files belong to: how many are in (or failed), how many it has, and when the last one came.
+    private var arrived = 0
+    private var expected: Int?
+    private var lastArrival = Date()
     private var from = ""
     private var name = ""
     private var panel: CarrierPanel?
@@ -37,14 +41,17 @@ final class DragCarrier {
 
     /// Files from `device` arrived while it shares its pointer with this Mac. Taken (true) to hang under the pointer; false when this
     /// is not such a moment and the caller lands them as before.
-    /// `allIn`: every file of its offer is in now (or failed).
-    func carry(_ url: URL, name: String, from device: String, allIn: Bool) -> Bool {
+    /// `arrived` of the `expected` files of its offer are in now (or failed).
+    func carry(_ url: URL, name: String, from device: String, arrived: Int, expected: Int?) -> Bool {
         guard PointerShare.shared.isPeer(device), !dragging else { return false }
         if carrying, from != device { putAway() }
         let first = !carrying
         from = device
         self.name = name
         files.append(url)
+        self.arrived = arrived
+        self.expected = expected
+        lastArrival = Date()
         if first {
             let held = NSEvent.pressedMouseButtons & 1 != 0
             onCard = !CarryRules.underPointer(buttonDown: held, sinceCrossing: PointerShare.shared.sinceArrival(from: device))
@@ -53,8 +60,14 @@ final class DragCarrier {
         // The pointer may still be over there: it has a while to come, then a while for the press.
         restartGiveUp(seconds: 30)
         if !onCard { restartToCard() }
-        pickUpIfHeld(after: allIn ? 0.15 : 5)
+        pickUpIfHeld()
         return true
+    }
+
+    /// A file of the offer that failed still counts, so a held drag does not wait for it.
+    func failed(from device: String, arrived: Int) {
+        guard carrying, device == from else { return }
+        self.arrived = arrived
     }
 
     /// No press came: the files step aside, so the next click lands where it was meant. While the button is still held (files of one
@@ -76,10 +89,14 @@ final class DragCarrier {
     /// so the files are let go wherever the button comes up, not with a press later. The press is played onto the panel under the
     /// pointer, which starts a real drag of the system; the button the person holds ends it. Files of one drag come one by one, so it
     /// waits a moment for the rest, which a drag cannot take in once it has started.
-    private func pickUpIfHeld(after seconds: Double) {
+    private func pickUpIfHeld() {
         pickUp?.cancel()
         pickUp = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(Int(seconds * 1000)))
+            repeat {
+                try? await Task.sleep(for: .milliseconds(150))
+            } while !Task.isCancelled && self.map {
+                !CarryRules.readyToPickUp(arrived: $0.arrived, expected: $0.expected, sinceLast: Date().timeIntervalSince($0.lastArrival))
+            } == true
             guard let self, !Task.isCancelled, self.carrying, !self.dragging, NSEvent.pressedMouseButtons & 1 != 0 else { return }
             let share = PointerShare.shared
             guard share.remote == nil, share.controlledBy == nil else { return }
