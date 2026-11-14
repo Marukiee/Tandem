@@ -218,13 +218,15 @@ class SmsBridge(
      */
     private suspend fun sendCodes(engine: TandemEngine, changed: List<TandemSmsMessage>) {
         val prefs = context.graph.prefs
-        if (!prefs.mirrorNotifications.first() || !prefs.copyCodes.first()) return
+        if (!prefs.copyCodes.first()) return
         val now = System.currentTimeMillis()
         val fresh = changed.filter { it.status == TandemSmsStatus.RECEIVED && now - it.date.toLong() < CODE_FRESH_MS && codesSent.add(key(it)) }
         if (codesSent.size > 500) codesSent.clear()
         if (fresh.isEmpty()) return
         val app = Telephony.Sms.getDefaultSmsPackage(context) ?: context.packageName
-        if (!prefs.mirrors(app)) return
+        // Copying codes has its own switch: a phone that sends no notifications of the messages app (so as not to get them twice) still
+        // passes on the code, and the computer shows nothing but that it copied it.
+        val codeOnly = !prefs.mirrorNotifications.first() || !prefs.mirrors(app)
         val targets = host.devices.value.filter { it.platform != TandemPlatform.ANDROID }.map { it.id }
         if (targets.isEmpty()) return
         val label = runCatching {
@@ -238,6 +240,7 @@ class SmsBridge(
             val notification = TandemNotification(
                 key = "tandem-code-${key(m)}", appId = app, appName = label, title = sender, text = m.body, subText = null,
                 ts = m.date, ongoing = false, silent = false, buttons = emptyList(), otp = code, progressDone = null, progressTotal = null,
+                codeOnly = codeOnly,
             )
             scope.launch { CodeDelivery.deliver(host, targets, notification) }
         }

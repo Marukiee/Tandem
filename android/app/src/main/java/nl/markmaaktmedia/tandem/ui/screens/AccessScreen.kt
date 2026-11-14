@@ -149,7 +149,7 @@ internal fun ColumnScope.AccessContent() {
                                     title = context.getString(R.string.test_notification_title),
                                     text = context.getString(R.string.test_remote_text),
                                     subText = null, ts = System.currentTimeMillis().toULong(), ongoing = false, silent = false,
-                                    buttons = emptyList(), otp = null, progressDone = null, progressTotal = null,
+                                    buttons = emptyList(), otp = null, progressDone = null, progressTotal = null, codeOnly = false,
                                 ),
                             )
                         }

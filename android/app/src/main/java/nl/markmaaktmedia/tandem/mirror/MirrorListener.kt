@@ -75,8 +75,11 @@ class MirrorListener : NotificationListenerService() {
         if (sbn.packageName == packageName) return
         graph.watch.onPosted(sbn)
         graph.scope.launch {
-            if (!graph.prefs.mirrorNotifications.first()) return@launch
-            if (!shouldMirror(sbn, graph)) return@launch
+            if (!worthSending(sbn, graph)) return@launch
+            // The messages app may be left out of the notifications, or all of them may be off, and its codes still go: copying codes has
+            // its own switch. Only its code then, and only for the messages app: the other apps that were turned off stay off.
+            val codeOnly = !graph.prefs.mirrorNotifications.first() || !graph.prefs.mirrors(sbn.packageName)
+            if (codeOnly && !(isMessagesApp(sbn.packageName) && graph.prefs.copyCodes.first())) return@launch
             // The devices that show notifications, which is every one but another phone. Not decided by the per-device
             // switch: on this phone that switch is "show notifications FROM that device", and a Mac sends none, so a
             // person who turned it off for the Mac silently stopped everything going the other way. The Mac decides
@@ -84,7 +87,7 @@ class MirrorListener : NotificationListenerService() {
             // core sends over Bluetooth if a link is up.
             val targets = graph.host.devices.value.filter { it.platform != TandemPlatform.ANDROID }.map { it.id }
             if (targets.isEmpty()) return@launch
-            active[sbn.key] = sbn
+            if (!codeOnly) active[sbn.key] = sbn
             // Android took the text out of this one because of a code. The message itself may bring that code a moment later (see SmsBridge);
             // if so this has nothing to add, and otherwise it says at least that something came in.
             if (hiddenByAndroid(sbn)) {
@@ -96,11 +99,12 @@ class MirrorListener : NotificationListenerService() {
                 delay(HIDDEN_WAIT_MS)
                 if (CodeDelivery.justSent(HIDDEN_WAIT_MS * 2)) return@launch
             }
-            val notification = convert(sbn, graph.prefs.copyCodes.first()) ?: return@launch
+            val notification = (convert(sbn, graph.prefs.copyCodes.first()) ?: return@launch).copy(codeOnly = codeOnly)
             val code = notification.otp
+            if (codeOnly && code == null) return@launch
             if (code != null) {
                 if (!CodeDelivery.firstTime(code)) return@launch
-                sendIcon(graph, sbn, targets)
+                if (!codeOnly) sendIcon(graph, sbn, targets)
                 CodeDelivery.deliver(graph.host, targets, notification) { _lastSent.value = System.currentTimeMillis() }
                 return@launch
             }
@@ -121,7 +125,11 @@ class MirrorListener : NotificationListenerService() {
         }
     }
 
-    private suspend fun shouldMirror(sbn: StatusBarNotification, graph: nl.markmaaktmedia.tandem.Graph): Boolean {
+    private fun isMessagesApp(packageName: String) =
+        packageName == android.provider.Telephony.Sms.getDefaultSmsPackage(applicationContext)
+
+    /** Whether this kind of notification is worth passing on at all, whichever app it is from. */
+    private suspend fun worthSending(sbn: StatusBarNotification, graph: nl.markmaaktmedia.tandem.Graph): Boolean {
         val n = sbn.notification
         // Group summaries just repeat their children.
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return false
@@ -134,8 +142,7 @@ class MirrorListener : NotificationListenerService() {
         }
         // Ongoing things (music, navigation, downloads) are not worth a banner elsewhere.
         if (n.flags and Notification.FLAG_ONGOING_EVENT != 0) return false
-        if (n.category == Notification.CATEGORY_TRANSPORT || n.category == Notification.CATEGORY_PROGRESS) return false
-        return graph.prefs.mirrors(sbn.packageName)
+        return n.category != Notification.CATEGORY_TRANSPORT && n.category != Notification.CATEGORY_PROGRESS
     }
 
     /** A notification that Android emptied for an app like this one is rebuilt by the system, so it says it comes from Android itself. */
@@ -182,6 +189,7 @@ class MirrorListener : NotificationListenerService() {
             otp = if (findCode) "$title $text".let { tandemFindCode(it) ?: OtpDetector.find(it) } else null,
             progressDone = null,
             progressTotal = null,
+            codeOnly = false,
         )
     }
 

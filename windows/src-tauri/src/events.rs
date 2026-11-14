@@ -529,7 +529,8 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
             toast(app, &i18n::t1(app, "code_copied", code), &name);
         }
     }
-    if !allowed(app, from, "notifications") {
+    // Sent for its code only: the notifications of that app are off on the phone.
+    if n.code_only || !allowed(app, from, "notifications") {
         return;
     }
     // The phone sends a code a few times, because it cannot tell a dead link from a live one. The first one counts.
