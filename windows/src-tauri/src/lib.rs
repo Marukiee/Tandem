@@ -55,6 +55,7 @@ mod zone;
 mod output;
 mod pointer_ready;
 mod power;
+mod storage;
 mod settings;
 mod side;
 #[cfg(all(target_os = "linux", feature = "screen-host"))]
@@ -131,6 +132,7 @@ pub fn run() {
             let handle = app.handle().clone();
             logfile::init(&handle);
             settings::load(&handle);
+            arrange::restore(&handle);
             // A Wayland desktop remembers what the person allowed through a token, which is kept here.
             #[cfg(target_os = "linux")]
             if let Ok(dir) = handle.path().app_data_dir() {
@@ -144,6 +146,7 @@ pub fn run() {
             media::start(&handle);
             players::start(&handle);
             power::start(handle.clone());
+            storage::start(handle.clone());
             find::start_whereabouts(&handle);
             lid::start(handle.clone());
             keepawake::start(handle.clone());

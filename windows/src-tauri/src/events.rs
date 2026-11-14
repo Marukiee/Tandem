@@ -41,6 +41,7 @@ pub fn refresh_devices(app: &AppHandle) {
             crate::side::moved(app, d["id"].as_str().unwrap_or_default().to_string());
         }
     }
+    crate::arrange::forget_missing(app, &list);
     let _ = app.emit("devices", list);
     crate::tray::rebuild(app);
     crate::sendwith::refresh(app);
@@ -299,7 +300,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 Share::Pong => crate::capture::heard(&from, true),
                 // Only the computers that take a pointer in say how big their screen is, and this one is not the main computer of those.
                 Share::Size { width, height } => {
-                    crate::arrange::learned(&from, width as i32, height as i32);
+                    crate::arrange::learned(app, &from, width as i32, height as i32);
                     crate::capture::heard(&from, false);
                     crate::capture::readiness(&from, true);
                 }
