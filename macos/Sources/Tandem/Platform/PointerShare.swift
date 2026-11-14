@@ -4,6 +4,7 @@ import CoreGraphics
 import Observation
 import SwiftUI
 import TandemCore
+import TandemLogic
 
 /// One mouse and keyboard over several computers (see docs/INPUT_SHARING.md). Two roles live here.
 ///
@@ -87,11 +88,27 @@ final class PointerShare {
         ScreenHost.shared.isExtending(to: id)
     }
 
-    /// How big the screens of the other computers are, as they said (in the units of their own pointer).
-    private(set) var sizes: [String: CGSize] = [:]
+    /// How big the screens of the other computers are, as they said (in the units of their own pointer). The last size each one said is
+    /// kept in the data folder, so the arrangement and the edges are right after a restart and while that computer is away.
+    private(set) var sizes: [String: CGSize] = PointerShare.remembered.sizes.mapValues { CGSize(width: $0.width, height: $0.height) }
 
-    /// For the debug window of the arrangement: sizes of made up computers.
+    private static var remembered = RememberedSizes.load(from: sizesFile)
+    private static var sizesFile: URL { AppIdentity.dataDirectory().appendingPathComponent("pointer-sizes.json") }
+
+    /// For the debug window of the arrangement: sizes of made up computers. Not kept, so they never take the place of real ones.
     func debugSizes(_ made: [String: CGSize]) { sizes = made }
+
+    private func heardSize(_ device: String, width: Double, height: Double) {
+        sizes[device] = CGSize(width: width, height: height)
+        if Self.remembered.heard(device, width: width, height: height) { Self.remembered.save(to: Self.sizesFile) }
+    }
+
+    /// The devices in the circle now: a size of one that left it is forgotten.
+    func circleChanged(_ ids: Set<String>) {
+        guard Self.remembered.keep(only: ids) else { return }
+        Self.remembered.save(to: Self.sizesFile)
+        sizes = sizes.filter { ids.contains($0.key) }
+    }
 
     /// The size of all the screens of this Mac together, in points: what the edges and the arrangement are measured in.
     var mainSize: CGSize { screens.size }
@@ -720,7 +737,7 @@ final class PointerShare {
         case .pong:
             break
         case let .size(width, height):
-            sizes[device] = CGSize(width: Double(width), height: Double(height))
+            heardSize(device, width: Double(width), height: Double(height))
             // Said without the pointer being there: that computer can take it now.
             unready.remove(device)
             // The other computer says how big its screen is: from here this Mac follows the pointer over there.

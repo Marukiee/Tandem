@@ -92,6 +92,17 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_ARRANGE") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showArrangementWindow() }
         }
+        // `TANDEM_DEBUG_HEAR_SIZE=2560x1440`: every device in the circle says its screens are that big, as its `Size` message would.
+        if let text = variable("TANDEM_DEBUG_HEAR_SIZE") {
+            let parts = text.split(separator: "x").compactMap { UInt32($0) }
+            if parts.count == 2 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    for device in EngineModel.shared.devices {
+                        PointerShare.shared.received(.size(width: parts[0], height: parts[1]), from: device.id)
+                    }
+                }
+            }
+        }
         // `TANDEM_DEBUG_DEVICEPAGE=linux|linux-away|android|watch`: the page of a made up device, for the layout of its buttons.
         if let kind = variable("TANDEM_DEBUG_DEVICEPAGE") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showDevicePageWindow(kind) }

@@ -45,9 +45,20 @@ let package = Package(
             cSettings: [.unsafeFlags(["-fobjc-arc"])],
             linkerSettings: [.linkedFramework("CoreGraphics"), .linkedFramework("Foundation")]
         ),
+        // Decisions and arithmetic without AppKit or the core, so they can be tested on their own (`swift test`).
+        .target(
+            name: "TandemLogic",
+            path: "Sources/TandemLogic",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .testTarget(
+            name: "TandemLogicTests",
+            dependencies: ["TandemLogic"],
+            path: "Tests/TandemLogicTests"
+        ),
         .executableTarget(
             name: "Tandem",
-            dependencies: ["TandemCore", "TandemVirtualDisplay", .product(name: "SwiftTerm", package: "SwiftTerm")],
+            dependencies: ["TandemCore", "TandemVirtualDisplay", "TandemLogic", .product(name: "SwiftTerm", package: "SwiftTerm")],
             path: "Sources/Tandem",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
