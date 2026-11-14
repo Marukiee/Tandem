@@ -500,10 +500,10 @@ final class EngineModel {
         switch event {
         case .healthChanged:
             refreshHealth()
+        case .transfersChanged:
+            UnderwayTransfers.shared.refresh()
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
-            // A queued offer goes out on a connect without an event of its own (P3).
-            if case .connected = event { UnderwayTransfers.shared.refresh(soon: true) }
             if case .disconnected = event { UnderwayTransfers.shared.refresh(soon: true) }
             if case let .connected(id) = event {
                 HalfwayTransfers.shared.refresh()

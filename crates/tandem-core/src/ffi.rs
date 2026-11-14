@@ -1438,6 +1438,8 @@ pub enum TandemEvent {
     DevicesChanged,
     /// The nights and workouts on this device changed: read them again with `health_records`.
     HealthChanged,
+    /// The queue moved an offer without a file event (it went out, or back in the queue): read `transfers()` again (P3b).
+    TransfersChanged,
     Connected { id: String },
     Disconnected { id: String },
     /// A device cannot be reached on the local network and is known by a Tailscale address, while Tailscale is off here. The app may turn it on.
@@ -1549,6 +1551,7 @@ impl From<Event> for TandemEvent {
         match event {
             Event::DevicesChanged => TandemEvent::DevicesChanged,
             Event::HealthChanged => TandemEvent::HealthChanged,
+            Event::TransfersChanged => TandemEvent::TransfersChanged,
             Event::Connected { id } => TandemEvent::Connected { id: id.to_string() },
             Event::Disconnected { id } => TandemEvent::Disconnected { id: id.to_string() },
             Event::TailscaleNeeded { id } => TandemEvent::TailscaleNeeded { id: id.to_string() },
@@ -2159,7 +2162,7 @@ impl TandemEngine {
 
     /// Every transfer this device knows of, in and out, the newest first: running, waiting for a yes, queued for a device that is away,
     /// stopped halfway, or ended a short while ago (P3b). There is no event of its own: read it again on `ShareOffered`, `Finished`,
-    /// `Connected`, `Disconnected` and, a few times a second at most, on `Progress`.
+    /// `TransfersChanged`, `Disconnected` and, a few times a second at most, on `Progress`.
     pub fn transfers(&self) -> Vec<TandemTransfer> {
         let halfway: std::collections::HashSet<(bool, u64, Option<DeviceId>)> = self
             .engine
