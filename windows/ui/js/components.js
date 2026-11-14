@@ -43,10 +43,15 @@ export function ago(ts) {
   return rtf.format(-Math.floor(m / 1440), "day");
 }
 
-export function DeviceGlyph({ device, size = 40 }) {
-  return html`<span class=${"glyph" + (device.online ? " on" : "")} style=${`width:${size}px;height:${size}px`}>
-    <${Icon} name=${platformIcon(device.platform)} size=${Math.round(size * 0.5)} />
+export function DeviceGlyph({ device, size = 40, ring = false }) {
+  const inner = ring ? size - 6 : size;
+  const glyph = html`<span class=${"glyph" + (device.online ? " on" : "")} style=${`width:${inner}px;height:${inner}px`}>
+    <${Icon} name=${platformIcon(device.platform)} size=${Math.round(inner * 0.5)} />
   </span>`;
+  if (!ring) return glyph;
+  // The battery as a ring around the device: the same circle in the wide sidebar and in the narrow one.
+  const battery = device.online && device.status && device.status.battery;
+  return html`<span class=${"ringed" + (battery ? (battery.level <= 15 ? " low" : "") : " none")} style=${`width:${size}px;height:${size}px;--level:${battery ? battery.level : 0}`}>${glyph}</span>`;
 }
 
 /** A number that runs to its new value instead of jumping, so a battery that charges up or drains reads as moving. */
