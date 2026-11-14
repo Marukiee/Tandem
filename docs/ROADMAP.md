@@ -64,6 +64,18 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   `a_press_carries_its_position_over_the_stream` (`tests/live_touch.rs:118`) en
   `a_device_that_was_killed_gets_back_in_before_the_old_connection_times_out` (`tests/mesh.rs:629`). Alle drie hangen aan een
   vaste wachttijd. Voorstel: wachten op de gebeurtenis in plaats van op de klok, of de marges ruimer op Windows.
+- **R-B37. Een code uit een sms komt niet vanzelf op de computer** (gemeld door Mark 2026-11-14, oorzaak nog niet gezien op een
+  toestel). De weg: `A/messages/SmsBridge.kt` (`look`, `sendCodes`) leest het bericht zelf, `A/mirror/MirrorListener.kt` de melding,
+  `A/messages/CodeDelivery.kt` stuurt de code, en de Mac kopieert hem in `M/Model/EngineModel.swift` (`.notification`, `copyCodes`).
+  Waar het kan stranden, in volgorde van kans: (1) sinds Android 15 haalt Android de tekst uit een melding met een code, en houdt het
+  berichten met een hash of een webadres en RCS drie uur achter voor andere apps; dan werkt het alleen met de toestemming die
+  Shizuku zet (`A/messages/CodeGrant.kt`), en die volgt de schakelaar alleen als Shizuku op dat moment klaar staat. (2) Zonder
+  toestemming om sms te lezen (`SmsAccess.canRead`) doet de weg via het bericht niets. (3) `sendCodes` stopt als de sms-app is
+  uitgezonderd bij het spiegelen (`prefs.mirrors`), ook als iemand dat deed om dubbele meldingen te voorkomen. (4) De herkenning
+  in `K/otp.rs` mist de tekst. Voorstel: eerst namaken op een emulator met Android 15 en 16 (`adb emu sms send`), met gewone codes,
+  codes met een hash, Nederlandse teksten, en de sms-app uitgezonderd; dan per oorzaak oplossen, de sms-app niet laten meetellen
+  voor codes, en uitzoeken of een koppeling als begeleidende app (CompanionDeviceManager) de toestemming zonder Shizuku geeft. De rij
+  Codes in de instellingen zegt al wanneer de telefoon geen codes kan zien; nakijken of dat op het juiste moment gebeurt.
 - **R-V13. De redenen van de kern zijn Engelse zinnen, in elke taal** (zeker, klein tot middel). Een overdracht die mislukt toont
   de tekst van de kern zoals hij is, bijvoorbeeld "The connection dropped" in een Nederlandse app (gezien in de proefversie van de
   Linux- en Windows-app, 2026-11-14). Alleen "cancelled", "declined" en "expired" zijn vertaald. Voorstel: de kern geeft een vaste
