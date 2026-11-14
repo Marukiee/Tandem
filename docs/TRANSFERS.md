@@ -124,7 +124,7 @@ de afzender heeft het niet meer en dat komt als eigen melding; een klembordaanbo
 - Een nieuwe bewaartijd `QUEUED_KEPT` van 7 dagen sinds `created_ms`, daarna `expired` met een `Finished`. Ook de
   opruiming van `outgoing/` (nu 24 uur) mag geen bestand weghalen waar een aanbod in het boek naar wijst.
 - Android: een bestand van een andere app eerst naar `outgoing/` kopieren, want de toestemming verloopt.
-- `SendReport`: een veld `queued`, met `#[uniffi(default)]`.
+- `SendReport`: een veld `queued`, met `#[uniffi(default = None)]` (of een lege lijst als standaard).
 
 Klaar als een kerntest dekt: het aanbod gaat uit zodra de ontvanger verbindt en komt heel aan; na 7 dagen verloopt het met een
 `Finished`; een veranderd en een verdwenen bestand worden gemeld en niet gestuurd; een herstart van de afzender houdt de
