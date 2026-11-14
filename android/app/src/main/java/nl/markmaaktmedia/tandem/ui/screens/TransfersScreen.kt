@@ -110,6 +110,8 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState:
                 }
             }
         }
+        // Asked first, above the filters and also when nothing else is on the page: they are what the person has to answer.
+        halfwayRows(halfway, devices)
         if (transfers.isNotEmpty()) {
             item(key = "filters") {
                 TransferFilters(filter, peers, { filter = it }, Modifier.fillMaxWidth().padding(bottom = 4.dp))
@@ -126,8 +128,6 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState:
                 }
             }
         }
-        // Asked first, also when nothing else is on the page: they are what the person has to answer.
-        halfwayRows(halfway, devices)
         if (transfers.isEmpty() && halfway.isEmpty()) {
             item(key = "empty") {
                 Box(Modifier.fillMaxWidth().padding(top = 60.dp)) {

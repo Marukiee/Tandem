@@ -88,10 +88,6 @@ class HalfwayTransfers(
         if (transfer == null) {
             // The notification outlived the process that knew the question: the page asks it again.
             context.getSystemService(NotificationManager::class.java).cancel("halfway.${key(from, offer)}".hashCode())
-            context.startActivity(
-                MainActivity.internalIntent(context).setAction(MainActivity.ACTION_OPEN_TRANSFERS)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-            )
             return
         }
         when (action) {
