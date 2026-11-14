@@ -374,7 +374,7 @@ fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigin, i
         return;
     }
     // Files dropped on the edge by the computer that shares its pointer with this one: taken at once, and put on the desktop.
-    if crate::drag::offered(app, from, offer, origin) {
+    if crate::drag::offered(app, from, offer, origin, items.len()) {
         return;
     }
     // A picture or files copied on a device that shares the clipboard with this one: on the clipboard, without asking.
