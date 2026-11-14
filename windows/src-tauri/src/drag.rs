@@ -196,6 +196,13 @@ fn land(app: &AppHandle, from: &str, name: &str, path: &Path) -> PathBuf {
 
 /// Moves the file to the folder, under a name that is free there.
 pub fn place(source: &Path, folder: &Path) -> PathBuf {
+    // Linux receives into the folder it puts files down in, so the file may already be there: the name it has is taken by itself, and
+    // a free name would rename it "name 2".
+    if let (Some(parent), Ok(folder)) = (source.parent().and_then(|p| p.canonicalize().ok()), folder.canonicalize()) {
+        if parent == folder {
+            return source.to_path_buf();
+        }
+    }
     let stem = source.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "file".into());
     let extension = source.extension().map(|e| e.to_string_lossy().into_owned());
     let mut target = folder.join(source.file_name().unwrap_or_default());
@@ -230,6 +237,20 @@ mod tests {
         assert_eq!(placed.file_name().unwrap(), "note 2.txt");
         assert_eq!(std::fs::read_to_string(&placed).unwrap(), "one");
         assert_eq!(std::fs::read_to_string(to.join("note.txt")).unwrap(), "already there");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_file_that_is_in_the_folder_already_stays_as_it_is() {
+        let dir = std::env::temp_dir().join(format!("tandem-drag-same-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("photo.jpg"), "one").unwrap();
+        // The folder is spelled another way: the same folder is found by its real path.
+        let spelled = dir.join(".");
+        let placed = place(&dir.join("photo.jpg"), &spelled);
+        assert_eq!(placed, dir.join("photo.jpg"));
+        assert_eq!(std::fs::read_to_string(dir.join("photo.jpg")).unwrap(), "one");
+        assert!(!dir.join("photo 2.jpg").exists());
         let _ = std::fs::remove_dir_all(dir);
     }
 }
