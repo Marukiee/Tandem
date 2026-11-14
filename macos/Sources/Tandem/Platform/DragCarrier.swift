@@ -1,5 +1,6 @@
 import AppKit
 import TandemCore
+import TandemLogic
 
 /// Files that another computer dropped on the edge of its screen towards this Mac, carried here by the pointer. Linux under Wayland
 /// cannot let a drag run on over the edge, so the button is already up when the files arrive: they hang under the pointer as an icon
@@ -7,6 +8,11 @@ import TandemCore
 /// is a small panel right under the pointer, so the press (of this Mac's own mouse, or one played here for the computer that uses it)
 /// lands on it and starts a real drag of the system with the files; the release drops them. Nothing pressed in time, or Escape: they go
 /// where a drop on the edge has always put them (`DragLanding`).
+///
+/// Right under the pointer only while the press belongs to the same movement: the button is still down, or the files came within two
+/// seconds of the pointer coming over. Otherwise, and after a few seconds without a press, they wait on a card beside the pointer, which
+/// catches no click or scroll meant for something else (R-D7). A drag of the system takes no files once it runs, so a drag that is still
+/// held waits for every file of the offer before it starts (R-D8).
 @MainActor
 final class DragCarrier {
     static let shared = DragCarrier()
@@ -22,36 +28,59 @@ final class DragCarrier {
     private var dragging = false
     /// Escape on this Mac's own keyboard, in another app or in Tandem.
     private var escape: [Any] = []
+    /// Waiting beside the pointer instead of under it.
+    private var onCard = false
+    private var toCard: Task<Void, Never>?
+    private var scrollPass: Task<Void, Never>?
 
     var carrying: Bool { !files.isEmpty }
 
     /// Files from `device` arrived while it shares its pointer with this Mac. Taken (true) to hang under the pointer; false when this
     /// is not such a moment and the caller lands them as before.
-    func carry(_ url: URL, name: String, from device: String) -> Bool {
+    /// `allIn`: every file of its offer is in now (or failed).
+    func carry(_ url: URL, name: String, from device: String, allIn: Bool) -> Bool {
         guard PointerShare.shared.isPeer(device), !dragging else { return false }
         if carrying, from != device { putAway() }
+        let first = !carrying
         from = device
         self.name = name
         files.append(url)
+        if first {
+            let held = NSEvent.pressedMouseButtons & 1 != 0
+            onCard = !CarryRules.underPointer(buttonDown: held, sinceCrossing: PointerShare.shared.sinceArrival(from: device))
+        }
         show()
         // The pointer may still be over there: it has a while to come, then a while for the press.
         restartGiveUp(seconds: 30)
-        pickUpIfHeld()
+        if !onCard { restartToCard() }
+        pickUpIfHeld(after: allIn ? 0.15 : 5)
         return true
+    }
+
+    /// No press came: the files step aside, so the next click lands where it was meant.
+    private func restartToCard() {
+        toCard?.cancel()
+        toCard = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard let self, !Task.isCancelled, self.carrying, !self.dragging, NSEvent.pressedMouseButtons & 1 == 0 else { return }
+            self.onCard = true
+            self.show()
+        }
     }
 
     /// A drag that came over the edge from that computer with the button of this Mac's mouse still down: the drag goes on here at once,
     /// so the files are let go wherever the button comes up, not with a press later. The press is played onto the panel under the
     /// pointer, which starts a real drag of the system; the button the person holds ends it. Files of one drag come one by one, so it
     /// waits a moment for the rest, which a drag cannot take in once it has started.
-    private func pickUpIfHeld() {
+    private func pickUpIfHeld(after seconds: Double) {
         pickUp?.cancel()
         pickUp = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(150))
+            try? await Task.sleep(for: .milliseconds(Int(seconds * 1000)))
             guard let self, !Task.isCancelled, self.carrying, !self.dragging, NSEvent.pressedMouseButtons & 1 != 0 else { return }
             let share = PointerShare.shared
             guard share.remote == nil, share.controlledBy == nil else { return }
-            self.moveToPointer()
+            self.onCard = false
+            self.show()
             let at = CGEvent(source: nil)?.location ?? .zero
             CGEvent(mouseEventSource: CGEventSource(stateID: .hidSystemState), mouseType: .leftMouseDown, mouseCursorPosition: at, mouseButton: .left)?
                 .post(tap: .cgSessionEventTap)
@@ -61,7 +90,7 @@ final class DragCarrier {
     /// A press is about to be played here for the computer that uses the pointer: the panel is put exactly under the pointer first, in
     /// case the last movement came after the last step of the timer.
     func beforePress(from device: String) {
-        guard carrying, device == from else { return }
+        guard carrying, device == from, !onCard else { return }
         moveToPointer()
     }
 
@@ -76,7 +105,7 @@ final class DragCarrier {
     private func show() {
         let panel = self.panel ?? CarrierPanel()
         self.panel = panel
-        panel.view.update(files: files, carrier: self)
+        panel.view.update(files: files, carrier: self, card: onCard)
         panel.orderFrontRegardless()
         if escape.isEmpty {
             let pressed: (NSEvent) -> Void = { event in
@@ -86,18 +115,50 @@ final class DragCarrier {
             if let global = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: pressed) { escape.append(global) }
             if let local = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: { pressed($0); return $0 }) { escape.append(local) }
         }
-        moveToPointer()
         follow?.invalidate()
-        // Next to the pointer, the way a dragged file sits there, while it is on this Mac.
+        follow = nil
+        if onCard {
+            // Beside the pointer and still, so it can be picked up from there, or ignored.
+            let at = NSEvent.mouseLocation
+            let frame = panel.frame
+            panel.setFrameOrigin(NSPoint(x: at.x + 18, y: at.y - frame.height - 18))
+            panel.alphaValue = 1
+            panel.ignoresMouseEvents = false
+            panel.view.armed = true
+            return
+        }
+        moveToPointer()
+        // Under the pointer, the way a dragged file sits there, while it is on this Mac.
         follow = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { _ in
             MainActor.assumeIsolated { DragCarrier.shared.moveToPointer() }
+        }
+    }
+
+    /// A scroll under the pointer is for what is under the panel: it is let through and played again there.
+    fileprivate func scrolled(_ event: NSEvent) {
+        guard let panel, !onCard, let copy = event.cgEvent?.copy() else { return }
+        panel.ignoresMouseEvents = true
+        panel.view.armed = false
+        copy.post(tap: .cgSessionEventTap)
+        scrollPass?.cancel()
+        scrollPass = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard let self, !Task.isCancelled else { return }
+            self.scrollPass = nil
+            self.moveToPointer()
         }
     }
 
     /// Right under the pointer while it is on this Mac (used from here, or by the computer the files came from), so a press lands on
     /// the panel; out of sight and out of the way while the pointer is on another computer.
     fileprivate func moveToPointer() {
-        guard let panel, !dragging else { return }
+        guard let panel, !dragging, !onCard else { return }
+        if let scrollPass, !scrollPass.isCancelled, panel.ignoresMouseEvents {
+            // Still letting a scroll through: only follow the pointer.
+            let at = NSEvent.mouseLocation
+            panel.setFrameOrigin(NSPoint(x: at.x - panel.frame.width / 2, y: at.y - panel.frame.height / 2))
+            return
+        }
         let share = PointerShare.shared
         let here = share.controlledBy == from || (share.controlledBy == nil && share.remote == nil)
         panel.alphaValue = here ? 1 : 0
@@ -125,6 +186,11 @@ final class DragCarrier {
         giveUp = nil
         pickUp?.cancel()
         pickUp = nil
+        toCard?.cancel()
+        toCard = nil
+        scrollPass?.cancel()
+        scrollPass = nil
+        onCard = false
         panel?.orderOut(nil)
         panel = nil
         files = []
@@ -210,15 +276,26 @@ private final class CarrierView: NSView, NSDraggingSource {
 
     required init?(coder: NSCoder) { nil }
 
-    func update(files: [URL], carrier: DragCarrier) {
+    func update(files: [URL], carrier: DragCarrier, card: Bool) {
         self.carrier = carrier
         image.image = files.first.map { NSWorkspace.shared.icon(forFile: $0.path) }
-        image.alphaValue = 0.85
+        image.alphaValue = card ? 1 : 0.85
+        // On the card it is a thing of its own to pick up, so it gets a ground and says what it is.
+        wantsLayer = true
+        layer?.backgroundColor = card ? NSColor.windowBackgroundColor.withAlphaComponent(0.92).cgColor : nil
+        layer?.cornerRadius = 12
+        layer?.borderWidth = card ? 1 : 0
+        layer?.borderColor = NSColor.separatorColor.cgColor
+        toolTip = card ? files.map(\.lastPathComponent).joined(separator: "\n") : nil
         badge.isHidden = files.count < 2
         badge.stringValue = "\(files.count)"
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func scrollWheel(with event: NSEvent) {
+        MainActor.assumeIsolated { carrier?.scrolled(event) }
+    }
 
     override func mouseDown(with event: NSEvent) {
         guard armed else { return }
