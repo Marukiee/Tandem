@@ -724,7 +724,10 @@ pub struct TandemOutgoingFile {
 pub struct TandemSendReport {
     pub offer: u64,
     pub sent_to: Vec<String>,
+    /// Not connected now, queued or not.
     pub offline: Vec<String>,
+    /// Of `offline`, the devices it waits for in the queue (P3): it goes when they come back, for up to 7 days.
+    pub queued: Vec<String>,
 }
 
 /// An incoming transfer that stopped halfway before this start and waits for the person: go on or throw away (P2).
@@ -1988,6 +1991,7 @@ impl TandemEngine {
             offer: report.offer,
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
+            queued: ids_to_strings(report.queued),
         })
     }
 
@@ -2043,6 +2047,7 @@ impl TandemEngine {
             offer: report.offer,
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
+            queued: ids_to_strings(report.queued),
         })
     }
 

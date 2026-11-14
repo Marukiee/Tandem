@@ -50,7 +50,16 @@ pub struct OutgoingFile {
 pub struct SendReport {
     pub offer: u64,
     pub sent_to: Vec<DeviceId>,
+    /// Not connected now: every target that did not get it, queued or not.
     pub offline: Vec<DeviceId>,
+    /// Of `offline`, the ones it waits in the queue for (P3): the offer goes when they come back.
+    pub queued: Vec<DeviceId>,
+}
+
+/// Whether an offer of this origin waits for a device that is away (P3). What belonged to a moment does not: a copied picture, a photo
+/// the other device asked for, a drop on the edge of the screen. Nobody wants those days later.
+pub fn queues(origin: ShareOrigin) -> bool {
+    !matches!(origin, ShareOrigin::Clipboard | ShareOrigin::Capture(_) | ShareOrigin::Drag)
 }
 
 /// On mobile data, files above this are not taken without asking, also from a device that may send without asking (a large file from a
@@ -141,7 +150,7 @@ enum PullError {
 
 impl Inner {
     pub(crate) async fn send_files(
-        &self,
+        self: &Arc<Self>,
         targets: &[DeviceId],
         mut files: Vec<OutgoingFile>,
         origin: ShareOrigin,
@@ -163,6 +172,8 @@ impl Inner {
 
         let (online, offline): (Vec<DeviceId>, Vec<DeviceId>) =
             targets.iter().copied().partition(|id| self.session_of(id).is_some());
+        let queue = queues(origin);
+        let queued: Vec<DeviceId> = if queue { offline.clone() } else { Vec::new() };
         let offer_id = rand_u64();
         let items: Vec<RecordItem> = files
             .into_iter()
@@ -177,27 +188,156 @@ impl Inner {
                 path: String::new(),
             })
             .collect();
-        let record = TransferRecord::outgoing(offer_id, origin, items, &online);
+        let record = TransferRecord::outgoing(offer_id, origin, items, &online, &queued);
         let offer = record.share_offer();
         let key = Key::Out(offer_id);
         // In the journal before it goes out: a receiver that takes it without asking pulls at once.
-        if !online.is_empty() {
+        if !record.peers.is_empty() {
             self.journal.insert(record);
         }
 
-        let mut sent_to = Vec::new();
+        let (mut sent_to, mut offline, mut queued) = (Vec::new(), offline, queued);
         for id in online {
             if self.send_to(&id, Msg::ShareOffer(offer.clone())).await.is_ok() {
                 sent_to.push(id);
-            } else {
-                // It never got there, so nothing waits for it.
-                self.journal.change(key, |record| record.peers.retain(|p| p.device != id));
+                continue;
+            }
+            // It never got there: it waits like for a device that was away, or nothing waits for it.
+            self.journal.change(key, |record| {
+                if queue && let Some(receiver) = record.peer_mut(&id) {
+                    receiver.stage = Stage::Queued;
+                    receiver.offered_ms = 0;
+                } else {
+                    record.peers.retain(|p| p.device != id);
+                }
+            });
+            offline.push(id);
+            if queue {
+                queued.push(id);
             }
         }
-        if sent_to.is_empty() {
+        if sent_to.is_empty() && queued.is_empty() {
             self.journal.remove(key);
         }
-        Ok(SendReport { offer: offer_id, sent_to, offline })
+        // A device that came back while this was being sent saw nothing in the queue yet.
+        for id in &queued {
+            if self.session_of(id).is_some() {
+                let this = Arc::clone(self);
+                let id = *id;
+                tokio::spawn(async move { this.send_queued(id).await });
+            }
+        }
+        Ok(SendReport { offer: offer_id, sent_to, offline, queued })
+    }
+
+    /// Sends what waited in the queue for `peer`, which is connected now (P3). Each source is looked at first: a file that is gone or
+    /// changed since it was sent ends for that device with `gone` or `changed` and is not served; the rest goes. An offer of which
+    /// nothing is left is not sent at all.
+    pub(crate) async fn send_queued(self: Arc<Self>, peer: DeviceId) {
+        for key in self.journal.queued_for(&peer) {
+            let Key::Out(offer_id) = key else { continue };
+            let Some(items) = self.journal.read(key, |record| record.items.clone()) else { continue };
+            let this = self.clone();
+            let which: Vec<u32> = (0..items.len() as u32).collect();
+            let Ok((changed, gone)) = tokio::task::spawn_blocking(move || this.changed_or_gone(&items, &which)).await else {
+                continue;
+            };
+            // Claimed in one change, so two connects in a row send it once.
+            let claimed = self
+                .journal
+                .change(key, |record| {
+                    let receiver = record.peer_mut(&peer).filter(|p| p.stage == Stage::Queued)?;
+                    let mut ended = Vec::new();
+                    for (list, reason) in [(&changed, REASON_CHANGED), (&gone, REASON_GONE)] {
+                        for &index in list {
+                            if let Some(progress) = receiver.items.get_mut(index as usize)
+                                && !progress.state.is_final()
+                            {
+                                progress.state = ItemState::Failed;
+                                progress.error = Some(reason.to_string());
+                                ended.push((index, reason));
+                            }
+                        }
+                    }
+                    let send = receiver.unfinished();
+                    if send {
+                        receiver.stage = Stage::Offered;
+                        receiver.offered_ms = now_ms();
+                    } else {
+                        receiver.stage = Stage::Closed;
+                    }
+                    let ended: Vec<(u32, RecordItem, &str)> =
+                        ended.into_iter().map(|(index, reason)| (index, record.items[index as usize].clone(), reason)).collect();
+                    Some((record.share_offer(), send, ended))
+                })
+                .flatten();
+            let Some((offer, send, ended)) = claimed else { continue };
+            for (index, item, reason) in ended {
+                self.emit(Event::Finished(TransferDone {
+                    offer: offer_id,
+                    index,
+                    peer,
+                    incoming: false,
+                    name: item.name,
+                    size: item.size,
+                    location: None,
+                    error: Some(reason.to_string()),
+                }));
+            }
+            if !send {
+                if let Some(run) = self.journal.run(key) {
+                    run.stop_peer(&peer);
+                }
+                info!(%peer, offer = offer_id, "a queued offer had nothing left to send");
+                continue;
+            }
+            info!(%peer, offer = offer_id, "a queued offer goes out");
+            if self.send_to(&peer, Msg::ShareOffer(offer)).await.is_err() {
+                // Gone again before it got there: back in the queue for the next time.
+                self.journal.change(key, |record| {
+                    if let Some(receiver) = record.peer_mut(&peer)
+                        && receiver.stage == Stage::Offered
+                    {
+                        receiver.stage = Stage::Queued;
+                        receiver.offered_ms = 0;
+                    }
+                });
+            }
+        }
+    }
+
+    /// Sends the queue to every device it waits for that is connected now. The connect itself does this; this catches an offer whose
+    /// send failed because the connection went at that moment.
+    pub(crate) fn send_queued_to_connected(self: &Arc<Self>) {
+        for peer in self.journal.queued_peers() {
+            if self.session_of(&peer).is_some() {
+                let this = self.clone();
+                tokio::spawn(async move { this.send_queued(peer).await });
+            }
+        }
+    }
+
+    /// Which of `which` can no longer be opened (gone) or changed since they were offered (another size, or another time of change
+    /// where that was known). For a resume (P2) and the queue (P3).
+    fn changed_or_gone(&self, items: &[RecordItem], which: &[u32]) -> (Vec<u32>, Vec<u32>) {
+        let (mut changed, mut gone) = (Vec::new(), Vec::new());
+        for &index in which {
+            let Some(item) = items.get(index as usize) else {
+                gone.push(index);
+                continue;
+            };
+            let Ok(meta) = self.files.open_read(&item.source).and_then(|file| file.metadata()) else {
+                gone.push(index);
+                continue;
+            };
+            let modified = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_millis() as u64);
+            let other_size = item.size > 0 && meta.len() != item.size;
+            let other_time = item.source_modified_ms.is_some_and(|then| modified.is_some_and(|now| now != then));
+            if other_size || other_time {
+                changed.push(index);
+            }
+        }
+        (changed, gone)
     }
 
     pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, offer: ShareOffer) {
@@ -234,7 +374,25 @@ impl Inner {
         if incoming {
             self.stop_incoming(peer, offer);
         } else {
-            self.stop_outgoing(peer, offer, ItemState::Cancelled, None);
+            let queued =
+                self.journal.read(Key::Out(offer), |record| record.peer(&peer).is_some_and(|p| p.stage == Stage::Queued)).unwrap_or(false);
+            let ended = self.stop_outgoing(peer, offer, ItemState::Cancelled, None);
+            // Nothing of it ran or went out, so nothing else says it ended; the other device never heard of it either (P3).
+            if queued {
+                for (index, item) in ended {
+                    self.emit(Event::Finished(TransferDone {
+                        offer,
+                        index,
+                        peer,
+                        incoming: false,
+                        name: item.name,
+                        size: item.size,
+                        location: None,
+                        error: Some(REASON_CANCELLED.to_string()),
+                    }));
+                }
+                return;
+            }
         }
         let _ = self.send_to(&peer, Msg::ShareCancel { id: offer }).await;
     }
@@ -295,8 +453,8 @@ impl Inner {
         run.stop_peer(&peer);
         self.journal
             .change(key, |record| {
-                let ended = record.peer_mut(&peer).filter(|p| p.open()).map(|p| p.close(state, error)).unwrap_or_default();
-                if record.peers.iter().all(|p| !p.open()) {
+                let ended = record.peer_mut(&peer).filter(|p| p.pending()).map(|p| p.close(state, error)).unwrap_or_default();
+                if record.peers.iter().all(|p| !p.pending()) {
                     run.cancel.cancel();
                 }
                 ended.into_iter().map(|index| (index, record.items[index as usize].clone())).collect()
@@ -457,23 +615,7 @@ impl Inner {
         let Some(items) = found else {
             return ShareResumed { id: ask.id, ok: false, changed: Vec::new(), gone: Vec::new() };
         };
-        let (mut changed, mut gone) = (Vec::new(), Vec::new());
-        for &index in &ask.items {
-            let Some(item) = items.get(index as usize) else {
-                gone.push(index);
-                continue;
-            };
-            let Ok(meta) = self.files.open_read(&item.source).and_then(|file| file.metadata()) else {
-                gone.push(index);
-                continue;
-            };
-            let modified = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_millis() as u64);
-            let other_size = item.size > 0 && meta.len() != item.size;
-            let other_time = item.source_modified_ms.is_some_and(|then| modified.is_some_and(|now| now != then));
-            if other_size || other_time {
-                changed.push(index);
-            }
-        }
+        let (changed, gone) = self.changed_or_gone(&items, &ask.items);
         let ended = self
             .journal
             .change(key, |record| {
@@ -952,11 +1094,26 @@ impl Inner {
         let found = self
             .journal
             .read(key, |record| {
-                record.peer(&peer).filter(|p| p.open())?;
-                record.items.get(request.index as usize).cloned()
+                let receiver = record.peer(&peer).filter(|p| p.open())?;
+                // Found gone or changed before it went out (P3) or on a resume (P2): it ended for this device, and serving what is
+                // there now would hand over something that was never sent.
+                let ended = receiver
+                    .items
+                    .get(request.index as usize)
+                    .filter(|p| p.state == ItemState::Failed && matches!(p.error.as_deref(), Some(REASON_CHANGED | REASON_GONE)));
+                if let Some(ended) = ended {
+                    return Some(Err(refusal_for(ended.error.as_deref())));
+                }
+                record.items.get(request.index as usize).cloned().map(Ok)
             })
             .flatten();
-        let Some(item) = found else {
+        if let Some(Err(refusal)) = &found {
+            info!(%peer, offer = request.offer, index = request.index, "a pull of a file that ended for that device, refused");
+            proto::send(&mut send, &FileResponse { ok: false, error: Some(refusal.clone()), size: 0 }).await?;
+            let _ = send.finish();
+            return Ok(());
+        }
+        let Some(Ok(item)) = found else {
             let why = self.journal.read(key, |record| record.peer(&peer).map(|p| p.stage));
             info!(%peer, offer = request.offer, index = request.index, ?why, "a pull of an offer that is not open for that device, refused");
             let reply = FileResponse { ok: false, error: Some(NO_LONGER_AVAILABLE.into()), size: 0 };
@@ -1142,7 +1299,11 @@ impl Inner {
         let outgoing = self.store.dir().join("outgoing");
         if let Ok(entries) = std::fs::read_dir(outgoing) {
             let old = std::time::SystemTime::now() - Duration::from_secs(24 * 3600);
+            let in_use = self.journal.sources_in_use();
             for entry in entries.flatten() {
+                if in_use.contains(entry.path().to_string_lossy().as_ref()) {
+                    continue;
+                }
                 if let Ok(modified) = entry.metadata().and_then(|m| m.modified())
                     && modified < old {
                         let _ = std::fs::remove_file(entry.path());

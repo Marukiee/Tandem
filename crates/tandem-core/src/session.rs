@@ -208,6 +208,11 @@ impl Inner {
         self.emit(Event::DevicesChanged);
         self.sessions_changed.notify_waiters();
         self.live_peer_up(id, hello.boot_id);
+        // What was sent to it while it was away (P3).
+        {
+            let this = self.clone();
+            tokio::spawn(async move { this.send_queued(id).await });
+        }
         // What was copied here while it was away.
         if let Some(clip) = self.take_missed_clip(&id) {
             let this = self.clone();
