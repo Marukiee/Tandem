@@ -860,3 +860,6 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .tip { position: fixed; z-index: 200; padding: 4px 9px; border-radius: 8px; background: var(--text); color: var(--bg); font: 500 12px var(--font); white-space: nowrap; pointer-events: none;
   opacity: 0; transform: translateY(3px); transition: opacity 0.1s, transform 0.2s var(--spring); }
 .tip.on { opacity: 1; transform: none; }
+
+/* A subject in Settings that holds more than one part. */
+.settings-stack { display: flex; flex-direction: column; gap: 26px; }

@@ -1110,13 +1110,19 @@ function FilesHostSection({ s, patch: patchSettings }) {
 }
 
 // The settings, in sections like the settings of the Mac: what belongs together is together, and a section is a page of its own.
+// By subject, not by the part of the app that made them: what this computer does, what the phone brings here, what is shared,
+// what is shown and steered, and what is heard.
 const SECTIONS = [
-  ["general", "tab_general", "settings"], ["features", "tab_features", "circle-check"], ["clipboard", "tab_clipboard", "clipboard"], ["files", "tab_files", "files"], ["remote", "tab_remote", "device-desktop"],
-  ["mouse", "tab_mouse", "pointer"], ["quickshare", "tab_quickshare", "quickshare"], ["health", "tab_health", "moon"], ["updates", "tab_updates", "download"], ["about", "about", "info-circle"],
+  ["computer", "tab_computer", "device-desktop"], ["phone", "tab_phone", "device-mobile"], ["sharing", "tab_sharing", "send"], ["control", "tab_control", "pointer"],
+  ["sound", "sound_media", "volume"], ["features", "tab_features", "circle-check"], ["about", "tab_about", "info-circle"],
 ];
+// Where the sections of before went, for a place that still asks for one by its old name: the search of the desktop, a row on
+// the page of a device, the tab that was open the last time.
+const MOVED = { general: "computer", clipboard: "sharing", files: "sharing", quickshare: "sharing", remote: "control", mouse: "control", health: "phone", updates: "about" };
+const sectionFor = (id) => (MOVED[id] || id);
 
 function rememberedSection() {
-  try { return SECTIONS.some(([id]) => id === localStorage.getItem("settingsSection")) ? localStorage.getItem("settingsSection") : "general"; } catch { return "general"; }
+  try { const id = sectionFor(localStorage.getItem("settingsSection")); return SECTIONS.some(([known]) => known === id) ? id : "computer"; } catch { return "computer"; }
 }
 
 export function SettingsPage() {
@@ -1129,7 +1135,11 @@ export function SettingsPage() {
     if (!wanted) return;
     // Taken once, so opening Settings later starts where the person left it.
     state.settingsWanted = null;
-    if (SECTIONS.some(([id]) => id === wanted.section)) open(wanted.section);
+    const id = sectionFor(wanted.section);
+    if (!SECTIONS.some(([known]) => known === id)) return;
+    open(id);
+    // A subject holds more than one part now: the one that was asked for is brought into view.
+    requestAnimationFrame(() => { const part = document.getElementById("set-" + wanted.section); if (part) part.scrollIntoView({ block: "start" }); });
   }, [wanted && wanted.at]);
   const patch = async (change) => { set({ settings: await call("set_settings", { patch: change }) }); setLanguage(state.settings.language, state.systemLanguage); };
   return html`<div class="wrap settings">
@@ -1140,16 +1150,18 @@ export function SettingsPage() {
           <${Icon} name=${icon} size=${17} /><span>${t(label)}</span></button>`)}
       </nav>
       <div class="settings-content" key=${section}>
-        ${section === "general" && html`<${GeneralSettings} s=${s} patch=${patch} />`}
+        ${section === "computer" && html`<${GeneralSettings} s=${s} patch=${patch} part="computer" />`}
+        ${section === "phone" && html`<div class="settings-stack"><${GeneralSettings} s=${s} patch=${patch} part="phone" /><div id="set-health"><${HealthSection} /></div></div>`}
+        ${section === "sharing" && html`<div class="settings-stack"><${GeneralSettings} s=${s} patch=${patch} part="files" />
+          <div id="set-files"><${FilesHostSection} s=${s} patch=${patch} /></div>
+          <div id="set-quickshare"><${QuickShareSection} s=${s} patch=${patch} /></div>
+          <div id="set-clipboard"><${ClipboardSettings} s=${s} patch=${patch} /></div></div>`}
+        ${section === "control" && html`<div class="settings-stack"><div id="set-remote"><${RemoteSettings} s=${s} patch=${patch} /></div>
+          <${GeneralSettings} s=${s} patch=${patch} part="camera" />
+          <div id="set-mouse"><${MouseSection} s=${s} patch=${patch} /></div></div>`}
+        ${section === "sound" && html`<${GeneralSettings} s=${s} patch=${patch} part="sound" />`}
         ${section === "features" && html`<${FeaturesSettings} />`}
-        ${section === "clipboard" && html`<${ClipboardSettings} s=${s} patch=${patch} />`}
-        ${section === "files" && html`<${FilesHostSection} s=${s} patch=${patch} />`}
-        ${section === "remote" && html`<${RemoteSettings} s=${s} patch=${patch} />`}
-        ${section === "mouse" && html`<${MouseSection} s=${s} patch=${patch} />`}
-        ${section === "quickshare" && html`<${QuickShareSection} s=${s} patch=${patch} />`}
-        ${section === "health" && html`<${HealthSection} />`}
-        ${section === "updates" && html`<${UpdateSettings} s=${s} patch=${patch} />`}
-        ${section === "about" && html`<${AboutSettings} />`}
+        ${section === "about" && html`<div class="settings-stack"><div id="set-updates"><${UpdateSettings} s=${s} patch=${patch} /></div><${AboutSettings} /></div>`}
       </div>
     </div>
   </div>`;
@@ -1221,11 +1233,12 @@ function FocusSettings({ s, patch }) {
     </div>`;
 }
 
-function GeneralSettings({ s, patch }) {
+/** The settings that were one long list under General, each now with the subject it belongs to: [part] says which of them. */
+function GeneralSettings({ s, patch, part }) {
   const [name, setName] = useState(state.self ? state.self.name : "");
   const delays = ["low", "normal", "smooth"];
   const saved = (text) => say(text);
-  return html`<div style="display:flex;flex-direction:column;gap:12px">
+  if (part === "computer") return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("this_pc")}</h2>
     <div class="card" style="display:flex;gap:10px;align-items:center">
       <label class="muted" for="pcname">${t("pc_name")}</label>
@@ -1234,57 +1247,24 @@ function GeneralSettings({ s, patch }) {
     </div>
     <div class="small muted">${t("pc_name_sub")}</div>
 
-    <h2>${t("behaviour")}</h2>
+    <h2>${t("startup")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="power" title=${t("start_with_windows")} sub=${t("start_with_windows_sub")} on=${state.autostart}
+      <${SettingRow} icon="power" title=${t("start_with_windows")} on=${state.autostart}
         onChange=${async (v) => { try { set({ autostart: await call("set_autostart", { enabled: v }) }); } catch (e) { failed(e); } }} />
       <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
-      <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
-      <${SettingRow} icon="phone" title=${t("pause_during_calls")} sub=${t("pause_during_calls_sub")} on=${s.pauseDuringCalls} onChange=${(v) => patch({ pauseDuringCalls: v })} />
-      <${SettingRow} icon="bolt" title=${t("battery_alerts")} sub=${t("battery_alerts_sub")} on=${s.batteryAlerts} onChange=${(v) => patch({ batteryAlerts: v })} />
-      <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
-      <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
       <${SettingRow} icon="coffee" title=${t("keep_awake")} sub=${t("keep_awake_sub")} on=${s.keepAwake && state.canKeepAwake} grey=${!state.canKeepAwake}
         onChange=${(v) => (v && !state.canKeepAwake ? say(t("keep_awake_why")) : patch({ keepAwake: v }))} />
-      ${(state.platform === "windows" || state.hasLid) && html`<${SettingRow} icon="device-laptop" title=${t("keep_awake_lid")} sub=${t("keep_awake_lid_sub")}
+      ${(state.platform === "windows" || state.hasLid) && html`<${SettingRow} icon="device-laptop" title=${t("keep_awake_lid")}
         on=${s.keepAwakeLid !== false} disabled=${!s.keepAwake || !state.canKeepAwake} onChange=${(v) => patch({ keepAwakeLid: v })} />`}
-      <${SettingRow} icon="key" title=${t("unlock_afar")} sub=${t("unlock_afar_sub")} on=${s.unlockFromAfar && state.canUnlock} grey=${!state.canUnlock}
-        onChange=${(v) => (v && !state.canUnlock ? say(t("unlock_afar_why")) : patch({ unlockFromAfar: v }))} />
+    </div>
+
+    <h2>${t("connection")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
-      <${SettingRow} icon="camera" title=${html`${t("camera_obs")} <span class="muted" title=${t("camera_obs_info", OBS_ADDRESS)} style="cursor:help">ⓘ</span>`} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })}>
-        <div style="display:flex;gap:8px;align-items:center">
-          ${s.cameraToObs && html`<button class="btn small" title=${OBS_ADDRESS} onClick=${() => navigator.clipboard.writeText(OBS_ADDRESS).then(() => say(t("camera_obs_copied"))).catch(failed)}>${t("copy_address")}</button>`}
-          <${Switch} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })} label=${t("camera_obs")} />
-        </div>
-      <//>
     </div>
 
     ${state.platform === "linux" && html`<${SearchSettings} s=${s} patch=${patch} />`}
-
-    <${FocusSettings} s=${s} patch=${patch} />
-
-    <h2>${t("sound_media")}</h2>
-    <div class="card flush">
-      <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
-      <${SettingRow} icon="music" title=${t("share_media")} sub=${t("share_media_sub")} on=${s.shareMedia} onChange=${(v) => patch({ shareMedia: v })} />
-      <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
-      <${SettingRow} icon="hourglass" title=${t("sound_delay")} sub=${t("sound_delay_sub")} disabled=${!s.phoneSound}>
-        <select value=${s.soundDelay || "normal"} disabled=${!s.phoneSound} onChange=${(e) => patch({ soundDelay: e.target.value })}>
-          ${delays.map((d) => html`<option value=${d}>${t("delay_" + d)}</option>`)}
-        </select>
-      <//>
-      <${FindSoundRow} SettingRow=${SettingRow} />
-    </div>
-
-    <h2>${t("received_files")}</h2>
-    <div class="card flush">
-      <${SettingRow} icon="download" title=${t("download_folder")} sub=${state.downloadDir}>
-        <div style="display:flex;gap:6px">
-          <button class="btn small" onClick=${async () => { const dir = await call("choose_download_dir"); if (dir) set({ downloadDir: dir }); }}>${t("change")}</button>
-          <button class="btn small" onClick=${() => call("open_downloads").catch(failed)}>${t("open_folder")}</button>
-        </div>
-      <//>
-    </div>
 
     <h2>${t("language")}</h2>
     <div class="card flush">
@@ -1304,6 +1284,53 @@ function GeneralSettings({ s, patch }) {
         <button class="btn small" onClick=${() => call("settings_import").then((opened) => opened && set({ dialog: { kind: "restore", ...opened } })).catch(failed)}>${t("backup_import_button")}</button>
       <//>
     </div>
+  </div>`;
+  if (part === "phone") return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("tab_phone")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="bell" title=${t("phone_notifications")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
+      <${SettingRow} icon="clipboard" title=${t("copy_codes")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
+      <${SettingRow} icon="bolt" title=${t("battery_alerts")} sub=${t("battery_alerts_sub")} on=${s.batteryAlerts} onChange=${(v) => patch({ batteryAlerts: v })} />
+      <${SettingRow} icon="phone" title=${t("pause_during_calls")} on=${s.pauseDuringCalls} onChange=${(v) => patch({ pauseDuringCalls: v })} />
+      <${SettingRow} icon="key" title=${t("unlock_afar")} sub=${t("unlock_afar_sub")} on=${s.unlockFromAfar && state.canUnlock} grey=${!state.canUnlock}
+        onChange=${(v) => (v && !state.canUnlock ? say(t("unlock_afar_why")) : patch({ unlockFromAfar: v }))} />
+    </div>
+
+    <${FocusSettings} s=${s} patch=${patch} />
+  </div>`;
+  if (part === "sound") return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("sound_media")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
+      <${SettingRow} icon="music" title=${t("share_media")} sub=${t("share_media_sub")} on=${s.shareMedia} onChange=${(v) => patch({ shareMedia: v })} />
+      <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
+      <${SettingRow} icon="hourglass" title=${t("sound_delay")} sub=${t("sound_delay_sub")} disabled=${!s.phoneSound}>
+        <select value=${s.soundDelay || "normal"} disabled=${!s.phoneSound} onChange=${(e) => patch({ soundDelay: e.target.value })}>
+          ${delays.map((d) => html`<option value=${d}>${t("delay_" + d)}</option>`)}
+        </select>
+      <//>
+      <${FindSoundRow} SettingRow=${SettingRow} />
+    </div>
+  </div>`;
+  if (part === "files") return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("received_files")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="download" title=${t("download_folder")} sub=${state.downloadDir}>
+        <div style="display:flex;gap:6px">
+          <button class="btn small" onClick=${async () => { const dir = await call("choose_download_dir"); if (dir) set({ downloadDir: dir }); }}>${t("change")}</button>
+          <button class="btn small" onClick=${() => call("open_downloads").catch(failed)}>${t("open_folder")}</button>
+        </div>
+      <//>
+    </div>
+  </div>`;
+  // The camera of a phone for OBS: it is about what this computer shows, so it sits with the screen.
+  return html`<div class="card flush">
+      <${SettingRow} icon="camera" title=${html`${t("camera_obs")} <span class="muted" title=${t("camera_obs_info", OBS_ADDRESS)} style="cursor:help">ⓘ</span>`} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })}>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${s.cameraToObs && html`<button class="btn small" title=${OBS_ADDRESS} onClick=${() => navigator.clipboard.writeText(OBS_ADDRESS).then(() => say(t("camera_obs_copied"))).catch(failed)}>${t("copy_address")}</button>`}
+          <${Switch} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })} label=${t("camera_obs")} />
+        </div>
+      <//>
   </div>`;
 }
 
