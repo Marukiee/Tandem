@@ -209,32 +209,77 @@ melden, net als de batterij in `power.rs`, anders weigert hij nooit vooraf en wa
 | vraag voor het sturen, tekst | It has less free space than these files take. If they do not fit, it refuses them. | Daar is minder ruimte vrij dan deze bestanden innemen. Passen ze niet, dan weigert het ze. |
 | knoppen | Cancel / Send anyway | Annuleer / Toch sturen |
 
-### P3. Wachtrij voor apparaten die weg zijn
+### R-V13. Vaste codes voor redenen (gebouwd)
 
-- `send_files` zet ontvangers die offline zijn in het boek met `stage: queued` en `offered_ms: 0` (nu laat het ze weg). Bij
-  `Connected` (`session.rs`) gaat voor elk aanbod met die ontvanger in `queued` het aanbod uit: `offered`, `offered_ms` nu.
-- Voor het versturen elke bron openen en `size` en `source_modified_ms` vergelijken; weg of veranderd: die bestanden voor die
-  ontvanger `failed` met een reden (`source gone`, `source changed`), een `Finished` per bestand, en de rest gaat wel.
-- Een nieuwe bewaartijd `QUEUED_KEPT` van 7 dagen sinds `created_ms`, daarna `expired` met een `Finished`. Ook de
-  opruiming van `outgoing/` (nu 24 uur) mag geen bestand weghalen waar een aanbod in het boek naar wijst.
-- Android: een bestand van een andere app eerst naar `outgoing/` kopieren, want de toestemming verloopt.
-- `SendReport`: een veld `queued`, met `#[uniffi(default = None)]` (of een lege lijst als standaard).
+`TransferDone::error` en `error` in het boek bevatten alleen nog een vaste code (`transfer::REASONS`), nooit een zin. Details gaan naar
+het log. Op de draad blijft een afzender met een zin weigeren (`FileResponse::error`), zodat een oudere ontvanger iets leesbaars toont;
+een nieuwe ontvanger maakt er een code van (`reason_from_sender`). `ShareReply::reason` met iets anders dan een code wordt `declined`.
+Een app vertaalt elke code en toont voor alles wat hij niet kent (ook zinnen van een oudere kern) "Failed / Mislukt", nooit de tekst zelf.
 
-Klaar als een kerntest dekt: het aanbod gaat uit zodra de ontvanger verbindt en komt heel aan; na 7 dagen verloopt het met een
-`Finished`; een veranderd en een verdwenen bestand worden gemeld en niet gestuurd; een herstart van de afzender houdt de
-wachtrij.
+| Code | Binnenkomend | Uitgaand |
+| --- | --- | --- |
+| `cancelled` | Cancelled / Geannuleerd | idem |
+| `declined` | Declined / Geweigerd | idem |
+| `expired` | Expired / Verlopen | idem |
+| `gone` | No longer on %@ / Niet meer op %@ | The file is no longer there / Het bestand is er niet meer |
+| `changed` | Changed on %@ since it was sent / Veranderd op %@ sinds het gestuurd werd | Changed since it was sent / Veranderd sinds het gestuurd werd |
+| `no space` | Not enough space on this device / Niet genoeg ruimte op dit apparaat | Not enough space on %@ / Niet genoeg ruimte op %@ |
+| `connection lost` | The connection with %@ dropped / De verbinding met %@ viel weg | idem |
+| `checksum failed` | It arrived damaged. Send it again. / Het kwam beschadigd aan. Stuur het opnieuw. | idem |
+| `not saved` | Could not be saved on this device / Kon niet worden bewaard op dit apparaat | Could not be saved on %@ / Kon niet worden bewaard op %@ |
+| `failed` en alles onbekend | Failed / Mislukt | idem |
 
-### P3b. Het paneel Onderweg en Inkomend
+Android: `AndroidFiles.finished` moet bij elke eindcode het uitgaande bestand loslaten, niet alleen bij `cancelled`, `declined` en `expired`.
 
-Voorstel voor `ffi.rs`: `fn transfers(&self) -> Vec<TandemTransfer>`, een record dat `TransferRecord` volgt
-(`offer`, `incoming`, `origin`, `created_ms`, `updated_ms`, `items`, `peers` met de apparaat-id als tekst, `held`) en twee enums
-`TandemTransferStage` en `TandemItemState` met dezelfde namen als hierboven, plus `Unknown`. De app vraagt de lijst opnieuw bij
-`ShareOffered`, `Finished` en (beperkt, hooguit een paar keer per seconde) `Progress`; een nieuwe gebeurtenis is dan niet nodig,
-en zonder nieuwe variant breekt geen enkele `switch` in de apps. Knoppen: Stop is `cancel_transfer`, Verder gaan en Weggooien zijn
-die van P2, Opnieuw bij een mislukt uitgaand bestand stuurt dat bestand als nieuw aanbod.
+### P3. Wachtrij voor apparaten die weg zijn (gebouwd)
 
-Klaar als: de kerntest een lopende, een wachtende, een halve, een wachtrij- en een mislukte overdracht in `transfers()` terugziet
-met de juiste stand, en de Mac het paneel toont met alle vijf.
+- `send_files` zet ontvangers die niet verbonden zijn in het boek met `stage: queued` en `offered_ms: 0`; ook een ontvanger waarnaar het
+  versturen mislukte. Alleen voor `Files`, `Screenshot`, `Photo` en `Other` (`transfer::queues`); klembord, `Capture` en `Drag` horen bij
+  een moment en wachten niet. `SendReport::queued` (ffi `TandemSendReport.queued`) zegt voor wie het wacht; `offline` blijft alles wat niet
+  verbonden was.
+- Bij `Connected` (en elke 5 seconden voor verbonden apparaten, als vangnet) kijkt de afzender elke bron na (`size` en
+  `source_modified_ms`). Weg of veranderd: dat bestand voor die ontvanger `failed` met `gone` of `changed`, een `Finished` per bestand,
+  en het wordt niet bediend (een pull krijgt een weigering die de nieuwe ontvanger als dezelfde code ziet). Daarna gaat het aanbod uit
+  (`offered`). Is er niets over, dan wordt niets gestuurd en is die ontvanger dicht. Mislukt het versturen, dan terug in de wachtrij.
+- `QUEUED_KEPT` is 7 dagen sinds `created_ms`, daarna `expired` met een `Finished` (de taak noemde `WAITING_KEPT`, maar de eis van Mark
+  in de roadmap is 7 dagen). Een aanbod dat net eindigde blijft daarna nog `ENDED_KEPT` in het boek. Kopieen in `outgoing/` waar een
+  lopend aanbod naar wijst worden niet opgeruimd.
+- Stoppen: `cancel_transfer(peer, offer, false)` werkt ook op een wachtrij-aanbod en geeft dan een `Finished` met `cancelled` per bestand;
+  het andere apparaat hoort er niets van (het kende het niet).
+- Android nog te doen: een bestand van een andere app eerst naar `outgoing/` kopieren, want de toestemming van een content-URI verloopt
+  (anders wordt het na een herstart `gone`). Tot de schil er is, zet Android al in de wachtrij zonder het te tonen, en klopt de toast
+  "offline" niet meer: toon bij een niet-lege `queued` "Waits for %@. It goes as soon as it is back. / Wacht op %@. Het gaat zodra het
+  terug is."
+
+Tests: `a_queued_offer_survives_a_restart_and_goes_out_when_the_receiver_comes_back`,
+`a_queued_file_that_changed_or_went_is_reported_and_not_sent` (ook stoppen) in `tests/transfers.rs`, en
+`a_queued_offer_expires_after_seven_days_for_that_device_only` in `journal.rs`.
+
+### P3b. Het paneel Onderweg en Inkomend (gebouwd, Mac)
+
+ffi `transfers() -> Vec<TandemTransfer>`: `offer`, `incoming`, `origin`, `created_ms`, `updated_ms`, `items` (`name`, `size`, `mime`,
+`source`: uit, voor Opnieuw sturen), `peers` (`device`, `stage: TandemTransferStage`, `offered_ms`, `items`: `state: TandemItemState`,
+`done`, `error`, `location`), `held` en `halfway` (wacht op Verder gaan of Weggooien, zoals `resumable_transfers`). Geen nieuwe
+gebeurtenis: lees opnieuw bij `ShareOffered`, `Finished`, `Connected`, `Disconnected` en hooguit twee keer per seconde bij `Progress`.
+
+Voorbeeld: `macos/Sources/Tandem/Model/UnderwayTransfers.swift` en `UI/UnderwaySection.swift`, bovenaan Gedeeld. Een rij per aanbod per
+apparaat, binnenkomend van klembord, slepen en `Capture` niet. Twee groepen met een kopje: **Underway / Onderweg** (uit) en
+**Incoming / Inkomend** (in, met eerst de halve overdrachten van P2). Per soort:
+
+| Soort | Wanneer | Tekst (Engels / Nederlands) | Knoppen |
+| --- | --- | --- | --- |
+| wachtrij | uit, `queued` | Waits for %1$@. It goes as soon as %2$@ is back. / Wacht op %1$@. Het gaat zodra %2$@ terug is. | kruisje "Do not send / Niet sturen" |
+| wacht op ja, uit | `offered` | Waits for a yes on %@ / Wacht op een ja van %@ | kruisje "Stop" |
+| wacht op ja, in | `offered` | %1$@ wants to send this, %2$@ (grootte) / %1$@ wil dit sturen, %2$@ | Decline / Weigeren, Accept / Accepteer |
+| loopt | `accepted`, een bestand niet af | %1$@ of %2$@ to %3$@ / %1$@ van %2$@ naar %3$@ (in: from / van) en een voortgangsbalk | kruisje "Stop" |
+| mislukt | uit, een bestand `failed` | de reden van het eerste mislukte bestand (tabel hierboven) | Send again / Opnieuw sturen, kruisje "Hide / Verberg" |
+| halverwege | in, `halfway` | zie P2 | Throw away, Go on |
+
+Titel van een rij: de naam van het eerste bestand dat niet af is, met "%1$@ and %2$d more / %1$@ en nog %2$d". Stop is
+`cancel_transfer`, Opnieuw sturen stuurt de mislukte `source`s als nieuw aanbod naar hetzelfde apparaat. Kopjes: "Underway / Onderweg",
+"Incoming / Inkomend".
+
+Test: `the_panel_sees_halfway_waiting_queued_failed_and_running_transfers` in `tests/transfers.rs`.
 
 ### P4. Echte mappen
 
