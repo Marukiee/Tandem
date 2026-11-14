@@ -215,16 +215,18 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
         }
 
-        // Sending: the two things a phone sends most, as the rows of a group like the rest of the page.
-        if (device.online) {
+        // Sending: the two things a phone sends most, as the rows of a group like the rest of the page. Files also go to a device that is
+        // away: they wait in the queue (P3) and go when it is back. The clipboard is of the moment, so that row needs the device.
+        run {
             SectionHeader(stringResource(R.string.section_send), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
                 ActionRow(
-                    0, 2, TandemIcons.Upload, stringResource(R.string.row_send_files), stringResource(R.string.send_files_sub), { picker.launch(arrayOf("*/*")) },
+                    0, if (device.online) 2 else 1, TandemIcons.Upload, stringResource(R.string.row_send_files),
+                    stringResource(if (device.online) R.string.send_files_sub else R.string.send_files_sub_away), { picker.launch(arrayOf("*/*")) },
                     iconTint = MaterialTheme.colorScheme.onPrimary, iconContainer = MaterialTheme.colorScheme.primary,
                 )
                 // Sent right here, so a button like Lock, not the arrow of a page.
-                nl.markmaaktmedia.tandem.ui.components.ButtonRow(
+                if (device.online) nl.markmaaktmedia.tandem.ui.components.ButtonRow(
                     1, 2, TandemIcons.Paste, stringResource(R.string.row_send_clipboard), stringResource(R.string.send_clipboard_sub),
                     button = stringResource(R.string.send_clipboard_button), buttonIcon = TandemIcons.Upload, ready = true, whyNot = null,
                     onClick = {
