@@ -5,9 +5,9 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
@@ -35,6 +35,9 @@ pub(crate) const ENDED_KEPT: Duration = Duration::from_secs(6 * 3600);
 const ENDED_MAX: usize = 200;
 /// A file that could not be read (broken, or written by a newer version) goes when it is this old.
 const UNREADABLE_KEPT: Duration = Duration::from_secs(7 * 24 * 3600);
+/// The most often one offer is written when only its files end (R-V12): every write costs an fsync, and an offer of hundreds of small
+/// files would otherwise write hundreds of times. A kill loses at most this much, which the start settles like any other kill.
+pub(crate) const WRITE_EVERY: Duration = Duration::from_millis(500);
 
 /// Which offer: outgoing offers are ours, so their number is enough; incoming numbers are chosen by each sender.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -360,6 +363,18 @@ impl Run {
 struct Entry {
     record: TransferRecord,
     run: Arc<Run>,
+    /// When it was last written in this run, for `WRITE_EVERY`.
+    written: Option<Instant>,
+    /// Changed in memory since that write; a flush is due at `written + WRITE_EVERY`.
+    dirty: bool,
+    /// A task waits to flush it, so a burst of changes makes one task.
+    flush_waiting: bool,
+}
+
+impl Entry {
+    fn new(record: TransferRecord, run: Arc<Run>) -> Entry {
+        Entry { record, run, written: None, dirty: false, flush_waiting: false }
+    }
 }
 
 /// Files that ended because their offer expired: one `Finished` each, and for an incoming offer that waited for a yes, a word to
@@ -373,8 +388,42 @@ pub(crate) struct Lapse {
 }
 
 pub(crate) struct Journal {
+    shared: Arc<Shared>,
+}
+
+/// What the tasks that flush later share with the journal.
+struct Shared {
     store: Store,
     book: Mutex<HashMap<Key, Entry>>,
+    /// The engine stops: every change goes to disk at once, as nothing may wait for a flush that never comes.
+    stopping: AtomicBool,
+    #[cfg(test)]
+    writes: std::sync::atomic::AtomicUsize,
+}
+
+impl Shared {
+    /// Writes while the book is locked (the caller holds it): two changes of one offer can never land on disk in the wrong order, and a
+    /// late flush writes what is in memory now, never an older copy over a newer one or an offer that was removed back.
+    fn write(&self, entry: &mut Entry) {
+        #[cfg(test)]
+        self.writes.fetch_add(1, Ordering::SeqCst);
+        if let Err(e) = self.store.write_cbor(&entry.record.key().file_name(), &entry.record) {
+            warn!(offer = entry.record.offer, "the journal could not be written: {e}");
+        }
+        entry.written = Some(Instant::now());
+        entry.dirty = false;
+    }
+
+    /// Writes what is due: everything when `all`, else what changed at least `WRITE_EVERY` after its last write.
+    fn flush(&self, now: Instant, all: bool) {
+        let mut book = self.book.lock().unwrap();
+        for entry in book.values_mut() {
+            let due = entry.written.is_none_or(|written| now.duration_since(written) >= WRITE_EVERY);
+            if entry.dirty && (all || due) {
+                self.write(entry);
+            }
+        }
+    }
 }
 
 impl Journal {
@@ -444,74 +493,125 @@ impl Journal {
                     }
                 }
             }
-            book.insert(record.key(), Entry { record, run });
+            book.insert(record.key(), Entry::new(record, run));
         }
-        let journal = Journal { store, book: Mutex::new(HashMap::new()) };
+        let shared = Shared {
+            store,
+            book: Mutex::new(HashMap::new()),
+            stopping: AtomicBool::new(false),
+            #[cfg(test)]
+            writes: Default::default(),
+        };
         // What the start changed goes to disk now, so the partial lengths and the stops are there even if nothing changes later.
         for key in changed {
-            journal.write(&book[&key].record);
+            shared.write(book.get_mut(&key).unwrap());
         }
-        *journal.book.lock().unwrap() = book;
-        Ok(journal)
+        *shared.book.lock().unwrap() = book;
+        Ok(Journal { shared: Arc::new(shared) })
     }
 
-    fn write(&self, record: &TransferRecord) {
-        if let Err(e) = self.store.write_cbor(&record.key().file_name(), record) {
-            warn!(offer = record.offer, "the journal could not be written: {e}");
-        }
+    fn book(&self) -> std::sync::MutexGuard<'_, HashMap<Key, Entry>> {
+        self.shared.book.lock().unwrap()
     }
 
     /// Adds an offer, or replaces the one with the same key, and returns what a running engine keeps of it.
     pub fn insert(&self, record: TransferRecord) -> Arc<Run> {
         let run = Arc::new(Run::new());
-        let mut book = self.book.lock().unwrap();
-        // Written while the book is locked, here and in `change`: two changes of one offer can never land on disk in the wrong order,
-        // and whoever sees a state in memory can count on it being on disk.
-        self.write(&record);
-        book.insert(record.key(), Entry { record, run: run.clone() });
+        let mut book = self.book();
+        let mut entry = Entry::new(record, run.clone());
+        self.shared.write(&mut entry);
+        book.insert(entry.record.key(), entry);
         run
     }
 
     pub fn run(&self, key: Key) -> Option<Arc<Run>> {
-        self.book.lock().unwrap().get(&key).map(|entry| entry.run.clone())
+        self.book().get(&key).map(|entry| entry.run.clone())
     }
 
     pub fn read<R>(&self, key: Key, f: impl FnOnce(&TransferRecord) -> R) -> Option<R> {
-        self.book.lock().unwrap().get(&key).map(|entry| f(&entry.record))
+        self.book().get(&key).map(|entry| f(&entry.record))
     }
 
-    /// Changes an offer and writes it through.
+    /// Changes an offer and writes it through: a change of stage, a stop, anything a restart must find.
     pub fn change<R>(&self, key: Key, f: impl FnOnce(&mut TransferRecord) -> R) -> Option<R> {
-        let mut book = self.book.lock().unwrap();
+        let mut book = self.book();
         let entry = book.get_mut(&key)?;
         let result = f(&mut entry.record);
         entry.record.updated_ms = now_ms();
-        self.write(&entry.record);
+        self.shared.write(entry);
         Some(result)
+    }
+
+    /// Changes an offer for the end of one of its files, and writes it at most every `WRITE_EVERY` (R-V12). The last file of an offer
+    /// and anything while the engine stops go through at once. A kill loses at most the last `WRITE_EVERY`: a file that came in shows
+    /// as interrupted after the start, and a resume pulls it again.
+    pub fn file_ended<R>(&self, key: Key, f: impl FnOnce(&mut TransferRecord) -> R) -> Option<R> {
+        let mut book = self.book();
+        let entry = book.get_mut(&key)?;
+        let result = f(&mut entry.record);
+        entry.record.updated_ms = now_ms();
+        let due = entry.written.is_none_or(|written| written.elapsed() >= WRITE_EVERY);
+        let handle = tokio::runtime::Handle::try_current();
+        if due || entry.record.ended() || self.shared.stopping.load(Ordering::SeqCst) || handle.is_err() {
+            self.shared.write(entry);
+            return Some(result);
+        }
+        entry.dirty = true;
+        if !entry.flush_waiting
+            && let (Ok(handle), Some(written)) = (handle, entry.written)
+        {
+            entry.flush_waiting = true;
+            let shared = self.shared.clone();
+            let at = written + WRITE_EVERY;
+            handle.spawn(async move {
+                tokio::time::sleep_until(at.into()).await;
+                let mut book = shared.book.lock().unwrap();
+                // Removed meanwhile: nothing to write, and writing would bring it back.
+                if let Some(entry) = book.get_mut(&key) {
+                    entry.flush_waiting = false;
+                    if entry.dirty {
+                        shared.write(entry);
+                    }
+                }
+            });
+        }
+        Some(result)
+    }
+
+    /// Writes every change that waits for its turn, and from now on writes each change at once: the engine stops.
+    pub fn flush_all(&self) {
+        self.shared.stopping.store(true, Ordering::SeqCst);
+        self.shared.flush(Instant::now(), true);
+    }
+
+    /// Writes what waited at least `WRITE_EVERY`. The tasks of `file_ended` do this by themselves; this is for a test without them.
+    #[cfg(test)]
+    fn flush_due(&self, now: Instant) {
+        self.shared.flush(now, false);
     }
 
     /// Changes an offer in memory only: progress, and `Running`, which a restart turns into `Interrupted` anyway.
     pub fn touch<R>(&self, key: Key, f: impl FnOnce(&mut TransferRecord) -> R) -> Option<R> {
-        self.book.lock().unwrap().get_mut(&key).map(|entry| f(&mut entry.record))
+        self.book().get_mut(&key).map(|entry| f(&mut entry.record))
     }
 
     pub fn remove(&self, key: Key) -> Option<TransferRecord> {
-        let mut book = self.book.lock().unwrap();
+        let mut book = self.book();
         let entry = book.remove(&key)?;
-        let _ = std::fs::remove_file(self.store.dir().join(key.file_name()));
+        let _ = std::fs::remove_file(self.shared.store.dir().join(key.file_name()));
         Some(entry.record)
     }
 
     /// Every offer, the newest first.
     pub fn records(&self) -> Vec<TransferRecord> {
-        let mut all: Vec<TransferRecord> = self.book.lock().unwrap().values().map(|entry| entry.record.clone()).collect();
+        let mut all: Vec<TransferRecord> = self.book().values().map(|entry| entry.record.clone()).collect();
         all.sort_by(|a, b| b.created_ms.cmp(&a.created_ms).then(a.offer.cmp(&b.offer)));
         all
     }
 
     /// The partial files that belong to an incoming file that has not ended. Anything else in `PARTIAL_DIR` can never be finished.
     pub fn partials_in_use(&self) -> HashSet<String> {
-        let book = self.book.lock().unwrap();
+        let book = self.book();
         let mut names = HashSet::new();
         for entry in book.values().filter(|entry| entry.record.incoming) {
             for peer in &entry.record.peers {
@@ -529,7 +629,7 @@ impl Journal {
     /// ended now; the caller tells the apps and removes partial files.
     pub fn expire(&self, now_ms: u64) -> Vec<Lapse> {
         let age = |since: u64| Duration::from_millis(now_ms.saturating_sub(since));
-        let mut book = self.book.lock().unwrap();
+        let mut book = self.book();
         let mut lapses = Vec::new();
         let mut gone = Vec::new();
         for (key, entry) in book.iter_mut() {
@@ -563,9 +663,7 @@ impl Journal {
                 gone.push(*key);
             } else if changed {
                 record.updated_ms = now_ms;
-                if let Err(e) = self.store.write_cbor(&key.file_name(), record) {
-                    warn!(offer = record.offer, "the journal could not be written: {e}");
-                }
+                self.shared.write(entry);
             }
         }
         let mut ended: Vec<(u64, Key)> = book
@@ -579,7 +677,7 @@ impl Journal {
         }
         for key in gone {
             book.remove(&key);
-            let _ = std::fs::remove_file(self.store.dir().join(key.file_name()));
+            let _ = std::fs::remove_file(self.shared.store.dir().join(key.file_name()));
         }
         lapses
     }
@@ -667,6 +765,82 @@ mod tests {
         assert_eq!(lapses[0].items.len(), 2);
         assert!(journal.records().is_empty());
         assert!(!dir.path().join(DIR).join(Key::In(peer, 9).file_name()).exists());
+    }
+
+    fn many_files(count: usize) -> ShareOffer {
+        let items = (0..count).map(|i| item(&format!("f{i}"), 1).to_share()).collect();
+        ShareOffer { id: 77, origin: ShareOrigin::Files, items }
+    }
+
+    fn end_file(journal: &Journal, peer: DeviceId, index: u32) {
+        journal.file_ended(Key::In(peer, 77), |record| record.item_mut(&peer, index).unwrap().state = ItemState::Done);
+    }
+
+    fn on_disk(dir: &Path, peer: DeviceId) -> Vec<ItemState> {
+        let bytes = std::fs::read(dir.join(DIR).join(Key::In(peer, 77).file_name())).unwrap();
+        let record: TransferRecord = crate::proto::decode(&bytes).unwrap();
+        record.peers[0].items.iter().map(|i| i.state).collect()
+    }
+
+    /// R-V12: a burst of files that end writes the offer once at the start of the burst and once when its turn comes, and the last
+    /// file of the offer goes to disk at once.
+    #[test]
+    fn files_that_end_in_a_burst_are_written_at_most_every_half_second() {
+        let dir = tempfile::tempdir().unwrap();
+        let peer = DeviceId::from_bytes([9; 16]);
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap();
+        runtime.block_on(async {
+            let journal = Journal::load(dir.path()).unwrap();
+            journal.insert(TransferRecord::incoming(peer, &many_files(300), false));
+            let before = journal.shared.writes.load(Ordering::SeqCst);
+            for index in 0..299 {
+                end_file(&journal, peer, index);
+            }
+            assert_eq!(journal.shared.writes.load(Ordering::SeqCst), before, "the insert was just written, so all of this waits");
+            assert_eq!(on_disk(dir.path(), peer)[0], ItemState::Waiting);
+            tokio::time::sleep(WRITE_EVERY + Duration::from_millis(150)).await;
+            assert_eq!(journal.shared.writes.load(Ordering::SeqCst), before + 1, "one write when its turn came");
+            assert_eq!(on_disk(dir.path(), peer).iter().filter(|s| **s == ItemState::Done).count(), 299);
+
+            end_file(&journal, peer, 299);
+            assert_eq!(journal.shared.writes.load(Ordering::SeqCst), before + 2, "the end of the offer is written at once");
+            assert!(on_disk(dir.path(), peer).iter().all(|s| *s == ItemState::Done));
+        });
+    }
+
+    /// R-V12: a kill loses at most the last half second, and the start settles what was lost like any other kill. A stop of the
+    /// engine (`flush_all`) loses nothing, also what changes after it.
+    #[test]
+    fn a_kill_loses_at_most_the_last_half_second_and_a_stop_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let peer = DeviceId::from_bytes([10; 16]);
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap();
+        runtime.block_on(async {
+            let journal = Journal::load(dir.path()).unwrap();
+            journal.insert(TransferRecord::incoming(peer, &many_files(4), false));
+            journal.change(Key::In(peer, 77), |record| record.peers[0].stage = Stage::Accepted);
+            tokio::time::sleep(WRITE_EVERY + Duration::from_millis(50)).await;
+            end_file(&journal, peer, 0);
+            end_file(&journal, peer, 1);
+            // Killed now: the task that would write file 1 never runs, and nothing else writes.
+        });
+        drop(runtime);
+        let journal = Journal::load(dir.path()).unwrap();
+        let states: Vec<_> = journal.read(Key::In(peer, 77), |r| r.peers[0].items.iter().map(|i| i.state).collect()).unwrap();
+        assert_eq!(states, [ItemState::Done, ItemState::Interrupted, ItemState::Interrupted, ItemState::Interrupted]);
+
+        // Nothing is due yet, so only the stop writes it, and after the stop every change goes through at once.
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap();
+        runtime.block_on(async {
+            end_file(&journal, peer, 1);
+            end_file(&journal, peer, 2);
+            journal.flush_due(Instant::now());
+            assert_eq!(on_disk(dir.path(), peer)[2], ItemState::Interrupted);
+            journal.flush_all();
+            assert_eq!(on_disk(dir.path(), peer)[2], ItemState::Done);
+            journal.file_ended(Key::In(peer, 77), |record| record.item_mut(&peer, 3).unwrap().state = ItemState::Failed);
+            assert_eq!(on_disk(dir.path(), peer)[3], ItemState::Failed);
+        });
     }
 
     #[test]

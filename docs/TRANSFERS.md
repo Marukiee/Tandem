@@ -46,13 +46,21 @@ of verlopen; er wordt niets meer bediend of opgehaald), `unknown`.
 - **Klok in ms, nooit `Instant`**: een `Instant` overleeft geen herstart.
 - **Dezelfde vorm in en uit**: apparaten maal bestanden. Uit heeft er een rij per ontvanger (R-B8 en het paneel hebben dat
   nodig), in een rij.
-- **Naar schijf gaat elke verandering van stand en elk einde van een bestand.** Niet naar schijf: `running` en de bytes onderweg,
+- **Naar schijf gaat elke verandering van stand en elk einde van een bestand** (dat laatste gebundeld, zie hieronder). Niet naar schijf: `running` en de bytes onderweg,
   die staan alleen in het geheugen (de engine werkt ze bij met de voortgang). Bij de start wordt alles wat liep `interrupted`, en
   voor binnenkomende bestanden komt `done` uit de lengte van het deelbestand: dat is waar een hervatting begint, en zo is er geen
   schrijfbeurt per stukje. Een binnenkomend aanbod dat al ja had en bestanden die nog op een vrije plek wachtten, worden ook
   `interrupted`: ze waren onderweg.
 - **Geschreven terwijl het boek op slot zit**: twee wijzigingen van een aanbod komen nooit in de verkeerde volgorde op schijf, en
-  wat in het geheugen staat staat ook op schijf. Een schrijfbeurt kost een fsync; daarom alleen bij een verandering van stand.
+  een late schrijfbeurt schrijft wat nu in het geheugen staat, nooit een oudere kopie over een nieuwere of een verwijderd aanbod
+  terug.
+- **Het einde van een bestand wordt gebundeld (R-V12)**: een schrijfbeurt kost een fsync, en een aanbod van honderden kleine bestanden
+  schreef er honderden. `Journal::file_ended` (het einde van `receive_item` en `served`) schrijft per aanbod hooguit elke halve seconde
+  (`WRITE_EVERY`); een taakje schrijft de rest als de beurt komt. Meteen naar schijf gaan: een nieuw aanbod, elke verandering van
+  `stage`, een stop, het laatste bestand van een aanbod, en alles na het begin van `Engine::shutdown` (`flush_all`). Een kill
+  verliest dus hooguit de laatste halve seconde, en de start lost dat op zoals elke kill: een bestand dat wel binnenkwam maar niet als
+  `done` op schijf stond wordt `interrupted` met `done` 0 (het deelbestand was al verplaatst), en een hervatting haalt het dan opnieuw
+  op, zodat het twee keer in Downloads staat. Dat is de prijs van de bundeling en komt alleen na een kill voor.
 - **Wat alleen een draaiende engine heeft blijft erbuiten**: of het ophalen begon (`started`) en de stoptekens. Uit heeft per
   ontvanger een eigen stopteken, een kind van dat van het aanbod, zodat stoppen naar een ontvanger de rest laat lopen (R-B8).
 - **Het deelbestand heeft een vaste naam**: `<datamap>/incoming/<afzender>-<aanbod>-<nummer>.part` (`journal::partial_name`).
