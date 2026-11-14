@@ -928,9 +928,22 @@ struct FileDrag: ViewModifier {
 
     func body(content: Content) -> some View {
         if let path {
-            content.onDrag { NSItemProvider(contentsOf: URL(fileURLWithPath: path)) ?? NSItemProvider() }
+            content.onDrag { Self.provider(for: URL(fileURLWithPath: path)) }
         } else {
             content
         }
+    }
+
+    /// The contents of the file, not its address: with the address Finder moves a file it drops on the same disk, and the file would be
+    /// gone from Downloads with the row pointing at nothing. Handed over as contents, the place of the drop always gets a copy.
+    static func provider(for url: URL) -> NSItemProvider {
+        let provider = NSItemProvider()
+        provider.suggestedName = url.lastPathComponent
+        let type = (try? url.resourceValues(forKeys: [.contentTypeKey]))?.contentType ?? .data
+        provider.registerFileRepresentation(forTypeIdentifier: type.identifier, fileOptions: [], visibility: .all) { done in
+            done(url, false, nil)
+            return nil
+        }
+        return provider
     }
 }
