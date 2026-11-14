@@ -71,6 +71,12 @@ werken; `docs/ROADMAP.md`, `docs/TESTLIJST.md` en `changelog.json` niet aanraken
 de debug-app op de Oppo (`3B164V0127K00000`), die gedeeld wordt, dus liever een eigen emulator; nooit de Xperia; eerlijk zeggen
 wat een test bewijst, wat gezien is en wat alleen gecompileerd is.
 
+De echte Tandem blijft met rust (eis van Mark, 2026-11-14): de app in `/Applications`, zijn gegevens in
+`~/Library/Application Support/Tandem` en de gewone app op de telefoons worden nooit gestopt, herstart, gewist of vervangen. Testen
+gaat met de Dev-app in een eigen datamap, de debug-app of een eigen emulator, in een eigen testcircle. Na het testen ruimt de
+sessie op en kijkt het na: Dev-app en `tandemd` gestopt, hun datamappen weg, de debug-app van de telefoon af, emulators uit en
+verwijderd, en de echte app draait nog.
+
 Rondes:
 
 - **Ronde 1 (klaar, PR 4 tot 8):** de zekere bugs, beveiliging, het delen op Android, en P1.
