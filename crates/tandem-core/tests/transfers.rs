@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tandem_core::events::{Event, TransferDone};
+use tandem_core::journal::{ItemState, Stage};
 use tandem_core::platform::{DesktopFiles, FileStore};
 use tandem_core::proto::ShareOrigin;
 use tandem_core::store::{DeviceSettings, FileSecretStore, Store};
@@ -270,4 +271,154 @@ async fn a_declined_offer_tells_the_sender_per_file() {
     }
     names.sort();
     assert_eq!(names, ["a.txt", "b.txt"]);
+}
+
+fn interrupted(engine: &Engine) -> bool {
+    engine.transfers().first().is_some_and(|t| t.peers[0].items.iter().all(|i| i.state == ItemState::Interrupted))
+}
+
+/// Sends `first.bin` and `second.bin` to a Mac that asks first, plants half of `second.bin` as its partial file (as a pull that
+/// was cut off leaves it), and lets the Mac say yes while the phone is gone, so its files wait for the phone. Returns the offer and
+/// the length of the partial file.
+async fn a_transfer_left_halfway(phone: &Node, mac: &Node, source: &Path) -> (u64, u64) {
+    pair(phone, mac).await;
+    wait_until("connected", || online(phone, mac.engine.id()) && online(mac, phone.engine.id())).await;
+    ask_first(mac, phone);
+    let second = random_bytes(3 * 1024 * 1024, 31);
+    let mut mac_events = mac.engine.subscribe();
+    phone
+        .engine
+        .send_files(
+            &[mac.engine.id()],
+            vec![outgoing(source, "first.bin", &random_bytes(100_000, 30)), outgoing(source, "second.bin", &second)],
+            ShareOrigin::Files,
+        )
+        .await
+        .unwrap();
+    let offer = offered(&mut mac_events).await;
+    let partials = mac.data.join("incoming");
+    std::fs::create_dir_all(&partials).unwrap();
+    std::fs::write(partials.join(format!("{}-{offer:016x}-1.part", phone.engine.id())), &second[..1_200_000]).unwrap();
+    phone.engine.shutdown().await;
+    (offer, 1_200_000)
+}
+
+/// P1: a transfer stopped halfway is in the journal after a restart, with how far each file got, and nothing goes on by itself.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_journal_keeps_a_transfer_stopped_halfway_across_a_restart() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let source = tempfile::tempdir().unwrap();
+    let (offer, planted) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
+    mac.engine.accept_offer(phone.engine.id(), offer).unwrap();
+    wait_until("both files wait for the phone", || {
+        mac.engine.transfers().first().is_some_and(|t| t.peers[0].items.iter().all(|i| i.state == ItemState::Running))
+    })
+    .await;
+
+    mac.engine.shutdown().await;
+    wait_until("the stop is written down", || interrupted(&mac.engine)).await;
+    let mac_again = restart(&mac, "Mac").await;
+    let phone_again = restart(&phone, "Phone").await;
+
+    let transfers = mac_again.transfers();
+    assert_eq!(transfers.len(), 1);
+    let transfer = &transfers[0];
+    assert!(transfer.incoming);
+    assert_eq!(transfer.offer, offer);
+    assert_eq!(transfer.origin, ShareOrigin::Files);
+    assert_eq!(transfer.items.iter().map(|i| i.name.as_str()).collect::<Vec<_>>(), ["first.bin", "second.bin"]);
+    assert_eq!(transfer.items[1].size, 3 * 1024 * 1024);
+    assert_eq!(transfer.peers.len(), 1);
+    assert_eq!(transfer.peers[0].device, phone.engine.id());
+    assert_eq!(transfer.peers[0].stage, Stage::Accepted);
+    let progress: Vec<_> = transfer.peers[0].items.iter().map(|i| (i.state, i.done)).collect();
+    assert_eq!(progress, [(ItemState::Interrupted, 0), (ItemState::Interrupted, planted)]);
+    let partial = mac.data.join("incoming").join(format!("{}-{offer:016x}-1.part", phone.engine.id()));
+    assert_eq!(std::fs::metadata(&partial).unwrap().len(), planted, "the partial file must stay for a resume");
+
+    // The sender kept its side too: the offer, for the Mac, never pulled.
+    let sent = phone_again.transfers();
+    assert_eq!(sent.len(), 1);
+    assert!(!sent[0].incoming && sent[0].offer == offer);
+    assert_eq!(sent[0].peers[0].device, mac.engine.id());
+    assert_eq!(sent[0].peers[0].stage, Stage::Offered);
+
+    // Both back and connected: still nothing moves until a person says so (P2), and a yes meant for an offer does not do it.
+    let mut events = mac_again.subscribe();
+    mac_again.add_address(&phone.engine.id(), &format!("127.0.0.1:{}", phone_again.port())).unwrap();
+    wait_until("connected again", || mac_again.is_connected(&phone.engine.id())).await;
+    assert!(mac_again.accept_offer(phone.engine.id(), offer).is_err());
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    while let Ok(event) = events.try_recv() {
+        assert!(!matches!(event, Event::Progress(_) | Event::Finished(_)), "it went on by itself: {event:?}");
+    }
+    assert_eq!(std::fs::metadata(&partial).unwrap().len(), planted);
+    assert!(interrupted(&mac_again));
+}
+
+/// A thread pool of its own for one device, so it can be killed like a process: nothing runs any more and nothing is written.
+struct Lane(Option<tokio::runtime::Runtime>);
+
+impl Lane {
+    fn new() -> Lane {
+        Lane(Some(tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap()))
+    }
+
+    fn spawn<F>(&self, future: F) -> tokio::task::JoinHandle<F::Output>
+    where
+        F: std::future::Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        self.0.as_ref().unwrap().spawn(future)
+    }
+
+    fn kill(mut self) {
+        self.0.take().unwrap().shutdown_background();
+    }
+}
+
+impl Drop for Lane {
+    fn drop(&mut self) {
+        if let Some(runtime) = self.0.take() {
+            runtime.shutdown_background();
+        }
+    }
+}
+
+/// P1: the same when the app is killed in the middle and can write nothing more: the start finds the files underway and makes them
+/// interrupted, with the length of the partial file.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_killed_receiver_finds_its_transfer_interrupted_after_the_start() {
+    let lane = Lane::new();
+    let phone = node("Phone").await;
+    let mac = lane.spawn(node("Mac")).await.unwrap();
+    let source = tempfile::tempdir().unwrap();
+    let (offer, planted) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
+    let engine = mac.engine.clone();
+    let phone_id = phone.engine.id();
+    lane.spawn(async move { engine.accept_offer(phone_id, offer) }).await.unwrap().unwrap();
+    wait_until("both files wait for the phone", || {
+        mac.engine.transfers().first().is_some_and(|t| t.peers[0].items.iter().all(|i| i.state == ItemState::Running))
+    })
+    .await;
+
+    lane.kill();
+    let mac_again = restart(&mac, "Mac").await;
+    let transfer = &mac_again.transfers()[0];
+    assert_eq!(transfer.peers[0].stage, Stage::Accepted);
+    let progress: Vec<_> = transfer.peers[0].items.iter().map(|i| (i.state, i.done)).collect();
+    assert_eq!(progress, [(ItemState::Interrupted, 0), (ItemState::Interrupted, planted)]);
+}
+
+/// R-B27: a partial file that no transfer in the journal points at can never be finished, so it goes at the start, not days later.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_partial_file_nothing_points_at_goes_at_the_start() {
+    let mac = node("Mac").await;
+    mac.engine.shutdown().await;
+    let orphan = mac.data.join("incoming").join("0000-0000000000000001-0.part");
+    std::fs::create_dir_all(orphan.parent().unwrap()).unwrap();
+    std::fs::write(&orphan, b"half").unwrap();
+    let _again = restart(&mac, "Mac").await;
+    assert!(!orphan.exists());
 }

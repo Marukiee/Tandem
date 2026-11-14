@@ -28,7 +28,7 @@ use crate::proto::{Hello, Msg, PROTOCOL_VERSION, ShareOrigin, ShareText, Status}
 use crate::session::Session;
 use crate::store::{DeviceSettings, SecretStore, Settings, Store, load_or_create_identity};
 use crate::tls::{self, Tuning};
-use crate::transfer::{InOffer, OutOffer, OutgoingFile};
+use crate::transfer::OutgoingFile;
 
 #[derive(Clone)]
 pub struct EngineConfig {
@@ -114,8 +114,8 @@ pub(crate) struct Inner {
     pub live: crate::live::Live,
     pub events: broadcast::Sender<Event>,
     pub peers: Mutex<HashMap<DeviceId, Peer>>,
-    pub out_offers: Mutex<HashMap<u64, OutOffer>>,
-    pub in_offers: Mutex<HashMap<(DeviceId, u64), Arc<InOffer>>>,
+    /// Every offer, in and out, kept in the data folder (see `journal`).
+    pub journal: crate::journal::Journal,
     pub pairing: Mutex<Option<PendingPairing>>,
     pub open_pairings: Mutex<HashMap<discovery::Hint, crate::pairing::OpenPairing>>,
     pub my_status: Mutex<Status>,
@@ -206,6 +206,7 @@ impl Engine {
         let find = crate::find::Find::load(&store);
         let focus = Mutex::new(crate::focus::FocusSync::load(&store));
         let health = Mutex::new(crate::health::Health::load(&store));
+        let journal = crate::journal::Journal::load(&cfg.data_dir)?;
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(my_name),
@@ -221,8 +222,7 @@ impl Engine {
             live,
             events,
             peers: Mutex::new(HashMap::new()),
-            out_offers: Mutex::new(HashMap::new()),
-            in_offers: Mutex::new(HashMap::new()),
+            journal,
             pairing: Mutex::new(None),
             open_pairings: Mutex::new(HashMap::new()),
             my_status: Mutex::new(Status::default()),
@@ -571,6 +571,12 @@ impl Engine {
 
     pub async fn decline_offer(&self, from: DeviceId, offer_id: u64) {
         self.inner.decline_offer(from, offer_id).await;
+    }
+
+    /// Every transfer this device knows of, in and out, the newest first: what is running, waits for a yes, stopped halfway or
+    /// ended a short while ago. The base of the panel of P3b; see docs/TRANSFERS.md.
+    pub fn transfers(&self) -> Vec<crate::journal::TransferRecord> {
+        self.inner.journal.records()
     }
 
     pub fn is_connected(&self, id: &DeviceId) -> bool {
@@ -1030,7 +1036,7 @@ impl Inner {
             }
             self.notice_tailscale_arriving();
             self.dial_due_peers();
-            self.clean_up_offers();
+            self.expire_transfers();
             self.sync_pairing_announcement();
             if self.addrs_dirty.swap(false, Ordering::Relaxed) {
                 self.persist_addresses();
@@ -1270,11 +1276,6 @@ impl Inner {
             && let Some(discovery) = self.discovery.lock().unwrap().as_mut() {
                 let _ = discovery.announce();
             }
-    }
-
-    pub fn clean_up_offers(&self) {
-        let cutoff = Instant::now() - Duration::from_secs(6 * 3600);
-        self.out_offers.lock().unwrap().retain(|_, offer| offer.created > cutoff);
     }
 
     pub async fn clipboard_changed(&self, text: &str, is_url: bool) {

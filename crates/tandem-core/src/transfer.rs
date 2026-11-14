@@ -8,7 +8,6 @@
 //! resume both sides re-read the part they already have locally to keep the hash
 //! honest, which costs a disk read and no network.
 
-use std::collections::HashMap;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -21,6 +20,8 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
 
 use crate::engine::{Inner, rand_u64};
+use crate::ids::now_ms;
+use crate::journal::{ItemState, Key, PARTIAL_DIR, RecordItem, Run, Stage, TransferRecord, partial_name};
 use crate::error::{Error, Result};
 use crate::events::{Event, TransferDone, TransferProgress};
 use crate::ids::DeviceId;
@@ -52,41 +53,10 @@ pub struct SendReport {
     pub offline: Vec<DeviceId>,
 }
 
-pub(crate) struct OutOffer {
-    /// Each receiver with its own token, a child of `cancel`: stopping one receiver leaves the others running (R-B8).
-    pub targets: HashMap<DeviceId, CancellationToken>,
-    pub items: Vec<OutgoingFile>,
-    pub created: Instant,
-    /// Set once no receiver is left: what is being served stops at the next piece.
-    pub cancel: CancellationToken,
-}
-
-impl OutOffer {
-    /// Stops serving `peer`, and the whole offer once nobody is left. Whether `peer` was still a receiver.
-    fn drop_target(&mut self, peer: &DeviceId) -> bool {
-        let Some(token) = self.targets.remove(peer) else { return false };
-        token.cancel();
-        if self.targets.is_empty() {
-            self.cancel.cancel();
-        }
-        true
-    }
-}
-
 /// On mobile data, files above this are not taken without asking, also from a device that may send without asking (a large file from a
 /// computer would otherwise cost the data of the phone without anyone seeing it). The same as the most a copy may be: what is copied
 /// still comes by itself, anything larger is asked about.
 pub const METERED_ASK_BYTES: u64 = 50 * 1024 * 1024;
-
-pub(crate) struct InOffer {
-    pub offer: ShareOffer,
-    /// Not taken by itself although the device may send without asking: this device is on a network that costs (mobile data) and the
-    /// files are large, so the person is asked first. See `METERED_ASK_BYTES`.
-    pub held: bool,
-    pub started: std::sync::atomic::AtomicBool,
-    /// Set when the person on either side stops the transfer: every file of it stops and its partial files go.
-    pub cancel: CancellationToken,
-}
 
 enum PullError {
     /// Worth trying again, probably from where it stopped.
@@ -104,75 +74,135 @@ impl Inner {
         if files.is_empty() {
             return Err(Error::invalid("nothing to send"));
         }
-        for file in &mut files {
+        let mut changed = vec![None; files.len()];
+        for (file, changed) in files.iter_mut().zip(changed.iter_mut()) {
             if file.size == 0
                 && let Ok(opened) = self.files.open_read(&file.source) {
-                    file.size = opened.metadata().map(|m| m.len()).unwrap_or(0);
+                    let meta = opened.metadata().ok();
+                    file.size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+                    *changed = meta.and_then(|m| m.modified().ok()).and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok());
                 }
         }
 
         let (online, offline): (Vec<DeviceId>, Vec<DeviceId>) =
             targets.iter().copied().partition(|id| self.session_of(id).is_some());
         let offer_id = rand_u64();
-        let items: Vec<ShareItem> = files
-            .iter()
-            .map(|f| ShareItem { name: f.name.clone(), size: f.size, mime: f.mime.clone(), modified: None })
+        let items: Vec<RecordItem> = files
+            .into_iter()
+            .zip(changed)
+            .map(|(f, changed)| RecordItem {
+                name: f.name,
+                size: f.size,
+                mime: f.mime,
+                modified: None,
+                source: f.source,
+                source_modified_ms: changed.map(|d| d.as_millis() as u64),
+                path: String::new(),
+            })
             .collect();
+        let record = TransferRecord::outgoing(offer_id, origin, items, &online);
+        let offer = record.share_offer();
+        let key = Key::Out(offer_id);
+        // In the journal before it goes out: a receiver that takes it without asking pulls at once.
+        if !online.is_empty() {
+            self.journal.insert(record);
+        }
 
-        let cancel = CancellationToken::new();
-        let targets = online.iter().map(|id| (*id, cancel.child_token())).collect();
-        self.out_offers.lock().unwrap().insert(offer_id, OutOffer { targets, items: files, created: Instant::now(), cancel });
-
-        let offer = ShareOffer { id: offer_id, origin, items };
         let mut sent_to = Vec::new();
         for id in online {
             if self.send_to(&id, Msg::ShareOffer(offer.clone())).await.is_ok() {
                 sent_to.push(id);
+            } else {
+                // It never got there, so nothing waits for it.
+                self.journal.change(key, |record| record.peers.retain(|p| p.device != id));
             }
+        }
+        if sent_to.is_empty() {
+            self.journal.remove(key);
         }
         Ok(SendReport { offer: offer_id, sent_to, offline })
     }
 
     pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, offer: ShareOffer) {
+        let key = Key::In(from, offer.id);
+        // Numbers are random, so this is the same offer said twice; the one that is here already counts.
+        if self.journal.read(key, |_| ()).is_some() {
+            debug!(%from, offer = offer.id, "an offer that is here already, left out");
+            return;
+        }
         let size: u64 = offer.items.iter().map(|item| item.size).sum();
         let held = self.metered.load(std::sync::atomic::Ordering::Relaxed) && size > METERED_ASK_BYTES;
         let auto = self.settings.read().unwrap().for_device(&from).auto_accept && !held;
-        let event = Event::ShareOffered { from, offer: offer.clone() };
-        let entry =
-            Arc::new(InOffer { offer, held, started: std::sync::atomic::AtomicBool::new(false), cancel: CancellationToken::new() });
-        self.in_offers.lock().unwrap().insert((from, entry.offer.id), entry.clone());
+        let run = self.journal.insert(TransferRecord::incoming(from, &offer, held));
         // After the insert: an app that accepts straight from the event must find the offer.
-        self.emit(event);
+        self.emit(Event::ShareOffered { from, offer });
         if auto {
-            self.begin_receive(from, entry);
+            self.begin_receive(from, key, run);
         }
     }
 
-    /// Whether the offer `offer` of `from` waits for the person because this device is on mobile data (see `InOffer::held`).
+    /// Whether the offer `offer` of `from` waits for the person because this device is on mobile data (see `TransferRecord::held`).
     pub(crate) fn offer_held(&self, from: DeviceId, offer: u64) -> bool {
-        self.in_offers.lock().unwrap().get(&(from, offer)).is_some_and(|entry| entry.held)
+        self.journal.read(Key::In(from, offer), |record| record.held).unwrap_or(false)
     }
 
     /// Stops a transfer, from either side, and tells the other device so it stops too. The files already done stay.
     pub(crate) async fn cancel_transfer(&self, peer: DeviceId, offer: u64, incoming: bool) {
         if incoming {
-            if let Some(entry) = self.in_offers.lock().unwrap().get(&(peer, offer)) {
-                entry.cancel.cancel();
-            }
-        } else if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer) {
-            out.drop_target(&peer);
+            self.stop_incoming(peer, offer);
+        } else {
+            self.stop_outgoing(peer, offer, ItemState::Cancelled, None);
         }
         let _ = self.send_to(&peer, Msg::ShareCancel { id: offer }).await;
     }
 
     /// The other device stopped a transfer.
     pub(crate) fn on_share_cancel(&self, peer: DeviceId, offer: u64) {
-        if let Some(entry) = self.in_offers.lock().unwrap().get(&(peer, offer)) {
-            entry.cancel.cancel();
+        self.stop_incoming(peer, offer);
+        self.stop_outgoing(peer, offer, ItemState::Cancelled, None);
+    }
+
+    /// Stops an incoming offer. Files being pulled stop and take their partial file with them. An offer that is not being pulled
+    /// (it waited for a yes, or stopped halfway before a restart) has nothing that would end it, so it ends here.
+    fn stop_incoming(&self, peer: DeviceId, offer: u64) {
+        let key = Key::In(peer, offer);
+        let Some(run) = self.journal.run(key) else { return };
+        run.cancel.cancel();
+        let idle = !run.started.load(std::sync::atomic::Ordering::SeqCst);
+        let count = self
+            .journal
+            .change(key, |record| {
+                if let Some(sender) = record.peer_mut(&peer) {
+                    if idle {
+                        sender.close(ItemState::Cancelled, None);
+                    } else {
+                        sender.stage = Stage::Closed;
+                    }
+                }
+                record.items.len()
+            })
+            .unwrap_or(0);
+        if idle {
+            for index in 0..count {
+                let _ = std::fs::remove_file(self.partial_path(peer, offer, index as u32));
+            }
         }
-        if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer) {
-            out.drop_target(&peer);
-        }
+    }
+
+    /// Stops serving an outgoing offer to one receiver, and leaves the others running (R-B8). Returns the files that ended now.
+    fn stop_outgoing(&self, peer: DeviceId, offer: u64, state: ItemState, error: Option<String>) -> Vec<(u32, RecordItem)> {
+        let key = Key::Out(offer);
+        let Some(run) = self.journal.run(key) else { return Vec::new() };
+        run.stop_peer(&peer);
+        self.journal
+            .change(key, |record| {
+                let ended = record.peer_mut(&peer).filter(|p| p.open()).map(|p| p.close(state, error)).unwrap_or_default();
+                if record.peers.iter().all(|p| !p.open()) {
+                    run.cancel.cancel();
+                }
+                ended.into_iter().map(|index| (index, record.items[index as usize].clone())).collect()
+            })
+            .unwrap_or_default()
     }
 
     /// The answer of a receiver to an offer. Only a no is sent: it was declined, or it expired there before anyone said yes. The
@@ -182,19 +212,12 @@ impl Inner {
         if reply.accepted {
             return;
         }
-        let items: Vec<OutgoingFile> = {
-            let mut offers = self.out_offers.lock().unwrap();
-            let Some(out) = offers.get_mut(&reply.id) else { return };
-            if !out.drop_target(&peer) {
-                return;
-            }
-            out.items.clone()
-        };
         let reason = reply.reason.filter(|r| !r.trim().is_empty()).unwrap_or_else(|| "declined".to_string());
-        for (index, item) in items.into_iter().enumerate() {
+        let state = if reason == "expired" { ItemState::Expired } else { ItemState::Declined };
+        for (index, item) in self.stop_outgoing(peer, reply.id, state, Some(reason.clone())) {
             self.emit(Event::Finished(TransferDone {
                 offer: reply.id,
-                index: index as u32,
+                index,
                 peer,
                 incoming: false,
                 name: item.name,
@@ -207,49 +230,70 @@ impl Inner {
 
     /// Starts receiving an offer that was waiting for a yes.
     pub(crate) fn accept_offer(self: &Arc<Self>, from: DeviceId, offer_id: u64) -> Result<()> {
-        let entry = self
-            .in_offers
-            .lock()
-            .unwrap()
-            .get(&(from, offer_id))
-            .cloned()
-            .ok_or_else(|| Error::invalid("that offer is gone"))?;
-        self.begin_receive(from, entry);
+        let key = Key::In(from, offer_id);
+        let gone = || Error::invalid("that offer is gone");
+        let run = self.journal.run(key).ok_or_else(gone)?;
+        let stage = self.journal.read(key, |record| record.peer(&from).map(|p| p.stage)).flatten().ok_or_else(gone)?;
+        // Stopped halfway before a restart: that is picked up on purpose (P2), never by a yes that was meant for the offer.
+        if stage == Stage::Accepted && !run.started.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(Error::invalid("that transfer stopped halfway"));
+        }
+        self.begin_receive(from, key, run);
         Ok(())
     }
 
     pub(crate) async fn decline_offer(&self, from: DeviceId, offer_id: u64) {
-        self.in_offers.lock().unwrap().remove(&(from, offer_id));
+        let key = Key::In(from, offer_id);
+        if let Some(run) = self.journal.run(key) {
+            run.cancel.cancel();
+        }
+        // The person said no here, so there is nothing of it to show later either.
+        self.journal.remove(key);
         let reply = ShareReply { id: offer_id, accepted: false, reason: None };
         let _ = self.send_to(&from, Msg::ShareReply(reply)).await;
     }
 
-    fn begin_receive(self: &Arc<Self>, from: DeviceId, entry: Arc<InOffer>) {
-        if entry.started.swap(true, std::sync::atomic::Ordering::SeqCst) {
+    fn begin_receive(self: &Arc<Self>, from: DeviceId, key: Key, run: Arc<Run>) {
+        if run.started.swap(true, std::sync::atomic::Ordering::SeqCst) {
             return;
         }
+        self.journal.change(key, |record| {
+            if let Some(sender) = record.peer_mut(&from)
+                && sender.stage == Stage::Offered {
+                    sender.stage = Stage::Accepted;
+                }
+        });
         let this = self.clone();
-        tokio::spawn(async move { this.receive_all(from, entry).await });
+        tokio::spawn(async move { this.receive_all(from, key, run).await });
     }
 
-    async fn receive_all(self: Arc<Self>, peer: DeviceId, entry: Arc<InOffer>) {
+    async fn receive_all(self: Arc<Self>, peer: DeviceId, key: Key, run: Arc<Run>) {
+        let Some((offer, done)) = self.journal.read(key, |record| {
+            let done: Vec<bool> = record.peers[0].items.iter().map(|item| item.state == ItemState::Done).collect();
+            (record.share_offer(), done)
+        }) else {
+            return;
+        };
+        let clipboard_on = self.settings.read().unwrap().for_device(&peer).clipboard;
+        let for_clipboard = kept_for_clipboard(&offer, clipboard_on);
         let slots = Arc::new(Semaphore::new(CONCURRENT_FILES));
         let mut tasks = tokio::task::JoinSet::new();
-        for (index, item) in entry.offer.items.iter().enumerate() {
+        for (index, item) in offer.items.iter().enumerate() {
+            // Already here (before a restart, when the rest is picked up later): not again.
+            if done.get(index).copied().unwrap_or(false) {
+                continue;
+            }
             let Ok(permit) = slots.clone().acquire_owned().await else { break };
             let this = self.clone();
             let item = item.clone();
-            let offer_id = entry.offer.id;
-            let cancel = entry.cancel.clone();
-            let clipboard_on = self.settings.read().unwrap().for_device(&peer).clipboard;
-            let for_clipboard = kept_for_clipboard(&entry.offer, clipboard_on);
+            let offer_id = offer.id;
+            let cancel = run.cancel.clone();
             tasks.spawn(async move {
                 let _permit = permit;
                 this.receive_item(peer, offer_id, index as u32, item, for_clipboard, cancel).await;
             });
         }
         while tasks.join_next().await.is_some() {}
-        self.in_offers.lock().unwrap().remove(&(peer, entry.offer.id));
     }
 
     async fn receive_item(
@@ -261,7 +305,14 @@ impl Inner {
         for_clipboard: bool,
         cancel: CancellationToken,
     ) {
+        let key = Key::In(peer, offer);
         let temp = self.partial_path(peer, offer, index);
+        self.journal.touch(key, |record| {
+            if let Some(progress) = record.item_mut(&peer, index)
+                && !progress.state.is_final() {
+                    progress.state = ItemState::Running;
+                }
+        });
         let attempt = async {
         let mut attempts = 0u32;
         let outcome: std::result::Result<(), String> = loop {
@@ -283,10 +334,24 @@ impl Inner {
         };
         outcome
         };
-        // Stopped by the person: the file in the making goes with it.
+        // Stopped by the person: the file in the making goes with it. The engine stops: it stays, for a resume after the start (P2).
         let outcome = tokio::select! {
-            outcome = attempt => outcome,
-            _ = cancel.cancelled() => Err("cancelled".to_string()),
+            biased;
+            _ = self.cancel.cancelled() => None,
+            _ = cancel.cancelled() => Some(Err("cancelled".to_string())),
+            outcome = attempt => Some(outcome),
+        };
+        let Some(outcome) = outcome.filter(|outcome| outcome.is_ok() || !self.cancel.is_cancelled()) else {
+            let done = std::fs::metadata(&temp).map(|m| m.len()).unwrap_or(0);
+            self.journal.change(key, |record| {
+                if let Some(progress) = record.item_mut(&peer, index)
+                    && !progress.state.is_final() {
+                        progress.state = ItemState::Interrupted;
+                        progress.done = done;
+                    }
+            });
+            info!(%peer, offer, name = %item.name, done, "incoming file stopped halfway: the engine stops");
+            return;
         };
 
         let done = match outcome {
@@ -320,8 +385,55 @@ impl Inner {
                 failed(peer, offer, index, &item, reason)
             }
         };
+        self.journal.change(key, |record| {
+            if let Some(progress) = record.item_mut(&peer, index) {
+                progress.state = match done.error.as_deref() {
+                    None => ItemState::Done,
+                    Some("cancelled") => ItemState::Cancelled,
+                    Some(_) => ItemState::Failed,
+                };
+                if progress.state == ItemState::Done {
+                    progress.done = done.size;
+                }
+                progress.error = done.error.clone();
+                progress.location = done.location.clone();
+            }
+        });
         info!(%peer, offer, name = %done.name, error = ?done.error, "incoming file finished");
         self.emit(Event::Finished(done));
+    }
+
+    /// Lets offers go that waited, stopped halfway or ended long enough ago (see `journal`), and says so for each file that ended
+    /// now. A receiver that lets an offer go that waited for a yes tells the sender, so it ends there too (R-B14, R-B27).
+    pub(crate) fn expire_transfers(self: &Arc<Self>) {
+        for lapse in self.journal.expire(now_ms()) {
+            let (peer, offer) = match lapse.key {
+                Key::In(sender, offer) => (sender, offer),
+                Key::Out(offer) => (lapse.peer, offer),
+            };
+            for (index, item) in lapse.items {
+                if lapse.incoming {
+                    let _ = std::fs::remove_file(self.partial_path(peer, offer, index));
+                }
+                self.emit(Event::Finished(TransferDone {
+                    offer,
+                    index,
+                    peer,
+                    incoming: lapse.incoming,
+                    name: item.name,
+                    size: item.size,
+                    location: None,
+                    error: ItemState::Expired.reason().map(str::to_string),
+                }));
+            }
+            if lapse.tell_sender {
+                let this = self.clone();
+                tokio::spawn(async move {
+                    let reply = ShareReply { id: offer, accepted: false, reason: ItemState::Expired.reason().map(str::to_string) };
+                    let _ = this.send_to(&peer, Msg::ShareReply(reply)).await;
+                });
+            }
+        }
     }
 
     async fn wait_for_session(&self, peer: DeviceId, timeout: Duration) -> Option<Arc<Session>> {
@@ -351,9 +463,9 @@ impl Inner {
     }
 
     fn partial_path(&self, peer: DeviceId, offer: u64, index: u32) -> PathBuf {
-        let dir = self.store.dir().join("incoming");
+        let dir = self.store.dir().join(PARTIAL_DIR);
         let _ = std::fs::create_dir_all(&dir);
-        dir.join(format!("{peer}-{offer:016x}-{index}.part"))
+        dir.join(partial_name(&peer, offer, index))
     }
 
     async fn pull_item(
@@ -449,6 +561,13 @@ impl Inner {
 
     #[allow(clippy::too_many_arguments)]
     fn progress(&self, peer: DeviceId, offer: u64, index: u32, incoming: bool, name: &str, done: u64, total: u64) {
+        // In memory only, for whoever asks how far it is; a restart takes the length of the partial file instead.
+        let key = if incoming { Key::In(peer, offer) } else { Key::Out(offer) };
+        self.journal.touch(key, |record| {
+            if let Some(progress) = record.item_mut(&peer, index) {
+                progress.done = done;
+            }
+        });
         self.emit(Event::Progress(TransferProgress {
             offer,
             index,
@@ -467,25 +586,28 @@ impl Inner {
         mut recv: RecvStream,
     ) -> Result<()> {
         let request: FileRequest = proto::recv(&mut recv, MAX_SMALL_FRAME).await?;
-
-        let (item, cancel) = {
-            let offers = self.out_offers.lock().unwrap();
-            match offers.get(&request.offer).and_then(|o| Some((o, o.targets.get(&peer)?))) {
-                Some((o, token)) => (o.items.get(request.index as usize).cloned(), Some(token.clone())),
-                None => (None, None),
-            }
-        };
-        let Some(item) = item else {
+        let key = Key::Out(request.offer);
+        let found = self
+            .journal
+            .read(key, |record| {
+                record.peer(&peer).filter(|p| p.open())?;
+                record.items.get(request.index as usize).cloned()
+            })
+            .flatten();
+        let Some(item) = found else {
             let reply = FileResponse { ok: false, error: Some("that offer is no longer available".into()), size: 0 };
             proto::send(&mut send, &reply).await?;
             let _ = send.finish();
             return Ok(());
         };
+        let cancel = self.journal.run(key).map(|run| run.peer_token(&peer));
 
         let opened = match self.files.open_read(&item.source) {
             Ok(file) => file,
             Err(e) => {
-                let reply = FileResponse { ok: false, error: Some(format!("could not open the file: {e}")), size: 0 };
+                let error = format!("could not open the file: {e}");
+                self.served(key, peer, request.index, ItemState::Failed, Some(error.clone()));
+                let reply = FileResponse { ok: false, error: Some(error), size: 0 };
                 proto::send(&mut send, &reply).await?;
                 let _ = send.finish();
                 return Ok(());
@@ -498,7 +620,63 @@ impl Inner {
             let _ = send.finish();
             return Ok(());
         }
-        proto::send(&mut send, &FileResponse { ok: true, error: None, size }).await?;
+        // The first pull of a receiver is its yes; that is a change worth writing. Serving itself is only in memory: a restart makes
+        // it `Interrupted` anyway.
+        let first = self
+            .journal
+            .touch(key, |record| {
+                // Stopped since it was looked up: stays stopped, and the token below ends the serving at once.
+                let receiver = record.peer_mut(&peer).filter(|p| p.open())?;
+                let first = receiver.stage == Stage::Offered;
+                receiver.stage = Stage::Accepted;
+                let progress = receiver.items.get_mut(request.index as usize)?;
+                progress.state = ItemState::Running;
+                progress.error = None;
+                Some(first)
+            })
+            .flatten();
+        if first == Some(true) {
+            self.journal.change(key, |_| ());
+        }
+
+        let outcome = self.stream_file(peer, &request, &item.name, opened, size, cancel.clone(), &mut send, &mut recv).await;
+        let (state, error) = match &outcome {
+            Ok(None) => (ItemState::Done, None),
+            Ok(Some(error)) => (ItemState::Failed, Some(error.clone())),
+            Err(_) if cancel.as_ref().is_some_and(|c| c.is_cancelled()) => (ItemState::Cancelled, None),
+            // The connection broke or the file changed: the receiver tries again, from where it got.
+            Err(_) => (ItemState::Interrupted, None),
+        };
+        self.served(key, peer, request.index, state, error);
+        outcome.map(|_| ())
+    }
+
+    /// Writes how serving one file to one receiver ended, unless that receiver was closed meanwhile (stopped, declined), which says
+    /// more than how the last piece went.
+    fn served(&self, key: Key, peer: DeviceId, index: u32, state: ItemState, error: Option<String>) {
+        self.journal.change(key, |record| {
+            if let Some(progress) = record.item_mut(&peer, index)
+                && !progress.state.is_final() {
+                    progress.state = state;
+                    progress.error = error.or_else(|| state.reason().map(str::to_string));
+                }
+        });
+    }
+
+    /// Sends one file, from where the receiver asked. Ok with the error when the receiver rejected the checksum.
+    #[allow(clippy::too_many_arguments)]
+    async fn stream_file(
+        &self,
+        peer: DeviceId,
+        request: &FileRequest,
+        name: &str,
+        opened: std::fs::File,
+        size: u64,
+        cancel: Option<CancellationToken>,
+        send: &mut SendStream,
+        recv: &mut RecvStream,
+    ) -> Result<Option<String>> {
+        proto::send(send, &FileResponse { ok: true, error: None, size }).await?;
 
         // Read by position, never through the offset of the descriptor: Android hands out duplicates of one descriptor, which share
         // that offset, so two receivers of one file would move each other's reads (R-B6).
@@ -522,7 +700,7 @@ impl Inner {
 
         let mut done = request.offset;
         let mut last_emit = Instant::now();
-        self.progress(peer, request.offer, request.index, false, &item.name, done, size);
+        self.progress(peer, request.offer, request.index, false, name, done, size);
         while done < size {
             let want = (size - done).min(buf.len() as u64) as usize;
             if cancel.as_ref().is_some_and(|c| c.is_cancelled()) {
@@ -531,7 +709,7 @@ impl Inner {
                     index: request.index,
                     peer,
                     incoming: false,
-                    name: item.name.clone(),
+                    name: name.to_string(),
                     size,
                     location: None,
                     error: Some("cancelled".into()),
@@ -548,44 +726,45 @@ impl Inner {
             done += n as u64;
             if last_emit.elapsed() >= PROGRESS_EVERY {
                 last_emit = Instant::now();
-                self.progress(peer, request.offer, request.index, false, &item.name, done, size);
+                self.progress(peer, request.offer, request.index, false, name, done, size);
             }
         }
 
-        proto::send(&mut send, &FileTrailer { blake3: *hasher.finalize().as_bytes() }).await?;
+        proto::send(&mut *send, &FileTrailer { blake3: *hasher.finalize().as_bytes() }).await?;
         // Every byte and the trailer are out. A receiver that closes the connection right after its last file can take the
         // acknowledgement down with it: that is not a failed send, and saying nothing left the file at 100% for good. A receiver that
         // really failed pulls again, and says so then.
-        let ack: Option<FileAck> = proto::recv(&mut recv, MAX_SMALL_FRAME).await.ok();
+        let ack: Option<FileAck> = proto::recv(&mut *recv, MAX_SMALL_FRAME).await.ok();
         let _ = send.finish();
         let rejected = ack.is_some_and(|a| !a.ok);
         let error = rejected.then(|| "the other device rejected the checksum".to_string());
         if !rejected {
-            self.progress(peer, request.offer, request.index, false, &item.name, size, size);
+            self.progress(peer, request.offer, request.index, false, name, size, size);
         }
         self.emit(Event::Finished(TransferDone {
             offer: request.offer,
             index: request.index,
             peer,
             incoming: false,
-            name: item.name,
+            name: name.to_string(),
             size,
             location: None,
-            error,
+            error: error.clone(),
         }));
-        Ok(())
+        Ok(error)
     }
 
-    /// Partial downloads nobody came back for are just clutter.
+    /// Clears what nothing will come back for. Run at the start, before anything is received.
     pub(crate) fn clean_partials(&self) {
-        let dir = self.store.dir().join("incoming");
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
-        let cutoff = std::time::SystemTime::now() - Duration::from_secs(3 * 24 * 3600);
-        for entry in entries.flatten() {
-            if let Ok(modified) = entry.metadata().and_then(|m| m.modified())
-                && modified < cutoff {
+        // A partial file that no transfer in the journal points at can never be finished (it is from before the journal, or from a
+        // crash between the two): it goes now instead of after days. The others go when their transfer does (R-B27).
+        let in_use = self.journal.partials_in_use();
+        if let Ok(entries) = std::fs::read_dir(self.store.dir().join(PARTIAL_DIR)) {
+            for entry in entries.flatten() {
+                if !in_use.contains(entry.file_name().to_string_lossy().as_ref()) {
                     let _ = std::fs::remove_file(entry.path());
                 }
+            }
         }
         // Pictures for the clipboard are removed by the app once they are on it; this catches what a crash or a quit left behind.
         if let Ok(entries) = std::fs::read_dir(self.store.dir().join(CLIPBOARD_DIR)) {

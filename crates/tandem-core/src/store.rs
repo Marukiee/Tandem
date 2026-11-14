@@ -35,9 +35,13 @@ impl Store {
     }
 
     pub fn write(&self, name: &str, bytes: &[u8]) -> Result<()> {
+        // A temp name of its own per write: two writers of one file (two threads, or the daemon and an app) would otherwise write
+        // into one temp file and rename a mix of both (R-B27). The last rename wins, which is whole either way.
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let serial = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let target = self.dir.join(name);
-        let temp = self.dir.join(format!(".{name}.tmp"));
-        {
+        let temp = self.dir.join(format!(".{name}.{}-{serial}.tmp", std::process::id()));
+        let written = (|| -> std::io::Result<()> {
             let mut file = std::fs::File::create(&temp)?;
             #[cfg(unix)]
             {
@@ -46,9 +50,13 @@ impl Store {
             }
             file.write_all(bytes)?;
             file.sync_all()?;
+            drop(file);
+            std::fs::rename(&temp, &target)
+        })();
+        if written.is_err() {
+            let _ = std::fs::remove_file(&temp);
         }
-        std::fs::rename(&temp, &target)?;
-        Ok(())
+        Ok(written?)
     }
 
     pub fn read_cbor<T: for<'de> Deserialize<'de>>(&self, name: &str) -> Result<Option<T>> {
