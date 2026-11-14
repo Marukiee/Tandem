@@ -74,6 +74,8 @@ fun SharePickerSheet(
     preview: @Composable () -> Unit,
     onSend: (List<String>) -> Unit,
     onClose: () -> Unit,
+    /** Ticked before the person chooses, such as the device of a shortcut that has to be confirmed with a tap. */
+    ticked: Set<String> = emptySet(),
     nearbyOn: Boolean = false,
     /** Chosen as Quick Share in the share menu: the devices of Tandem are left out. */
     nearbyOnly: Boolean = false,
@@ -84,11 +86,11 @@ fun SharePickerSheet(
 ) {
     val online = devices.filter { it.online }
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
-    // With one device there is nothing to choose.
-    LaunchedEffect(online.map { it.id }) {
+    // With one device there is nothing to choose. What is ticked from the start is taken as soon as it is online.
+    LaunchedEffect(online.map { it.id }, ticked) {
         selected = when {
             online.size == 1 -> setOf(online[0].id)
-            else -> selected.filter { id -> online.any { it.id == id } }.toSet()
+            else -> selected.filter { id -> online.any { it.id == id } }.toSet().ifEmpty { ticked.filter { id -> online.any { it.id == id } }.toSet() }
         }
     }
 
