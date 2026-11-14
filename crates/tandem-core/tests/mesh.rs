@@ -1111,7 +1111,7 @@ async fn a_copy_on_the_phone_meanwhile_is_not_undone_by_the_one_it_missed() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn on_mobile_data_a_large_copy_waits_for_the_person() {
+async fn on_mobile_data_a_large_file_waits_for_the_person() {
     let phone = node("Phone").await;
     let mac = node("Mac").await;
     pair(&phone, &mac).await;
@@ -1126,7 +1126,7 @@ async fn on_mobile_data_a_large_copy_waits_for_the_person() {
     };
     let mut phone_events = phone.engine.subscribe();
 
-    // Small: taken as always.
+    // A copy: taken as always.
     mac.engine.send_files(&[phone.engine.id()], send("small.png", 200_000, 2), ShareOrigin::Clipboard).await.unwrap();
     expect(&mut phone_events, "the small copy arrived", |e| match e {
         Event::Finished(done) if done.incoming && done.name == "small.png" => Some(()),
@@ -1134,8 +1134,8 @@ async fn on_mobile_data_a_large_copy_waits_for_the_person() {
     })
     .await;
 
-    // Large: it waits, until the person says yes.
-    let report = mac.engine.send_files(&[phone.engine.id()], send("large.png", 11 * 1024 * 1024, 3), ShareOrigin::Clipboard).await.unwrap();
+    // Larger than anything copied: it waits, until the person says yes.
+    let report = mac.engine.send_files(&[phone.engine.id()], send("large.mov", 51 * 1024 * 1024, 3), ShareOrigin::Files).await.unwrap();
     let mac_id = mac.engine.id();
     wait_until("the large copy was offered", || phone.engine.offer_held(mac_id, report.offer)).await;
     tokio::time::sleep(Duration::from_millis(600)).await;
@@ -1144,7 +1144,7 @@ async fn on_mobile_data_a_large_copy_waits_for_the_person() {
     }
     phone.engine.accept_offer(mac_id, report.offer).unwrap();
     expect(&mut phone_events, "the large copy arrived after yes", |e| match e {
-        Event::Finished(done) if done.incoming && done.name == "large.png" => Some(()),
+        Event::Finished(done) if done.incoming && done.name == "large.mov" => Some(()),
         _ => None,
     })
     .await;

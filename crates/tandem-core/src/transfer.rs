@@ -60,9 +60,10 @@ pub(crate) struct OutOffer {
     pub cancel: CancellationToken,
 }
 
-/// On mobile data, files above this are not taken without asking, also from a device that may send without asking (a large copy on a
-/// computer would otherwise cost the data of the phone without anyone seeing it).
-pub const METERED_ASK_BYTES: u64 = 10 * 1024 * 1024;
+/// On mobile data, files above this are not taken without asking, also from a device that may send without asking (a large file from a
+/// computer would otherwise cost the data of the phone without anyone seeing it). The same as the most a copy may be: what is copied
+/// still comes by itself, anything larger is asked about.
+pub const METERED_ASK_BYTES: u64 = 50 * 1024 * 1024;
 
 pub(crate) struct InOffer {
     pub offer: ShareOffer,

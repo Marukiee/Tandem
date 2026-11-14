@@ -5,7 +5,7 @@
     "en": {
       "title": "Quiet in your pocket",
       "new": [
-        "On mobile data, large files from another device wait until you say yes"
+        "On mobile data, files above 50 MB from another device wait until you say yes"
       ],
       "fixed": [
         "A phone with its screen off is woken far less often by your other devices",
@@ -15,7 +15,7 @@
     "nl": {
       "title": "Stil in je zak",
       "new": [
-        "Op mobiele data wachten grote bestanden van een ander apparaat tot je ja zegt"
+        "Op mobiele data wachten bestanden boven 50 MB van een ander apparaat tot je ja zegt"
       ],
       "fixed": [
         "Een telefoon met het scherm uit wordt veel minder vaak gewekt door je andere apparaten",
