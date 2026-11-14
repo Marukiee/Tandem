@@ -587,6 +587,8 @@ final class EngineModel {
         case let .finished(offer, index, peer, incoming, name, size, location, error):
             // Taken by a drop on the edge or by the clipboard: those say it themselves, but the row its progress made must still go, or it
             // stood at full forever next to the finished file (seen 2026-11-02 with screenshots from the phone).
+            // A transfer that waited for an answer can end without one: the sender stopped it, or it expired.
+            if incoming, !HalfwayTransfers.shared.waiting.isEmpty { HalfwayTransfers.shared.refresh() }
             if incoming, HalfwayTransfers.shared.swallows(offer: offer, from: peer) { break }
             if incoming, DragLanding.shared.finished(offer: offer, from: peer, name: name, location: location, error: error)
                 || ClipboardFiles.shared.finished(offer: offer, from: peer, location: location, error: error) {
@@ -1234,9 +1236,10 @@ final class EngineModel {
                         mime: FileKind.mimeType(for: prepared)
                     ))
                 }
-                // Asked before it goes, so nobody waits for files that the other side refuses for space (P5).
+                // Asked before it goes, so nobody waits for files that the other side refuses for space (P5). Not in the middle of a drag
+                // or a copy: the other side refuses those by itself if they do not fit.
                 let short = (try? engine.shortOfSpace(targets: ids, files: files)) ?? []
-                if !short.isEmpty {
+                if case .files = origin, !short.isEmpty {
                     let names = short.compactMap { device($0)?.name }.joined(separator: ", ")
                     GlassQuestion.shared.ask(
                         symbol: "externaldrive.badge.exclamationmark",

@@ -92,12 +92,14 @@ impl Inner {
         }
         let mut changed = vec![None; files.len()];
         for (file, changed) in files.iter_mut().zip(changed.iter_mut()) {
-            if file.size == 0
-                && let Ok(opened) = self.files.open_read(&file.source) {
-                    let meta = opened.metadata().ok();
-                    file.size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
-                    *changed = meta.and_then(|m| m.modified().ok()).and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok());
+            // When it last changed, also when the app knows the size: a resume (P2) and the queue (P3) compare it to see a file that was
+            // edited without changing size.
+            if let Ok(meta) = self.files.open_read(&file.source).and_then(|opened| opened.metadata()) {
+                if file.size == 0 {
+                    file.size = meta.len();
                 }
+                *changed = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok());
+            }
         }
 
         let (online, offline): (Vec<DeviceId>, Vec<DeviceId>) =
