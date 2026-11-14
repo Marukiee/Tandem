@@ -280,9 +280,6 @@ impl Inner {
         if stage == Stage::Accepted && !run.started.load(std::sync::atomic::Ordering::SeqCst) {
             return Err(Error::invalid("that transfer stopped halfway"));
         }
-        if stage == Stage::Closed {
-            return Err(gone());
-        }
         self.begin_receive(from, key, run);
         Ok(())
     }
