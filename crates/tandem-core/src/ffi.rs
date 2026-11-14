@@ -1955,6 +1955,12 @@ impl TandemEngine {
         self.engine.set_metered(on);
     }
 
+    /// Lets files sent to a device that is away wait for it, up to 7 days (P3). Off until the app shows the queue; see docs/TRANSFERS.md
+    /// for what an app must do before it turns this on.
+    pub fn set_queue_offline(&self, on: bool) {
+        self.engine.set_queue_offline(on);
+    }
+
     /// Whether the offer `offer` of `from` waits for the person because this device is on mobile data and it is large.
     pub fn offer_held(&self, from: String, offer: u64) -> bool {
         DeviceId::parse(&from).map(|id| self.engine.offer_held(id, offer)).unwrap_or(false)

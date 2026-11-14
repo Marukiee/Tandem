@@ -172,7 +172,7 @@ impl Inner {
 
         let (online, offline): (Vec<DeviceId>, Vec<DeviceId>) =
             targets.iter().copied().partition(|id| self.session_of(id).is_some());
-        let queue = queues(origin);
+        let queue = queues(origin) && self.queue_offline.load(std::sync::atomic::Ordering::Relaxed);
         let queued: Vec<DeviceId> = if queue { offline.clone() } else { Vec::new() };
         let offer_id = rand_u64();
         let items: Vec<RecordItem> = files

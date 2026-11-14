@@ -602,6 +602,7 @@ async fn mac_away(phone: &Node, mac: &Node) {
     wait_until("connected", || online(phone, mac.engine.id()) && online(mac, phone.engine.id())).await;
     mac.engine.shutdown().await;
     wait_until("the phone sees the Mac go", || !phone.engine.is_connected(&mac.engine.id())).await;
+    phone.engine.set_queue_offline(true);
 }
 
 fn stage_of(engine: &Engine, offer: u64, peer: DeviceId) -> Option<Stage> {
@@ -616,6 +617,14 @@ async fn a_queued_offer_survives_a_restart_and_goes_out_when_the_receiver_comes_
     let mac = node("Mac").await;
     mac_away(&phone, &mac).await;
     let source = tempfile::tempdir().unwrap();
+
+    // Off, as in an app that does not show the queue yet: nothing waits, as before P3.
+    phone.engine.set_queue_offline(false);
+    let off = phone.engine.send_files(&[mac.engine.id()], vec![outgoing(source.path(), "off.bin", b"off")], ShareOrigin::Files).await.unwrap();
+    assert!(off.queued.is_empty() && off.offline == [mac.engine.id()]);
+    assert!(phone.engine.transfers().iter().all(|t| t.offer != off.offer));
+    phone.engine.set_queue_offline(true);
+
     let data = random_bytes(700_000, 50);
     let report = phone.engine.send_files(&[mac.engine.id()], vec![outgoing(source.path(), "queued.bin", &data)], ShareOrigin::Files).await.unwrap();
     assert!(report.sent_to.is_empty());
@@ -631,6 +640,7 @@ async fn a_queued_offer_survives_a_restart_and_goes_out_when_the_receiver_comes_
     assert!(phone.engine.transfers().iter().all(|t| t.offer != clip.offer));
 
     phone.engine.shutdown().await;
+    // Not turned on again: what is in the queue goes out anyway.
     let phone_again = restart(&phone, "Phone").await;
     assert_eq!(stage_of(&phone_again, report.offer, mac.engine.id()), Some(Stage::Queued), "the queue must survive a restart");
 
@@ -709,6 +719,7 @@ async fn the_panel_sees_halfway_waiting_queued_failed_and_running_transfers() {
     let source = tempfile::tempdir().unwrap();
     let (halfway, _) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
     let (mac_again, phone_again) = both_back_after_a_transfer_halfway(&phone, &mac, halfway, || ()).await;
+    phone_again.set_queue_offline(true);
     ask_first_engine(&mac_again, phone.engine.id());
     let mut mac_events = mac_again.subscribe();
 

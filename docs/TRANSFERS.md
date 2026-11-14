@@ -233,6 +233,19 @@ Android: `AndroidFiles.finished` moet bij elke eindcode het uitgaande bestand lo
 
 ### P3. Wachtrij voor apparaten die weg zijn (gebouwd)
 
+**Een app zet hem aan** met `set_queue_offline(true)` na de start (Rust: `Engine::set_queue_offline`). Standaard staat hij uit en
+gedraagt `send_files` zich zoals voor P3: wie niet verbonden is krijgt niets en staat in `offline`. Wat al in de wachtrij staat gaat
+altijd uit, ook als hij uit staat. De Mac zet hem aan. Android en Linux/Windows pas als ze dit allemaal doen (ronde 4):
+
+1. Na `send_files` `queued` lezen: bij een niet-lege lijst geen melding dat het mislukte, maar "Waits for %@. It goes as soon as it is
+   back. / Wacht op %@. Het gaat zodra het terug is." (Android nu `EngineHost.kt`, Linux/Windows `commands.rs` en `drops.js`).
+2. Android: een bestand vasthouden voor de ontvangers in `sent_to` en in `queued` (`AndroidFiles.offered` krijgt nu alleen `sent_to`,
+   dan wordt een gedeelde content-URI meteen losgelaten en eindigt hij als `gone` als het apparaat terugkomt), en het pas loslaten bij
+   een eindcode. Beter nog: een bestand van een andere app eerst naar `outgoing/` kopieren, want de toestemming verloopt bij een
+   herstart; de kern ruimt een kopie waar een lopend aanbod naar wijst niet op.
+3. Het paneel van P3b, zodat een rij in de wachtrij te zien en te stoppen is.
+4. `TandemEvent::TransfersChanged` afhandelen: lees `transfers()` opnieuw (Android en Tauri slaan hem nu over met hun `else`/`_`).
+
 - `send_files` zet ontvangers die niet verbonden zijn in het boek met `stage: queued` en `offered_ms: 0`; ook een ontvanger waarnaar het
   versturen mislukte. Alleen voor `Files`, `Screenshot`, `Photo` en `Other` (`transfer::queues`); klembord, `Capture` en `Drag` horen bij
   een moment en wachten niet. `SendReport::queued` (ffi `TandemSendReport.queued`) zegt voor wie het wacht; `offline` blijft alles wat niet
