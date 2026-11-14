@@ -1991,6 +1991,17 @@ impl TandemEngine {
         })
     }
 
+    /// The devices among `targets` that report less free space than `files` take (P5). Ask before sending when it is not empty; the
+    /// receiver refuses by itself with the reason `no space` when it really does not fit.
+    pub fn short_of_space(&self, targets: Vec<String>, files: Vec<TandemOutgoingFile>) -> Result<Vec<String>, TandemError> {
+        let targets = parse_ids(&targets)?;
+        let files: Vec<OutgoingFile> = files
+            .into_iter()
+            .map(|f| OutgoingFile { source: f.source, name: f.name, size: f.size, mime: f.mime })
+            .collect();
+        Ok(ids_to_strings(self.engine.short_of_space(&targets, &files)))
+    }
+
     /// Incoming transfers that stopped halfway before this start, newest first (P2). Nothing goes on by itself: ask the person "go on or
     /// throw away" for each. Call it after the start and on `Connected` (Go on needs the sender connected).
     pub fn resumable_transfers(&self) -> Vec<TandemResumable> {

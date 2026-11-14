@@ -595,6 +595,12 @@ impl Engine {
         self.inner.discard_transfer(from, offer_id).await
     }
 
+    /// The devices among `targets` that said they have less free space than `files` take (P5), for a warning before sending. A device
+    /// that does not report its free space is never in it; the receiver refuses by itself when it does not fit.
+    pub fn short_of_space(&self, targets: &[DeviceId], files: &[crate::transfer::OutgoingFile]) -> Vec<DeviceId> {
+        self.inner.short_of_space(targets, files)
+    }
+
     /// Every transfer this device knows of, in and out, the newest first: what is running, waits for a yes, stopped halfway or
     /// ended a short while ago. The base of the panel of P3b; see docs/TRANSFERS.md.
     pub fn transfers(&self) -> Vec<crate::journal::TransferRecord> {
