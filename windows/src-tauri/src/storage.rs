@@ -9,6 +9,10 @@ use tauri::{AppHandle, Manager};
 
 use crate::state::AppState;
 
+/// What is told when the disk cannot be read. The core only takes over a number that is there and cannot be told "unknown" again, so an
+/// old number would keep refusing files; this one is more than any disk holds, so nothing is refused for lack of room.
+const UNKNOWN: u64 = u64::MAX;
+
 pub fn start(app: AppHandle) {
     std::thread::Builder::new()
         .name("tandem-storage".into())
@@ -16,16 +20,15 @@ pub fn start(app: AppHandle) {
             let mut told = None;
             loop {
                 let folder = crate::settings::download_dir(&app);
-                // A chosen folder may not exist yet: the disk is the one of the nearest folder that does.
-                let probe = folder.ancestors().find(|p| p.exists()).unwrap_or(&folder);
-                let now = tandem_winsys::diskspace::free_bytes(probe);
+                // A folder that is not there may be on a disk that is not plugged in; the disk below it would be another one.
+                let now = if folder.exists() { tandem_winsys::diskspace::free_bytes(&folder) } else { None };
                 let mut wait = Duration::from_secs(60);
-                if now.is_some() && !same_enough(now, told) {
+                if let Some(number) = to_tell(now, told) {
                     match app.state::<AppState>().engine() {
                         Ok(engine) => {
                             log::info!("{:?} bytes are free in {}", now, folder.display());
-                            tauri::async_runtime::block_on(engine.update_status(TandemStatus { free_storage: now, ..Default::default() }));
-                            told = now;
+                            tauri::async_runtime::block_on(engine.update_status(TandemStatus { free_storage: Some(number), ..Default::default() }));
+                            told = Some(number);
                         }
                         // The engine is still starting.
                         Err(_) => wait = Duration::from_secs(3),
@@ -37,24 +40,37 @@ pub fn start(app: AppHandle) {
         .ok();
 }
 
-/// A download in progress changes the number all the time; the other devices need it to within a few megabytes.
-fn same_enough(now: Option<u64>, told: Option<u64>) -> bool {
+/// The number to tell the other devices now, if it is not the one they have. A download in progress changes the number all the time;
+/// they need it to within a few megabytes.
+fn to_tell(now: Option<u64>, told: Option<u64>) -> Option<u64> {
     const STEP: u64 = 8 * 1024 * 1024;
     match (now, told) {
-        (Some(a), Some(b)) => a.abs_diff(b) < STEP,
-        (None, None) => true,
-        _ => false,
+        (Some(a), Some(b)) if b != UNKNOWN && a.abs_diff(b) < STEP => None,
+        (Some(a), _) => Some(a),
+        // It could be read before and now cannot: the old number must not stay.
+        (None, Some(b)) if b != UNKNOWN => Some(UNKNOWN),
+        (None, _) => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::same_enough;
+    use super::{to_tell, UNKNOWN};
 
     #[test]
     fn small_changes_are_not_told_again() {
-        assert!(same_enough(Some(1_000_000_000), Some(1_000_100_000)));
-        assert!(!same_enough(Some(1_000_000_000), Some(900_000_000)));
-        assert!(!same_enough(Some(5), None));
+        assert_eq!(to_tell(Some(1_000_000_000), Some(1_000_100_000)), None);
+        assert_eq!(to_tell(Some(1_000_000_000), Some(900_000_000)), Some(1_000_000_000));
+        assert_eq!(to_tell(Some(5), None), Some(5));
+    }
+
+    #[test]
+    fn a_disk_that_cannot_be_read_any_more_does_not_keep_its_old_number() {
+        assert_eq!(to_tell(None, Some(5_000_000_000)), Some(UNKNOWN));
+        // Told once is enough, and a disk that never could be read says nothing.
+        assert_eq!(to_tell(None, Some(UNKNOWN)), None);
+        assert_eq!(to_tell(None, None), None);
+        // And when it can be read again the real number is told.
+        assert_eq!(to_tell(Some(5_000_000_000), Some(UNKNOWN)), Some(5_000_000_000));
     }
 }

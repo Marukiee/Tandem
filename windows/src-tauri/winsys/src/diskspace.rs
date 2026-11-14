@@ -14,7 +14,8 @@ pub fn free_bytes(folder: &Path) -> Option<u64> {
     let wide: Vec<u16> = folder.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
     let mut available = 0u64;
     unsafe { GetDiskFreeSpaceExW(PCWSTR(wide.as_ptr()), Some(&mut available), None, None) }.ok()?;
-    Some(available)
+    // A disk that says nothing is free is mostly one that cannot say (some network shares): that is not a reason to refuse everything.
+    (available > 0).then_some(available)
 }
 
 #[cfg(target_os = "linux")]
@@ -30,7 +31,9 @@ pub fn free_bytes(folder: &Path) -> Option<u64> {
     // SAFETY: the call succeeded, so it filled the struct.
     let stat = unsafe { stat.assume_init() };
     // `f_bavail` is what an ordinary user may use; `f_bfree` also counts the part reserved for root.
-    Some((stat.f_bavail as u64).saturating_mul(stat.f_frsize as u64))
+    // Some FUSE and network disks say nothing is free because they cannot say: that is not a reason to refuse everything.
+    let free = (stat.f_bavail as u64).saturating_mul(stat.f_frsize as u64);
+    (free > 0).then_some(free)
 }
 
 #[cfg(not(any(windows, target_os = "linux")))]
