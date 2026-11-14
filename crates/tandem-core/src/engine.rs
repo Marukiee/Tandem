@@ -662,6 +662,8 @@ impl Engine {
     pub async fn shutdown(&self) {
         let inner = &self.inner;
         inner.cancel.cancel();
+        // What waited for its turn goes to disk now, and what the stop changes after this goes at once.
+        inner.journal.flush_all();
         inner.note_all_seen();
         let sessions: Vec<Arc<Session>> = inner
             .peers

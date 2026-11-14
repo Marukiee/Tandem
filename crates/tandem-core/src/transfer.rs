@@ -385,7 +385,7 @@ impl Inner {
                 failed(peer, offer, index, &item, reason)
             }
         };
-        self.journal.change(key, |record| {
+        self.journal.file_ended(key, |record| {
             if let Some(progress) = record.item_mut(&peer, index) {
                 progress.state = match done.error.as_deref() {
                     None => ItemState::Done,
@@ -654,7 +654,7 @@ impl Inner {
     /// Writes how serving one file to one receiver ended, unless that receiver was closed meanwhile (stopped, declined), which says
     /// more than how the last piece went.
     fn served(&self, key: Key, peer: DeviceId, index: u32, state: ItemState, error: Option<String>) {
-        self.journal.change(key, |record| {
+        self.journal.file_ended(key, |record| {
             if let Some(progress) = record.item_mut(&peer, index)
                 && !progress.state.is_final() {
                     progress.state = state;
