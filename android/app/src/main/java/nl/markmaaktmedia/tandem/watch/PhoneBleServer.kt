@@ -77,6 +77,7 @@ class PhoneBleServer(
 
     fun stop() {
         wanted = false
+        slow = false
         handler.removeCallbacksAndMessages(RETRY_TOKEN)
         stopAdvertising()
         server?.let { s ->
@@ -139,6 +140,19 @@ class PhoneBleServer(
         opened.addService(service)
     }
 
+    /**
+     * The first minute after the watch went away is when it comes back most often (out of range for a moment), so that is worth the
+     * faster setting. After it the phone would keep calling at that pace all day, so it slows down until the watch connects again.
+     */
+    private var slow = false
+
+    private val slowDown = Runnable {
+        if (!advertising || device != null) return@Runnable
+        stopAdvertising()
+        slow = true
+        startAdvertising()
+    }
+
     private fun startAdvertising() {
         if (!wanted || advertising || device != null) return
         val advertiser = manager?.adapter?.bluetoothLeAdvertiser
@@ -148,7 +162,7 @@ class PhoneBleServer(
             return
         }
         val settings = AdvertiseSettings.Builder()
-            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
+            .setAdvertiseMode(if (slow) AdvertiseSettings.ADVERTISE_MODE_LOW_POWER else AdvertiseSettings.ADVERTISE_MODE_BALANCED)
             .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
             .setConnectable(true)
             .setTimeout(0)
@@ -160,11 +174,13 @@ class PhoneBleServer(
             .build()
         advertising = true
         advertiser.startAdvertising(settings, data, advertiseCallback)
+        if (!slow) handler.postDelayed(slowDown, SLOW_DOWN_MS)
     }
 
     private fun stopAdvertising() {
         if (!advertising) return
         advertising = false
+        handler.removeCallbacks(slowDown)
         manager?.adapter?.bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback)
     }
 
@@ -238,6 +254,7 @@ class PhoneBleServer(
                             return@post
                         }
                         device = remote
+                        slow = false
                         stopAdvertising()
                         events.onBleLog("Watch connected")
                         if (!linkUp) {
@@ -335,5 +352,6 @@ class PhoneBleServer(
         const val BUSY_RETRY_MS = 30L
         const val MAX_BUSY_RETRIES = 100
         const val SUBSCRIBE_TIMEOUT_MS = 15_000L
+        const val SLOW_DOWN_MS = 60_000L
     }
 }
