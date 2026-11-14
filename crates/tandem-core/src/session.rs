@@ -503,13 +503,7 @@ impl Inner {
                 self.emit(Event::Clipboard { from: id, text: clip.text, is_url: clip.is_url });
             }
             Msg::ShareOffer(offer) => self.clone().on_share_offer(id, offer),
-            Msg::ShareReply(reply) => {
-                debug!(peer = %id, offer = reply.id, accepted = reply.accepted, "share reply");
-                if !reply.accepted
-                    && let Some(offer) = self.out_offers.lock().unwrap().get_mut(&reply.id) {
-                        offer.targets.remove(&id);
-                    }
-            }
+            Msg::ShareReply(reply) => self.on_share_reply(id, reply),
             Msg::ShareCancel { id: offer } => self.on_share_cancel(id, offer),
             Msg::ShareText(text) => {
                 self.emit(Event::ShareText { from: id, text: text.text, is_url: text.is_url, open: text.open });
