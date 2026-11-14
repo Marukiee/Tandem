@@ -1,6 +1,7 @@
 // The small panel above the tray icon: who is connected, what is moving, what plays, and a way into the app.
 import { html, render, useEffect, useRef } from "../vendor/preact-htm.js";
-import { call, connect, native } from "./backend.js";
+import { call, connect, listenDrops, native } from "./backend.js";
+import { dropPaths, markDropTarget } from "./drops.js";
 import { BatteryCard, batteryList } from "./batteries.js";
 import { DeviceGlyph, PlayerCard, fmtSize, watchPhoneId } from "./components.js";
 import { Icon } from "./icons.js";
@@ -16,7 +17,7 @@ function Row({ device }) {
     try { await call("send_clipboard", { ids: [device.id] }); say(t("clipboard_sent")); }
     catch (e) { failed(e === "no-text" ? t("no_text") : e); }
   };
-  return html`<div class=${"row" + (device.online ? "" : " dim")}>
+  return html`<div class=${"row" + (device.online ? "" : " dim")} data-device-id=${device.id}>
     <${DeviceGlyph} device=${device} size=${34} />
     <div class="grow">
       <div class="name ellipsis">${device.name}</div>
@@ -112,6 +113,8 @@ function Panel() {
 
 await connect();
 setLanguage(state.settings.language, state.systemLanguage);
+// Files dropped on a row go to that device; the panel has no page to drop on.
+await listenDrops((over, at) => markDropTarget(over ? at : null, false), (paths, at) => dropPaths(paths, at, false));
 render(html`<${Panel} />`, document.getElementById("root"));
 // The panel stays loaded while it is hidden: look again when it comes back.
 window.addEventListener("focus", async () => set(await call("get_state")));

@@ -9,6 +9,7 @@ import { MicButton, OutputButton } from "./output.js";
 import { ActivityDetail, HealthOverview, HeartDetail, SleepDetail, WatchGlance } from "./health.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
+import { filesFolder } from "./drops.js";
 
 const failed = (e) => say(String(e && e.message ? e.message : e));
 /** Where the camera of a phone goes for OBS: the port of `tsout` in the core. */
@@ -630,12 +631,6 @@ function sizeText(n) {
   while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
   return v.toFixed(v < 10 ? 1 : 0) + " " + units[i];
 }
-
-/**
- * The open folder of the Files page, for a drop on the window (drops.js): the device, and a way to put the paths in it. Null while no
- * folder of another device is open.
- */
-export const filesFolder = { current: null };
 
 export function FilesPage() {
   const device = state.devices.find((d) => d.id === state.selected);

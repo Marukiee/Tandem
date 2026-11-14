@@ -369,6 +369,8 @@ export async function call(command, args) {
     case "wifi_share": return "Wi-Fi sent to " + (devices.find((d) => d.id === args.id)?.name ?? "?");
     case "pick_and_send":
     case "send_paths": {
+      // Which devices a drop went to, for a look at drops.js.
+      (window.mockSends = window.mockSends || []).push(args.ids);
       const id = "9-0-out";
       let done = 0;
       const total = 12000000;

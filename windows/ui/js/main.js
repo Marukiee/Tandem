@@ -10,6 +10,7 @@ import { say, selectedDevice, set, state, useStore } from "./store.js";
 import { MessagesPage, offersMessages } from "./messages.js";
 import { CallDialog, useCallAsk } from "./calls.js";
 import { TourPage, maybeShowTour } from "./tour.js";
+import { dropPaths, markDropTarget } from "./drops.js";
 
 /** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
 // The watch only talks to its phone, but it is a device of its own: its page goes by way of the phone.
@@ -99,7 +100,7 @@ function Nav() {
     ${state.devices.map((d) => {
       const battery = d.status && d.status.battery;
       const on = (state.page === "device" || state.page === "files") && state.selected === d.id;
-      return [html`<div class=${"row" + (on ? " selected" : "") + (d.online ? "" : " dim")} key=${d.id} onClick=${() => set({ selected: d.id, page: "device" })}>
+      return [html`<div class=${"row" + (on ? " selected" : "") + (d.online ? "" : " dim")} key=${d.id} data-device-id=${d.id} onClick=${() => set({ selected: d.id, page: "device" })}>
         <${DeviceGlyph} device=${d} size=${36} />
         <div class="grow">
           <div class="name ellipsis">${d.name}</div>
@@ -263,8 +264,9 @@ if (!native) {
 if (await call("tour_pending").catch(() => false)) set({ page: "tour" });
 else if (native) maybeShowTour();
 setLanguage(state.settings.language, state.systemLanguage);
+// A drop goes where it was let go (drops.js). The drop zone on the page of a device lights up only when that is where it would go.
 await listenDrops(
-  (over) => set({ dropping: over }),
-  (paths) => { const device = selectedDevice(); if (device && device.online) sendPaths([device.id], paths); },
+  (over, at) => { const target = markDropTarget(over ? at : null); set({ dropping: !!(target && target.page) }); },
+  (paths, at) => { set({ dropping: false }); dropPaths(paths, at); },
 );
 render(html`<${App} />`, document.getElementById("root"));
