@@ -800,6 +800,17 @@ mod tests {
         expect("Your code is 12345678", "12345678");
     }
 
+    /// The texts of a bug report: the phone reads the message itself with only this function, so each one has to be found here.
+    #[test]
+    fn texts_that_android_may_hold_back_or_that_are_dutch() {
+        expect("Your code is 123456", "123456");
+        expect("<#> Your code is 234567 FA+9qCX9VSu", "234567");
+        expect("345678 is your code. @example.com #345678", "345678");
+        expect("Uw verificatiecode is 456789", "456789");
+        expect("Je inlogcode: 4821", "4821");
+        expect("Gebruik 123 456 om in te loggen", "123456");
+    }
+
     #[test]
     fn long_text_is_cut_off_and_still_answers() {
         let mut text = "Your verification code is 482913. ".to_string();
