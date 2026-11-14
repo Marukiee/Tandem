@@ -75,6 +75,9 @@ class Graph(app: Application) {
     /** Set when another device asks this phone to open the sharing page of its settings. */
     val openSharing = kotlinx.coroutines.flow.MutableStateFlow(false)
 
+    /** Set by the notification of a transfer that stopped halfway: the tab Transfers is to be shown. */
+    val openTransfers = kotlinx.coroutines.flow.MutableStateFlow(false)
+
     /** Set when Tandem started again for Shizuku: its page is to be opened. */
     val openShizuku = kotlinx.coroutines.flow.MutableStateFlow(false)
 

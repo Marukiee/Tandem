@@ -119,6 +119,7 @@ private fun MainNavigation() {
         }
     }
     ScreenSoundQuestion()
+    nl.markmaaktmedia.tandem.ui.components.SpaceQuestion()
     val sharingFlag = LocalContext.current.graph.openSharing
     val openSharing by sharingFlag.collectAsState()
     val settingsState = androidx.lifecycle.viewmodel.compose.viewModel<nl.markmaaktmedia.tandem.ui.screens.settings.SettingsViewModel>()
@@ -146,6 +147,16 @@ private fun MainNavigation() {
         if (openTour) {
             nav.push(Route.Tour)
             tourFlag.value = false
+        }
+    }
+    val transfersFlag = LocalContext.current.graph.openTransfers
+    val openTransfers by transfersFlag.collectAsState()
+    LaunchedEffect(openTransfers) {
+        if (openTransfers) {
+            // Back to the tabs first: the question is on the tab, not on a page above it.
+            while (nav.stack.size > 1) nav.pop()
+            nav.tab = 1
+            transfersFlag.value = false
         }
     }
     val shizukuFlag = LocalContext.current.graph.openShizuku

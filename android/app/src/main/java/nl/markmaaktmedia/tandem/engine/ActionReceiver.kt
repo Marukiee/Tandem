@@ -24,6 +24,10 @@ class ActionReceiver : BroadcastReceiver() {
                 TandemService.offerAnswered(context, offer)
                 context.graph.scope.launch { runCatching { host.engine?.declineOffer(device, offer.toULong()) } }
             }
+            GO_ON, THROW_AWAY -> {
+                if (device != null) host.halfway.answer(device, offer.toULong(), intent.action!!)
+                return
+            }
             STOP_RING -> FindPhone.stop()
             CANCEL_CAPTURE -> {
                 val request = intent.getLongExtra(EXTRA_OFFER, 0)
@@ -68,6 +72,8 @@ class ActionReceiver : BroadcastReceiver() {
         const val ACCEPT = "nl.markmaaktmedia.tandem.ACCEPT"
         const val DECLINE = "nl.markmaaktmedia.tandem.DECLINE"
         const val CANCEL_CAPTURE = "nl.markmaaktmedia.tandem.CANCEL_CAPTURE"
+        const val GO_ON = "nl.markmaaktmedia.tandem.GO_ON"
+        const val THROW_AWAY = "nl.markmaaktmedia.tandem.THROW_AWAY"
         const val STOP_RING = "nl.markmaaktmedia.tandem.STOP_RING"
         const val STOP_AUDIO = "nl.markmaaktmedia.tandem.STOP_AUDIO"
         const val SEND_SCREENSHOT = "nl.markmaaktmedia.tandem.SEND_SCREENSHOT"

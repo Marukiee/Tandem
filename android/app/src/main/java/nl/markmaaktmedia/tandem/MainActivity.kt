@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         if (intent?.action == ACTION_OPEN_TOUR) graph.openTour.value = true
         if (intent?.action == ACTION_OPEN_SHARING) graph.openSharing.value = true
         if (intent?.action == ACTION_OPEN_SHIZUKU) graph.openShizuku.value = true
+        if (intent?.action == ACTION_OPEN_TRANSFERS) graph.openTransfers.value = true
     }
 
     override fun onStart() {
@@ -74,6 +75,9 @@ class MainActivity : AppCompatActivity() {
 
         /** From another device: the page of Settings with sharing, where the mouse of a computer is switched on. */
         const val ACTION_OPEN_SHARING = "nl.markmaaktmedia.tandem.OPEN_SHARING"
+
+        /** From the notification of a transfer that stopped halfway: the page Transfers, where Go on and Throw away are. */
+        const val ACTION_OPEN_TRANSFERS = "nl.markmaaktmedia.tandem.OPEN_TRANSFERS"
 
         /** After Tandem started again to get the connection of Shizuku: back on its page. */
         const val ACTION_OPEN_SHIZUKU = "nl.markmaaktmedia.tandem.OPEN_SHIZUKU"
