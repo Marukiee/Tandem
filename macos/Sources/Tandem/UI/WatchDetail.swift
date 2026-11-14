@@ -301,6 +301,7 @@ private struct WatchHealthCard: View {
         let insights = model.healthInsights
         let night = model.healthRecords.first { $0.isNight }
         let stepsDay = insights?.week.last { $0.steps != nil }
+        let settings = phone.status.watch?.settings
         // The heart rate now, while this card is on screen and the watch is with its phone: asked again every half minute, as the
         // phone stops by itself without that.
         let watchHere = phone.online && phone.status.watch?.online == true
