@@ -670,7 +670,13 @@ struct TransferRow: View {
                             Text(item.incoming ? "From \(peerName)" : "To \(peerName)")
                         }
                     case .failed:
-                        Text(item.error ?? String(localized: "Failed"))
+                        // The reasons the core gives in its own words, in the words of the person.
+                        switch item.error {
+                        case "cancelled": Text("Cancelled")
+                        case "declined": Text("Declined")
+                        case "expired": Text("Expired")
+                        default: Text(item.error ?? String(localized: "Failed"))
+                        }
                     }
                 }
                 .font(.caption)

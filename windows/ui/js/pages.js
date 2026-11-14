@@ -116,7 +116,7 @@ export function TransferRow({ item, chosen, onClick }) {
   const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
   const detail = active
     ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "")
-    : item.state === "failed" ? (item.error === "cancelled" ? t("cancelled") : item.error || t("failed")) : fmtSize(item.total);
+    : item.state === "failed" ? (["cancelled", "declined", "expired"].includes(item.error) ? t(item.error) : item.error || t("failed")) : fmtSize(item.total);
   return html`<div class=${"item" + (chosen ? " chosen" : "") + (onClick ? " pickable" : "")} onMouseDown=${noTextPick} onClick=${onClick}>
     ${chosen ? html`<${Icon} name="check" size=${18} class="accent-text" />` : html`<${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${18} class=${item.state === "failed" ? "bad" : ""} />`}
     <div class="grow">

@@ -128,7 +128,8 @@ class AndroidFiles(private val context: Context) : TandemFiles {
          * only a file that arrived or was cancelled counts.
          */
         fun finished(offer: ULong, index: Int, peer: String, error: String?) {
-            if (error != null && error != "cancelled") return
+            // Declined and expired end it for that device as well: it will not fetch the file any more.
+            if (error != null && error !in setOf("cancelled", "declined", "expired")) return
             synchronized(lock) {
                 val entry = offers[offer]
                 if (entry == null) {
