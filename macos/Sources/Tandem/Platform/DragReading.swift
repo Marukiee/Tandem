@@ -35,8 +35,10 @@ enum DragReading {
             // Nothing came of the promise in time: a picture that came with it still goes.
             return await read(.picture)
         case .picture:
-            guard let data = board.data(forType: .png) ?? board.data(forType: .tiff) else { return await read(.text) }
-            let file = await Task.detached(priority: .userInitiated) { writePicture(data) }.value
+            guard let picture = DragKind.pictureType(in: board.types?.map(\.rawValue) ?? []),
+                  let data = board.data(forType: NSPasteboard.PasteboardType(picture.type))
+            else { return await read(.text) }
+            let file = await Task.detached(priority: .userInitiated) { writePicture(data, type: picture.type, ext: picture.ext) }.value
             return file.map { .files([$0]) }
         case .text:
             if let text = board.string(forType: .string), !text.isEmpty { return .text(text) }
@@ -60,16 +62,12 @@ enum DragReading {
         return (try? manager.createDirectory(at: folder, withIntermediateDirectories: true)) == nil ? nil : folder
     }
 
-    nonisolated private static func writePicture(_ data: Data) -> URL? {
-        let png: Data?
-        if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) {
-            png = data
-        } else {
-            png = NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:])
-        }
-        guard let png, let folder = freshFolder() else { return nil }
-        let file = folder.appendingPathComponent(String(localized: "Picture") + " \(Int(Date().timeIntervalSince1970)).png")
-        return (try? png.write(to: file)) == nil ? nil : file
+    /// Written as the app had it; only a tiff is made into a png.
+    nonisolated private static func writePicture(_ data: Data, type: String, ext: String) -> URL? {
+        let bytes = type == "public.tiff" ? NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]) : data
+        guard let bytes, let folder = freshFolder() else { return nil }
+        let file = folder.appendingPathComponent(String(localized: "Picture") + " \(Int(Date().timeIntervalSince1970)).\(ext)")
+        return (try? bytes.write(to: file)) == nil ? nil : file
     }
 
     /// Asks the app the drag came from to write the files it promised. Waits at most 20 seconds: a video from Photos can take a while,

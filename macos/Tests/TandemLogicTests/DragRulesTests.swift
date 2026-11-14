@@ -16,6 +16,15 @@ import TandemLogic
         #expect(DragKind.choose(types: ["public.utf8-plain-text", "public.url", "public.tiff"], promiseTypes: promises) == .picture)
     }
 
+    @Test func aPictureIsReadAsTheAppHasIt() {
+        #expect(DragKind.pictureType(in: ["public.jpeg", "public.tiff"])?.ext == "jpg")
+        #expect(DragKind.pictureType(in: ["public.heic"])?.ext == "heic")
+        #expect(DragKind.pictureType(in: ["com.compuserve.gif", "public.png"])?.ext == "gif")
+        #expect(DragKind.pictureType(in: ["public.tiff"])?.type == "public.tiff")
+        #expect(DragKind.pictureType(in: ["public.utf8-plain-text"]) == nil)
+        #expect(DragKind.choose(types: ["public.jpeg", "public.url"], promiseTypes: promises) == .picture)
+    }
+
     @Test func textAndLinks() {
         #expect(DragKind.choose(types: ["public.utf8-plain-text", "public.rtf"], promiseTypes: promises) == .text)
         #expect(DragKind.choose(types: ["public.url"], promiseTypes: promises) == .link)

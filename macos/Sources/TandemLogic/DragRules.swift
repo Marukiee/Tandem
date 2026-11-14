@@ -15,6 +15,15 @@ public enum DragKind: Equatable {
     public static let texts: Set<String> = ["public.utf8-plain-text", "public.plain-text", "NSStringPboardType"]
     public static let links: Set<String> = ["public.url", "Apple URL pasteboard type"]
 
+    /// Which picture type to read, and the extension of the file it becomes. The picture as the app has it comes first (a gif keeps its
+    /// movement, a jpeg or heic its size); a tiff, which is only how AppKit hands any picture over, last, made into a png.
+    public static func pictureType(in types: [String]) -> (type: String, ext: String)? {
+        let order: [(String, String)] = [
+            ("com.compuserve.gif", "gif"), ("public.jpeg", "jpg"), ("public.heic", "heic"), ("public.png", "png"), ("public.tiff", "png"),
+        ]
+        return order.first { types.contains($0.0) }.map { (type: $0.0, ext: $0.1) }
+    }
+
     /// `promiseTypes` are the types AppKit reads promises from (`NSFilePromiseReceiver.readableDraggedTypes`).
     public static func choose(types: [String], promiseTypes: Set<String>) -> DragKind? {
         let set = Set(types)
