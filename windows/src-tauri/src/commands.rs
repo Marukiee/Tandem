@@ -337,8 +337,8 @@ pub async fn send_paths_to(state: &AppState, ids: Vec<String>, paths: Vec<PathBu
     send_paths_with(state, ids, paths, TandemShareOrigin::Files).await
 }
 
-pub async fn send_paths_with(state: &AppState, ids: Vec<String>, paths: Vec<PathBuf>, origin: TandemShareOrigin) -> Reply<Value> {
-    let engine = state.engine()?;
+/// The files among these paths, ready to send, and how many of the paths were folders.
+fn outgoing(paths: Vec<PathBuf>) -> (Vec<TandemOutgoingFile>, usize) {
     let mut files = Vec::new();
     let mut folders = 0;
     for path in paths {
@@ -354,6 +354,12 @@ pub async fn send_paths_with(state: &AppState, ids: Vec<String>, paths: Vec<Path
             mime: mime_for(&path),
         });
     }
+    (files, folders)
+}
+
+pub async fn send_paths_with(state: &AppState, ids: Vec<String>, paths: Vec<PathBuf>, origin: TandemShareOrigin) -> Reply<Value> {
+    let engine = state.engine()?;
+    let (files, folders) = outgoing(paths);
     if files.is_empty() {
         return Ok(json!({ "sent": 0, "offline": 0, "folders": folders }));
     }
@@ -361,9 +367,35 @@ pub async fn send_paths_with(state: &AppState, ids: Vec<String>, paths: Vec<Path
     Ok(json!({ "sent": report.sent_to.len(), "offline": report.offline.len(), "folders": folders }))
 }
 
+/// The devices that report less free space than these plain files take (P5), by id and name. Empty: send without asking.
+fn short_of_space(state: &AppState, ids: &[String], paths: &[PathBuf]) -> Reply<Vec<Value>> {
+    let (files, _) = outgoing(paths.to_vec());
+    if files.is_empty() {
+        return Ok(Vec::new());
+    }
+    let short = state.engine()?.short_of_space(ids.to_vec(), files).map_err(shown)?;
+    let data = state.data.held();
+    Ok(short
+        .into_iter()
+        .map(|id| {
+            let name = data.devices.iter().find(|d| d["id"] == id.as_str()).and_then(|d| d["name"].as_str()).unwrap_or("?").to_string();
+            json!({ "id": id, "name": name })
+        })
+        .collect())
+}
+
+/// Sends files picked by the person: a device that has less room than they take is asked about first, and nothing is sent until the
+/// page asks again with `force` (Send anyway). A drag or the clipboard is not asked about.
 #[tauri::command]
-pub async fn send_paths(state: State<'_, AppState>, ids: Vec<String>, paths: Vec<String>) -> Reply<Value> {
-    send_paths_to(&state, ids, paths.into_iter().map(PathBuf::from).collect()).await
+pub async fn send_paths(state: State<'_, AppState>, ids: Vec<String>, paths: Vec<String>, force: Option<bool>) -> Reply<Value> {
+    let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
+    if force != Some(true) {
+        let short = short_of_space(&state, &ids, &paths)?;
+        if !short.is_empty() {
+            return Ok(json!({ "short": short }));
+        }
+    }
+    send_paths_to(&state, ids, paths).await
 }
 
 #[tauri::command]
@@ -374,6 +406,12 @@ pub async fn pick_and_send(app: AppHandle, state: State<'_, AppState>, ids: Vec<
         .map_err(shown)?;
     let Some(files) = picked else { return Ok(json!({ "sent": 0, "offline": 0, "folders": 0 })) };
     let paths: Vec<PathBuf> = files.into_iter().filter_map(|f| f.into_path().ok()).collect();
+    let short = short_of_space(&state, &ids, &paths)?;
+    if !short.is_empty() {
+        // The page asks, and sends these paths with `send_paths` when the answer is Send anyway.
+        let paths: Vec<String> = paths.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+        return Ok(json!({ "short": short, "paths": paths }));
+    }
     send_paths_to(&state, ids, paths).await
 }
 
