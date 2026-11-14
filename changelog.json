@@ -5,7 +5,8 @@
     "en": {
       "title": "Quiet in your pocket",
       "new": [
-        "On mobile data, files above 50 MB from another device wait until you say yes"
+        "On mobile data, files above 50 MB from another device wait until you say yes",
+        "Files on Linux and Windows: download whole folders, open a file, and upload"
       ],
       "fixed": [
         "A phone with its screen off is woken far less often by your other devices",
@@ -15,13 +16,19 @@
         "Sharing many files from Android no longer loses some, and one file can go to two devices at once",
         "The Control Center buttons on the Mac work",
         "A file dragged to Linux keeps its name, and Send to on Windows works with every device name",
-        "No crash on Android 12 when a notification is mirrored"
+        "No crash on Android 12 when a notification is mirrored",
+        "The update banner no longer pushes the rest of the app around",
+        "A link sent to a phone in your pocket waits in a notification",
+        "A large transfer keeps going with the phone's screen off",
+        "Files dropped on a device in the sidebar on Linux and Windows go to that device",
+        "Waking gently is a switch in the settings, no longer a pill on the watch card"
       ]
     },
     "nl": {
       "title": "Stil in je zak",
       "new": [
-        "Op mobiele data wachten bestanden boven 50 MB van een ander apparaat tot je ja zegt"
+        "Op mobiele data wachten bestanden boven 50 MB van een ander apparaat tot je ja zegt",
+        "Bestanden op Linux en Windows: hele mappen downloaden, een bestand openen en uploaden"
       ],
       "fixed": [
         "Een telefoon met het scherm uit wordt veel minder vaak gewekt door je andere apparaten",
@@ -31,7 +38,12 @@
         "Veel bestanden delen vanaf Android verliest er geen meer, en één bestand kan naar twee apparaten tegelijk",
         "De knoppen in het Controlecentrum van de Mac werken",
         "Een bestand dat je naar Linux sleept houdt zijn naam, en Sturen naar op Windows werkt met elke apparaatnaam",
-        "Geen crash meer op Android 12 bij een gespiegelde melding"
+        "Geen crash meer op Android 12 bij een gespiegelde melding",
+        "De updatebanner duwt de rest van de app niet meer weg",
+        "Een link naar een telefoon in je zak wacht in een melding",
+        "Een grote overdracht loopt door met het scherm van de telefoon uit",
+        "Bestanden die je op een apparaat in de zijbalk van Linux of Windows laat vallen gaan naar dat apparaat",
+        "Zacht wekken is een schakelaar in de instellingen, geen knop meer op de horlogekaart"
       ]
     }
   },
