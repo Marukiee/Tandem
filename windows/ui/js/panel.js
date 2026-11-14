@@ -113,8 +113,8 @@ function Panel() {
 
 await connect();
 setLanguage(state.settings.language, state.systemLanguage);
-// Files dropped on a row go to that device; the panel has no page to drop on.
-await listenDrops((over, at) => markDropTarget(over ? at : null, false), (paths, at) => dropPaths(paths, at, false));
 render(html`<${Panel} />`, document.getElementById("root"));
+// Files dropped on a row go to that device; the panel has no page to drop on. Drawn first: the panel must show even where drops fail.
+listenDrops((over, at) => markDropTarget(over ? at : null, false), (paths, at) => dropPaths(paths, at, false)).catch(() => {});
 // The panel stays loaded while it is hidden: look again when it comes back.
 window.addEventListener("focus", async () => set(await call("get_state")));

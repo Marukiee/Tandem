@@ -37,13 +37,17 @@ export async function listenDrops(onHover, onDrop) {
   const at = (p) => (p && p.position ? { x: p.position.x / devicePixelRatio, y: p.position.y / devicePixelRatio } : null);
   const webview = tauri.webview && tauri.webview.getCurrentWebview && tauri.webview.getCurrentWebview();
   if (webview && webview.onDragDropEvent) {
-    await webview.onDragDropEvent((e) => {
-      const p = e.payload;
-      if (p.type === "drop") { onHover(false, null); onDrop(p.paths || [], at(p)); }
-      else if (p.type === "leave") onHover(false, null);
-      else onHover(true, at(p));
-    });
-    return;
+    try {
+      await webview.onDragDropEvent((e) => {
+        const p = e.payload;
+        if (p.type === "drop") { onHover(false, null); onDrop(p.paths || [], at(p)); }
+        else if (p.type === "leave") onHover(false, null);
+        else onHover(true, at(p));
+      });
+      return;
+    } catch (e) {
+      // The window still opens: drops then come through the plain events below.
+    }
   }
   await tauri.event.listen("tauri://drag-enter", (e) => onHover(true, at(e.payload)));
   await tauri.event.listen("tauri://drag-over", (e) => onHover(true, at(e.payload)));

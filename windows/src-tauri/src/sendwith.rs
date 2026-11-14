@@ -295,6 +295,20 @@ mod linux {
         put(&file, &serde_json::to_string(&list).unwrap_or_default(), false);
     }
 
+    /// The key of this run for the extension of Files, readable only by this user.
+    fn write_key(file: &Path, key: &str) {
+        use std::os::unix::fs::OpenOptionsExt;
+        use std::io::Write;
+        if let Some(dir) = file.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let _ = std::fs::remove_file(file);
+        let written = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(file).and_then(|mut f| f.write_all(key.as_bytes()));
+        if written.is_err() {
+            log::info!("send with: the key for Files could not be written");
+        }
+    }
+
     fn quoted(program: &Path) -> String {
         format!("\"{}\"", program.to_string_lossy().replace('\\', "\\\\").replace('"', "\\\""))
     }
@@ -325,18 +339,23 @@ mod linux {
             for path in [&extension, &script, &dolphin] {
                 let _ = std::fs::remove_file(path);
             }
+            if let Some(file) = reachable_file() {
+                let _ = std::fs::remove_file(file.with_file_name("send-key"));
+            }
             return;
         }
         let exe = program.to_string_lossy();
         if nautilus_python() {
+            if let Some(file) = reachable_file().map(|f| f.with_file_name("send-key")) {
+                write_key(&file, key);
+            }
             let _ = std::fs::remove_file(&script);
             put(
                 &extension,
                 &EXTENSION
                     .replace("@PROGRAM@", &exe.replace('\\', "\\\\").replace('"', "\\\""))
                     .replace("@LABEL@", &label.replace('"', "\\\""))
-                    .replace("@AWAY@", &away.replace('"', "\\\""))
-                    .replace("@KEY@", key),
+                    .replace("@AWAY@", &away.replace('"', "\\\"")),
                 false,
             );
         } else {
@@ -384,7 +403,16 @@ from gi.repository import GObject, Nautilus
 PROGRAM = "@PROGRAM@"
 LABEL = "@LABEL@"
 AWAY = "@AWAY@"
-KEY = "@KEY@"
+
+
+def key():
+    # Files loads this extension once, often before Tandem starts, so the key of the run is read at the click, not written in here.
+    path = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "tandem", "send-key")
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except Exception:
+        return ""
 
 
 def devices():
@@ -418,7 +446,7 @@ class TandemSend(GObject.GObject, Nautilus.MenuProvider):
         return [item]
 
     def send(self, _item, paths, device):
-        command = [PROGRAM, "--send"] + (["--to", device, "--key", KEY] if device else []) + paths
+        command = [PROGRAM, "--send"] + (["--to", device, "--key", key()] if device else []) + paths
         subprocess.Popen(command, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 "#;
 }
