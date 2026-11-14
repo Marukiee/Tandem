@@ -12,6 +12,7 @@ use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
+use crate::zone::runs_something;
 use crate::settings;
 use crate::state::{AppState, Held};
 
@@ -181,23 +182,6 @@ async fn get_folder(app: &AppHandle, engine: &TandemEngine, id: &str, remote: &s
     Ok(())
 }
 
-/// Kinds that start something when opened, rather than show it: programs, installers, scripts, shortcuts, and disk images (a mounted
-/// image hands out its files without the mark of the internet). Windows drops dots and spaces at the end of a name, so `x.exe.` is an
-/// `.exe` there.
-pub fn runs_something(name: &str) -> bool {
-    const KINDS: &[&str] = &[
-        // Windows
-        "exe", "com", "scr", "pif", "bat", "cmd", "ps1", "psm1", "vbs", "vbe", "js", "jse", "wsf", "wsh", "hta", "msi", "msp", "msc",
-        "lnk", "url", "reg", "cpl", "inf", "scf", "chm", "appref-ms", "application", "settingcontent-ms", "library-ms", "iso", "img",
-        "vhd", "vhdx", "appx", "msix", "appxbundle", "msixbundle",
-        // Linux, and what runs on both
-        "sh", "bash", "zsh", "csh", "ksh", "fish", "run", "bin", "desktop", "appimage", "deb", "rpm", "flatpak", "flatpakref",
-        "flatpakrepo", "snap", "py", "pyw", "pl", "rb", "jar", "elf", "out",
-    ];
-    let name = name.trim_end_matches(['.', ' ']);
-    name.rsplit_once('.').is_some_and(|(stem, ext)| !stem.is_empty() && KINDS.contains(&ext.to_ascii_lowercase().as_str()))
-}
-
 /// Opens a file of the other device: copied into a folder of its own that only this user can enter, marked as from elsewhere, and handed
 /// to the program the system has for it. A kind that can start a program is only opened once the person said so (`confirmed`): it comes
 /// from another device and would otherwise run with one click. The answer is `{ "ask": true }` while that is still to be asked.
@@ -301,7 +285,8 @@ pub async fn fs_put_pick(app: AppHandle, state: State<'_, AppState>, id: String,
 
 #[cfg(test)]
 mod tests {
-    use super::{free_name, free_remote_name, inside, listed_name, local_name, runs_something};
+    use super::{free_name, free_remote_name, inside, listed_name, local_name};
+    use crate::zone::runs_something;
 
     #[test]
     fn a_name_from_another_device_stays_in_the_folder() {
