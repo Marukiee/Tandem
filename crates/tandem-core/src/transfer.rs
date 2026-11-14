@@ -27,7 +27,7 @@ use crate::events::{Event, TransferDone, TransferProgress};
 use crate::ids::DeviceId;
 use crate::proto::{
     self, FileAck, FileRequest, FileResponse, FileTrailer, MAX_SMALL_FRAME, Msg, STREAM_FILE, ShareItem,
-    ShareOffer, ShareOrigin, ShareReply,
+    ShareOffer, ShareOrigin, ShareReply, ShareResume, ShareResumed,
 };
 use crate::session::Session;
 
@@ -57,6 +57,20 @@ pub struct SendReport {
 /// computer would otherwise cost the data of the phone without anyone seeing it). The same as the most a copy may be: what is copied
 /// still comes by itself, anything larger is asked about.
 pub const METERED_ASK_BYTES: u64 = 50 * 1024 * 1024;
+
+/// A device that answers `ShareResume` (P2). An older one is not asked: the receiver pulls the rest straight away, and the sender
+/// answers that pull with `NO_LONGER_AVAILABLE` when it lost the offer.
+pub const RESUME_CAP: &str = "share.resume";
+/// How long a receiver waits for `ShareResumed` before it pulls anyway, as from an older sender.
+const RESUME_WAIT: Duration = Duration::from_secs(15);
+
+/// Short words in `TransferDone::error` that the apps translate, like `cancelled`, `declined` and `expired` (see docs/TRANSFERS.md).
+/// The sender no longer has the file or the offer.
+pub const REASON_GONE: &str = "gone";
+/// The file changed at the sender since it was offered, so the part that came in no longer fits it.
+pub const REASON_CHANGED: &str = "changed";
+/// What a sender answers a pull of an offer it does not have. Older receivers show it as it is, so it stays a sentence.
+const NO_LONGER_AVAILABLE: &str = "that offer is no longer available";
 
 enum PullError {
     /// Worth trying again, probably from where it stopped.
@@ -169,23 +183,39 @@ impl Inner {
         let Some(run) = self.journal.run(key) else { return };
         run.cancel.cancel();
         let idle = !run.started.load(std::sync::atomic::Ordering::SeqCst);
-        let count = self
+        let (count, ended) = self
             .journal
             .change(key, |record| {
+                let mut ended = Vec::new();
                 if let Some(sender) = record.peer_mut(&peer) {
                     if idle {
-                        sender.close(ItemState::Cancelled, None);
+                        ended = sender.close(ItemState::Cancelled, None);
                     } else {
                         sender.stage = Stage::Closed;
                     }
                 }
-                record.items.len()
+                let ended: Vec<(u32, RecordItem)> =
+                    ended.into_iter().map(|index| (index, record.items[index as usize].clone())).collect();
+                (record.items.len(), ended)
             })
-            .unwrap_or(0);
+            .unwrap_or_default();
         if idle {
             for index in 0..count {
                 let _ = std::fs::remove_file(self.partial_path(peer, offer, index as u32));
             }
+        }
+        // Files being pulled say so themselves when they stop; these were not, so the app hears it here and lets the question go.
+        for (index, item) in ended {
+            self.emit(Event::Finished(TransferDone {
+                offer,
+                index,
+                peer,
+                incoming: true,
+                name: item.name,
+                size: item.size,
+                location: None,
+                error: ItemState::Cancelled.reason().map(str::to_string),
+            }));
         }
     }
 
@@ -238,6 +268,9 @@ impl Inner {
         if stage == Stage::Accepted && !run.started.load(std::sync::atomic::Ordering::SeqCst) {
             return Err(Error::invalid("that transfer stopped halfway"));
         }
+        if stage == Stage::Closed {
+            return Err(gone());
+        }
         self.begin_receive(from, key, run);
         Ok(())
     }
@@ -267,9 +300,194 @@ impl Inner {
         tokio::spawn(async move { this.receive_all(from, key, run).await });
     }
 
+    /// Yes to a transfer that stopped halfway before this start (P2). See `Engine::resume_transfer`.
+    pub(crate) fn resume_transfer(self: &Arc<Self>, from: DeviceId, offer: u64) -> Result<()> {
+        let key = Key::In(from, offer);
+        if !self.journal.resumable().iter().any(|record| record.key() == key) {
+            return Err(Error::invalid("that transfer does not wait to go on"));
+        }
+        // Waiting ten minutes for the sender inside a yes would leave the person looking at nothing; the app greys Go on instead.
+        if self.session_of(&from).is_none() {
+            return Err(Error::invalid("the sender is not connected"));
+        }
+        let run = self.journal.run(key).ok_or_else(|| Error::invalid("that transfer is gone"))?;
+        if run.started.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            return Ok(());
+        }
+        let this = self.clone();
+        tokio::spawn(async move { this.resume_all(from, key, run).await });
+        Ok(())
+    }
+
+    async fn resume_all(self: Arc<Self>, from: DeviceId, key: Key, run: Arc<Run>) {
+        let Key::In(_, offer) = key else { return };
+        let wanted: Vec<u32> = self
+            .journal
+            .read(key, |record| unfinished(record).into_iter().map(|(index, _)| index).collect())
+            .unwrap_or_default();
+        if self.peer_has_cap(&from, RESUME_CAP)
+            && let Some(answer) = self.ask_resume(from, offer, wanted).await
+        {
+            if !answer.ok {
+                self.end_incoming(from, offer, None, REASON_GONE, true);
+                return;
+            }
+            self.end_incoming(from, offer, Some(&answer.changed), REASON_CHANGED, false);
+            self.end_incoming(from, offer, Some(&answer.gone), REASON_GONE, false);
+        }
+        if run.cancel.is_cancelled() {
+            return;
+        }
+        self.receive_all(from, key, run).await;
+    }
+
+    async fn ask_resume(&self, from: DeviceId, offer: u64, items: Vec<u32>) -> Option<ShareResumed> {
+        let (tell, answer) = tokio::sync::oneshot::channel();
+        self.resume_waits.lock().unwrap().insert((from, offer), tell);
+        let sent = self.send_to(&from, Msg::ShareResume(ShareResume { id: offer, items })).await;
+        let answer = match sent {
+            Ok(_) => tokio::time::timeout(RESUME_WAIT, answer).await.ok().and_then(|answer| answer.ok()),
+            Err(_) => None,
+        };
+        self.resume_waits.lock().unwrap().remove(&(from, offer));
+        answer
+    }
+
+    pub(crate) fn on_share_resumed(&self, from: DeviceId, answer: ShareResumed) {
+        if let Some(waiting) = self.resume_waits.lock().unwrap().remove(&(from, answer.id)) {
+            let _ = waiting.send(answer);
+        }
+    }
+
+    /// A receiver picks up a transfer that stopped halfway (P2): says whether this device still has it for that receiver, and which
+    /// files changed or can no longer be opened. Those end here too.
+    pub(crate) fn on_share_resume(self: Arc<Self>, from: DeviceId, ask: ShareResume) {
+        tokio::spawn(async move {
+            let this = self.clone();
+            let answer = tokio::task::spawn_blocking(move || this.check_resume(from, &ask)).await;
+            if let Ok(answer) = answer {
+                let _ = self.send_to(&from, Msg::ShareResumed(answer)).await;
+            }
+        });
+    }
+
+    fn check_resume(&self, from: DeviceId, ask: &ShareResume) -> ShareResumed {
+        let key = Key::Out(ask.id);
+        let found = self.journal.read(key, |record| record.peer(&from).filter(|p| p.open()).map(|_| record.items.clone())).flatten();
+        let Some(items) = found else {
+            return ShareResumed { id: ask.id, ok: false, changed: Vec::new(), gone: Vec::new() };
+        };
+        let (mut changed, mut gone) = (Vec::new(), Vec::new());
+        for &index in &ask.items {
+            let Some(item) = items.get(index as usize) else {
+                gone.push(index);
+                continue;
+            };
+            let Ok(meta) = self.files.open_read(&item.source).and_then(|file| file.metadata()) else {
+                gone.push(index);
+                continue;
+            };
+            let modified = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_millis() as u64);
+            let other_size = item.size > 0 && meta.len() != item.size;
+            let other_time = item.source_modified_ms.is_some_and(|then| modified.is_some_and(|now| now != then));
+            if other_size || other_time {
+                changed.push(index);
+            }
+        }
+        let ended = self
+            .journal
+            .change(key, |record| {
+                let mut ended = Vec::new();
+                for (list, reason) in [(&changed, REASON_CHANGED), (&gone, REASON_GONE)] {
+                    for &index in list {
+                        if let Some(progress) = record.item_mut(&from, index)
+                            && !progress.state.is_final()
+                        {
+                            progress.state = ItemState::Failed;
+                            progress.error = Some(reason.to_string());
+                            if let Some(item) = record.items.get(index as usize) {
+                                ended.push((index, item.clone(), reason));
+                            }
+                        }
+                    }
+                }
+                ended
+            })
+            .unwrap_or_default();
+        for (index, item, reason) in ended {
+            self.emit(Event::Finished(TransferDone {
+                offer: ask.id,
+                index,
+                peer: from,
+                incoming: false,
+                name: item.name,
+                size: item.size,
+                location: None,
+                error: Some(reason.to_string()),
+            }));
+        }
+        ShareResumed { id: ask.id, ok: true, changed, gone }
+    }
+
+    /// No to a transfer that stopped halfway before this start (P2). See `Engine::discard_transfer`.
+    pub(crate) async fn discard_transfer(&self, from: DeviceId, offer: u64) -> Result<()> {
+        let key = Key::In(from, offer);
+        if !self.journal.resumable().iter().any(|record| record.key() == key) {
+            return Err(Error::invalid("that transfer does not wait to go on"));
+        }
+        // Throws the partial files away, ends each file as cancelled, and tells the sender. A sender that is away now does not hear it:
+        // it lets its side go after `journal::UNFINISHED_KEPT`, and nothing pulls from it before then.
+        self.cancel_transfer(from, offer, true).await;
+        Ok(())
+    }
+
+    /// Ends files of an incoming offer that will not come: `which` of them, or every one that has not ended. Their partial files go, and
+    /// each gets one `Finished` with `reason`. `close`: nothing more is pulled from that sender for this offer.
+    fn end_incoming(&self, from: DeviceId, offer: u64, which: Option<&[u32]>, reason: &str, close: bool) {
+        let key = Key::In(from, offer);
+        let ended = self
+            .journal
+            .change(key, |record| {
+                let mut ended = Vec::new();
+                for (index, item) in unfinished(record) {
+                    if which.is_some_and(|which| !which.contains(&index)) {
+                        continue;
+                    }
+                    if let Some(progress) = record.item_mut(&from, index) {
+                        progress.state = ItemState::Failed;
+                        progress.error = Some(reason.to_string());
+                    }
+                    ended.push((index, item));
+                }
+                if close && let Some(sender) = record.peer_mut(&from) {
+                    sender.stage = Stage::Closed;
+                }
+                ended
+            })
+            .unwrap_or_default();
+        for (index, item) in ended {
+            let _ = std::fs::remove_file(self.partial_path(from, offer, index));
+            self.emit(Event::Finished(TransferDone {
+                offer,
+                index,
+                peer: from,
+                incoming: true,
+                name: item.name,
+                size: item.size,
+                location: None,
+                error: Some(reason.to_string()),
+            }));
+        }
+    }
+
+    fn peer_has_cap(&self, id: &DeviceId, cap: &str) -> bool {
+        self.peers.lock().unwrap().get(id).and_then(|peer| peer.hello.as_ref()).is_some_and(|hello| hello.caps.iter().any(|c| c == cap))
+    }
+
     async fn receive_all(self: Arc<Self>, peer: DeviceId, key: Key, run: Arc<Run>) {
         let Some((offer, done)) = self.journal.read(key, |record| {
-            let done: Vec<bool> = record.peers[0].items.iter().map(|item| item.state == ItemState::Done).collect();
+            // Already here, or ended without coming (a resume that found it changed at the sender): not again.
+            let done: Vec<bool> = record.peers[0].items.iter().map(|item| item.state.is_final()).collect();
             (record.share_offer(), done)
         }) else {
             return;
@@ -279,7 +497,6 @@ impl Inner {
         let slots = Arc::new(Semaphore::new(CONCURRENT_FILES));
         let mut tasks = tokio::task::JoinSet::new();
         for (index, item) in offer.items.iter().enumerate() {
-            // Already here (before a restart, when the rest is picked up later): not again.
             if done.get(index).copied().unwrap_or(false) {
                 continue;
             }
@@ -488,7 +705,9 @@ impl Inner {
         let response: FileResponse =
             proto::recv(&mut recv, MAX_SMALL_FRAME).await.map_err(|e| retry(&e))?;
         if !response.ok {
-            return Err(PullError::Fatal(response.error.unwrap_or_else(|| "the other device refused".into())));
+            let error = response.error.unwrap_or_else(|| "the other device refused".into());
+            // A word the apps translate; the sentence stays on the wire for older receivers.
+            return Err(PullError::Fatal(if error == NO_LONGER_AVAILABLE { REASON_GONE.to_string() } else { error }));
         }
         let size = response.size;
         if offset > size {
@@ -595,7 +814,7 @@ impl Inner {
             })
             .flatten();
         let Some(item) = found else {
-            let reply = FileResponse { ok: false, error: Some("that offer is no longer available".into()), size: 0 };
+            let reply = FileResponse { ok: false, error: Some(NO_LONGER_AVAILABLE.into()), size: 0 };
             proto::send(&mut send, &reply).await?;
             let _ = send.finish();
             return Ok(());
@@ -855,6 +1074,19 @@ fn safe_name(name: &str) -> String {
         name.chars().map(|c| if matches!(c, '/' | '\\' | ':') || c.is_control() { '_' } else { c }).collect::<String>();
     let cleaned = cleaned.trim().trim_start_matches('.');
     if cleaned.is_empty() { "picture.png".to_string() } else { cleaned.chars().take(160).collect() }
+}
+
+/// The files of an incoming offer that have not ended, with where they are in the offer.
+fn unfinished(record: &TransferRecord) -> Vec<(u32, RecordItem)> {
+    let Some(sender) = record.peers.first() else { return Vec::new() };
+    sender
+        .items
+        .iter()
+        .zip(&record.items)
+        .enumerate()
+        .filter(|(_, (progress, _))| !progress.state.is_final())
+        .map(|(index, (_, item))| (index as u32, item.clone()))
+        .collect()
 }
 
 fn failed(peer: DeviceId, offer: u64, index: u32, item: &ShareItem, reason: String) -> TransferDone {

@@ -116,6 +116,8 @@ pub(crate) struct Inner {
     pub peers: Mutex<HashMap<DeviceId, Peer>>,
     /// Every offer, in and out, kept in the data folder (see `journal`).
     pub journal: crate::journal::Journal,
+    /// Receivers that asked a sender whether it still has a transfer (P2), waiting for `ShareResumed`.
+    pub resume_waits: Mutex<HashMap<(DeviceId, u64), tokio::sync::oneshot::Sender<crate::proto::ShareResumed>>>,
     pub pairing: Mutex<Option<PendingPairing>>,
     pub open_pairings: Mutex<HashMap<discovery::Hint, crate::pairing::OpenPairing>>,
     pub my_status: Mutex<Status>,
@@ -223,6 +225,7 @@ impl Engine {
             events,
             peers: Mutex::new(HashMap::new()),
             journal,
+            resume_waits: Mutex::new(HashMap::new()),
             pairing: Mutex::new(None),
             open_pairings: Mutex::new(HashMap::new()),
             my_status: Mutex::new(Status::default()),
@@ -573,6 +576,25 @@ impl Engine {
         self.inner.decline_offer(from, offer_id).await;
     }
 
+    /// Incoming transfers that stopped halfway before this start, newest first. Nothing goes on by itself (P2): the app asks the person
+    /// "go on or throw away" for each, after the start and when the sender connects, and answers with `resume_transfer` or
+    /// `discard_transfer`. Clipboard, capture and drag offers are never here: they belonged to a moment and were thrown away at the start.
+    pub fn resumable_transfers(&self) -> Vec<crate::journal::TransferRecord> {
+        self.inner.journal.resumable()
+    }
+
+    /// Yes to a transfer that stopped halfway: asks the sender whether it still has the files as they were, and pulls the rest of each
+    /// from where its partial file ends. Files the sender no longer has or that changed end with the reason `gone` or `changed`. An error
+    /// when the transfer does not wait for this, or the sender is not connected (the app shows Go on grey until it is).
+    pub fn resume_transfer(&self, from: DeviceId, offer_id: u64) -> Result<()> {
+        self.inner.resume_transfer(from, offer_id)
+    }
+
+    /// No to a transfer that stopped halfway: the partial files go, each file ends as `cancelled`, and the sender is told.
+    pub async fn discard_transfer(&self, from: DeviceId, offer_id: u64) -> Result<()> {
+        self.inner.discard_transfer(from, offer_id).await
+    }
+
     /// Every transfer this device knows of, in and out, the newest first: what is running, waits for a yes, stopped halfway or
     /// ended a short while ago. The base of the panel of P3b; see docs/TRANSFERS.md.
     pub fn transfers(&self) -> Vec<crate::journal::TransferRecord> {
@@ -714,7 +736,7 @@ impl Inner {
     /// What this device can do for the others: what the app says, always letting them look at its files, and keeping health records.
     pub fn caps(&self) -> Vec<String> {
         let mut caps = self.cfg.caps.clone();
-        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP] {
+        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP] {
             if !caps.iter().any(|c| c == always) {
                 caps.push(always.into());
             }

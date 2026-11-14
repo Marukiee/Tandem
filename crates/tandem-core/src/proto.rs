@@ -62,6 +62,10 @@ pub enum Msg {
     ShareReply(ShareReply),
     /// The person on one side stopped a transfer: the other side stops too. Devices that do not know it skip it.
     ShareCancel { id: u64 },
+    /// The receiver picks up a transfer that stopped halfway before a restart (P2) and asks whether the sender still has these files as
+    /// they were. Only sent to a device whose caps say `transfer::RESUME_CAP`; the answer is `ShareResumed`.
+    ShareResume(ShareResume),
+    ShareResumed(ShareResumed),
     ShareText(ShareText),
     Notification(NotificationMsg),
     NotificationRemoved { key: String },
@@ -583,6 +587,28 @@ pub struct ShareReply {
     pub accepted: bool,
     #[serde(default)]
     pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShareResume {
+    pub id: u64,
+    /// The files the receiver still wants, by their place in the offer.
+    #[serde(default)]
+    pub items: Vec<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShareResumed {
+    pub id: u64,
+    /// False: the sender no longer has this offer for this receiver (it expired there, was stopped, or is from before its journal).
+    #[serde(default)]
+    pub ok: bool,
+    /// Files that changed since they were offered: the part the receiver has no longer fits them.
+    #[serde(default)]
+    pub changed: Vec<u32>,
+    /// Files the sender can no longer open.
+    #[serde(default)]
+    pub gone: Vec<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

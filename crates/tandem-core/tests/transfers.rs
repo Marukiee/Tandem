@@ -422,3 +422,136 @@ async fn a_partial_file_nothing_points_at_goes_at_the_start() {
     let _again = restart(&mac, "Mac").await;
     assert!(!orphan.exists());
 }
+
+/// Leaves the transfer of `a_transfer_left_halfway` interrupted at the Mac after a restart of both, connected again. `before_phone`
+/// runs while both are down, to change what the phone has. Returns the two engines started again.
+async fn both_back_after_a_transfer_halfway(phone: &Node, mac: &Node, offer: u64, before_phone: impl FnOnce()) -> (Engine, Engine) {
+    mac.engine.accept_offer(phone.engine.id(), offer).unwrap();
+    wait_until("both files wait for the phone", || {
+        mac.engine.transfers().first().is_some_and(|t| t.peers[0].items.iter().all(|i| i.state == ItemState::Running))
+    })
+    .await;
+    mac.engine.shutdown().await;
+    wait_until("the stop is written down", || interrupted(&mac.engine)).await;
+    before_phone();
+    let mac_again = restart(mac, "Mac").await;
+    let phone_again = restart(phone, "Phone").await;
+    mac_again.add_address(&phone.engine.id(), &format!("127.0.0.1:{}", phone_again.port())).unwrap();
+    wait_until("connected again", || mac_again.is_connected(&phone.engine.id()) && phone_again.is_connected(&mac.engine.id())).await;
+    (mac_again, phone_again)
+}
+
+async fn finished_with(events: &mut Receiver<Event>, incoming: bool, what: &str) -> TransferDone {
+    expect(events, what, |e| match e {
+        Event::Finished(done) if done.incoming == incoming => Some(done.clone()),
+        _ => None,
+    })
+    .await
+}
+
+/// P2, yes: after a restart the transfer waits for the person, and a yes pulls the rest of each file from where its partial file
+/// ends, whole and right.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn yes_to_a_transfer_halfway_pulls_the_rest_from_the_partial_file() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let source = tempfile::tempdir().unwrap();
+    let (offer, planted) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
+    let (mac_again, _phone_again) = both_back_after_a_transfer_halfway(&phone, &mac, offer, || {}).await;
+
+    let waiting = mac_again.resumable_transfers();
+    assert_eq!(waiting.len(), 1);
+    assert_eq!(waiting[0].offer, offer);
+    assert_eq!(waiting[0].peers[0].items[1].done, planted);
+
+    let mut events = mac_again.subscribe();
+    mac_again.resume_transfer(phone.engine.id(), offer).unwrap();
+    assert!(mac_again.resumable_transfers().is_empty(), "it is going on, so it is no longer a question");
+    let mut first_progress = None;
+    let mut done = Vec::new();
+    while done.len() < 2 {
+        match expect(&mut events, "the rest comes", |e| match e {
+            Event::Progress(p) if p.incoming && p.index == 1 => Some(Err(p.done)),
+            Event::Finished(d) if d.incoming => Some(Ok(d.clone())),
+            _ => None,
+        })
+        .await
+        {
+            Err(at) => {
+                first_progress.get_or_insert(at);
+            }
+            Ok(finished) => done.push(finished),
+        }
+    }
+    assert_eq!(first_progress, Some(planted), "the second file must go on from its partial file, not from the start");
+    done.sort_by_key(|d| d.index);
+    assert!(done.iter().all(|d| d.error.is_none()), "{done:?}");
+    assert_eq!(std::fs::read(done[0].location.as_ref().unwrap()).unwrap(), random_bytes(100_000, 30));
+    assert_eq!(std::fs::read(done[1].location.as_ref().unwrap()).unwrap(), random_bytes(3 * 1024 * 1024, 31));
+}
+
+/// P2, no: throwing it away removes the partial files, ends each file as cancelled, and the sender hears it and closes its side.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn no_to_a_transfer_halfway_throws_it_away_and_tells_the_sender() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let source = tempfile::tempdir().unwrap();
+    let (offer, _) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
+    let (mac_again, phone_again) = both_back_after_a_transfer_halfway(&phone, &mac, offer, || {}).await;
+    let partial = mac.data.join("incoming").join(format!("{}-{offer:016x}-1.part", phone.engine.id()));
+    assert!(partial.exists());
+
+    let mut events = mac_again.subscribe();
+    mac_again.discard_transfer(phone.engine.id(), offer).await.unwrap();
+    for _ in 0..2 {
+        assert_eq!(finished_with(&mut events, true, "each file ends").await.error.as_deref(), Some("cancelled"));
+    }
+    assert!(!partial.exists());
+    assert!(mac_again.resumable_transfers().is_empty());
+    assert!(mac_again.resume_transfer(phone.engine.id(), offer).is_err(), "thrown away is thrown away");
+    wait_until("the sender closes its side", || {
+        phone_again.transfers().first().is_some_and(|t| t.peers[0].stage == Stage::Closed && t.ended())
+    })
+    .await;
+}
+
+/// P2: a sender that no longer has the offer (its journal lost it, or it expired there) says so, and that comes as its own reason
+/// with the partial files gone.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_sender_that_no_longer_has_it_says_so_as_its_own_reason() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let source = tempfile::tempdir().unwrap();
+    let (offer, _) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
+    let journal = phone.data.join("transfers").join(format!("out-{offer:016x}.cbor"));
+    let (mac_again, _phone_again) =
+        both_back_after_a_transfer_halfway(&phone, &mac, offer, || std::fs::remove_file(&journal).unwrap()).await;
+
+    let mut events = mac_again.subscribe();
+    mac_again.resume_transfer(phone.engine.id(), offer).unwrap();
+    for _ in 0..2 {
+        assert_eq!(finished_with(&mut events, true, "each file ends").await.error.as_deref(), Some("gone"));
+    }
+    assert!(!mac.data.join("incoming").join(format!("{}-{offer:016x}-1.part", phone.engine.id())).exists());
+    assert!(mac_again.resumable_transfers().is_empty());
+}
+
+/// P2: a file that changed at the sender since the offer is reported and not pulled; the rest still comes.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_file_that_changed_at_the_sender_is_reported_and_the_rest_comes() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let source = tempfile::tempdir().unwrap();
+    let (offer, _) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
+    let second = source.path().join("second.bin");
+    let (mac_again, _phone_again) =
+        both_back_after_a_transfer_halfway(&phone, &mac, offer, || std::fs::write(&second, b"something else").unwrap()).await;
+
+    let mut events = mac_again.subscribe();
+    mac_again.resume_transfer(phone.engine.id(), offer).unwrap();
+    let mut done = vec![finished_with(&mut events, true, "a file ends").await, finished_with(&mut events, true, "a file ends").await];
+    done.sort_by_key(|d| d.index);
+    assert_eq!(done[0].error, None);
+    assert_eq!(done[1].error.as_deref(), Some("changed"));
+    assert!(!mac.data.join("incoming").join(format!("{}-{offer:016x}-1.part", phone.engine.id())).exists());
+}

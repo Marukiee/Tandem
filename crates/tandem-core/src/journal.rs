@@ -291,8 +291,11 @@ impl TransferRecord {
     fn settle_after_restart(&mut self, partial_len: impl Fn(&DeviceId, u32) -> Option<u64>) -> bool {
         let before = self.clone();
         let incoming = self.incoming;
+        // A copied picture, a photo the other device asked for, a drop on the edge of the screen: they belonged to that moment, and
+        // asking about one after a restart would only puzzle (P2). Their partial files go with them.
+        let of_a_moment = matches!(self.origin, ShareOrigin::Clipboard | ShareOrigin::Capture(_) | ShareOrigin::Drag);
         for peer in &mut self.peers {
-            if peer.stage == Stage::Closed {
+            if peer.stage == Stage::Closed || (incoming && of_a_moment && peer.stage == Stage::Accepted) {
                 peer.close(ItemState::Cancelled, None);
                 continue;
             }
@@ -609,6 +612,27 @@ impl Journal {
         all
     }
 
+    /// Incoming transfers that stopped halfway before this start and wait for a person to say go on or throw away (P2), newest first.
+    /// One that is being picked up again, or was stopped, is not.
+    pub fn resumable(&self) -> Vec<TransferRecord> {
+        let mut found: Vec<TransferRecord> = self
+            .book()
+            .values()
+            .filter(|entry| {
+                let record = &entry.record;
+                record.incoming
+                    && !entry.run.started.load(Ordering::SeqCst)
+                    && !entry.run.cancel.is_cancelled()
+                    && record.peers.first().is_some_and(|sender| {
+                        sender.stage == Stage::Accepted && sender.items.iter().any(|item| item.state == ItemState::Interrupted)
+                    })
+            })
+            .map(|entry| entry.record.clone())
+            .collect();
+        found.sort_by(|a, b| b.updated_ms.cmp(&a.updated_ms).then(a.offer.cmp(&b.offer)));
+        found
+    }
+
     /// The partial files that belong to an incoming file that has not ended. Anything else in `PARTIAL_DIR` can never be finished.
     pub fn partials_in_use(&self) -> HashSet<String> {
         let book = self.book();
@@ -841,6 +865,25 @@ mod tests {
             journal.file_ended(Key::In(peer, 77), |record| record.item_mut(&peer, 3).unwrap().state = ItemState::Failed);
             assert_eq!(on_disk(dir.path(), peer)[3], ItemState::Failed);
         });
+    }
+
+    /// P2: a copied picture that stopped halfway belonged to that moment: after the start it is thrown away, not asked about.
+    #[test]
+    fn a_clipboard_offer_halfway_is_thrown_away_at_the_start_and_not_asked_about() {
+        let dir = tempfile::tempdir().unwrap();
+        let peer = DeviceId::from_bytes([11; 16]);
+        {
+            let journal = Journal::load(dir.path()).unwrap();
+            for (id, origin) in [(1, ShareOrigin::Clipboard), (2, ShareOrigin::Files)] {
+                let offer = ShareOffer { id, origin, items: vec![item("shot.png", 10).to_share()] };
+                journal.insert(TransferRecord::incoming(peer, &offer, false));
+                journal.change(Key::In(peer, id), |record| record.peers[0].stage = Stage::Accepted);
+            }
+        }
+        let journal = Journal::load(dir.path()).unwrap();
+        assert_eq!(journal.read(Key::In(peer, 1), |r| r.peers[0].items[0].state).unwrap(), ItemState::Cancelled);
+        let waiting: Vec<u64> = journal.resumable().iter().map(|r| r.offer).collect();
+        assert_eq!(waiting, [2]);
     }
 
     #[test]

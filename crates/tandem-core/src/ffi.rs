@@ -727,6 +727,57 @@ pub struct TandemSendReport {
     pub offline: Vec<String>,
 }
 
+/// An incoming transfer that stopped halfway before this start and waits for the person: go on or throw away (P2).
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemResumable {
+    pub from: String,
+    pub offer: u64,
+    pub origin: TandemShareOrigin,
+    pub items: Vec<TandemResumeItem>,
+    /// When it last changed, in ms since 1970: when it stopped.
+    pub updated_ms: u64,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemResumeItem {
+    /// Its place in the offer, as in `Progress` and `Finished`.
+    pub index: u32,
+    pub name: String,
+    pub size: u64,
+    /// The bytes that are here: the length of its partial file, or `size` when it came in whole before the stop.
+    pub done: u64,
+    /// It came in whole, or ended, before the stop: a yes does not pull it again.
+    pub ended: bool,
+}
+
+impl From<crate::journal::TransferRecord> for TandemResumable {
+    fn from(record: crate::journal::TransferRecord) -> Self {
+        let sender = record.peers.first();
+        let items = record
+            .items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                let progress = sender.and_then(|s| s.items.get(index));
+                let ended = progress.is_some_and(|p| p.state.is_final());
+                let done = match progress {
+                    Some(p) if p.state == crate::journal::ItemState::Done => item.size,
+                    Some(p) => p.done,
+                    None => 0,
+                };
+                TandemResumeItem { index: index as u32, name: item.name.clone(), size: item.size, done, ended }
+            })
+            .collect();
+        TandemResumable {
+            from: sender.map(|s| s.device.to_string()).unwrap_or_default(),
+            offer: record.offer,
+            origin: record.origin.into(),
+            items,
+            updated_ms: record.updated_ms,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, uniffi::Enum)]
 pub enum TandemShareOrigin {
     Files,
@@ -1938,6 +1989,28 @@ impl TandemEngine {
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
         })
+    }
+
+    /// Incoming transfers that stopped halfway before this start, newest first (P2). Nothing goes on by itself: ask the person "go on or
+    /// throw away" for each. Call it after the start and on `Connected` (Go on needs the sender connected).
+    pub fn resumable_transfers(&self) -> Vec<TandemResumable> {
+        self.engine.resumable_transfers().into_iter().map(Into::into).collect()
+    }
+
+    /// Go on with a transfer that stopped halfway: the rest of each file is pulled from where its partial file ends. Files the sender no
+    /// longer has or that changed end with `Finished` and the reason `gone` or `changed`. Fails when the sender is not connected.
+    pub fn resume_transfer(&self, from: String, offer: u64) -> Result<(), TandemError> {
+        let _guard = self.runtime.enter();
+        self.engine.resume_transfer(DeviceId::parse(&from)?, offer).map_err(Into::into)
+    }
+
+    /// Throw away a transfer that stopped halfway: the partial files go, each file ends with `Finished` and `cancelled`, and the sender
+    /// is told.
+    pub async fn discard_transfer(&self, from: String, offer: u64) -> Result<(), TandemError> {
+        let from = DeviceId::parse(&from)?;
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.discard_transfer(from, offer).await }).await.map_err(join_error)??;
+        Ok(())
     }
 
     pub async fn send_bytes(
