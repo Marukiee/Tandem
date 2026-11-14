@@ -695,3 +695,68 @@ async fn a_queued_file_that_changed_or_went_is_reported_and_not_sent() {
     assert!(mac_again.transfers().iter().all(|t| t.offer != stopped.offer), "a stopped queued offer must never go out");
     assert_eq!(stage_of(&phone.engine, report.offer, mac.engine.id()), Some(Stage::Accepted));
 }
+
+/// P3b: the journal gives the panel every kind of transfer with the right stage: one stopped halfway, one waiting for a yes, one in
+/// the queue, one that failed and one that runs.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_panel_sees_halfway_waiting_queued_failed_and_running_transfers() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let laptop = node("Laptop").await;
+    pair(&phone, &laptop).await;
+    wait_until("laptop connected", || online(&phone, laptop.engine.id())).await;
+    laptop.engine.shutdown().await;
+    let source = tempfile::tempdir().unwrap();
+    let (halfway, _) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
+    let (mac_again, phone_again) = both_back_after_a_transfer_halfway(&phone, &mac, halfway, || ()).await;
+    ask_first_engine(&mac_again, phone.engine.id());
+    let mut mac_events = mac_again.subscribe();
+
+    let send = |name: &str, seed: u8, to: DeviceId| {
+        let file = outgoing(source.path(), name, &random_bytes(300_000, seed));
+        let phone = phone_again.clone();
+        async move { phone.send_files(&[to], vec![file], ShareOrigin::Files).await.unwrap().offer }
+    };
+    let waiting = send("waiting.bin", 70, mac.engine.id()).await;
+    assert_eq!(offered(&mut mac_events).await, waiting);
+    let queued = send("queued.bin", 71, laptop.engine.id()).await;
+    let failed = send("gone.bin", 72, mac.engine.id()).await;
+    assert_eq!(offered(&mut mac_events).await, failed);
+    std::fs::remove_file(source.path().join("gone.bin")).unwrap();
+    mac_again.accept_offer(phone.engine.id(), failed).unwrap();
+    assert_eq!(finished_in(&mut mac_events, "the gone file ends").await.error.as_deref(), Some("gone"));
+    let running = send("running.bin", 73, mac.engine.id()).await;
+    assert_eq!(offered(&mut mac_events).await, running);
+
+    let sent = phone_again.transfers();
+    let at_phone = |offer: u64| sent.iter().find(|t| t.offer == offer).unwrap().peers[0].clone();
+    assert_eq!(at_phone(queued).stage, Stage::Queued);
+    assert_eq!(at_phone(queued).items[0].state, ItemState::Waiting);
+    assert_eq!(at_phone(failed).items[0].state, ItemState::Failed);
+    assert_eq!(at_phone(failed).items[0].error.as_deref(), Some("gone"));
+
+    // The phone goes, so the file the Mac says yes to now keeps running, waiting for it to come back.
+    phone_again.shutdown().await;
+    mac_again.accept_offer(phone.engine.id(), running).unwrap();
+    wait_until("the file runs", || {
+        mac_again.transfers().iter().any(|t| t.offer == running && t.peers[0].items[0].state == ItemState::Running)
+    })
+    .await;
+
+    let came = mac_again.transfers();
+    let at_mac = |offer: u64| came.iter().find(|t| t.offer == offer && t.incoming).unwrap().peers[0].clone();
+    let states = |offer: u64| at_mac(offer).items.iter().map(|i| i.state).collect::<Vec<_>>();
+    assert_eq!(at_mac(halfway).stage, Stage::Accepted);
+    assert_eq!(states(halfway), [ItemState::Interrupted, ItemState::Interrupted]);
+    assert!(mac_again.resumable_transfers().iter().any(|t| t.offer == halfway));
+    assert_eq!((at_mac(waiting).stage, states(waiting)), (Stage::Offered, vec![ItemState::Waiting]));
+    assert_eq!(states(failed), [ItemState::Failed]);
+    assert_eq!(at_mac(failed).items[0].error.as_deref(), Some("gone"));
+    assert_eq!((at_mac(running).stage, states(running)), (Stage::Accepted, vec![ItemState::Running]));
+    // The newest first.
+    assert_eq!(came[0].offer, running);
+}
+
+fn ask_first_engine(receiver: &Engine, sender: DeviceId) {
+    receiver.set_device_settings(&sender, DeviceSettings { auto_accept: false, ..Default::default() }).unwrap();
+}

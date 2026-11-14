@@ -741,6 +741,145 @@ pub struct TandemResumable {
     pub updated_ms: u64,
 }
 
+/// One transfer as the journal has it, for the panel of what is underway and incoming (P3b). The same shape for both directions:
+/// files times devices. Outgoing has a row in `peers` per receiver, incoming one, the sender.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemTransfer {
+    pub offer: u64,
+    pub incoming: bool,
+    pub origin: TandemShareOrigin,
+    /// Ms since 1970.
+    pub created_ms: u64,
+    /// The last change of state.
+    pub updated_ms: u64,
+    pub items: Vec<TandemTransferItem>,
+    pub peers: Vec<TandemTransferPeer>,
+    /// Incoming: waits for a yes because this device is on mobile data and it is large.
+    pub held: bool,
+    /// Incoming: stopped halfway before this start and waits for go on or throw away (P2), as in `resumable_transfers`.
+    pub halfway: bool,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemTransferItem {
+    pub name: String,
+    pub size: u64,
+    pub mime: String,
+    /// Outgoing: what was sent, a path or a content URI, so Retry can send it again as a new offer. Empty for incoming.
+    pub source: String,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemTransferPeer {
+    pub device: String,
+    pub stage: TandemTransferStage,
+    /// When the offer went to this device or came from it, ms since 1970; zero while it waits in the queue.
+    pub offered_ms: u64,
+    /// One per item, in the order of `TandemTransfer::items`.
+    pub items: Vec<TandemTransferProgress>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemTransferProgress {
+    pub state: TandemItemState,
+    /// The bytes this side has.
+    pub done: u64,
+    /// For a file that ended without arriving: one of the fixed codes (see docs/TRANSFERS.md).
+    pub error: Option<String>,
+    /// Incoming and done: where the file is.
+    pub location: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemTransferStage {
+    /// Outgoing: the device is away; the offer goes when it comes back (P3).
+    Queued,
+    /// Sent or come in, nothing pulled yet: an incoming one waits for a yes.
+    Offered,
+    /// Being pulled, or yes was said.
+    Accepted,
+    /// Stopped, declined or expired for this device; why is on each file.
+    Closed,
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemItemState {
+    Waiting,
+    Running,
+    /// Stopped halfway, the partial file kept.
+    Interrupted,
+    Done,
+    Failed,
+    Cancelled,
+    Declined,
+    Expired,
+    Unknown,
+}
+
+impl From<crate::journal::Stage> for TandemTransferStage {
+    fn from(stage: crate::journal::Stage) -> Self {
+        use crate::journal::Stage as S;
+        match stage {
+            S::Queued => Self::Queued,
+            S::Offered => Self::Offered,
+            S::Accepted => Self::Accepted,
+            S::Closed => Self::Closed,
+            S::Unknown => Self::Unknown,
+        }
+    }
+}
+
+impl From<crate::journal::ItemState> for TandemItemState {
+    fn from(state: crate::journal::ItemState) -> Self {
+        use crate::journal::ItemState as S;
+        match state {
+            S::Waiting => Self::Waiting,
+            S::Running => Self::Running,
+            S::Interrupted => Self::Interrupted,
+            S::Done => Self::Done,
+            S::Failed => Self::Failed,
+            S::Cancelled => Self::Cancelled,
+            S::Declined => Self::Declined,
+            S::Expired => Self::Expired,
+            S::Unknown => Self::Unknown,
+        }
+    }
+}
+
+impl TandemTransfer {
+    fn from_record(record: crate::journal::TransferRecord, halfway: bool) -> Self {
+        TandemTransfer {
+            offer: record.offer,
+            incoming: record.incoming,
+            origin: record.origin.into(),
+            created_ms: record.created_ms,
+            updated_ms: record.updated_ms,
+            items: record
+                .items
+                .into_iter()
+                .map(|item| TandemTransferItem { name: item.name, size: item.size, mime: item.mime, source: item.source })
+                .collect(),
+            peers: record
+                .peers
+                .into_iter()
+                .map(|peer| TandemTransferPeer {
+                    device: peer.device.to_string(),
+                    stage: peer.stage.into(),
+                    offered_ms: peer.offered_ms,
+                    items: peer
+                        .items
+                        .into_iter()
+                        .map(|p| TandemTransferProgress { state: p.state.into(), done: p.done, error: p.error, location: p.location })
+                        .collect(),
+                })
+                .collect(),
+            held: record.held,
+            halfway,
+        }
+    }
+}
+
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct TandemResumeItem {
     /// Its place in the offer, as in `Progress` and `Finished`.
@@ -2010,6 +2149,26 @@ impl TandemEngine {
     /// throw away" for each. Call it after the start and on `Connected` (Go on needs the sender connected).
     pub fn resumable_transfers(&self) -> Vec<TandemResumable> {
         self.engine.resumable_transfers().into_iter().map(Into::into).collect()
+    }
+
+    /// Every transfer this device knows of, in and out, the newest first: running, waiting for a yes, queued for a device that is away,
+    /// stopped halfway, or ended a short while ago (P3b). There is no event of its own: read it again on `ShareOffered`, `Finished`,
+    /// `Connected`, `Disconnected` and, a few times a second at most, on `Progress`.
+    pub fn transfers(&self) -> Vec<TandemTransfer> {
+        let halfway: std::collections::HashSet<(bool, u64, Option<DeviceId>)> = self
+            .engine
+            .resumable_transfers()
+            .iter()
+            .map(|record| (record.incoming, record.offer, record.peers.first().map(|p| p.device)))
+            .collect();
+        self.engine
+            .transfers()
+            .into_iter()
+            .map(|record| {
+                let waits = halfway.contains(&(record.incoming, record.offer, record.peers.first().map(|p| p.device)));
+                TandemTransfer::from_record(record, waits)
+            })
+            .collect()
     }
 
     /// Go on with a transfer that stopped halfway: the rest of each file is pulled from where its partial file ends. Files the sender no
