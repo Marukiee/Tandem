@@ -16,6 +16,25 @@ encoders, sms, hotspot en Shizuku, Health Connect.
 Korte paden: `K/` = `crates/tandem-core/src/`, `M/` = `macos/Sources/Tandem/`, `T/` = `windows/src-tauri/src/`,
 `W/` = `windows/src-tauri/winsys/src/`, `A/` = `android/app/src/main/java/nl/markmaaktmedia/tandem/`.
 
+**Stand 2026-11-14, avond.** Gebouwd en samengevoegd in main (PR 4, 5 en 6, changelog 0.3.17), en nog niet op een echt toestel
+gezien behalve waar het erbij staat: R-B1, R-B2, R-B3, R-B4, R-B5 (gezien: de dev-app schrijft de sleutel), R-B6 met R-V7, R-B7,
+R-B8, R-B9, R-B14, R-B15, R-B17, R-B20, R-B25 (zonder de interne acties van `MainActivity`), R-B27 (zonder de buffer in
+`FsClient::read`), R-D1, R-D2, R-V6 (alleen apparaatnamen), R-V8, en P1, het overdrachtsboek (zie `docs/TRANSFERS.md`, daar staan
+ook de lijsten "klaar als" voor P2, P3, P3b, P4 en P9). Die punten staan hieronder nog uitgeschreven tot ze op een toestel gezien
+zijn. De redenen "declined" en "expired" die de kern nu geeft zijn in alle vier de apps vertaald.
+
+Gevonden bij het nakijken van die PR's, nog te doen:
+
+- **R-V12. Het overdrachtsboek schrijft na elk bestand naar schijf** (zeker, klein tot middel). `K/journal.rs` (`change`): een
+  schrijfactie met `fsync` per bestand dat eindigt, aan beide kanten. Bij een aanbod van honderden bestanden is dat merkbaar, vooral
+  op een telefoon. Voorstel: bundelen, hooguit elke halve seconde en altijd aan het eind.
+- **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
+  van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
+- **R-B32. Android: weiger je een aanbod in de app, dan blijft de melding tot 10 minuten staan** (klein).
+  `A/engine/TandemService.kt` (`offerAnswered`) hoort alleen van voortgang en van klaar. Voorstel: ook aanroepen bij weigeren.
+- **R-T open:** de proef van R-B1 op de Oppo (het deelverzoek met `adb shell am start` voor en na) is niet gedaan; de telefoon hing
+  niet meer aan adb.
+
 ### R-P. Gekozen door Mark (2026-11-14), en hoe het gebouwd wordt
 
 Mark koos negen functies: de wachtrij, neerzetten met een plaatshouder, de telefoon bij slepen, echte mappen, hervatten na een
@@ -43,7 +62,7 @@ bestanden deelt: de opwarmronde in de apps, P1 in de kern, en het ontwerp van P6
 
 Pakketten, in deze volgorde:
 
-- **P1. Een overdrachtsboek in de kern** (sterk model; basis voor P2, P3 en P4). Aanbiedingen, in en uit, bewaard in de datamap:
+- **P1. Een overdrachtsboek in de kern** (**gebouwd, PR 6**; sterk model; basis voor P2, P3 en P4). Aanbiedingen, in en uit, bewaard in de datamap:
   wat, voor wie, hoe ver. Nu staan ze alleen in het geheugen (`K/engine.rs:117`). Klaar als: een kerntest een overdracht
   halverwege stopt, de engine opnieuw start en het boek de stand teruggeeft.
 - **P2. Hervatten na een herstart** (R-I5). Eis van Mark: nooit vanzelf doorgaan. Na de start meldt de kern per halve overdracht
