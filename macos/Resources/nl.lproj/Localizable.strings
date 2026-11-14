@@ -278,6 +278,7 @@
 "The download is not signed by Tandem, so it was not installed" = "De download is niet door Tandem ondertekend en is dus niet geïnstalleerd";
 "The download could not be unpacked" = "De download kon niet worden uitgepakt";
 "The new version is signed by someone else, so it was not installed" = "De nieuwe versie is door iemand anders ondertekend en is dus niet geïnstalleerd";
+"The download is not the version it says it is, so it was not installed" = "De download is niet de versie die hij zegt te zijn en is dus niet geïnstalleerd";
 
 /* Over */
 "Version %@" = "Versie %@";

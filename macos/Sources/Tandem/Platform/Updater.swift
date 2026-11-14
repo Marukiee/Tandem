@@ -4,6 +4,7 @@ import Foundation
 import Observation
 import Security
 import SwiftUI
+import TandemLogic
 
 /// Checks GitHub Releases for a newer version and installs it over the running app.
 ///
@@ -104,6 +105,11 @@ final class Updater {
         guard mayUpdateThisBuild else {
             state = .upToDate
             return
+        }
+        // Coming to the front during a download asks again: that would start a second one, or put the button back under it.
+        switch state {
+        case .checking, .downloading, .installing: return
+        default: break
         }
         state = .checking
         installFailed = false
@@ -226,25 +232,30 @@ final class Updater {
         throw failure
     }
 
-    /// Verifies and unpacks the download. Returns the new app, ready to swap in.
+    /// Verifies and unpacks the download. Returns the new app, ready to swap in. The small files are fetched here; reading, hashing,
+    /// unpacking and `codesign` run off the main thread, where a large zip held up the whole app.
     private func stage(zip: URL, release: Release) async throws -> URL {
+        let expected = release.shaURL.isEmpty ? nil : try await text(of: release.shaURL).split(separator: " ").first.map(String.init)?.lowercased()
+        guard let key = UpdateRules.publicKey(Bundle.main.object(forInfoDictionaryKey: "TandemUpdatePublicKey") as? String),
+              !release.sigURL.isEmpty
+        else { throw UpdateError.signature }
+        let signature = Data(base64Encoded: try await text(of: release.sigURL).trimmingCharacters(in: .whitespacesAndNewlines))
+        let mine = Bundle.main.bundleURL
+        return try await Task.detached(priority: .userInitiated) {
+            try Self.verifyAndUnpack(zip: zip, version: release.version, sha: expected, key: key, signature: signature, mine: mine)
+        }.value
+    }
+
+    nonisolated private static func verifyAndUnpack(zip: URL, version: String, sha: String?, key: Data, signature: Data?, mine: URL) throws -> URL {
         let data = try Data(contentsOf: zip, options: .mappedIfSafe)
-
-        if !release.shaURL.isEmpty {
-            let expected = try await text(of: release.shaURL).split(separator: " ").first.map(String.init)?.lowercased()
+        if let sha {
             let actual = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-            guard expected == actual else { throw UpdateError.checksum }
+            guard sha == actual else { throw UpdateError.checksum }
         }
-
-        if let key = Bundle.main.object(forInfoDictionaryKey: "TandemUpdatePublicKey") as? String,
-           let raw = Data(base64Encoded: key), !key.isEmpty {
-            guard !release.sigURL.isEmpty else { throw UpdateError.signature }
-            let signature = Data(base64Encoded: try await text(of: release.sigURL).trimmingCharacters(in: .whitespacesAndNewlines))
-            guard let signature,
-                  let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: raw),
-                  publicKey.isValidSignature(signature, for: data)
-            else { throw UpdateError.signature }
-        }
+        guard let signature,
+              let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: key),
+              publicKey.isValidSignature(signature, for: data)
+        else { throw UpdateError.signature }
 
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("tandem-update-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -253,10 +264,14 @@ final class Updater {
             .first(where: { $0.pathExtension == "app" })
         else { throw UpdateError.unpack }
 
+        // An older build is signed too: the version inside must be the one of the release it came with.
+        let inside = Bundle(url: app)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        guard UpdateRules.sameVersion(unpacked: inside, release: version) else { throw UpdateError.version }
+
         try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", app.path])
-        if let mine = Self.leafCertificateHash(of: Bundle.main.bundleURL),
-           Self.leafCertificateHash(of: app) != mine,
-           !Self.signedByOurDeveloperID(app) {
+        if let mine = leafCertificateHash(of: mine),
+           leafCertificateHash(of: app) != mine,
+           !signedByOurDeveloperID(app) {
             throw UpdateError.identity
         }
         return app
@@ -285,7 +300,7 @@ final class Updater {
     }
 
     @discardableResult
-    private func run(_ tool: String, _ arguments: [String]) throws -> Int32 {
+    nonisolated private static func run(_ tool: String, _ arguments: [String]) throws -> Int32 {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: tool)
         process.arguments = arguments
@@ -300,10 +315,10 @@ final class Updater {
 
     /// The team of Tandem's Developer ID, which releases move to from the self-made certificate: an app signed by it is Tandem as
     /// well. Nobody else gets a Developer ID for this team, and the zip itself is checked with the update key before this.
-    static let developerTeam = "X8Y2M32MNQ"
+    nonisolated static let developerTeam = "X8Y2M32MNQ"
 
     /// Whether `url` is signed with a Developer ID Application certificate of Tandem's team, as Apple issues them.
-    static func signedByOurDeveloperID(_ url: URL) -> Bool {
+    nonisolated static func signedByOurDeveloperID(_ url: URL) -> Bool {
         var staticCode: SecStaticCode?
         guard SecStaticCodeCreateWithPath(url as CFURL, [], &staticCode) == errSecSuccess, let staticCode else { return false }
         // Apple's root, the Developer ID intermediate, a Developer ID Application leaf, and our team in it.
@@ -315,7 +330,7 @@ final class Updater {
 
     /// The hash of the certificate an app was signed with. Equal hashes mean the same
     /// developer identity, which is what macOS keys permissions on.
-    static func leafCertificateHash(of url: URL) -> String? {
+    nonisolated static func leafCertificateHash(of url: URL) -> String? {
         var staticCode: SecStaticCode?
         guard SecStaticCodeCreateWithPath(url as CFURL, [], &staticCode) == errSecSuccess, let staticCode else { return nil }
         var info: CFDictionary?
@@ -358,7 +373,7 @@ final class Updater {
 }
 
 enum UpdateError: Error {
-    case feed, noAsset, checksum, signature, unpack, identity, unreachable
+    case feed, noAsset, checksum, signature, unpack, identity, version, unreachable
 
     var message: String {
         switch self {
@@ -369,68 +384,10 @@ enum UpdateError: Error {
         case .signature: String(localized: "The download is not signed by Tandem, so it was not installed")
         case .unpack: String(localized: "The download could not be unpacked")
         case .identity: String(localized: "The new version is signed by someone else, so it was not installed")
+        case .version: String(localized: "The download is not the version it says it is, so it was not installed")
         }
     }
 }
-
-/// Compares versions the way a person reads them, so "1.10.0" beats "1.9.0". A suffix
-/// after the numbers ("-rc1") counts as older than the plain release.
-enum VersionComparator {
-    /// The newest release that has `file`. A release can stand there without it, while it is being built or because its build failed.
-    /// That is no news, and it must not hide the release before it.
-    static func newest(in releases: [[String: Any]], with file: String) -> [String: Any]? {
-        var newest: [String: Any]?
-        var newestTag = ""
-        for release in releases {
-            guard release["draft"] as? Bool != true, release["prerelease"] as? Bool != true,
-                  let tag = release["tag_name"] as? String,
-                  let assets = release["assets"] as? [[String: Any]],
-                  assets.contains(where: { $0["name"] as? String == file })
-            else { continue }
-            if newest == nil || isNewer(tag, than: newestTag) {
-                newest = release
-                newestTag = tag
-            }
-        }
-        return newest
-    }
-
-    static func normalise(_ raw: String) -> String {
-        var text = raw.trimmingCharacters(in: .whitespaces)
-        if text.hasPrefix("v") || text.hasPrefix("V") { text.removeFirst() }
-        return text
-    }
-
-    static func isNewer(_ candidate: String, than current: String) -> Bool {
-        compare(candidate, current) > 0
-    }
-
-    static func compare(_ left: String, _ right: String) -> Int {
-        let a = numbers(left), b = numbers(right)
-        for index in 0 ..< max(a.count, b.count) {
-            let x = index < a.count ? a[index] : 0
-            let y = index < b.count ? b[index] : 0
-            if x != y { return x < y ? -1 : 1 }
-        }
-        let s1 = suffix(left), s2 = suffix(right)
-        if s1 == s2 { return 0 }
-        if s1.isEmpty { return 1 }
-        if s2.isEmpty { return -1 }
-        return s1 < s2 ? -1 : 1
-    }
-
-    private static func numbers(_ raw: String) -> [Int] {
-        normalise(raw).split(separator: "-", maxSplits: 1).first.map(String.init)?
-            .split(separator: ".").map { Int($0.prefix(while: \.isNumber)) ?? 0 } ?? []
-    }
-
-    private static func suffix(_ raw: String) -> String {
-        let text = normalise(raw)
-        guard let dash = text.firstIndex(of: "-") else { return "" }
-        return String(text[text.index(after: dash)...]).lowercased()
-    }
-}
-
 
 /// Downloads one file with progress. `URLSession.bytes` is convenient but far too slow for
 /// a multi-megabyte archive, and this reports how far along it is.
