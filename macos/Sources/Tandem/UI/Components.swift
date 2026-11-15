@@ -553,11 +553,13 @@ struct DeviceGlyph: View {
     var deviceID: String?
     /// Green instead of indigo while the device is there, for where nothing else says that it is (the menu bar panel).
     var greenWhenOnline = false
+    /// A symbol to draw as it is, for the board that shows every kind (`DeviceIconsBoard`).
+    var drawn: String?
 
     private var onlineColor: Color { greenWhenOnline ? .green : Palette.indigo }
 
     private var symbol: String {
-        deviceID.flatMap { model.deviceIcons[$0] } ?? platform.symbol
+        DeviceSymbol.shown(drawn ?? deviceID.flatMap { model.deviceIcons[$0] } ?? platform.symbol)
     }
 
     var body: some View {
@@ -568,7 +570,7 @@ struct DeviceGlyph: View {
             }
             Image(systemName: symbol)
                 .font(.system(size: size * (plain ? 0.86 : (size > 60 ? 0.5 : 0.42)), weight: plain ? .regular : .semibold))
-                .symbolRenderingMode(.hierarchical)
+                .symbolRenderingMode(DeviceSymbol.rendering(symbol))
                 .foregroundStyle(onSelection ? Color.white : (online ? onlineColor : Color.secondary))
                 .contentTransition(.symbolEffect(.replace))
             if ring {
@@ -588,6 +590,36 @@ struct DeviceGlyph: View {
     }
 }
 
+/// One drawing for each kind of device, the same wherever the device is shown: in its row of the sidebar, at the head of its
+/// page, in the menu bar panel. The head shows what the row shows, larger.
+enum DeviceSymbol {
+    /// Tandem's watch is a Wear OS watch, such as the Pixel Watch, and those are round.
+    static let watch = "watch.analog"
+
+    /// What an icon that was picked or kept is drawn as: the square watch of an earlier choice is the round one.
+    static func shown(_ symbol: String) -> String { symbol == "applewatch" ? watch : symbol }
+
+    /// The outline of a device is the strong part of its symbol and its screen the soft part. In the watch the case and the
+    /// strap are the soft part, which made it paler than the rest, so the watch is drawn in one strength.
+    static func rendering(_ symbol: String) -> SymbolRenderingMode { symbol == watch ? .monochrome : .hierarchical }
+}
+
+/// The watch as a round glyph, drawn the way a device is (`DeviceGlyph`): in the accent while it is there, grey while it is not.
+struct WatchGlyph: View {
+    var online: Bool
+    var size: CGFloat = 44
+
+    var body: some View {
+        Image(systemName: DeviceSymbol.watch)
+            .font(.system(size: size * 0.45, weight: .semibold))
+            .symbolRenderingMode(DeviceSymbol.rendering(DeviceSymbol.watch))
+            .foregroundStyle(online ? Palette.indigo : Color.secondary)
+            .frame(width: size, height: size)
+            .background(online ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07), in: Circle())
+            .animation(.tandem, value: online)
+    }
+}
+
 /// The icons a device can be given, for the picker on its page.
 enum DeviceIconChoice: CaseIterable {
     case phone, tablet, laptop, desktop, watch, tv
@@ -598,7 +630,7 @@ enum DeviceIconChoice: CaseIterable {
         case .tablet: "ipad"
         case .laptop: "laptopcomputer"
         case .desktop: "desktopcomputer"
-        case .watch: "applewatch"
+        case .watch: DeviceSymbol.watch
         case .tv: "tv"
         }
     }

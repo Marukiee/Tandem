@@ -30,7 +30,7 @@ struct BatteryWidgetSnapshot: Codable, Equatable {
         BatteryWidgetDevice(id: "linux", name: "ThinkPad", symbol: "desktopcomputer", level: 7, charging: false, away: false),
         BatteryWidgetDevice(id: "tablet", name: "Tablet", symbol: "ipad", level: 64, charging: false, away: true),
         BatteryWidgetDevice(id: "pc", name: "Surface", symbol: "pc", level: 100, charging: false, away: false),
-        BatteryWidgetDevice(id: "watch", name: "Watch", symbol: "applewatch", level: 41, charging: true, away: false),
+        BatteryWidgetDevice(id: "watch", name: "Watch", symbol: "watch.analog", level: 41, charging: true, away: false),
     ])
 }
 

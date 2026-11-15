@@ -482,7 +482,7 @@ private struct MenuWatchRow: View {
         let steering = reachable && watch?.mouse?.target == model.myId
         VStack(spacing: 8) {
             HStack(spacing: 10) {
-                Image(systemName: "applewatch")
+                Image(systemName: DeviceSymbol.watch)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(reachable ? Color.green : Color.secondary)
                     .frame(width: 36, height: 36)
@@ -532,7 +532,7 @@ private struct MenuWatchRow: View {
                     .disabled(!phone.online)
                 }
                 RoundIconButton(symbol: "heart", size: 32, onHover: { hover($0, "Health") }) { AppScenes.showMain(.health(phone.id)) }
-                RoundIconButton(symbol: "applewatch", size: 32, onHover: { hover($0, "Open the watch") }) { AppScenes.showMain(.watch(phone.id)) }
+                RoundIconButton(symbol: DeviceSymbol.watch, size: 32, onHover: { hover($0, "Open the watch") }) { AppScenes.showMain(.watch(phone.id)) }
             }
             .environment(\.iconButtonsFill, true)
         }

@@ -492,11 +492,7 @@ private struct WatchRow: View {
         RailRow(folded: folded, mini: name, selected: selected) {
             ZStack {
                 let size = watch.level == nil ? Sidebar.glyph : Sidebar.glyph - 8
-                Image(systemName: "applewatch")
-                    .font(.system(size: size * 0.45, weight: .semibold))
-                    .foregroundStyle(Palette.indigo)
-                    .frame(width: size, height: size)
-                    .background(Palette.indigo.opacity(0.14), in: Circle())
+                WatchGlyph(online: reachable, size: size)
                 if let level = watch.level {
                     LevelRing(level: Int(level), tint: !reachable ? .gray : (watch.charging ? .green : (level <= 15 ? Palette.urgent : Palette.indigo)))
                 }

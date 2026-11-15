@@ -43,15 +43,12 @@ struct WatchDetail: View {
     }
 
     private var header: some View {
-        Card(radius: Metrics.card, padding: 22, tint: reachable ? Palette.indigo : nil) {
-            HStack(spacing: 20) {
-                Image(systemName: "applewatch")
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(Palette.indigo)
-                    .frame(width: 80, height: 80)
-                    .background(Palette.indigo.opacity(0.14), in: Circle())
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(verbatim: name).font(.title.weight(.bold)).lineLimit(1).contentTransition(.opacity)
+        // The plain card of the page, as the head of a device has: colour only in what is small.
+        Card(radius: Metrics.card, padding: 20) {
+            HStack(spacing: 16) {
+                WatchGlyph(online: reachable, size: 60)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verbatim: name).font(.title2.weight(.semibold)).lineLimit(1).contentTransition(.opacity)
                     Text("Wear OS \u{00B7} by way of \(phone.name)").font(.callout).foregroundStyle(.secondary).lineLimit(1)
                     HStack(spacing: 8) {
                         // Without Bluetooth on the phone the watch can never connect: say that, not only that it is away.
@@ -59,7 +56,7 @@ struct WatchDetail: View {
                             Chip(symbol: "antenna.radiowaves.left.and.right.slash", text: "Bluetooth off on \(phone.name)", tint: .orange, strong: true)
                         } else {
                             Chip(
-                                symbol: reachable ? "checkmark.circle.fill" : "applewatch.slash",
+                                symbol: reachable ? "checkmark.circle.fill" : "xmark.circle",
                                 text: reachable ? "Connected" : "Watch away",
                                 tint: reachable ? .green : .secondary,
                                 strong: reachable
@@ -97,7 +94,7 @@ struct WatchDetail: View {
             Text("Watch").font(.headline).padding(.horizontal, 4)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 WatchActionTile(
-                    symbol: ringing ? "bell.slash.fill" : "applewatch.radiowaves.left.and.right",
+                    symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
                     title: ringing ? "Stop sound" : "Play sound",
                     subtitle: ringing ? String(localized: "Ringing now, also on silent") : String(localized: "It rings, even on silent"),
                     on: ringing, why: away

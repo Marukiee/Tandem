@@ -14,9 +14,10 @@ import SwiftUI
 /// - `width:<points>` and `fullscreen`: resizes the window, or takes it in or out of full screen.
 /// - `report`: writes where the window and its three buttons are.
 /// - `snap`: the pictures of the windows, as SIGUSR1 does, kept under a number of their own.
-/// - `film:<frames>,<milliseconds>[,<width>]`: that many pictures of the window, that far apart, of its leading `width` points:
-///   something that moves, seen frame by frame. A `+` in place of the `;` before it starts it without the pause between steps,
-///   as in `click:140,520+film:14,35,290`.
+/// - `film:<frames>,<milliseconds>[,<width>[,<x>[,<height>]]]`: that many pictures of the window, that far apart, of a piece of
+///   it `width` points wide that starts `x` points from its leading edge and is `height` points high from its top: something
+///   that moves, seen frame by frame. A `+` in place of the `;` before it starts it without the pause between steps, as in
+///   `click:140,520+film:14,35,290`.
 ///
 /// What every step did is written to `input.txt` in the debug folder. Events go through the window as real ones do, so they land on
 /// whatever a person's click at that place would land on.
@@ -79,7 +80,13 @@ enum DebugInput {
             let folder = directory.appendingPathComponent("film-\(snaps)", isDirectory: true)
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             var rect = view.bounds
-            if numbers.count > 2 { rect.size.width = min(rect.width, numbers[2]) }
+            if numbers.count > 3 { rect.origin.x = min(rect.width - 1, numbers[3]) }
+            if numbers.count > 2 { rect.size.width = min(rect.width - rect.origin.x, numbers[2]) }
+            if numbers.count > 4 {
+                let height = min(rect.height, numbers[4])
+                if !view.isFlipped { rect.origin.y = rect.height - height }
+                rect.size.height = height
+            }
             // Drawn first and written afterwards: writing a picture takes longer than the time between two frames.
             var frames: [(at: Int, picture: NSBitmapImageRep)] = []
             let start = ProcessInfo.processInfo.systemUptime

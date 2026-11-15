@@ -34,6 +34,10 @@ enum DebugSupport {
     /// The height of the Settings window under `TANDEM_DEBUG_SETTINGS` with `TANDEM_DEBUG_TALL=<points>`.
     static let settingsHeight: CGFloat? = variable("TANDEM_DEBUG_SETTINGS") == nil ? nil : variable("TANDEM_DEBUG_TALL").flatMap { Double($0) }.map { CGFloat($0) }
 
+    /// `TANDEM_DEBUG_SLOW=<times>`: the arrival of a page takes that many times as long, so a film of it (`TANDEM_DEBUG_INPUT`,
+    /// `film`) has frames of every part of the way. A picture of a window takes longer than the arrival itself.
+    static let slow: Double = variable("TANDEM_DEBUG_SLOW").flatMap { Double($0) } ?? 1
+
     /// `TANDEM_DEBUG_POINTER=1`: what only shows while the pointer is on something is there all the time, so a picture shows where
     /// it lies and how strong it is: the name of every round button (`instantName`) and the highlight of every row of the sidebar.
     /// The pointer of a person cannot be played without taking theirs.
@@ -131,6 +135,17 @@ enum DebugSupport {
         // `TANDEM_DEBUG_HEALTH=1`: the health page with a made up week.
         if variable("TANDEM_DEBUG_HEALTH") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showHealthWindow() }
+        }
+        // `TANDEM_DEBUG_ICONS=1`: every kind of device as it is drawn, connected and not, in light and in dark, in one window.
+        if variable("TANDEM_DEBUG_ICONS") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                let host = NSHostingView(rootView: DeviceIconsBoard().environment(EngineModel.shared))
+                let window = NSWindow(contentRect: NSRect(origin: NSPoint(x: 120, y: 120), size: host.fittingSize), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                window.title = "Devices (debug)"
+                window.contentView = host
+                window.isReleasedWhenClosed = false
+                window.makeKeyAndOrderFront(nil)
+            }
         }
         // `TANDEM_DEBUG_SIDEBAR=1`: the main window with made up devices in its sidebar (see `madeUpModel`), `=narrow` narrow enough
         // to fold it, `=wide` with room to spare. `TANDEM_DEBUG_PAGE` picks the page.
@@ -571,7 +586,12 @@ enum DebugSupport {
         model.devices = [withWatch, computer, away, made("debug-pc", "Werk-pc", .windows, online: true, caps: ["files"])]
         MessagesStore.shared.phone("debug-phone").fillForDebug()
         // The first phone plays something and has files, so its page shows the player beside the head and the list of what was sent.
+        // The other Mac has one player and the PC none: the three heads a page can have.
         fillSamples(model, phone: "debug-phone")
+        model.remoteMedia["debug-mac"] = EngineModel.RemoteMedia(players: [
+            TandemMediaPlayer(id: "music", app: "Music", title: "Pyramid Song", artist: "Radiohead", album: "Amnesiac", playing: true,
+                              positionMs: 95_000, durationMs: 289_000, canPrev: true, canNext: true, canSeek: true, art: 0),
+        ], at: Date())
         model.ready = true
         return model
     }()

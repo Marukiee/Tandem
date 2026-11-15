@@ -102,7 +102,7 @@ struct MainWindow: View {
                 .scrollEdgeEffectHidden(true, for: .top)
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
                 .toolbar(removing: .title)
-                .animation(.easeOut(duration: 0.24), value: selection)
+                .animation(.easeOut(duration: 0.24 * DebugSupport.slow), value: selection)
                 .onChange(of: selection) {
                     MainWindow.remembered = selection
                     if case let .messages(id) = selection { Sidebar.lastMessagesPhone = id }
