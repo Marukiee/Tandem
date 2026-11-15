@@ -940,3 +940,51 @@ button.health-title:not(:disabled) { cursor: pointer; }
   .headrow .player .progress { grid-area: bar; }
   .headrow .player .btns { grid-area: btns; justify-content: center; }
 }
+
+/* ---- Settings › Devices, also called Circle (P6): a card per kind of permission with the devices as round switches ---- */
+:root { --g-see: #5b5bd6; --g-files: #2f9e44; --g-control: #e8590c; --g-wifi: #d6336c; }
+@media (prefers-color-scheme: dark) { :root { --g-see: #a5a5f7; --g-files: #74d18a; --g-control: #ffa06b; --g-wifi: #ff8fb5; } }
+.g-see { --g: var(--g-see); --t: var(--tone-1); --on-t: var(--on-tone-1); }
+.g-files { --g: var(--g-files); --t: var(--tone-3); --on-t: var(--on-tone-3); }
+.g-control { --g: var(--g-control); --t: var(--tone-4); --on-t: var(--on-tone-4); }
+.g-wifi { --g: var(--g-wifi); --t: var(--tone-2); --on-t: var(--on-tone-2); }
+.circle-title { display: flex; align-items: baseline; gap: 8px; }
+.circle-name { font: 500 12px var(--font); color: var(--text-3); }
+.circle-summary { margin: 0 2px; font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
+.circle-summary b { color: var(--text); font-weight: 650; }
+.circle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.circle-tile { border-radius: 20px; padding: 14px 16px; background: var(--t); color: var(--on-t); display: flex; flex-direction: column; gap: 12px; }
+.circle-tile .ch { display: flex; align-items: center; gap: 10px; }
+.circle-tile .ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, currentColor 14%, transparent); flex: none; }
+.circle-tile .q { font: 650 14.5px var(--font-display); }
+.circle-tile .what { font-size: 12px; opacity: 0.8; }
+.circle-faces { display: flex; gap: 6px; flex-wrap: wrap; }
+.circle-face { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 66px; border: 0; background: none; color: inherit; font: inherit; padding: 0; cursor: default; }
+.circle-face .disc { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; position: relative; background: color-mix(in srgb, currentColor 16%, transparent);
+  transition: transform 0.3s var(--spring), background 0.15s, opacity 0.15s; }
+.circle-face.yes .disc { background: var(--g); color: #fff; }
+.circle-face.some .disc { background: transparent; box-shadow: inset 0 0 0 2.5px var(--g); }
+.circle-face.no { opacity: 0.5; }
+.circle-face.no .disc::after { content: ""; position: absolute; width: 34px; height: 2px; border-radius: 1px; background: currentColor; transform: rotate(-45deg); }
+.circle-face:hover .disc { transform: scale(1.07); }
+.circle-face:active .disc { transform: scale(0.94); transition-duration: 0.06s; }
+.circle-face .n { font-size: 11.5px; font-weight: 600; max-width: 66px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.circle-level { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font: 600 12px var(--font); white-space: nowrap; flex: none; }
+.circle-level.own { background: var(--tone-1); color: var(--on-tone-1); }
+.circle-level.limited { background: var(--tone-4); color: var(--on-tone-4); }
+.circle-level.send { background: var(--tone-2); color: var(--on-tone-2); }
+.circle-level.custom { background: var(--hover); color: var(--text-2); }
+.circle-device { gap: 12px; }
+.circle-join { display: flex; align-items: center; gap: 14px; border-style: dashed; background: transparent; }
+.circle-join .t { font-weight: 600; }
+.circle-join .s { font-size: 12px; color: var(--text-2); }
+.plusdisc.big { width: 40px; height: 40px; flex: none; }
+.circle-details-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.circle-details-head h2 { margin: 0; }
+.circle-levels { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.circle-levels .seg { margin: 0; }
+.circle-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.circle-group { border-radius: 14px; padding: 8px 12px 6px; background: color-mix(in srgb, var(--t) 55%, transparent); }
+.circle-group .ph { display: flex; align-items: center; gap: 8px; font: 650 13px var(--font); color: var(--on-t); padding: 2px 4px 4px; }
+.circle-perm { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: 13.5px; }
+@media (max-width: 899px) { .circle-grid, .circle-groups { grid-template-columns: 1fr; } }
