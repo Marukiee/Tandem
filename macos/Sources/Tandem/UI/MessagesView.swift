@@ -12,6 +12,9 @@ import TandemCore
 /// each have a call button. Every call is asked first (see `CallConfirmation`).
 struct MessagesView: View {
     let device: TandemDevice
+    /// Every phone that has messages. The sidebar has one row for all of them, so with more than one the choice is made here.
+    var phones: [TandemDevice] = []
+    var onPickPhone: (String) -> Void = { _ in }
 
     @LocalState private var selection: UInt64?
     @LocalState private var composing = false
@@ -29,8 +32,8 @@ struct MessagesView: View {
                 MessagesNotice(phone: phone, device: device)
             } else {
                 HStack(spacing: 0) {
-                    ConversationList(phone: phone, device: device, search: $search, tab: $tab, selection: $selection, composing: $composing,
-                                     onCompose: { compose(to: nil) }, onOpen: open)
+                    ConversationList(phone: phone, device: device, phones: phones, onPickPhone: onPickPhone, search: $search, tab: $tab,
+                                     selection: $selection, composing: $composing, onCompose: { compose(to: nil) }, onOpen: open)
                         .frame(minWidth: 250, idealWidth: 300, maxWidth: 330)
                     detail(phone)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -124,6 +127,8 @@ enum MessagesTab: Hashable { case conversations, contacts }
 private struct ConversationList: View {
     let phone: PhoneMessages
     let device: TandemDevice
+    var phones: [TandemDevice] = []
+    var onPickPhone: (String) -> Void = { _ in }
     @Binding var search: String
     @Binding var tab: MessagesTab
     @Binding var selection: UInt64?
@@ -166,6 +171,20 @@ private struct ConversationList: View {
             }
             .padding(.horizontal, 12)
         } content: {
+            // Whose messages these are, and the way to the other phone: only with more than one.
+            if phones.count > 1 {
+                FilterMenu(title: Text(verbatim: device.name), symbol: "iphone", active: false) {
+                    ForEach(phones, id: \.id) { other in
+                        Button { onPickPhone(other.id) } label: {
+                            Label(other.name, systemImage: other.id == device.id ? "checkmark" : "iphone")
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.bottom, 8)
+                .help("Choose a phone")
+            }
             Picker("Show", selection: $tab) {
                 Text("Conversations").tag(MessagesTab.conversations)
                 Text("Contacts").tag(MessagesTab.contacts)

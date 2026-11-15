@@ -32,15 +32,15 @@ struct MainWindow: View {
     @LocalState private var showPairing = false
     /// The page a debug run asked for is chosen once, as soon as the devices it names have shown up.
     @LocalState private var debugChosen = false
-    /// True for a moment after the page changes. A new scroll view draws its top edge effect
-    /// (a light band under the toolbar) before it knows where its content starts, which
-    /// shows as a white bar for a few frames. Hidden while the page settles.
-    @LocalState private var settling = false
-    /// Whether the sidebar is shown. The bar along the top of the page is only wanted when it is not.
-    @LocalState private var columnVisibility: NavigationSplitViewVisibility = .all
-    /// The bar along the top, which goes once the sidebar is all the way in: taken away as it starts to slide, it moved the page in the
-    /// middle of the slide and the sidebar came in two jerks. When the sidebar goes it comes at once, which is not seen.
-    @LocalState private var barShown = false
+    /// The window is too narrow for the wide sidebar, which then folds to a column of icons.
+    @LocalState private var narrow = false
+    /// False until the window has been measured once, so a window that opens narrow has its sidebar folded from the start.
+    @LocalState private var measured = false
+    /// The folded sidebar is open over the page for a moment, until the pointer leaves it.
+    @LocalState private var peek = false
+
+    /// Under this width of the window the sidebar folds.
+    private static let foldBelow: CGFloat = 900
 
     /// A window that opens on a device that is not connected goes to one that is. Another page stays as it was left.
     private func openOnConnected() {
@@ -57,35 +57,56 @@ struct MainWindow: View {
     }
 
     // Three parts, not one long chain: as one chain the compiler on the release machines ran out of time on it.
+    //
+    // The sidebar is a column of our own and not the one of a split view: that one cannot fold to a column of icons, and a change of
+    // its width is not animated. Ours floats over the leading edge of the window as a sheet of glass, and the page starts where it ends.
     private var window: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            Sidebar(selection: $selection, showPairing: $showPairing)
-                .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
-        } detail: {
+        let folded = narrow && !peek
+        return ZStack(alignment: .topLeading) {
             detail
-                .scrollEdgeEffectHidden(settling || !barShown, for: .top)
-                .toolbarBackgroundVisibility(barShown ? .automatic : .hidden, for: .windowToolbar)
-                // The sidebar header already says Tandem. What the toolbar shows is the
-                // device you are on, once its card has scrolled away.
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // While the sidebar is open over the page for a moment, the page stays where it is.
+                .padding(.leading, Sidebar.margin + (narrow ? Sidebar.railWidth : Sidebar.wideWidth))
+                // The window buttons sit on the sidebar, so the top of the page has nothing to carry: no bar, no edge.
+                .scrollEdgeEffectHidden(true, for: .top)
+                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
                 .toolbar(removing: .title)
                 .animation(.tandem, value: selection)
                 .onChange(of: selection) {
                     MainWindow.remembered = selection
+                    if case let .messages(id) = selection { Sidebar.lastMessagesPhone = id }
                     if selection != waitingOn.map({ .device($0) }) { waitingOn = nil }
-                    settling = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settling = false }
                 }
-        }
-        .background(HideWindowTitle(showsBar: barShown))
-        .onChange(of: columnVisibility) { _, visibility in
-            if visibility == .detailOnly {
-                barShown = true
-            } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                    if columnVisibility != .detailOnly { barShown = false }
-                }
+            Sidebar(selection: $selection, showPairing: $showPairing, folded: folded) {
+                withAnimation(.tandemSidebar) { peek = true }
+            }
+            .frame(width: folded ? Sidebar.railWidth : Sidebar.wideWidth)
+            .frame(maxHeight: .infinity)
+            .background { SidebarGlass(lifted: peek) }
+            .onGlassSurface()
+            .padding(.leading, Sidebar.margin)
+            .padding(.bottom, Sidebar.margin)
+            .onHover { inside in
+                if !inside, peek { withAnimation(.tandemSidebar) { peek = false } }
             }
         }
+        .onGeometryChange(for: Bool.self) { $0.size.width < MainWindow.foldBelow } action: { tight in
+            if measured {
+                withAnimation(.tandemSidebar) {
+                    narrow = tight
+                    if !tight { peek = false }
+                }
+            } else {
+                narrow = tight
+            }
+        }
+        .onAppear { DispatchQueue.main.async { measured = true } }
+        // A bar with nothing in it: the window keeps the strip along its top that the pages count on, and its rounder corners.
+        .toolbar {
+            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
+                .sharedBackgroundVisibility(.hidden)
+        }
+        .background(HideWindowTitle(showsBar: false))
         // A sheet or dialog covers the window; nothing behind it should react to the pointer.
         // Set before the sheet is attached, so the sheet itself is not affected.
         .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle || CallConfirmation.shared.pending != nil))
@@ -228,7 +249,8 @@ struct MainWindow: View {
                 }
             case let .messages(id):
                 if let device = model.device(id) {
-                    MessagesView(device: device).transition(.page)
+                    MessagesView(device: device, phones: model.devices.filter(Sidebar.offersMessages)) { selection = .messages($0) }
+                        .transition(.page)
                 } else {
                     Color.clear
                 }
@@ -254,6 +276,26 @@ struct MainWindow: View {
                 Color.clear
             }
         }
+    }
+}
+
+/// The glass the sidebar floats on. It runs up under the strip along the top of the window, around the window's buttons.
+private struct SidebarGlass: View {
+    /// Open over the page for a moment: it stands further off it.
+    var lifted = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        Group {
+            if DebugSupport.flatGlass {
+                shape.fill(.regularMaterial).overlay { shape.strokeBorder(Color.primary.opacity(0.1), lineWidth: 1) }
+            } else {
+                Color.clear.glassEffect(.regular, in: shape)
+            }
+        }
+        .shadow(color: .black.opacity(lifted ? 0.24 : 0.08), radius: lifted ? 24 : 10, y: lifted ? 10 : 3)
+        .padding(.top, Sidebar.margin)
+        .ignoresSafeArea(.container, edges: .top)
     }
 }
 

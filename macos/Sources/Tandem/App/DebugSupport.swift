@@ -119,7 +119,7 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_HEALTH") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showHealthWindow() }
         }
-        // `TANDEM_DEBUG_SIDEBAR=1`: the sidebar with two made up phones and a computer, the Messages of the first one chosen.
+        // `TANDEM_DEBUG_SIDEBAR=1`: the main window with made up devices in its sidebar, `=narrow` in a window narrow enough to fold it.
         if variable("TANDEM_DEBUG_SIDEBAR") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSidebarWindow() }
         }
@@ -244,6 +244,8 @@ enum DebugSupport {
         guard let page = variable("TANDEM_DEBUG_PAGE") else { return nil }
         if page == "shared" { return .shared }
         if page == "clipboard" { return .clipboard }
+        if page == "messages" { return devices.first(where: Sidebar.offersMessages).map { .messages($0.id) } }
+        if page == "watch" { return devices.first { $0.status.watch != nil }.map { .watch($0.id) } }
         // `files` is the files of the first device that has some, `files:Name` the ones of that device.
         if page.hasPrefix("files") {
             let wanted = page.dropFirst("files".count).dropFirst()
@@ -424,9 +426,11 @@ enum DebugSupport {
         // long page fits in one snapshot.
         let tall = variable("TANDEM_DEBUG_TALL").flatMap { Double($0) }
         if let tall { height = CGFloat(tall) }
-        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: 760, height: height)
+        // `TANDEM_DEBUG_WIDE=<points>`: the page that wide, for what it does with more or less room.
+        let width = variable("TANDEM_DEBUG_WIDE").flatMap { Double($0) }.map { CGFloat($0) } ?? 760
+        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: width, height: height)
             .background(Color(nsColor: .windowBackgroundColor)))
-        let window = NSWindow(contentRect: NSRect(x: 120, y: 40, width: 760, height: height), styleMask: tall == nil ? [.titled, .closable] : [.borderless], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 40, width: width, height: height), styleMask: tall == nil ? [.titled, .closable] : [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = "Device page (debug)"
         window.contentView = host
@@ -509,20 +513,24 @@ enum DebugSupport {
         }
         // A model of its own, so the made up devices never mix with the ones of the engine.
         let model = EngineModel()
-        // The first phone has a watch, which has a row of its own under it: `TANDEM_DEBUG_SIDEBAR=watch` chooses that row.
+        // The first phone has a watch, which has a row of its own under it.
         var withWatch = made("debug-phone", "Pixel 9", .android, online: true, caps: ["sms", "files"])
         withWatch.status.watch = TandemWatchStatus(paired: true, online: true, level: 62, charging: false, ringing: false, name: nil)
-        model.devices = [
-            withWatch,
-            made("debug-mac", "MacBook Air", .macOs, online: true, caps: ["files"]),
-            made("debug-phone-2", "Xperia", .android, online: false, caps: []),
-        ]
+        withWatch.status.battery = TandemBattery(level: 78, charging: false, powerSave: false)
+        var computer = made("debug-mac", "MacBook Air van Mark", .macOs, online: true, caps: ["files"])
+        computer.status.battery = TandemBattery(level: 100, charging: true, powerSave: false)
+        var away = made("debug-phone-2", "Xperia 1 VI", .android, online: false, caps: [])
+        away.status.battery = TandemBattery(level: 12, charging: false, powerSave: false)
+        model.devices = [withWatch, computer, away, made("debug-pc", "Werk-pc", .windows, online: true, caps: ["files"])]
         MessagesStore.shared.phone("debug-phone").fillForDebug()
-        let chosen: SidebarSelection = variable("TANDEM_DEBUG_SIDEBAR") == "watch" ? .watch("debug-phone") : .messages("debug-phone")
-        let host = NSHostingView(rootView: Sidebar(selection: .constant(chosen), showPairing: .constant(false))
-            .environment(model)
-            .frame(width: 280, height: 560))
-        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 280, height: 560), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        model.ready = true
+        // The whole window, because the sidebar is part of it: it floats over the edge and folds when the window is narrow.
+        // `TANDEM_DEBUG_SIDEBAR=narrow`: a window narrow enough for it to fold. `TANDEM_DEBUG_PAGE` picks the page.
+        let width: CGFloat = variable("TANDEM_DEBUG_SIDEBAR") == "narrow" ? 760 : 1060
+        let host = NSHostingView(rootView: MainWindow().environment(model).frame(minWidth: 720, maxWidth: .infinity, minHeight: 600, maxHeight: .infinity))
+        host.sceneBridgingOptions = [.toolbars]
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: width, height: 660),
+                              styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = "Sidebar (debug)"
         window.contentView = host
