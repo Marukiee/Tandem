@@ -111,6 +111,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "send_with_none") => "No device can be reached right now",
         ("nl", "send_with_away") => "{0} is nu niet bereikbaar",
         (_, "send_with_away") => "{0} cannot be reached right now",
+        ("nl", "send_with_queued") => "{0} bestand(en) wachten tot {1} terug is",
+        (_, "send_with_queued") => "{0} file(s) wait until {1} is back",
         ("nl", "send_with_sent") => "{0} bestand(en) gestuurd naar {1}",
         (_, "send_with_sent") => "{0} file(s) sent to {1}",
         ("nl", "show_in_folder") => "Toon in map",
