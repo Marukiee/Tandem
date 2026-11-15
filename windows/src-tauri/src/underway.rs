@@ -102,9 +102,10 @@ fn rows_of(found: &[TandemTransfer], put_away: &HashSet<String>) -> Vec<Value> {
 /// After the start, on every event about a transfer and when a device comes or goes.
 pub fn refresh(app: &AppHandle) {
     let Ok(engine) = app.state::<AppState>().engine() else { return };
-    let found = engine.transfers();
     let list = {
+        // The lock is taken before the journal is read: two threads that refresh at once cannot write an older list last.
         let mut book = book().held();
+        let found = engine.transfers();
         let list = rows_of(&found, &book.put_away);
         // What is no longer in the journal needs no memory of having been hidden.
         let live: HashSet<String> = found.iter().flat_map(|t| t.peers.iter().map(move |p| row_id(t, p))).collect();
