@@ -591,9 +591,11 @@ impl Lane {
         self.0.as_ref().unwrap().spawn(future)
     }
 
-    /// Like a process that is killed: nothing runs any more and nobody is told.
-    fn kill(mut self) {
-        self.0.take().unwrap().shutdown_background();
+    /// Like a process that is killed: nothing runs any more and nobody is told. Back when everything of it is gone, so a test
+    /// does not have to guess with a pause how long that took.
+    async fn kill(mut self) {
+        let runtime = self.0.take().unwrap();
+        tokio::task::spawn_blocking(move || runtime.shutdown_timeout(Duration::from_secs(10))).await.unwrap();
     }
 }
 
@@ -624,8 +626,7 @@ async fn a_device_that_was_killed_gets_back_in_before_the_old_connection_times_o
         if a.engine.id() < b.engine.id() { (a, b, "B", lane_b, lane_a) } else { (b, a, "A", lane_a, lane_b) };
     let low_id = low.engine.id();
     let high_id = high.engine.id();
-    high_lane.kill();
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    high_lane.kill().await;
     assert!(online(&low, high_id), "nobody told it, so as far as it knows the connection is fine");
 
     let mut cfg = EngineConfig::new(&high.data, high_name);
@@ -921,8 +922,9 @@ async fn sound_travels_as_datagrams_and_arrives_in_order() {
     let packet = |n: u32| -> Vec<u8> { (0..limit).map(|i| (i as u32 + n) as u8).collect() };
     for seq in 0..40u32 {
         mac.engine.send_audio(&phone.engine.id(), 3, seq, &packet(seq)).unwrap();
-        // A real capture hands over a packet every few milliseconds.
-        tokio::time::sleep(Duration::from_millis(2)).await;
+        // A real capture hands over a packet every few milliseconds. Each is waited for here instead: a datagram is allowed to be
+        // dropped when the link is busy, and a runner that stalls for a moment must not decide what this test finds.
+        wait_until("the packet", || heard.0.lock().unwrap().len() > seq as usize).await;
     }
     wait_until("the packets arrive", || heard.0.lock().unwrap().len() >= 40).await;
     let got = heard.0.lock().unwrap().clone();
