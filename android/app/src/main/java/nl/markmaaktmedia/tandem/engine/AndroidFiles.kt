@@ -93,7 +93,7 @@ class AndroidFiles(private val context: Context) : TandemFiles {
         private val held = LinkedHashMap<String, ParcelFileDescriptor>()
 
         /** Per offer: the source of each file, and the devices that still have to fetch it. */
-        private class Offer(val sources: List<String>, val waiting: List<MutableSet<String>>, val at: Long, val life: Long)
+        private class Offer(val sources: List<String>, val waiting: List<MutableSet<String>>, val at: Long, var life: Long)
 
         private val offers = HashMap<ULong, Offer>()
 
@@ -127,6 +127,14 @@ class AndroidFiles(private val context: Context) : TandemFiles {
                 }
                 sources.forEach(::releaseIfUnused)
             }
+        }
+
+        /**
+         * The core put the offer back in the queue after the device dropped before it had pulled the files (or it waited from the start):
+         * it keeps the offer for days, so the files are kept as long, not for the six hours of an offer that goes out at once.
+         */
+        fun queued(offer: ULong) {
+            synchronized(lock) { offers[offer]?.let { it.life = maxOf(it.life, QUEUED_LIFE_MS) } }
         }
 
         /** The files never went out: nothing will fetch them. */
