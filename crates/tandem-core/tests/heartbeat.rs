@@ -159,14 +159,21 @@ async fn the_same_status_said_again_sends_nothing() {
     let window = Duration::from_millis(4_800);
     let idle = received_in(&phone, mac_id, window).await;
     let before = phone.traffic(&mac_id).unwrap().1;
+    // A status that comes in makes the phone say its devices changed, and nothing else does while it is quiet: that counts the statuses
+    // exactly, where the packets also have a beat of their own that may fall in the window once more or less.
+    let mut events = phone.subscribe();
+    heard_devices_change(&mut events);
     // Ten minutes of minutes, in a hundredth of the time.
     for _ in 0..48 {
         mac.update_status(battery(80)).await;
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(!heard_devices_change(&mut events), "the same status was sent again");
     let said_again = phone.traffic(&mac_id).unwrap().1 - before;
     eprintln!("packets the phone got in {window:?}: {idle} with nothing said, {said_again} with the same status said 48 times");
-    assert!(said_again <= idle + 1, "the same status was sent again: {said_again} against {idle}");
+    // And the packets stay at what a quiet connection has: at most one more round of the beat, a ping and its answer and their acks.
+    assert!(said_again <= idle + 4, "more packets than a quiet connection has: {said_again} against {idle}");
 
     // A change does go over, and only that.
     mac.update_status(battery(79)).await;
@@ -175,6 +182,14 @@ async fn the_same_status_said_again_sends_nothing() {
     })
     .await;
     assert_eq!(phone.devices().iter().find(|d| d.id == mac_id).unwrap().status.free_storage, Some(40_000_000_000));
+}
+
+fn heard_devices_change(events: &mut tokio::sync::broadcast::Receiver<tandem_core::Event>) -> bool {
+    let mut any = false;
+    while let Ok(event) = events.try_recv() {
+        any |= matches!(event, tandem_core::Event::DevicesChanged);
+    }
+    any
 }
 
 /// Once per refresh time a call that changes nothing still sends the whole status.
@@ -199,17 +214,14 @@ async fn now_and_then_the_whole_status_is_sent_anyway() {
     let mac_id = mac.id();
     phone.set_quiet(true).await;
     wait_until("the Mac knows the phone is quiet", || mac.devices().iter().any(|d| d.id == phone.id() && d.status.quiet == Some(true))).await;
+    // The time of the last whole status starts when the engine does, and the pairing took some of it: wait it out, so that the first call
+    // sends the whole status and starts the time again.
+    tokio::time::sleep(Duration::from_millis(700)).await;
     mac.update_status(battery(80)).await;
     wait_until("the phone hears it", || phone.devices().iter().any(|d| d.id == mac_id && d.status.battery.is_some())).await;
     // Every status that comes in makes the phone say its devices changed, and nothing else does while it is quiet.
     let mut events = phone.subscribe();
-    let heard = |events: &mut tokio::sync::broadcast::Receiver<tandem_core::Event>| {
-        let mut any = false;
-        while let Ok(event) = events.try_recv() {
-            any |= matches!(event, tandem_core::Event::DevicesChanged);
-        }
-        any
-    };
+    let heard = heard_devices_change;
     heard(&mut events);
     mac.update_status(battery(80)).await;
     tokio::time::sleep(Duration::from_millis(300)).await;
