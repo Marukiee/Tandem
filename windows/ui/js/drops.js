@@ -56,12 +56,12 @@ export async function dropPaths(paths, at, pageDrops = true) {
   if (!target) { say(t("drop_on_device")); return; }
   if (target.folder) { target.folder.put(paths); return; }
   const device = target.device;
-  if (!device.online) { say(t("drop_offline", device.name)); return; }
   try {
     const result = await sendChecked("send_paths", { ids: [device.id], paths });
     if (!result) return;
     if (result.folders) say(t("folders_skipped"));
     else if (result.sent) say(t("files_offered"));
+    if (result.queued) say(t("queued_n", result.queued));
     if (result.offline) say(t("offline_n", result.offline));
   } catch (e) { say(String(e && e.message ? e.message : e)); }
 }
