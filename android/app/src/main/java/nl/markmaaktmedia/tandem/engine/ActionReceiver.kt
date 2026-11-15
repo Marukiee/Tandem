@@ -50,8 +50,10 @@ class ActionReceiver : BroadcastReceiver() {
                     context.graph.scope.launch {
                         try {
                             val sent = host.sendUris(listOf(uri), targets, uniffi.tandem_core.TandemShareOrigin.Screenshot)
-                            if (sent > 0) {
+                            if (sent.sent > 0) {
                                 ScreenshotWatcher.showStatus(context, context.getString(R.string.screenshot_sent, label))
+                            } else if (sent.queued > 0) {
+                                ScreenshotWatcher.showStatus(context, context.getString(R.string.queue_waits_toast, label))
                             } else {
                                 ScreenshotWatcher.showStatus(context, context.getString(R.string.screenshot_failed), context.getString(R.string.screenshot_failed_text))
                             }
