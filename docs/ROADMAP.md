@@ -139,6 +139,16 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
   soorten als `runs_something` in `T/browse.rs`); documenten openen gewoon. Gebouwd in PR 25.
+- **R-V16. De telefoon als speaker haperen: het geluid stopt steeds kort en gaat dan weer verder** (gemeld door Mark op 2026-11-16; nog
+  niet gebouwd, alleen genoteerd). Het geluid van de computer naar de telefoon (de Tandem Speaker, `docs/MUSIC_AND_SOUND.md`, de
+  jitterbuffer van ongeveer 100 ms en de vertraging met drie standen: laag, normaal, soepel) loopt niet soepel. Eerst uitzoeken of het
+  aan de stand ligt (laag laat bij een wisselende verbinding de buffer leeglopen) of aan de verbinding (wifi, Tailscale, mobiele data), en
+  of andere apparaten dat ook hebben: een Mac of computer als luisteraar, de Xperia en de Oppo, het horloge, en de richting telefoon naar
+  Mac (microfoon). Meet per apparaat hoe vaak de buffer leegloopt en hoeveel pakketten te laat komen (de logregel van de buffer bestaat
+  al of komt erbij). Voorstel voor wat Mark wil: merkt het apparaat dat de buffer steeds leegloopt terwijl de stand laag staat, dan komt
+  er een melding "Het geluid haperde, een andere stand kan beter" met een knop die direct naar de volgende stand (normaal, dan soepel)
+  gaat, en dezelfde melding in alle vier de apps. Niets automatisch omzetten: de persoon kiest. Zekerheid: een vermoeden, pas te zien
+  op een echt toestel.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
