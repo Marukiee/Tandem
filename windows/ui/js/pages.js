@@ -20,6 +20,7 @@ const OBS_ADDRESS = "udp://127.0.0.1:47993";
 export function afterSend(result) {
   if (result.folders) say(t("folders_skipped"));
   else if (result.sent) say(t("files_offered"));
+  if (result.queued) say(t("queued_n", result.queued));
   if (result.offline) say(t("offline_n", result.offline));
 }
 
@@ -116,12 +117,67 @@ function Offers({ device }) {
 const KIND_LOOK = { pictures: ["picture", "photo"], videos: ["video", "video"], audio: ["sound", "music"], documents: ["paper", "file"] };
 const fileKind = (name) => KIND_LOOK[kindOf(name || "")] || ["other", "file"];
 
-/** Why a file did not get there, in words. A reason the core gave that has none is shown as it is. */
-function failedText(item, peer) {
-  if (["cancelled", "declined", "expired"].includes(item.error)) return t(item.error);
-  const reason = { "gone": "gone", "changed": "changed", "no space": "no_space" }[item.error];
-  if (reason) return t(`reason_${reason}_${item.incoming ? "in" : "out"}`, peer ? peer.name : t("halfway_other_device"));
-  return item.error || t("failed");
+/** Why a file did not get there, in words. The core gives a fixed code (R-V13, docs/TRANSFERS.md); anything else is an older version
+    talking, whose words are not shown as they are. */
+function reasonText(error, incoming, name) {
+  const dir = incoming ? "in" : "out";
+  const who = name || t("halfway_other_device");
+  switch (error) {
+    case "cancelled": case "declined": case "expired": return t(error);
+    case "gone": case "changed": return t(`reason_${error}_${dir}`, who);
+    case "no space": return t(`reason_no_space_${dir}`, who);
+    case "connection lost": return t("reason_connection_lost", who);
+    case "checksum failed": return t("reason_checksum");
+    case "not saved": return t(`reason_not_saved_${dir}`, who);
+    default: return t("failed");
+  }
+}
+const failedText = (item, peer) => reasonText(item.error, item.incoming, peer && peer.name);
+
+/** One transfer with one device, laid out like a transfer that stopped halfway. An outgoing offer to several devices has a row per
+    device, so each can be stopped on its own. */
+function UnderwayRow({ row }) {
+  const device = state.devices.find((d) => d.id === row.peer);
+  const name = device ? device.name : t("halfway_other_device");
+  const title = row.more ? t("halfway_more", row.name, row.more) : row.name;
+  const pct = row.total ? Math.min(100, Math.round((row.done / row.total) * 100)) : 0;
+  const waitingIn = row.kind === "waiting" && row.incoming;
+  const sub = {
+    queued: () => t("underway_queued", name),
+    waiting: () => (row.incoming ? t("underway_waiting_in", name, fmtSize(row.total)) : t("underway_waiting_out", name)),
+    running: () => t(row.incoming ? "underway_running_in" : "underway_running_out", fmtSize(row.done), fmtSize(row.total), name),
+    failed: () => reasonText(row.error, false, name),
+  }[row.kind]();
+  const icon = { queued: "hourglass", waiting: row.incoming ? "download" : "hourglass", running: row.incoming ? "arrow-down" : "arrow-up", failed: "alert-triangle" }[row.kind];
+  const again = () => call("underway_send_again", { peer: row.peer, offer: row.offer }).then((result) => (result.gone ? say(t("reason_gone_out")) : afterSend(result))).catch(failed);
+  const hide = () => call("underway_hide", { id: row.id }).catch(failed);
+  const stop = () => call("underway_stop", { peer: row.peer, offer: row.offer, incoming: row.incoming }).catch(failed);
+  return html`<div class=${"item underway " + row.kind}>
+    <span class=${"kind " + (row.kind === "failed" ? "k-bad" : "k-picture")}><${Icon} name=${icon} size=${17} /></span>
+    <div class="grow">
+      <div style="font-weight:500;overflow-wrap:anywhere">${title}</div>
+      <div class="small muted">${sub}</div>
+      ${row.kind === "running" && html`<div class="prog"><i style=${`width:${pct}%`}></i></div>`}
+    </div>
+    <div class="halfway-buttons">
+      ${waitingIn && html`<button class="btn small" onClick=${() => call("decline_offer", { from: row.peer, offer: row.offer }).catch(failed)}>${t("decline")}</button>
+        <button class="btn accent small" onClick=${() => call("accept_offer", { from: row.peer, offer: row.offer }).catch(failed)}>${t("accept")}</button>`}
+      ${row.kind === "failed" && html`<button class="btn small" onClick=${again}>${t("underway_send_again")}</button>
+        <button class="ib" title=${t("underway_hide")} aria-label=${t("underway_hide")} onClick=${hide}><${Icon} name="x" size=${17} /></button>`}
+      ${(row.kind === "queued" || row.kind === "running" || (row.kind === "waiting" && !row.incoming)) && html`<button class="ib" title=${t(row.kind === "queued" ? "underway_do_not_send" : "underway_stop")} aria-label=${t(row.kind === "queued" ? "underway_do_not_send" : "underway_stop")} onClick=${stop}><${Icon} name="x" size=${17} /></button>`}
+    </div>
+  </div>`;
+}
+
+/** On top of the page Shared: Underway is what this computer sends, Incoming what comes in, including what stopped halfway (P2). */
+function UnderwaySection() {
+  const out = state.underway.filter((x) => !x.incoming);
+  const inn = state.underway.filter((x) => x.incoming);
+  return html`${out.length > 0 && html`<div class="underway-group"><h2>${t("underway_title")}</h2>
+      <div class="card flush">${out.map((x) => html`<${UnderwayRow} row=${x} key=${x.id} />`)}</div></div>`}
+    ${(inn.length > 0 || state.halfway.length > 0) && html`<div class="underway-group"><h2>${t("incoming_title")}</h2>
+      <div class="card flush">${state.halfway.map((x) => html`<${HalfwayRow} item=${x} key=${x.from + "-" + x.offer} />`)}
+        ${inn.map((x) => html`<${UnderwayRow} row=${x} key=${x.id} />`)}</div></div>`}`;
 }
 
 /** A transfer that stopped halfway before this start: nothing goes on until the person says so. */
@@ -419,7 +475,7 @@ export function DevicePage({ device }) {
 
     <div class="agroups">
       <${ActionGroup} title=${t("group_share")}>
-        <button class="btn accent" disabled=${!device.online} title=${t("drop_click")} onClick=${send}><${Icon} name="send" size=${17} />${t("send_files")}</button>
+        <button class="btn accent" title=${device.online ? t("drop_click") : t("send_files_away", device.name)} onClick=${send}><${Icon} name="send" size=${17} />${t("send_files")}</button>
         <button class="btn" disabled=${!device.online} title=${t("clipboard_tip", device.name)} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
         <button class=${"btn" + (wifiWhy ? " grey" : "")} disabled=${!device.online && !device.ble} title=${t("wifi_share_tip", device.name)} onClick=${() => (wifiWhy ? say(wifiWhy) : call("wifi_share", { id: device.id }).then(say).catch(failed))}>
           <${Icon} name="wifi" size=${17} />${t("wifi_share")}</button>
@@ -1015,9 +1071,9 @@ export function SharedPage() {
       <h1 class="grow">${t("title_shared")}</h1>
       <button class="btn" onClick=${() => call("open_downloads").catch(failed)}><${Icon} name="folder-open" size=${17} />${t("open_folder")}</button>
     </div>
-    ${state.halfway.length > 0 && html`<div class="card flush">${state.halfway.map((x) => html`<${HalfwayRow} item=${x} key=${x.from + "-" + x.offer} />`)}</div>`}
+    <${UnderwaySection} />
     ${state.transfers.length === 0 && !offer
-      ? (state.halfway.length === 0 && html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_yet")}</div></div>`)
+      ? (state.halfway.length === 0 && state.underway.length === 0 && html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_yet")}</div></div>`)
       : html`
         <div class="tiles">
           <button class=${"tile t1 click" + (period === "today" ? " on" : "")} aria-pressed=${period === "today"} onClick=${() => setPeriod(period === "today" ? "always" : "today")}>

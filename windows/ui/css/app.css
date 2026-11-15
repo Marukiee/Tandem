@@ -447,6 +447,11 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .halfway .grow { min-width: 200px; }
 .halfway-buttons { display: flex; gap: 8px; margin-left: auto; }
 .halfway.away .prog { opacity: 0.4; }
+.underway { flex-wrap: wrap; }
+/* The text keeps its place beside the tile; the buttons drop under it only when they do not fit. */
+.underway .grow { flex: 1 1 140px; min-width: 0; }
+.underway-group { display: flex; flex-direction: column; gap: 8px; }
+.underway-group > h2 { margin: 6px 2px 0; }
 .prog { height: 4px; border-radius: 2px; background: var(--line-strong); margin-top: 6px; overflow: hidden; }
 .prog > i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.15s linear; }
 .empty { text-align: center; color: var(--text-2); padding: 46px 20px; }
@@ -841,6 +846,7 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .kind.k-video { background: var(--tone-2); color: var(--on-tone-2); }
 .kind.k-paper { background: var(--tone-3); color: var(--on-tone-3); }
 .kind.k-sound { background: var(--tone-4); color: var(--on-tone-4); }
+.kind.k-bad { background: var(--bad-soft); color: var(--bad); }
 .kind.chosen { background: var(--accent); color: #fff; }
 .item.transfer .dir { display: inline-block; vertical-align: -1px; margin-right: 4px; }
 /* A long reason goes to a second line: it is never cut. */
