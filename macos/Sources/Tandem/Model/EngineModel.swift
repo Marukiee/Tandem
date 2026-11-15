@@ -1550,13 +1550,20 @@ final class EngineModel {
         )
         if let values = try? URL(fileURLWithPath: "/").resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
            let free = values.volumeAvailableCapacityForImportantUsage {
-            status.freeStorage = UInt64(free)
+            status.freeStorage = Self.roundedStorage(free)
         }
         Task {
             var status = status
             status.network?.ssid = await WiFiName.current()
             await engine.updateStatus(status: status)
         }
+    }
+
+    /// Exact free bytes change with every file that is written, and each change would be a status sent for nothing. A person sees whole
+    /// gigabytes, or hundreds of megabytes when it gets tight. The same steps as on Android.
+    nonisolated static func roundedStorage(_ bytes: Int64) -> UInt64 {
+        let step: Int64 = bytes < 5_000_000_000 ? 100_000_000 : 1_000_000_000
+        return UInt64(max(0, bytes / step * step))
     }
 
     /// Forgets the identity and every pairing, then starts fresh.
