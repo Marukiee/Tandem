@@ -276,7 +276,8 @@ private struct SidebarButton<Content: View>: View {
         .buttonStyle(SidebarPressStyle())
         .onHover { hovering = $0 }
         .animation(.hover(hovering), value: hovering)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
     }
 }
 
@@ -658,5 +659,7 @@ private struct PairButton: View {
         .padding(.top, 4)
         .padding(.bottom, 10)
         .help(folded ? Text("Pair a device") : Text(verbatim: ""))
+        // Folded, its words are there but not seen: without this VoiceOver may read only the plus.
+        .accessibilityLabel(Text("Pair a device"))
     }
 }
