@@ -88,6 +88,7 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
     val version = BuildConfig.VERSION_NAME
 
     return mapOf(
+        SettingsCategory.Devices to stringResource(R.string.circle_summary_cat),
         SettingsCategory.Look to look,
         SettingsCategory.Sharing to summaryOnOf(sharing.first, sharing.second),
         SettingsCategory.Notifications to summaryOnOf(notifications.first, notifications.second),
