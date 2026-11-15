@@ -335,6 +335,8 @@ struct PlayerButtons: View {
     let device: TandemDevice
     let player: TandemMediaPlayer
     var size: Size
+    /// Shows the name of a button the moment the pointer is on it. Not in the menu bar panel, where there is no room above the buttons.
+    var names = true
 
     var body: some View {
         HStack(spacing: 6) {
@@ -349,7 +351,7 @@ struct PlayerButtons: View {
     private func button(_ symbol: String, enabled: Bool, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         RoundIconButton(symbol: symbol, size: size == .regular ? 38 : 30, action: action)
             .disabled(!enabled)
-            .help(help)
+            .modifier(ButtonName(name: help, instant: names))
     }
 }
 
@@ -373,7 +375,7 @@ struct MenuNowPlaying: View {
                             spacing: 1
                         )
                         Spacer(minLength: 4)
-                        PlayerButtons(device: device, player: player, size: .small)
+                        PlayerButtons(device: device, player: player, size: .small, names: false)
                     }
                     PlayerProgress(device: device, player: player, compact: true)
                 }
@@ -385,5 +387,15 @@ struct MenuNowPlaying: View {
             }
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
+    }
+}
+
+/// The name of a round button: at once above it, or as the tooltip of the system where there is no room for that.
+private struct ButtonName: ViewModifier {
+    let name: LocalizedStringKey
+    let instant: Bool
+
+    func body(content: Content) -> some View {
+        if instant { content.instantName(name) } else { content.help(name) }
     }
 }

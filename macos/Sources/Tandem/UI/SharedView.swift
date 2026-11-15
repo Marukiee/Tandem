@@ -28,7 +28,7 @@ struct SharedView: View {
     private var wide: Bool { width >= Self.roomForDetail }
     /// The size and the time have a column while the table has room for them; the state always has one.
     private var columns: TransferColumns {
-        width - (wide ? Self.detailWidth + 14 : 0) >= 620 ? .all : .state
+        width - (wide ? Self.detailWidth + 14 : 0) >= 660 ? .all : .state
     }
 
     /// The file beside the list: the one that was picked, otherwise the newest.
@@ -294,11 +294,10 @@ struct SharedView: View {
             Button("Move to Trash…", role: .destructive) { askTrash = true }
                 .disabled(trashable.isEmpty)
                 .help(trashable.isEmpty ? Text("Only files that came in on this Mac can go to the Trash") : Text("Move to Trash"))
-            Button { withAnimation(.tandem) { chosen = [] } } label: { Image(systemName: "xmark") }
-                .buttonStyle(.borderless)
-                .help("Stop choosing")
+            RowActionButton(symbol: "xmark", help: "Stop choosing") { withAnimation(.tandem) { chosen = [] } }
         }
-        .buttonStyle(.glass)
+        // The app's own pills, as everywhere else on the page: the glass buttons of the system lean towards the pointer.
+        .buttonStyle(.tandemGlass)
         .controlSize(.large)
     }
 
@@ -489,7 +488,7 @@ private struct TileNumber: View {
 extension Text {
     /// The line under the number of a tile.
     fileprivate func tileLine() -> some View {
-        font(.system(size: 12.5)).lineLimit(1).opacity(0.85)
+        font(.system(size: 12.5)).lineLimit(2).fixedSize(horizontal: false, vertical: true).opacity(0.85)
     }
 }
 

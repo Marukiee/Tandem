@@ -231,8 +231,9 @@ extension EnvironmentValues {
     }
 }
 
-// What the pointer does, everywhere: nothing grows or moves under it, as in the system's own apps. A row or a button only takes on a
-// little colour, and that colour fades in and out.
+// What the pointer does, everywhere: nothing grows or moves under it, as in the system's own apps. A row takes on a soft fill in its
+// own shape, a button one that is a step stronger, and that colour comes in 120 ms and leaves in 200 (`Animation.hover`). A press
+// dips a button to `pressedScale` and it springs back; a row stays where it is. A round button shows its name at once (`instantName`).
 
 /// A soft highlight behind a row while the pointer is over it. Colour only, so a
 /// tween is right, and it stays put under Reduce Motion.
@@ -252,7 +253,7 @@ struct HoverHighlight: ViewModifier {
             }
             .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .onHover { hovering = $0 }
-            .animation(.tandemFade, value: hovering)
+            .animation(.hover(hovering), value: hovering)
             .animation(.tandemFade, value: selected)
     }
 }
@@ -335,7 +336,7 @@ private struct IconButtonBody: View {
             .contentShape(Circle())
             .scaleEffect(configuration.isPressed ? pressedScale : 1)
             .onHover { hovering = $0 }
-            .animation(.tandemFade, value: hovering)
+            .animation(.hover(hovering), value: hovering)
             .animation(.tandemBouncy, value: configuration.isPressed)
     }
 }

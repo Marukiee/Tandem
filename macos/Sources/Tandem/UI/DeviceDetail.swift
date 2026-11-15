@@ -404,7 +404,7 @@ struct DeviceDetail: View {
                         .padding(.vertical, 4)
                         .hoverHighlight(radius: 10)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bouncy)
                     .help("Everything sent to and received from \(device.name)")
                 }
                 .padding(.horizontal, 6)
@@ -664,7 +664,7 @@ struct DropZone: View {
         }
         .scaleEffect(targeted ? 1.015 : 1)
         .animation(.tandemSpringy, value: targeted)
-        .animation(.tandemFade, value: hovering)
+        .animation(.hover(hovering), value: hovering)
         .onHover { hovering = $0 }
         .deviceDrop(device, model: model, targeted: $targeted)
         .opacity(device.online ? 1 : 0.5)

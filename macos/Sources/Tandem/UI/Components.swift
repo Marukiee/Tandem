@@ -230,7 +230,7 @@ struct Pill<Content: View>: View {
                 Capsule()
                     .fill(wash)
                     .allowsHitTesting(false)
-                    .animation(.tandemFade, value: lit)
+                    .animation(.hover(lit), value: lit)
                     .animation(.tandemFade, value: pressed)
             }
             .padding(inset)
@@ -395,7 +395,7 @@ private struct RoundIconDisc: View {
             .overlay(shape.strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
             .contentShape(shape)
             .opacity(enabled ? 1 : 0.4)
-            .animation(.tandemFade, value: hovering)
+            .animation(.hover(hovering), value: hovering)
     }
 }
 
@@ -776,9 +776,9 @@ struct TransferRow: View {
     @Environment(EngineModel.self) private var model
 
     /// The widths of the columns, shared with the head of the table.
-    static let sizeWidth: CGFloat = 72
-    static let whenWidth: CGFloat = 112
-    static let stateWidth: CGFloat = 190
+    static let sizeWidth: CGFloat = 64
+    static let whenWidth: CGFloat = 104
+    static let stateWidth: CGFloat = 160
 
     var body: some View {
         HStack(spacing: 12) {
