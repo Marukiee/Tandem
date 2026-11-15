@@ -1274,7 +1274,7 @@ impl Inner {
 
     async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>, fails: u32, long_away: bool, costly: bool) {
         let tries = addresses_to_try(fails, long_away).min(if costly { COSTLY_ADDRESSES } else { usize::MAX });
-        let sockets: Vec<SocketAddr> = addrs.iter().take(tries).filter_map(|a| a.socket()).collect();
+        let sockets = pick_addresses(&addrs, tries, costly, long_away);
         // Counted on a phone with `adb logcat -s Tandem`: every attempt wakes the radio.
         info!(peer = %id, fails, addrs = sockets.len(), "dialling a device that is away");
         let outcome = self.dial_any(Some(key), tls::ALPN_MAIN, &sockets).await;
@@ -1634,6 +1634,33 @@ fn reaches_others(ip: std::net::IpAddr) -> bool {
     }
 }
 
+/// The addresses of `addrs` (in the order of `AddrBook::ordered`) that one try uses, at most `limit`. A try with fewer addresses than the
+/// device has takes the best one of each kind of route first, so that a device is not tried only on the three that worked last, all on a
+/// local network that is no longer there: the Tailscale address first when the screen is off on metered data (`costly`: a local
+/// address cannot be reached on mobile data), the local one first otherwise. Without a limit all of them, as they come.
+fn pick_addresses(addrs: &[net::KnownAddr], limit: usize, costly: bool, long_away: bool) -> Vec<SocketAddr> {
+    if limit >= addrs.len() || !(costly || long_away) {
+        return addrs.iter().take(limit).filter_map(|a| a.socket()).collect();
+    }
+    let routes = if costly { [net::Route::Tailnet, net::Route::Other, net::Route::Lan] } else { [net::Route::Lan, net::Route::Tailnet, net::Route::Other] };
+    let mut picked: Vec<&net::KnownAddr> = Vec::new();
+    for route in routes {
+        if let Some(best) = addrs.iter().find(|a| a.route == route) {
+            picked.push(best);
+        }
+    }
+    picked.truncate(limit);
+    for a in addrs {
+        if picked.len() >= limit {
+            break;
+        }
+        if !picked.iter().any(|p| std::ptr::eq(*p, a)) {
+            picked.push(a);
+        }
+    }
+    picked.into_iter().filter_map(|a| a.socket()).collect()
+}
+
 /// Each address that does not answer costs a few packets of more than a kilobyte. A device that stays away gets the best ones, and all of them
 /// once in a while, in case it is somewhere else now.
 fn addresses_to_try(failures: u32, long_away: bool) -> usize {
@@ -1688,6 +1715,37 @@ mod tests {
             force: false,
             long_hurried: None,
         }
+    }
+
+    fn known(addr: &str, last_ok: u64) -> net::KnownAddr {
+        let route = net::route_of(addr.parse::<SocketAddr>().unwrap().ip());
+        net::KnownAddr { addr: addr.into(), route, last_ok, seen: last_ok }
+    }
+
+    #[test]
+    fn with_the_screen_off_on_metered_data_the_tailscale_address_is_tried_first_however_many_local_ones_worked_last() {
+        // The phone left the Wi-Fi: three local addresses of the Mac worked most recently, the Tailscale one a while before.
+        let book = AddrBook::default();
+        assert!(book.is_empty());
+        let mut addrs = vec![
+            known("192.168.1.5:47820", 90),
+            known("192.168.1.9:47820", 80),
+            known("10.0.0.4:47820", 70),
+            known("100.100.1.1:47820", 10),
+        ];
+        addrs.sort_by_key(|a| std::cmp::Reverse(a.last_ok));
+        let picked = pick_addresses(&addrs, COSTLY_ADDRESSES, true, false);
+        assert_eq!(picked.len(), 3);
+        assert_eq!(picked[0], "100.100.1.1:47820".parse().unwrap(), "the Tailscale address is the first");
+        // Without that state the tries are as before: the best ones in order.
+        let before = pick_addresses(&addrs, 3, false, false);
+        assert_eq!(before[0], "192.168.1.5:47820".parse().unwrap());
+        assert!(!before.contains(&"100.100.1.1:47820".parse().unwrap()));
+        // A try on every address is every address.
+        assert_eq!(pick_addresses(&addrs, usize::MAX, true, false).len(), 4);
+        // A device that has been away for days gets its best of each route, local first, 2 of them.
+        let two = pick_addresses(&addrs, 2, false, true);
+        assert_eq!(two, vec!["192.168.1.5:47820".parse().unwrap(), "100.100.1.1:47820".parse().unwrap()]);
     }
 
     #[test]
