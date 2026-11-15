@@ -90,6 +90,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             // The other computer is told how big this screen is, so it can draw it and find its way back.
             crate::arrange::announce(app, &id);
             crate::halfway::refresh(app);
+            crate::underway::refresh(app);
             crate::side::connected(app, id);
         }
         TandemEvent::DevicesChanged | TandemEvent::CircleChanged => refresh_devices(app),
@@ -108,10 +109,12 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             crate::virtual_audio::disconnected(app, &id);
             let had = app.state::<AppState>().data.held().players.remove(&id).is_some();
             refresh_devices(app);
+            crate::underway::soon(app);
             if had {
                 emit_players(app);
             }
         }
+        TandemEvent::TransfersChanged => crate::underway::soon(app),
         // A phone that shows its screen or camera by itself ("Show my screen on this PC") asks this PC to look.
         TandemEvent::MediaQuality { session, poor, .. } => crate::live::quality(app, session, poor),
         TandemEvent::SideListen { from, id, quiet } => crate::side::listen(app, from, id, quiet),
@@ -165,7 +168,10 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             crate::history::record(app, &text, &device_name(app, &from));
             say(app, &i18n::t1(app, "text_on_clipboard", &device_name(app, &from)));
         }
-        TandemEvent::ShareOffered { from, offer, origin, items } => offered(app, &from, offer, origin, &items),
+        TandemEvent::ShareOffered { from, offer, origin, items } => {
+            offered(app, &from, offer, origin, &items);
+            crate::underway::soon(app);
+        }
         TandemEvent::ShareText { from, text, is_url, .. } => {
             clip::apply(app, &text);
             let name = device_name(app, &from);
@@ -175,7 +181,8 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             say(app, &i18n::t1(app, "text_on_clipboard", &name));
         }
         TandemEvent::Progress { offer, index, peer, incoming, name, done, total } => {
-            progress(app, offer, index, &peer, incoming, &name, done, total)
+            progress(app, offer, index, &peer, incoming, &name, done, total);
+            crate::underway::soon(app);
         }
         TandemEvent::Finished { offer, index, peer, incoming, name, size, location, error } => {
             if incoming && (crate::halfway::swallows(&peer, offer, &error) || crate::drag::finished(app, &peer, offer, &name, &location, &error) || crate::insert::finished(app, &peer, offer, &location, &error)
@@ -188,6 +195,8 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             } else {
                 finished(app, offer, index, &peer, incoming, &name, size, location, error)
             }
+            // The end of a file is read at once, so a failed row is there when the person looks.
+            crate::underway::refresh(app);
         }
         TandemEvent::CaptureCancelled { from, why, .. } => crate::insert::cancelled(app, &from, why),
         TandemEvent::AudioStart { from, stream, sample_rate, channels } => {

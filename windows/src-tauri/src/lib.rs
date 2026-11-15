@@ -29,6 +29,7 @@ mod events;
 mod files_host;
 mod find;
 mod halfway;
+mod underway;
 mod history;
 #[cfg(feature = "screen-host")]
 mod host;
@@ -274,6 +275,10 @@ pub fn run() {
             halfway::halfway_list,
             halfway::halfway_go_on,
             halfway::halfway_throw_away,
+            underway::underway_list,
+            underway::underway_stop,
+            underway::underway_hide,
+            underway::underway_send_again,
             commands::send_clipboard,
             commands::accept_offer,
             commands::decline_offer,

@@ -361,10 +361,10 @@ pub async fn send_paths_with(state: &AppState, ids: Vec<String>, paths: Vec<Path
     let engine = state.engine()?;
     let (files, folders) = outgoing(paths);
     if files.is_empty() {
-        return Ok(json!({ "sent": 0, "offline": 0, "folders": folders }));
+        return Ok(json!({ "sent": 0, "queued": 0, "offline": 0, "folders": folders }));
     }
     let report = engine.send_files(ids, files, origin).await.map_err(shown)?;
-    Ok(json!({ "sent": report.sent_to.len(), "offline": report.offline.len(), "folders": folders }))
+    Ok(json!({ "sent": report.sent_to.len(), "queued": report.queued.len(), "offline": report.offline.len(), "folders": folders }))
 }
 
 /// The devices that report less free space than these plain files take (P5), by id and name. Empty: send without asking.
@@ -432,6 +432,7 @@ pub async fn send_clipboard(state: State<'_, AppState>, ids: Vec<String>) -> Rep
 fn forget_offer(app: &AppHandle, from: &str, offer: &str) {
     app.state::<AppState>().data.held().offers.retain(|o| !(o["from"] == from && o["offer"] == offer));
     let _ = tauri::Emitter::emit(app, "offer-gone", json!({ "from": from, "offer": offer }));
+    crate::underway::soon(app);
 }
 
 #[tauri::command]
