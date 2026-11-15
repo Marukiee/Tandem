@@ -31,6 +31,9 @@ enum DebugSupport {
     /// instead, so the text on it can be read in the PNG.
     static var flatGlass: Bool { variable("TANDEM_DEBUG_FLAT_GLASS") != nil }
 
+    /// The height of the Settings window under `TANDEM_DEBUG_SETTINGS` with `TANDEM_DEBUG_TALL=<points>`.
+    static let settingsHeight: CGFloat? = variable("TANDEM_DEBUG_SETTINGS") == nil ? nil : variable("TANDEM_DEBUG_TALL").flatMap { Double($0) }.map { CGFloat($0) }
+
     /// `TANDEM_DEBUG_POINTER=1`: what only shows while the pointer is on something is there all the time, so a picture shows where
     /// it lies and how strong it is: the name of every round button (`instantName`) and the highlight of every row of the sidebar.
     /// The pointer of a person cannot be played without taking theirs.
@@ -349,6 +352,15 @@ enum DebugSupport {
     static func initialSettingsSection() -> SettingsSection? {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }
     }
+
+    /// `TANDEM_DEBUG_SETTINGS=<part>` opens Settings on the subject of that part, as asked for by name. With the name of a subject
+    /// that is not also a part (`thisMac`, `sharing`, `control`, `works`) it opens that subject as a click on it does.
+    static func initialSettingsSubject() -> SettingsSubject? {
+        initialSettingsSection()?.subject ?? variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSubject(rawValue: $0) }
+    }
+
+    /// The engine for a page that asks it something while it shows the made up devices, which have no engine of their own.
+    static var engineForMadeUp: TandemEngine? { madeUpModel == nil ? nil : EngineModel.shared.tandem }
 
     private static func debugVirtualDisplay(_ spec: String) {
         let parts = (spec.split(separator: ":").first ?? "").split(separator: "x").compactMap { Int($0) }
@@ -688,10 +700,11 @@ enum DebugSupport {
     }
 
     private static func showSettingsWindow() {
-        let host = NSHostingView(rootView: SettingsView().environment(EngineModel.shared))
+        let host = NSHostingView(rootView: SettingsView().environment(madeUpModel ?? EngineModel.shared))
         let window = NSWindow(
             contentRect: NSRect(x: 120, y: 120, width: 780, height: 620),
-            styleMask: [.titled, .closable],
+            // `TANDEM_DEBUG_TALL=<points>`: that high and without a title bar, so it may be taller than the screen and a whole page is in one picture.
+            styleMask: settingsHeight == nil ? [.titled, .closable] : [.borderless],
             backing: .buffered,
             defer: false
         )

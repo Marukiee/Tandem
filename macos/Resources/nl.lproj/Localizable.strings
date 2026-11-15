@@ -728,7 +728,6 @@
 "Pause control" = "Bediening pauzeren";
 "Resume control" = "Bediening hervatten";
 "Let my other devices see and control this Mac" = "Laat mijn andere apparaten deze Mac zien en bedienen";
-"Your phone shows a Control this Mac button on this Mac's page once it can. You still decide for every device below." = "Je telefoon toont een knop Bedien deze Mac op de pagina van deze Mac zodra het kan. Je beslist nog steeds per apparaat hieronder.";
 "Restart Tandem so your other devices can see that this Mac is ready." = "Start Tandem opnieuw zodat je andere apparaten zien dat deze Mac klaar is.";
 "Restart" = "Herstart";
 "Permissions" = "Rechten";
@@ -737,6 +736,12 @@
 "To move the pointer and press keys for a device you let control this Mac. Without it, devices can only watch." = "Om de aanwijzer te bewegen en toetsen in te drukken voor een apparaat dat je deze Mac laat bedienen. Zonder kunnen apparaten alleen meekijken.";
 "Right now" = "Op dit moment";
 "When a device asks" = "Als een apparaat erom vraagt";
+"You still decide below what a device may do." = "Je bepaalt hieronder nog wat een apparaat mag.";
+"One device apart" = "Eén apparaat apart";
+"One device apart, a locked Mac, sound, permissions, your phone as a camera" = "Eén apparaat apart, een vergrendelde Mac, geluid, rechten, je telefoon als camera";
+"One mouse and keyboard for the computers next to this Mac" = "Eén muis en toetsenbord voor de computers naast deze Mac";
+"Where each one stands" = "Waar elk apparaat staat";
+"Where each one stands, finding the side by sound, your phone, how it works" = "Waar elk apparaat staat, de kant vinden met geluid, je telefoon, hoe het werkt";
 "Looking at this Mac" = "Deze Mac bekijken";
 "Using the mouse and keyboard" = "De muis en het toetsenbord gebruiken";
 "Ask me" = "Vraag het mij";
@@ -778,7 +783,6 @@
 "Every night with how long you slept. The ring fills toward seven hours, the start of what most adults need." = "Elke nacht met hoe lang je sliep. De ring vult zich tot zeven uur, het begin van wat de meeste volwassenen nodig hebben.";
 "Every day with your steps. The ring fills toward your step goal; a filled day reached it." = "Elke dag met je stappen. De ring vult zich tot je stappendoel; een gevulde dag haalde het doel.";
 "Every day with your mean heart rate over the day, from the measuring of your watch." = "Elke dag met je gemiddelde hartslag over de dag, uit het meten van je horloge.";
-"Use this Mac's mouse and keyboard on other computers" = "Gebruik de muis en het toetsenbord van deze Mac op andere computers";
 "Move the pointer over the edge of the screen. This Mac needs Accessibility, which Tandem already asks for" = "Beweeg de aanwijzer over de rand van het scherm. Deze Mac heeft Toegankelijkheid nodig, waar Tandem al om vraagt";
 "Not next to this Mac" = "Niet naast deze Mac";
 "On the left" = "Links";
@@ -826,12 +830,10 @@
 "Say which computer sits on which side of this one. That is the edge the pointer goes over." = "Geef aan welke computer aan welke kant van deze staat. Dat is de rand waar de muis overheen gaat.";
 "Push the pointer over that edge. Your mouse and keyboard now work on the other computer." = "Duw de muis over die rand. Je muis en toetsenbord werken nu op de andere computer.";
 "Push it back over the edge it came in by, or press Control, Option and Command with Escape." = "Duw hem terug over de rand waar hij binnenkwam, of druk op Control, Option en Command met Escape.";
-"What this Mac has to allow" = "Wat deze Mac moet toestaan";
 "Allowed. Tandem can see your mouse and keyboard and play them from another computer" = "Toegestaan. Tandem kan je muis en toetsenbord zien en ze afspelen vanaf een andere computer";
 "Needed to see your mouse and keyboard, and to play them when another computer uses this Mac" = "Nodig om je muis en toetsenbord te zien en om ze af te spelen als een andere computer deze Mac gebruikt";
 "Windows needs nothing but the firewall: allow Tandem on private networks when Windows asks." = "Windows heeft alleen de firewall nodig: sta Tandem toe op privénetwerken als Windows het vraagt.";
 "Universal mouse" = "Universele muis";
-"Choose below where each computer sits" = "Kies hieronder waar elke computer staat";
 "Pair a Mac or a Windows PC to put it next to this one." = "Koppel een Mac of een Windows-pc om hem naast deze te zetten.";
 "The other computer has to allow it too: in its Tandem, under Mouse and keyboard." = "De andere computer moet het ook toestaan: in zijn Tandem, onder Muis en toetsenbord.";
 "Other computers using this Mac" = "Andere computers die deze Mac gebruiken";

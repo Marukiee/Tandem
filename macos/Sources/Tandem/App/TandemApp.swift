@@ -44,7 +44,7 @@ struct TandemApp: App {
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView().environment(model)
+            SettingsView().environment(DebugSupport.madeUpModel ?? model)
         }
         .commands {
             CommandGroup(after: .pasteboard) {

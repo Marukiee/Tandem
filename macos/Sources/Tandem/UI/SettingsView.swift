@@ -120,7 +120,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 /// tab for every part of the app: a subject is one page with its parts under each other, each under its own name.
 struct SettingsView: View {
     @Environment(EngineModel.self) private var model
-    @LocalState private var selection: SettingsSubject = (DebugSupport.initialSettingsSection() ?? .general).subject
+    @LocalState private var selection: SettingsSubject = DebugSupport.initialSettingsSubject() ?? .thisMac
     /// The part that was asked for by name, to bring into view on the page of its subject.
     @LocalState private var wanted: SettingsSection? = DebugSupport.initialSettingsSection()
     /// Raised each time a part is asked for, also the same one twice.
@@ -142,7 +142,7 @@ struct SettingsView: View {
                 .id(selection)
                 .navigationTitle(Text(selection.title))
         }
-        .frame(width: 780, height: 620)
+        .frame(width: 780, height: DebugSupport.settingsHeight ?? 620)
         .onAppear(perform: take)
         .onReceive(NotificationCenter.default.publisher(for: .tandemSettingsSection)) { _ in take() }
     }
@@ -172,6 +172,20 @@ private struct SubjectPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                // What the page holds, to see at a glance and to go to.
+                if subject.parts.count > 1 {
+                    FlowRow {
+                        ForEach(subject.parts) { part in
+                            PartChip(part: part) {
+                                withAnimation(.tandem) {
+                                    if part == subject.parts.first { position.scrollTo(edge: .top) } else { position.scrollTo(id: part, anchor: .top) }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.top, 14)
+                }
                 ForEach(subject.parts, id: \.self) { part in
                     VStack(alignment: .leading, spacing: 0) {
                         if part.hasHeading {
@@ -183,6 +197,8 @@ private struct SubjectPage: View {
                                 .zIndex(1)
                         }
                         content(of: part)
+                            // Asked for by name: what the part keeps folded away opens, so what was looked for is in sight.
+                            .environment(\.settingsPartAsked, wanted == part)
                     }
                     .id(part)
                 }
@@ -225,6 +241,68 @@ private struct SubjectPage: View {
         case .received: ReceivedFilesSettings().asPart()
         case .sound: SoundSettings().asPart()
         }
+    }
+}
+
+/// One of the parts of a page, in the row at its top: a press brings that part into view.
+private struct PartChip: View {
+    let part: SettingsSection
+    let action: () -> Void
+    @LocalState private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Label(part.title, systemImage: part.symbol)
+                .font(.callout.weight(.medium))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(hovering ? 0.1 : 0.06), in: .capsule)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.bouncy)
+        .onHover { hovering = $0 }
+        .animation(.hover(hovering), value: hovering)
+    }
+}
+
+extension EnvironmentValues {
+    /// This part of Settings was asked for by name, by the search of the Mac or a row that leads to it.
+    @Entry var settingsPartAsked = false
+}
+
+/// The last row of a part of Settings, with behind it what is rarely touched: fine tuning, what holds for one device, how it
+/// works. The row says what is there, and the rest is only laid out once it is opened, so the page stays short enough to scan.
+/// It opens by itself when its part was asked for by name: what someone searched for may be behind it.
+struct MoreSettings<Content: View>: View {
+    /// What is behind the row, in a few words.
+    let holds: LocalizedStringKey
+    @ViewBuilder var content: Content
+    @Environment(\.settingsPartAsked) private var asked
+    @LocalState private var open = false
+
+    var body: some View {
+        Section {
+            Button {
+                withAnimation(.tandem) { open.toggle() }
+            } label: {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("More")
+                        Text(holds).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(open ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(open ? .isSelected : [])
+            .onChange(of: asked, initial: true) { if asked { open = true } }
+        }
+        if open { content }
     }
 }
 
