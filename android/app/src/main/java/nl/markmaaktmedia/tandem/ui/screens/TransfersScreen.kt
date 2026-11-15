@@ -165,6 +165,8 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState:
                         peerName = devices.firstOrNull { it.id == item.peer }?.name ?: "?",
                         actions = rememberTransferActions(item, onRemove = { host.removeTransfer(item.id) }),
                         selected = if (choosing) isChosen else null,
+                        // A long press on a row only chooses it; once it is chosen, holding it again drags all that are chosen.
+                        dragOut = if (isChosen) transfers.filter { it.id in chosen && it.received }.mapNotNull { it.location } else null,
                     )
                 }
             }

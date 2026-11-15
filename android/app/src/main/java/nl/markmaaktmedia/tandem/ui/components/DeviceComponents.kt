@@ -543,6 +543,8 @@ fun TransferRow(
     modifier: Modifier = Modifier,
     /** Null when nothing is being chosen; otherwise whether this row is, shown as a check over its square. */
     selected: Boolean? = null,
+    /** The files that leave with this row when it is dragged into another app (R-D4 b); null when it is not to be dragged. */
+    dragOut: List<String>? = null,
 ) {
     val context = LocalContext.current
     val tint = when (item.state) {
@@ -557,6 +559,8 @@ fun TransferRow(
         modifier
             .fillMaxWidth()
             .then(if (tappable) Modifier.bouncyClickable(onClickLabel = stringResource(R.string.transfer_menu_open)) { actions.open?.invoke() } else Modifier)
+            // What came in can be pulled out into another app with a long press (R-D4 b).
+            .fileDragSource(dragOut)
             .padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
