@@ -311,17 +311,18 @@ private suspend fun sendPicked(context: Context, shared: Shared, target: ShareSh
 }
 
 /**
- * Sends to the devices of [targets] that are online. Returns how many it reached. Every caller comes after a tap (on the
+ * Sends files to the devices of [targets], also those that are away (they wait in the queue), and text to those that are online. Returns how many it reached or queued for. Every caller comes after a tap (on the
  * device sheet, or on a device in the share sheet itself), so a link may open on the other side.
  */
 private suspend fun sendShared(context: Context, shared: Shared, targets: List<String>): Int {
     val host = context.graph.host
-    val online = targets.filter { id -> host.devices.value.any { it.id == id && it.online } }
-    if (online.isEmpty()) return 0
     if (shared.uris.isNotEmpty()) {
         val screenshot = withContext(Dispatchers.IO) { shared.uris.any { looksLikeScreenshot(context, it) } }
-        return host.sendUris(shared.uris, online, if (screenshot) TandemShareOrigin.Screenshot else TandemShareOrigin.Files, askSpace = true)
+        // Also the devices that are away: files wait for them in the queue (P3). Only text needs the device to be here.
+        return host.sendUris(shared.uris, targets, if (screenshot) TandemShareOrigin.Screenshot else TandemShareOrigin.Files, askSpace = true)
     }
+    val online = targets.filter { id -> host.devices.value.any { it.id == id && it.online } }
+    if (online.isEmpty()) return 0
     val text = shared.text ?: return 0
     val isUrl = text.startsWith("http://") || text.startsWith("https://")
     return host.engine?.sendText(online, text, isUrl, isUrl)?.size ?: 0
