@@ -21,9 +21,9 @@ enum SidebarSelection: Hashable {
 ///
 /// Drawn by hand instead of as a system List. A List paints the row under the pointer in
 /// solid blue the moment the mouse goes down and keeps it that way, which reads as if text
-/// were being selected. Here a press only dips the row a little, the chosen row gets a
-/// soft tint of the accent colour that slides from row to row, and the pointer over a row
-/// is a faint highlight that fades in.
+/// were being selected. Here a press only dips the row a little, the chosen row has a
+/// soft tint of the accent colour, one fill that glides from row to row, and the pointer over
+/// another row is a fainter highlight that fades in.
 ///
 /// One sidebar with two widths. In a narrow window it folds by itself to a column of icons with a small name under each, and it
 /// opens again when there is room. Every icon stays where it is: only the words beside it fade and the width springs, so the
@@ -39,6 +39,11 @@ struct Sidebar: View {
     /// How far the sidebar floats from the edge of the window.
     static let margin: CGFloat = 8
     static let glyph: CGFloat = 38
+    /// The corners of a row: of the fill of the chosen one and of the highlight under the pointer.
+    fileprivate static let rowRadius: CGFloat = 14
+    /// The highlight under the pointer. Fainter than elsewhere in the app: here it lies next to the fill of the chosen row, and at
+    /// the usual strength the two read as two chosen rows.
+    fileprivate static let hover: Double = 0.04
     /// The room the words of a row have in the wide sidebar.
     fileprivate static let words: CGFloat = wideWidth - (inset + 10) * 2 - glyph - 11
 
@@ -51,10 +56,20 @@ struct Sidebar: View {
     @Namespace private var chosen
     @AppStorage("updateDismissedVersion") private var dismissedVersion = ""
 
+    /// The rows there are, from the top.
     private var order: [SidebarSelection] {
         model.devices.flatMap { device -> [SidebarSelection] in
-            device.id == model.watchPhoneID ? [.device(device.id), .watch(device.id)] : [.device(device.id)]
+            device.id == model.watchPhoneID && device.status.watch != nil ? [.device(device.id), .watch(device.id)] : [.device(device.id)]
         } + [.shared] + (messagesPhone.map { [.messages($0.id)] } ?? []) + [.notifications, .clipboard]
+    }
+
+    /// The row of the page that is open: the files of a device are under the row of that device, health under the watch.
+    private var chosenRow: SidebarSelection? {
+        switch selection {
+        case let .files(id): .device(id)
+        case let .health(id): .watch(id)
+        default: selection
+        }
     }
 
     /// The phones that have messages to show.
@@ -131,8 +146,8 @@ struct Sidebar: View {
                     .padding(.top, 10)
                     .padding(.bottom, 4)
                 ForEach(model.devices, id: \.id) { device in
-                    let on = selection == .device(device.id) || selection == .files(device.id)
-                    SidebarButton(selected: on, chosen: chosen) {
+                    let on = chosenRow == .device(device.id)
+                    SidebarButton(row: .device(device.id), selected: on, chosen: chosen) {
                         selection = .device(device.id)
                     } content: {
                         DeviceRow(device: device, folded: folded, short: short[device.id] ?? device.name, selected: on)
@@ -140,8 +155,8 @@ struct Sidebar: View {
                     .help(folded ? Text(verbatim: device.name) : Text(verbatim: ""))
                     // The watch only talks to this phone, but it is a device of its own: its page goes by way of the phone.
                     if device.id == model.watchPhoneID, let watch = device.status.watch {
-                        let on = selection == .watch(device.id) || selection == .health(device.id)
-                        SidebarButton(selected: on, chosen: chosen) {
+                        let on = chosenRow == .watch(device.id)
+                        SidebarButton(row: .watch(device.id), selected: on, chosen: chosen) {
                             selection = .watch(device.id)
                         } content: {
                             WatchRow(watch: watch, online: device.online, folded: folded, selected: on)
@@ -164,29 +179,40 @@ struct Sidebar: View {
                     }
                     .padding(.top, 16)
                     .padding(.bottom, 4)
-                SidebarButton(selected: selection == .shared, chosen: chosen) {
+                SidebarButton(row: .shared, selected: selection == .shared, chosen: chosen) {
                     selection = .shared
                 } content: {
                     SharedRow(folded: folded, selected: selection == .shared)
                 }
                 // One row for the messages, of whichever phone was open last: with two phones the page itself has the choice.
                 if let phone = messagesPhone {
-                    SidebarButton(selected: selection == .messages(phone.id), chosen: chosen) {
+                    SidebarButton(row: .messages(phone.id), selected: selection == .messages(phone.id), chosen: chosen) {
                         selection = .messages(phone.id)
                     } content: {
                         MessagesRow(phones: phones, folded: folded, selected: selection == .messages(phone.id))
                     }
                     .transition(.opacity)
                 }
-                SidebarButton(selected: selection == .notifications, chosen: chosen) {
+                SidebarButton(row: .notifications, selected: selection == .notifications, chosen: chosen) {
                     selection = .notifications
                 } content: {
                     NotificationsRow(folded: folded, selected: selection == .notifications)
                 }
-                SidebarButton(selected: selection == .clipboard, chosen: chosen) {
+                SidebarButton(row: .clipboard, selected: selection == .clipboard, chosen: chosen) {
                     selection = .clipboard
                 } content: {
                     ClipboardRow(folded: folded, selected: selection == .clipboard)
+                }
+            }
+            // One fill for the chosen row, with the place and the size of that row. When another row is chosen it is this same fill
+            // that glides there. A fill of its own in every row is two fills for a moment: the new one is there at once while the old
+            // one is still leaving.
+            .background {
+                if let row = chosenRow, order.contains(row) {
+                    RoundedRectangle(cornerRadius: Sidebar.rowRadius, style: .continuous)
+                        .fill(Palette.indigo.opacity(0.16))
+                        .matchedGeometryEffect(id: row, in: chosen, isSource: false)
+                        .transition(.opacity)
                 }
             }
             .padding(.horizontal, Sidebar.inset)
@@ -250,8 +276,10 @@ extension View {
     }
 }
 
-/// One row of the sidebar: a tinted shape while chosen, which moves to the next chosen row, and a faint one under the pointer.
+/// One row of the sidebar. It says where it is, for the fill of the chosen row that the list draws under it, and has a faint
+/// highlight of its own under the pointer. The chosen row has none: its fill already says more.
 private struct SidebarButton<Content: View>: View {
+    let row: SidebarSelection
     let selected: Bool
     let chosen: Namespace.ID
     let action: () -> Void
@@ -260,25 +288,23 @@ private struct SidebarButton<Content: View>: View {
     @LocalState private var hovering = false
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Sidebar.rowRadius, style: .continuous)
+        let lit = (hovering || DebugSupport.pointerEverywhere) && hoverEnabled && !selected
         Button(action: action) {
             content
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
-                    ZStack {
-                        shape.fill(Color.primary.opacity(hovering && hoverEnabled && !selected ? hoverOpacity : 0))
-                        if selected {
-                            shape.fill(Palette.indigo.opacity(0.16)).matchedGeometryEffect(id: "selection", in: chosen)
-                        }
-                    }
+                    shape.fill(Color.primary.opacity(lit ? Sidebar.hover : 0))
+                        // Its own pace, also when it goes because the row was chosen: gone before the fill has arrived.
+                        .animation(.hover(lit), value: lit)
+                        .matchedGeometryEffect(id: row, in: chosen)
                 }
                 .contentShape(shape)
         }
         .buttonStyle(SidebarPressStyle())
         .onHover { hovering = $0 }
-        .animation(.hover(hovering), value: hovering)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
     }
