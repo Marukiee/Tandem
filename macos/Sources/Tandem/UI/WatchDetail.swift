@@ -334,15 +334,19 @@ private struct WatchHealthCard: View {
                             let score = insights?.latestNight?.id == night.id ? insights?.latestNight?.score : nil
                             GlanceTile(
                                 onOpen: onOpen, symbol: "bed.double", title: "Last night", number: minutesText(Int(night.sleepMinutes)),
-                                caption: score.map { String(localized: "Sleep score \(Int($0))") } ?? dayName(night.endMs)
+                                caption: dayName(night.endMs), tone: .indigo,
+                                badge: score.map { ("\(Int($0))", Self.grade(Int($0), good: 80, fair: 60)) }
                             )
                         }
                         // Beside the night also at 0, so the steps never seem gone on a day without any yet.
                         if let day = stepsDay ?? (night != nil ? insights?.week.last : nil) {
                             let steps = day.steps ?? 0
+                            // The goal set for the watch; 10,000 until the watch has said what it is.
+                            let goal = Int(settings?.stepGoal ?? 10_000)
                             GlanceTile(
-                                onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: dayName(day.startMs),
-                                share: settings.map { min(1, Double(steps) / Double(max($0.stepGoal, 1))) }
+                                onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(),
+                                caption: String(localized: "of \(goal.formatted())"), tone: .mint,
+                                share: min(1, Double(steps) / Double(max(goal, 1)))
                             )
                         }
                         if let now {
@@ -350,12 +354,18 @@ private struct WatchHealthCard: View {
                             GlanceTile(
                                 onOpen: onOpen, symbol: "heart.fill", title: "Heart rate now", number: String(localized: "\(now) bpm"),
                                 caption: insights?.resting.map { String(localized: "Resting \(Int($0.latest))") } ?? String(localized: "Live from your watch"),
-                                beating: true
+                                tone: .rose, beating: true
                             )
                         } else if let resting = insights?.resting {
                             GlanceTile(
                                 onOpen: onOpen, symbol: "heart", title: "Resting heart rate", number: String(localized: "\(Int(resting.latest)) bpm"),
-                                caption: resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this")
+                                caption: resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this"),
+                                tone: .rose,
+                                // Against what is usual: the same or lower is good, a few beats higher is worth a look.
+                                badge: resting.usual.map { usual in
+                                    let over = Int(resting.latest) - Int(usual)
+                                    return (over > 0 ? "+\(over)" : "\(over)", over <= 2 ? Color.green : over <= 6 ? Color.orange : Palette.urgent)
+                                }
                             )
                         }
                     }
@@ -376,6 +386,13 @@ private struct WatchHealthCard: View {
     }
 }
 
+extension WatchHealthCard {
+    /// Green, orange or red for a score.
+    static func grade(_ value: Int, good: Int, fair: Int) -> Color {
+        value >= good ? .green : value >= fair ? .orange : Palette.urgent
+    }
+}
+
 /// One number of what the watch measured, which opens the page with all of it.
 private struct GlanceTile: View {
     let onOpen: () -> Void
@@ -385,6 +402,10 @@ private struct GlanceTile: View {
     let caption: String
     /// How far toward a goal, as a thin line along the foot of the tile. Not a ring around the icon, which made the icon larger
     /// than those beside it and the tile taller, and not a bar under the number, which did the same.
+    /// The colour of its icon, and of the line toward a goal.
+    var tone: Tone = .plain
+    /// A score or a comparison in its own colour, at the top right.
+    var badge: (text: String, color: Color)? = nil
     var share: Double? = nil
     /// A number that is live: its symbol beats.
     var beating = false
@@ -394,8 +415,18 @@ private struct GlanceTile: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Image(systemName: symbol)
+                        .foregroundStyle(tone == .plain ? Color.secondary : tone.ink)
                         .symbolEffect(.pulse, options: .repeating, isActive: beating)
                     Text(title)
+                    Spacer(minLength: 4)
+                    if let badge {
+                        Text(verbatim: badge.text)
+                            .font(.caption.weight(.bold).monospacedDigit())
+                            .foregroundStyle(badge.color)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 1)
+                            .background(badge.color.opacity(0.15), in: .capsule)
+                    }
                 }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -417,10 +448,11 @@ private struct GlanceTile: View {
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Color.primary.opacity(0.08))
-                            Capsule().fill(Palette.indigo).frame(width: max(3, proxy.size.width * share))
+                            // Green once the goal is reached.
+                            Capsule().fill(share >= 1 ? Color.green : (tone == .plain ? Palette.indigo : tone.ink)).frame(width: max(4, proxy.size.width * share))
                         }
                     }
-                    .frame(height: 3)
+                    .frame(height: 4)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 7)
                 }
