@@ -788,7 +788,7 @@ impl Inner {
             .collect()
     }
 
-    fn peer_has_cap(&self, id: &DeviceId, cap: &str) -> bool {
+    pub(crate) fn peer_has_cap(&self, id: &DeviceId, cap: &str) -> bool {
         self.peers.lock().unwrap().get(id).and_then(|peer| peer.hello.as_ref()).is_some_and(|hello| hello.caps.iter().any(|c| c == cap))
     }
 

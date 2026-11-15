@@ -15,6 +15,7 @@ use crate::engine::Inner;
 use crate::error::{Error, Result};
 use crate::events::Event;
 use crate::ids::DeviceId;
+use crate::trust::Permission;
 use crate::proto::{
     self, Hello, InputMsg, MAX_CONTROL_FRAME, MAX_SMALL_FRAME, Msg, STREAM_CONTROL, STREAM_FILE, STREAM_FS, decode_msg,
 };
@@ -337,7 +338,11 @@ impl Inner {
             async move {
                 while let Ok(data) = conn.read_datagram().await {
                     if let Some((session, counter, x, y)) = crate::live::parse_pointer_datagram(&data) {
-                        this.live_pointer(id, session, counter, x, y);
+                        if this.allowed(&id, Permission::Control) {
+                            this.live_pointer(id, session, counter, x, y);
+                        } else {
+                            this.refuse(id, Permission::Control).await;
+                        }
                     } else if let Some((stream, seq, pcm)) = parse_audio(&data) {
                         // Straight to the app, not through the event channel: that one may drop
                         // events when the app is slow, and sound must never take the others with it.
@@ -346,7 +351,11 @@ impl Inner {
                             sink.audio(id, stream, seq, pcm);
                         }
                     } else if let Some(input) = parse_datagram(&data) {
-                        this.emit(Event::Input { from: id, input });
+                        if this.allowed(&id, Permission::Control) {
+                            this.emit(Event::Input { from: id, input });
+                        } else {
+                            this.refuse(id, Permission::Control).await;
+                        }
                     }
                 }
             }
@@ -457,6 +466,13 @@ impl Inner {
     }
 
     pub(crate) async fn handle_msg(self: &Arc<Self>, id: DeviceId, msg: Msg) {
+        // The one gate for what another device asks this one to do (P6): refused here, the app never hears it.
+        if let Some(permission) = crate::trust::needed_for(&msg)
+            && !self.allowed(&id, permission)
+        {
+            self.refuse(id, permission).await;
+            return;
+        }
         match msg {
             Msg::CircleSync { statements } => {
                 let before: std::collections::HashSet<StatementId> =
@@ -663,6 +679,7 @@ impl Inner {
             Msg::HealthRecords { records } => self.health_received(id, records),
             Msg::HealthForget {} => self.health_forget(id),
             Msg::HealthChoices { choices } => self.health_choices_heard(id, choices).await,
+            Msg::Refused { action, reason } => self.on_refused(id, &action, &reason),
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }

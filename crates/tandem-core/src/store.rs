@@ -113,6 +113,21 @@ pub struct DeviceSettings {
     /// Gets the nights and workouts this device took from a watch (see `health`). Off until the person says so.
     #[serde(default)]
     pub health: bool,
+    /// What else it may do here (P6, see `trust`). All on unless a person switched one off.
+    #[serde(default = "yes")]
+    pub see_notifications: bool,
+    #[serde(default = "yes")]
+    pub control: bool,
+    #[serde(default = "yes")]
+    pub unlock: bool,
+    #[serde(default = "yes")]
+    pub lock: bool,
+    #[serde(default = "yes")]
+    pub wifi_password: bool,
+    #[serde(default = "yes")]
+    pub calls: bool,
+    #[serde(default = "yes")]
+    pub restart: bool,
 }
 
 fn yes() -> bool {
@@ -121,14 +136,40 @@ fn yes() -> bool {
 
 impl Default for DeviceSettings {
     fn default() -> Self {
-        DeviceSettings { clipboard: true, auto_accept: true, notifications: true, messages: true, health: false }
+        DeviceSettings {
+            clipboard: true,
+            auto_accept: true,
+            notifications: true,
+            messages: true,
+            health: false,
+            see_notifications: true,
+            control: true,
+            unlock: true,
+            lock: true,
+            wifi_password: true,
+            calls: true,
+            restart: true,
+        }
     }
 }
 
 impl DeviceSettings {
     /// What a guest gets: nothing of theirs comes into the clipboard, no notifications, files are asked about first, and no messages.
     pub fn guest() -> DeviceSettings {
-        DeviceSettings { clipboard: false, auto_accept: false, notifications: false, messages: false, health: false }
+        DeviceSettings {
+            clipboard: false,
+            auto_accept: false,
+            notifications: false,
+            messages: false,
+            health: false,
+            see_notifications: false,
+            control: false,
+            unlock: false,
+            lock: false,
+            wifi_password: false,
+            calls: false,
+            restart: false,
+        }
     }
 }
 
@@ -215,5 +256,15 @@ mod tests {
         let read: DeviceSettings = crate::proto::decode(&bytes).unwrap();
         assert!(!read.clipboard && read.messages);
         assert!(!DeviceSettings::guest().messages);
+    }
+
+    #[test]
+    fn the_permissions_of_p6_are_on_for_a_device_from_before_they_existed() {
+        let old = ciborium::Value::Map(vec![(ciborium::Value::Text("auto_accept".into()), ciborium::Value::Bool(false))]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        let read: DeviceSettings = crate::proto::decode(&bytes).unwrap();
+        assert!(!read.auto_accept);
+        assert_eq!(read, DeviceSettings { auto_accept: false, ..DeviceSettings::default() });
     }
 }

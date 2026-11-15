@@ -224,6 +224,9 @@ pub enum Msg {
     Ping { nonce: u64 },
     Pong { nonce: u64 },
     Bye { reason: String },
+    /// What was asked is not allowed for the device that asked (P6, see `trust`). `action` is the code of a permission, `reason` one of
+    /// `trust::REASONS`. Only sent to a device that has `trust::CAP`.
+    Refused { action: String, reason: String },
     /// This device plays a sound now because another one asked with `Ring`, or it stopped (the person stopped it here, it ran out, or
     /// it was asked to stop). Sent to the devices that asked, so their button shows what really happens. Devices that do not know it skip it.
     Ringing { on: bool },
@@ -360,6 +363,10 @@ pub struct Status {
     /// Set by the engine (`Engine::set_quiet`), not by the app.
     #[serde(default)]
     pub quiet: Option<bool>,
+    /// What this device does not let each other device do (P6, see `trust`): the whole table each time it changes. Nil on a device
+    /// of a version without permissions.
+    #[serde(default)]
+    pub trust: Option<Vec<crate::trust::TrustRow>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -494,7 +501,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet, trust);
     }
 }
 

@@ -34,6 +34,7 @@ pub mod sms;
 pub mod store;
 pub mod tls;
 pub mod transfer;
+pub mod trust;
 #[cfg(feature = "webdav")]
 pub mod webdav;
 pub mod wifi;

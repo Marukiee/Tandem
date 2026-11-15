@@ -161,6 +161,10 @@ pub(crate) struct Inner {
     pub wifi: Mutex<Option<crate::wifi::WifiNetwork>>,
     pub(crate) focus: Mutex<crate::focus::FocusSync>,
     pub(crate) health: Mutex<crate::health::Health>,
+    /// A permission changed: the table in the status goes out again (see `trust`).
+    pub(crate) trust_changed: Notify,
+    /// When each kind of refusal was last said to a device, so a refused pointer is not answered dozens of times a second.
+    pub(crate) refused_said: Mutex<HashMap<(DeviceId, crate::trust::Permission), Instant>>,
 }
 
 /// Where the sound of the other device goes. Called on the connection's own task for every
@@ -260,16 +264,22 @@ impl Engine {
             wifi: Mutex::new(None),
             focus,
             health,
+            trust_changed: Notify::new(),
+            refused_said: Mutex::new(HashMap::new()),
         });
 
         // The peers must exist before their saved addresses can be attached to them.
         inner.sync_peers();
         inner.load_addresses();
         inner.clean_partials();
+        // In what the first connection is told, without waiting for a change.
+        let trust = Status { trust: Some(inner.trust_table()), ..Status::default() };
+        inner.my_status.lock().unwrap().merge(&trust);
         info!(id = %inner.my_id, port = inner.port, "tandem engine started");
 
         tokio::spawn(inner.clone().accept_loop());
         tokio::spawn(inner.clone().supervise());
+        tokio::spawn(inner.clone().keep_trust_published());
         if inner.cfg.enable_mdns {
             inner.clone().start_discovery();
         }
@@ -378,16 +388,23 @@ impl Engine {
         self.inner.file_service.default_policy()
     }
 
+    // The file policy holds two permissions (see `trust`): each change may change the table.
     pub fn set_file_policy(&self, id: &DeviceId, policy: crate::files::FilePolicy) -> Result<()> {
-        self.inner.file_service.set_policy(id, policy)
+        self.inner.file_service.set_policy(id, policy)?;
+        self.inner.trust_changed.notify_one();
+        Ok(())
     }
 
     pub fn clear_file_policy(&self, id: &DeviceId) -> Result<()> {
-        self.inner.file_service.clear_policy(id)
+        self.inner.file_service.clear_policy(id)?;
+        self.inner.trust_changed.notify_one();
+        Ok(())
     }
 
     pub fn set_file_default_policy(&self, policy: crate::files::FilePolicy) -> Result<()> {
-        self.inner.file_service.set_default_policy(policy)
+        self.inner.file_service.set_default_policy(policy)?;
+        self.inner.trust_changed.notify_one();
+        Ok(())
     }
 
     /// What other devices did to the files of this one, newest first.
@@ -735,6 +752,7 @@ impl Inner {
         }
         let snapshot = self.settings.read().unwrap().clone();
         self.store.write_cbor("settings.cbor", &snapshot)?;
+        self.trust_changed.notify_one();
         self.emit(Event::DevicesChanged);
         Ok(())
     }
@@ -751,7 +769,7 @@ impl Inner {
     /// What this device can do for the others: what the app says, always letting them look at its files, and keeping health records.
     pub fn caps(&self) -> Vec<String> {
         let mut caps = self.cfg.caps.clone();
-        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP] {
+        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP, crate::trust::CAP] {
             if !caps.iter().any(|c| c == always) {
                 caps.push(always.into());
             }
@@ -788,6 +806,12 @@ impl Inner {
     }
 
     pub async fn send_to(&self, id: &DeviceId, msg: Msg) -> Result<()> {
+        // What another device may not see does not leave this one, whichever app or feature sends it.
+        if let Some(permission) = crate::trust::needed_to_send(&msg)
+            && !self.allowed(id, permission)
+        {
+            return Err(Error::Invalid(crate::trust::REASON_NOT_ALLOWED.into()));
+        }
         let session = self.session_of(id).ok_or(Error::NotConnected)?;
         session.tx.send(msg).await.map_err(|_| Error::NotConnected)
     }
