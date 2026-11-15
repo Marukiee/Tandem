@@ -80,7 +80,20 @@ plaats van het Apple Watch-icoon; kop en speler van de apparaatpagina rustiger e
 Klembord zegt niet wat hij is; het wisselen tussen apparaten vervormt lelijk, vooral tussen een apparaat met en een zonder speler.
 Pas samenvoegen na Marks akkoord.
 
+**Na het schrijven van 0.3.21.** PR 36 (P6, de poort in de kern) is toch nog voor de tag samengevoegd en zit in 0.3.21; je merkt er
+niets van tot een app iets instelt. De updatekaart in de zijbalk van de Mac is in 0.3.20 niet opgelost: `ViewThatFits` koos in de
+echte zijbalk toch de ene regel, dus de tekst werd weer afgekapt. De kaart krijgt daarom altijd twee regels (woorden, dan de
+knoppen).
+
 Gevonden bij het nakijken van die PR's, nog te doen:
+
+- **R-I33. Instellingen van een apparaat op zijn eigen pagina, met de naam aanpasbaar vanaf elk apparaat** (wens van Mark,
+  2026-11-15). Op de pagina van elk apparaat komt een rij "Instellingen van dit apparaat" (de Mac heeft die nu alleen op de pagina van
+  het horloge, `M/UI/WatchDetail.swift`). Daarachter staat alles van dat apparaat wat niet al op de apparaatpagina zelf staat (daar
+  blijven de positie en "toon zijn meldingen"): de naam, het icoon, wat het mag (de details van Circle, ontwerp C) en verwijderen. De
+  naam geldt voor de hele circle: wie hem aanpast, past hem voor alle apparaten aan, ook op het apparaat zelf. Voorstel: een
+  gebeurtenis in het circle-logboek achter een capability, met de eigen naam van het apparaat als terugval voor oudere versies. Op
+  alle vier de platforms; hoort bij ronde 4 (c), na de pagina Circle.
 
 - **R-V15. Onderweg op mobiele data houdt Tandem de telefoon wakker** (gemeten door Mark op 2026-11-15: scherm uit 260 mA, de CPU
   90% van de tijd wakker, 11% accu in 4 uur; thuis 65 mA). Gevonden in de code: de Mac stuurt elke 60 s zijn hele status, ook zonder
