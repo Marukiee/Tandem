@@ -606,7 +606,9 @@ final class EngineModel {
                 transfers.removeAll { $0.id == transferID(offer: offer, index: index, incoming: incoming) }
                 break
             }
-            finishTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, size: size, location: location, error: error)
+            // A file with the drag origin that nobody took for a drop (accepted by hand, or the app started again meanwhile) is in the
+            // folder that is swept after a day: it goes to the downloads, where a file that came in belongs.
+            finishTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, size: size, location: incoming ? location.map(DragLanding.rescue) : location, error: error)
 
         case let .notification(from, notification):
             let deviceName = device(from)?.name ?? "Phone"
@@ -1235,7 +1237,7 @@ final class EngineModel {
 
     /// The task ends once the offer is out (or failed), for a drag that must not end before that.
     @discardableResult
-    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) -> Task<Void, Never>? {
+    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) -> Task<Bool, Never>? {
         guard let engine, !urls.isEmpty, !ids.isEmpty else { return nil }
         return Task {
             var temporary: [URL] = []
@@ -1269,17 +1271,20 @@ final class EngineModel {
                             },
                         ]
                     )
-                    return
+                    return false
                 }
-                await sendPrepared(engine: engine, files: files, sources: urls.map(\.path), temporary: temporary, to: ids, origin: origin)
+                return await sendPrepared(engine: engine, files: files, sources: urls.map(\.path), temporary: temporary, to: ids, origin: origin)
             } catch {
                 OutgoingFiles.remove(temporary)
                 showToast(error.localizedDescription)
+                return false
             }
         }
     }
 
-    private func sendPrepared(engine: TandemEngine, files: [TandemOutgoingFile], sources: [String], temporary: [URL], to ids: [String], origin: TandemShareOrigin) async {
+    /// Whether the offer went out, to someone now or to the queue.
+    @discardableResult
+    private func sendPrepared(engine: TandemEngine, files: [TandemOutgoingFile], sources: [String], temporary: [URL], to ids: [String], origin: TandemShareOrigin) async -> Bool {
         do {
             let report = try await engine.sendFiles(targets: ids, files: files, origin: origin)
             // A device in the queue (P3) still needs the zips of folders, so they stay until it has them too.
@@ -1297,9 +1302,11 @@ final class EngineModel {
             } else if !report.offline.isEmpty {
                 showToast(String(localized: "\(report.offline.count) device(s) were offline and did not get it"))
             }
+            return !waiting.isEmpty
         } catch {
             OutgoingFiles.remove(temporary)
             showToast(error.localizedDescription)
+            return false
         }
     }
 
