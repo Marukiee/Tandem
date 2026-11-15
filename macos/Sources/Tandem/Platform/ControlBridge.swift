@@ -23,16 +23,28 @@ final class ControlBridge {
 
     private let key = UUID().uuidString
 
-    private var timer: Timer?
+    private var started = false
     private var last: State?
 
     static var stateFile: URL { EngineModel.supportDirectory().appendingPathComponent("control-state.json") }
 
     func start() {
-        guard timer == nil else { return }
+        guard !started else { return }
+        started = true
         publish()
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.publish() }
+        watch()
+    }
+
+    /// Writes again when something the buttons show changes (all of it is observable), instead of looking every two seconds.
+    private func watch() {
+        withObservationTracking {
+            _ = current()
+        } onChange: { [weak self] in
+            // Fires before the new value is in; the hop lets it land.
+            Task { @MainActor in
+                self?.publish()
+                self?.watch()
+            }
         }
     }
 

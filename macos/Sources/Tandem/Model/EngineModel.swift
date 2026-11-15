@@ -1537,6 +1537,8 @@ final class EngineModel {
 
     func pushStatus() {
         guard let engine else { return }
+        // The battery of this Mac is read here, so the widget hears of it here.
+        BatteryBridge.shared.publish()
         var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac(), muted: OutputMute.isMuted(), awake: KeepAwake.shared.on)
         status.lock = ScreenLock.canLock
         status.btAddress = BluetoothAddress.mine()
