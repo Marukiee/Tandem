@@ -7,6 +7,8 @@ import TandemCore
 struct PlayersCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
+    /// Beside the head and not under it: narrow, so the bar and the buttons go under the cover and the title.
+    var beside = false
     /// The player the person picked from the tabs, until it goes away.
     @LocalState private var chosen: String?
     @Namespace private var tabs
@@ -36,14 +38,16 @@ struct PlayersCard: View {
                         }
                         // Stacked, so the player that leaves and the one that comes cross-fade in the same place.
                         ZStack(alignment: .top) {
-                            PlayerCard(device: device, player: current)
+                            PlayerCard(device: device, player: current, stacked: beside)
                                 .id(current.id)
                                 .transition(.opacity)
                         }
                     }
+                    // Beside the head the card is as tall as the head, with the player in the middle.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
-                // A short slide: a move from the top edge would travel over the head.
-                .transition(.opacity.combined(with: .offset(y: -10)))
+                // A short slide: a move from an edge would travel over the head. Beside the head it comes from its own side.
+                .transition(.opacity.combined(with: .offset(x: beside ? 14 : 0, y: beside ? 0 : -10)))
             }
         }
         .animation(.tandem, value: players.map(\.id))
@@ -98,10 +102,29 @@ private struct PlayerCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
     let player: TandemMediaPlayer
+    /// In a narrow card: the cover and the title on one line, the bar under them and the buttons under that.
+    var stacked = false
 
     private var subtitle: String { [player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · ") }
 
     var body: some View {
+        if stacked { narrow } else { wide }
+    }
+
+    private var narrow: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                PlayerCover(player: player, size: 64)
+                PlayerTitle(title: player.title, subtitle: subtitle, titleFont: .headline, subtitleFont: .callout, spacing: 2, titleLines: 2)
+                Spacer(minLength: 0)
+            }
+            PlayerProgress(device: device, player: player)
+            PlayerButtons(device: device, player: player, size: .regular)
+        }
+        .animation(.tandem, value: player.art)
+    }
+
+    private var wide: some View {
         CoverBeside(spacing: 14) {
             PlayerCover(player: player, size: nil)
             VStack(alignment: .leading, spacing: 8) {
@@ -125,10 +148,11 @@ private struct PlayerTitle: View {
     let titleFont: Font
     let subtitleFont: Font
     let spacing: CGFloat
+    var titleLines = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) {
-            Text(title).font(titleFont).lineLimit(1)
+            Text(title).font(titleFont).lineLimit(titleLines)
             Text(subtitle).font(subtitleFont).foregroundStyle(.secondary).lineLimit(1)
         }
         .id(title + "\u{1F}" + subtitle)

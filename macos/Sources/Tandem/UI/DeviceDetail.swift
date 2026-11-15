@@ -17,14 +17,20 @@ struct DeviceDetail: View {
     @LocalState private var sshAddress: String?
 
     @LocalState private var position = ScrollPosition(edge: .top)
+    /// The page is wide enough for the head and the player side by side.
+    @LocalState private var beside = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-                header
-                // What it plays, on a card of its own. Its own id, so a player picked on one device is not the pick on the next.
-                PlayersCard(device: device)
-                    .id(device.id)
+                // The head and what plays, on a card of its own: side by side where there is room, under each other where there is
+                // not. The player has its own id, so one picked on one device is not the pick on the next.
+                HeadRow(beside: beside) {
+                    header
+                    PlayersCard(device: device, beside: beside)
+                        .id(device.id)
+                }
+                .onGeometryChange(for: Bool.self) { $0.size.width >= HeadRow.room } action: { beside = $0 }
                 // Only what sits under the header is swapped when the device changes.
                 // Stacked, so the old and the new one cross-fade in the same place.
                 ZStack(alignment: .top) {
@@ -34,10 +40,12 @@ struct DeviceDetail: View {
                 }
             }
             .pagePadding()
-            .frame(maxWidth: 760)
+            // As wide as the page on Linux and Windows, so the head and the player have room side by side.
+            .frame(maxWidth: 832)
             .frame(maxWidth: .infinity)
         }
         .scrollPosition($position)
+        .animation(.tandem, value: beside)
         .animation(.tandem, value: device.id)
         .animation(.tandem, value: device.online)
         // The battery comes a moment after the connection, in a status of its own: the space it takes is made smoothly too.
@@ -110,7 +118,8 @@ struct DeviceDetail: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
 
-                        HStack(spacing: 8) {
+                        // The labels go on to a next line where the head is narrow, as it is beside the player.
+                        FlowRow {
                             Chip(symbol: reach.symbol, text: reach.text, tint: reach.color, strong: reach.reachable)
                             if device.online {
                                 if usingItsHotspot {
@@ -125,7 +134,7 @@ struct DeviceDetail: View {
                             }
                         }
                         if device.online {
-                            HStack(spacing: 8) {
+                            FlowRow {
                                 phoneNetworkChips
                                 // A computer: the network it is on, as a chip with the others and not as a line of its own under the buttons.
                                 if device.platform != .android, let ssid = device.lastSeen?.ssid {
@@ -150,6 +159,8 @@ struct DeviceDetail: View {
                     }
                 }
             }
+            // Beside the player the card is as tall as the player, with its content in the middle.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
     }
 
@@ -511,6 +522,61 @@ extension DeviceDetail {
         default:
             if TandemAudioDriver.shared.active { return String(localized: "Pick Tandem Speaker in the sound menu") }
             return String(localized: "Pick \(device.name) (Tandem) in the sound menu")
+        }
+    }
+}
+
+/// The head of a device and what it plays. With room they stand side by side, the head taking the larger part and both as tall as
+/// the taller one; without it, or with nothing playing, the head has the whole width and the player goes under it.
+private struct HeadRow: Layout {
+    /// From this width on the two fit side by side.
+    static let room: CGFloat = 720
+    var beside: Bool
+    var gap: CGFloat = 18
+
+    private func widths(_ width: CGFloat) -> (head: CGFloat, player: CGFloat) {
+        let head = ((width - gap) * 1.6 / 2.6).rounded()
+        return (head, width - gap - head)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 780
+        guard let head = subviews.first else { return .zero }
+        guard subviews.count > 1 else {
+            return CGSize(width: width, height: head.sizeThatFits(ProposedViewSize(width: width, height: nil)).height)
+        }
+        if beside {
+            let parts = widths(width)
+            let heights = [
+                head.sizeThatFits(ProposedViewSize(width: parts.head, height: nil)).height,
+                subviews[1].sizeThatFits(ProposedViewSize(width: parts.player, height: nil)).height,
+            ]
+            return CGSize(width: width, height: heights.max() ?? 0)
+        }
+        let heights = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)).height }
+        return CGSize(width: width, height: heights.reduce(0, +) + gap * CGFloat(subviews.count - 1))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let head = subviews.first else { return }
+        guard subviews.count > 1 else {
+            head.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
+            return
+        }
+        if beside {
+            let parts = widths(bounds.width)
+            head.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: parts.head, height: bounds.height))
+            subviews[1].place(
+                at: CGPoint(x: bounds.minX + parts.head + gap, y: bounds.minY), anchor: .topLeading,
+                proposal: ProposedViewSize(width: parts.player, height: bounds.height)
+            )
+        } else {
+            var y = bounds.minY
+            for subview in subviews {
+                let height = subview.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil)).height
+                subview.place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: height))
+                y += height + gap
+            }
         }
     }
 }

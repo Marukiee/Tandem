@@ -19,6 +19,49 @@ struct Card<Content: View>: View {
     }
 }
 
+/// Things side by side that go on to a next line when the row is full, such as the labels in the head of a device.
+struct FlowRow: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 8
+
+    private func lines(width: CGFloat, subviews: Subviews) -> [[(index: Int, size: CGSize)]] {
+        var lines: [[(index: Int, size: CGSize)]] = [[]]
+        var used: CGFloat = 0
+        for (index, subview) in subviews.enumerated() {
+            let size = subview.sizeThatFits(.unspecified)
+            if !lines[lines.count - 1].isEmpty, used + spacing + size.width > width {
+                lines.append([])
+                used = 0
+            }
+            used += (lines[lines.count - 1].isEmpty ? 0 : spacing) + size.width
+            lines[lines.count - 1].append((index, size))
+        }
+        return lines.filter { !$0.isEmpty }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let lines = lines(width: proposal.width ?? .infinity, subviews: subviews)
+        let width = lines.map { line in line.reduce(0) { $0 + $1.size.width } + spacing * CGFloat(line.count - 1) }.max() ?? 0
+        let height = lines.reduce(0) { $0 + ($1.map(\.size.height).max() ?? 0) } + lineSpacing * CGFloat(max(0, lines.count - 1))
+        return CGSize(width: min(width, proposal.width ?? width), height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in lines(width: bounds.width, subviews: subviews) {
+            let height = line.map(\.size.height).max() ?? 0
+            var x = bounds.minX
+            for item in line {
+                // One that is wider than the row gets the row, so its words are cut and not drawn over the edge.
+                let width = min(item.size.width, bounds.width)
+                subviews[item.index].place(at: CGPoint(x: x, y: y + height / 2), anchor: .leading, proposal: ProposedViewSize(width: width, height: item.size.height))
+                x += width + spacing
+            }
+            y += height + lineSpacing
+        }
+    }
+}
+
 /// The title of a page and the line under it, the same on every page that has one.
 struct PageHeader<Extra: View, Actions: View>: View {
     let title: LocalizedStringKey
