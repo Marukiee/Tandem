@@ -426,7 +426,7 @@ impl Inner {
     }
 
     /// Stops a transfer, from either side, and tells the other device so it stops too. The files already done stay.
-    pub(crate) async fn cancel_transfer(&self, peer: DeviceId, offer: u64, incoming: bool) {
+    pub(crate) async fn cancel_transfer(self: &Arc<Self>, peer: DeviceId, offer: u64, incoming: bool) {
         if incoming {
             self.stop_incoming(peer, offer);
         } else {
@@ -452,14 +452,14 @@ impl Inner {
     }
 
     /// The other device stopped a transfer.
-    pub(crate) fn on_share_cancel(&self, peer: DeviceId, offer: u64) {
+    pub(crate) fn on_share_cancel(self: &Arc<Self>, peer: DeviceId, offer: u64) {
         self.stop_incoming(peer, offer);
         self.stop_outgoing(peer, offer, ItemState::Cancelled, None);
     }
 
     /// Stops an incoming offer. Files being pulled stop and take their partial file with them. An offer that is not being pulled
     /// (it waited for a yes, or stopped halfway before a restart) has nothing that would end it, so it ends here.
-    fn stop_incoming(&self, peer: DeviceId, offer: u64) {
+    fn stop_incoming(self: &Arc<Self>, peer: DeviceId, offer: u64) {
         let key = Key::In(peer, offer);
         let Some(run) = self.journal.run(key) else { return };
         run.cancel.cancel();
@@ -499,7 +499,7 @@ impl Inner {
             }));
         }
         if idle {
-            self.hand_over_folders(peer, offer);
+            self.hand_over_folders_later(peer, offer);
         }
     }
 
@@ -713,7 +713,7 @@ impl Inner {
     }
 
     /// No to a transfer that stopped halfway before this start (P2). See `Engine::discard_transfer`.
-    pub(crate) async fn discard_transfer(&self, from: DeviceId, offer: u64) -> Result<()> {
+    pub(crate) async fn discard_transfer(self: &Arc<Self>, from: DeviceId, offer: u64) -> Result<()> {
         let key = Key::In(from, offer);
         if !self.journal.resumable().iter().any(|record| record.key() == key) {
             return Err(Error::invalid("that transfer does not wait to go on"));
@@ -726,7 +726,7 @@ impl Inner {
 
     /// Ends files of an incoming offer that will not come: `which` of them, or every one that has not ended. Their partial files go, and
     /// each gets one `Finished` with `reason`. `close`: nothing more is pulled from that sender for this offer.
-    fn end_incoming(&self, from: DeviceId, offer: u64, which: Option<&[u32]>, reason: &str, close: bool) {
+    fn end_incoming(self: &Arc<Self>, from: DeviceId, offer: u64, which: Option<&[u32]>, reason: &str, close: bool) {
         let key = Key::In(from, offer);
         let ended = self
             .journal
@@ -761,8 +761,7 @@ impl Inner {
                 error: Some(reason.to_string()),
             }));
         }
-        // What already came of a folder is kept, like a loose file that came is.
-        self.hand_over_folders(from, offer);
+        self.hand_over_folders_later(from, offer);
     }
 
     /// The bytes still to come for an incoming offer are more than the free space this device last reported in its status (P5). A
@@ -1004,7 +1003,11 @@ impl Inner {
     /// Lets offers go that waited, stopped halfway or ended long enough ago (see `journal`), and says so for each file that ended
     /// now. A receiver that lets an offer go that waited for a yes tells the sender, so it ends there too (R-B14, R-B27).
     pub(crate) fn expire_transfers(self: &Arc<Self>) {
-        for lapse in self.journal.expire(now_ms()) {
+        self.expire_transfers_at(now_ms());
+    }
+
+    pub(crate) fn expire_transfers_at(self: &Arc<Self>, now: u64) {
+        for lapse in self.journal.expire(now) {
             let (peer, offer) = match lapse.key {
                 Key::In(sender, offer) => (sender, offer),
                 Key::Out(offer) => (lapse.peer, offer),
@@ -1025,7 +1028,7 @@ impl Inner {
                 }));
             }
             if lapse.incoming {
-                self.hand_over_folders(peer, offer);
+                self.hand_over_folders_later(peer, offer);
             }
             if lapse.tell_sender {
                 let this = self.clone();

@@ -321,18 +321,32 @@ maakt geen zip: daar is geen bibliotheek voor, en de Mac heeft `ditto`. Een ontv
 negeert `path` en `folders` en bouwt geen mappen.
 
 **Ontvangen.** Elk bestand wordt opgehaald zoals altijd (het deelbestand blijft per nummer, dus hervatten werkt vanzelf). Is het binnen,
-dan gaat het naar `<datamap>/folders/<afzender>-<aanbod>/<map>/.../<naam>`, met elk deel door de naamcontrole (`platform::sanitize_name`:
-`..` wordt `file`, `/`, `\` en `:` worden `_`; een pad klimt dus nooit uit die map) en zonder iets te overschrijven. In het boek is het
-dan `done` met die plek als `location`, maar er komt nog geen `Finished`. Pas als elk bestand van een bovenste map in een eindstand is,
-gaat die hele map in een keer naar de app: `store_download(map, naam, "inode/directory")` (`folders::FOLDER_MIME`). Daarna krijgt elk
-bestand dat aankwam zijn `Finished`, met als `location` de plek binnen de nieuwe map. Mislukt het opslaan, dan wordt elk van die
-bestanden `failed` met `not saved`. Een bestand dat mislukte krijgt zijn `Finished` meteen, zoals altijd; de map gaat dan zonder dat
-bestand.
+dan gaat het naar `<datamap>/folders/<afzender>-<aanbod>/<map>/.../<naam>`, met elk deel door de naamcontrole (`folders::safe_part`:
+`..` wordt `file`, `/`, `\` en `:` worden `_`, geen punt of spatie aan het eind, en een naam die Windows voor een apparaat houdt zoals
+`CON`, `NUL` of `COM1` krijgt een `_` ervoor; een pad klimt dus nooit uit die map). De naam wordt geclaimd door hem leeg aan te maken,
+zodat twee bestanden met dezelfde naam elkaar nooit overschrijven. Twee bovenste mappen die alleen in hoofdletters verschillen (`Photos`
+en `photos` van een Linux-afzender) wachten elk in een eigen map (`photos (2)`), want op een Mac of Windows zouden ze er een zijn. In het
+boek is een bestand dan `done` met die plek als `location`, maar er komt nog geen `Finished`.
 
-Zo staat een halve map nooit in Downloads. Een map die halverwege stopte wacht in de datamap; na een herstart vraagt P2 zoals altijd,
-en Verder gaan haalt de rest en geeft dan de hele map. Weggooien, stoppen of verlopen geeft wat al binnen was toch aan de app, zoals
-losse bestanden die al binnen waren ook blijven. Bij de start gaat elke map waarvan alles eindigde naar zijn plek, en wat er nog staat
-van een aanbod dat niet meer in het boek staat ook (zonder gebeurtenis, er luistert dan nog niemand; de app leest het boek).
+**Hoe een map eindigt.** Een map komt alleen onder zijn eigen naam in Downloads als hij heel is. Per bovenste map, zodra elk bestand
+erin in een eindstand is:
+
+| Einde | Wanneer | Wat er gebeurt |
+| --- | --- | --- |
+| heel | elk bestand kwam aan | de map gaat in een keer naar de app (`store_download(map, naam, "inode/directory")`, `folders::FOLDER_MIME`), en daarna krijgt elk bestand zijn `Finished` met zijn plek in de nieuwe map |
+| halverwege | een bestand is niet af en kan nog verder (na een herstart: P2) | de map blijft in de datamap; de vraag "verder gaan of weggooien" beslist |
+| weggegooid of gestopt | Weggooien bij P2, of een persoon (hier of bij de afzender) stopte het | de map gaat weg, net als een half bestand; de bestanden die al binnen waren eindigen met `cancelled` |
+| mislukt of verlopen | een bestand mislukte (veranderd of weg bij de afzender, verbinding weg na alle pogingen), of de vraag van P2 bleef 3 dagen zonder antwoord | wat binnen was gaat naar de app onder een gemerkte naam, "Trip (incomplete)", zodat niets stil verdwijnt en niets heel lijkt wat het niet is |
+
+Het woord tussen haakjes zet de app in zijn eigen taal met `set_incomplete_label` (Engels "incomplete", Nederlands "onvolledig");
+zonder dat is het "incomplete". Bij verlopen staat het aanbod daarna niet meer in het boek en komt er geen `Finished` voor de bestanden die
+binnen waren (ze kregen die van verlopen ook niet); het paneel ziet het verlopen. Lukt het opslaan niet, dan gaat de map weg en eindigt
+elk bestand dat binnen was met `not saved`. Een bestand dat mislukte krijgt zijn `Finished` meteen, zoals altijd.
+
+De overdracht naar de app loopt altijd op een eigen draad (`spawn_blocking`), nooit op de berichtenlus: de app kan een grote map naar een
+andere schijf kopieren. Het boek wordt per map een keer geschreven, niet per bestand. Bij de start wordt elke map waarvan alles eindigde
+afgehandeld zoals hierboven, en wat er nog staat van een aanbod dat niet meer in het boek staat gaat onder de gemerkte naam naar de app
+(zonder gebeurtenis, er luistert dan nog niemand; de app leest het boek). Een aanbod van alleen lege mappen maakt die mappen.
 
 **Wat een app moet doen om het aan te zetten:**
 
@@ -340,7 +354,7 @@ van een aanbod dat niet meer in het boek staat ook (zonder gebeurtenis, er luist
    een vrije naam in Downloads en dat pad teruggeven. De Mac doet het met `moveItem` en zet de quarantainevlag op elk bestand erin.
    Android heeft geen pad voor een map in Downloads (MediaStore): daar moet de app de map zelf nalopen en elk bestand opslaan, en een
    pad of URI van de map teruggeven.
-2. `share.folders` in de caps zetten.
+2. `share.folders` in de caps zetten, en `set_incomplete_label` met het woord voor "incomplete" in de taal van de app.
 3. Bij het sturen een map gewoon als `source` meegeven (niet meer zelf zippen), en voor de apparaten in `no_folders` de map zippen en
    die zip met een tweede `send_files` sturen.
 4. In de lijst van wat binnenkwam de bestanden van een map samen tonen (een rij met de mapnaam), niet honderd losse rijen.

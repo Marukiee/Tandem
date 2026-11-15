@@ -2151,6 +2151,12 @@ impl TandemEngine {
         })
     }
 
+    /// What is put after the name of a folder that did not come whole and is handed over anyway (P4), in the language of the app:
+    /// "Trip (incomplete)", "Trip (onvolledig)". Only matters when the app lists `share.folders` in its caps.
+    pub fn set_incomplete_label(&self, label: String) {
+        self.engine.set_incomplete_label(&label);
+    }
+
     /// The devices among `targets` that report less free space than `files` take (P5). Ask before sending when it is not empty; the
     /// receiver refuses by itself with the reason `no space` when it really does not fit.
     pub fn short_of_space(&self, targets: Vec<String>, files: Vec<TandemOutgoingFile>) -> Result<Vec<String>, TandemError> {
