@@ -1548,12 +1548,9 @@ final class EngineModel {
             roaming: false,
             signal: nil
         )
-        if let values = try? URL(fileURLWithPath: "/").resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
-           let free = values.volumeAvailableCapacityForImportantUsage {
-            status.freeStorage = UInt64(free)
-        }
         Task {
             var status = status
+            status.freeStorage = await Task.detached { DownloadFolder.freeSpace() }.value
             status.network?.ssid = await WiFiName.current()
             await engine.updateStatus(status: status)
         }
