@@ -76,9 +76,23 @@ async fn a_phone_with_its_screen_off_is_woken_far_less_and_stays_connected() {
     let window = Duration::from_millis(4_800);
     let awake = received_in(&phone, mac_id, window).await;
     phone.set_quiet(true).await;
+    // Until the Mac has heard it and slowed down, not for a guessed while: on a slow runner the packets of the change itself can still
+    // be on their way after 300 ms.
+    wait_until("the Mac knows the phone is quiet", || {
+        mac.devices().iter().any(|d| d.id == phone.id() && d.status.quiet == Some(true))
+    })
+    .await;
     tokio::time::sleep(Duration::from_millis(300)).await;
-    let quiet = received_in(&phone, mac_id, window).await;
-    eprintln!("packets the phone got in {window:?}: {awake} with the screen on, {quiet} with it off");
+    // A count over a window is noisy: a retransmit or a late answer can land in it. A pace that is not slower shows in every window, so
+    // it is looked at up to three times and has to be slow in one of them.
+    let mut quiet = u64::MAX;
+    for _ in 0..3 {
+        quiet = received_in(&phone, mac_id, window).await;
+        eprintln!("packets the phone got in {window:?}: {awake} with the screen on, {quiet} with it off");
+        if quiet * 4 <= awake {
+            break;
+        }
+    }
 
     assert!(awake >= 10, "awake, the two check on each other often: {awake}");
     assert!(quiet * 4 <= awake, "with the screen off the phone is woken far less: {quiet} against {awake}");

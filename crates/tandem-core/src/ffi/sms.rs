@@ -407,8 +407,7 @@ impl TandemEngine {
 
     pub fn set_messages_allowed(&self, id: String, allowed: bool) -> Result<(), TandemError> {
         let id = parse(&id)?;
-        let settings = crate::store::DeviceSettings { messages: allowed, ..self.engine.device_settings(&id) };
-        self.engine.set_device_settings(&id, settings).map_err(Into::into)
+        self.engine.update_device_settings(&id, |own| own.messages = allowed).map_err(Into::into)
     }
 }
 

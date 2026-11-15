@@ -89,6 +89,24 @@ enum DownloadFolder {
     static func reset() {
         UserDefaults.standard.removeObject(forKey: key)
     }
+
+    /// What the core takes as "cannot be read" (`FREE_STORAGE_UNKNOWN`): it takes an old number away, and nothing is refused for lack
+    /// of room.
+    static let unknownFreeSpace = UInt64.max
+
+    /// The room left on the disk the files land on, not on the disk of the system. A folder that is not there may be on a disk that is
+    /// not plugged in, and the disk below it would be another one. Can wait on a slow disk, so not for the main thread.
+    static func freeSpace() -> UInt64 {
+        let folder = url
+        guard FileManager.default.fileExists(atPath: folder.path),
+              let values = try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey])
+        else { return unknownFreeSpace }
+        // The figure that counts what the system can purge is the one for APFS; other volumes give 0 for it, and then the plain
+        // figure is the one. A disk that says 0 both ways tells nothing, like on Linux and Windows.
+        if let important = values.volumeAvailableCapacityForImportantUsage, important > 0 { return UInt64(important) }
+        if let plain = values.volumeAvailableCapacity, plain > 0 { return UInt64(plain) }
+        return unknownFreeSpace
+    }
 }
 
 enum FileKind {

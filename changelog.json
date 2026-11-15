@@ -1,5 +1,53 @@
 [
   {
+    "version": "0.3.22",
+    "date": "2026-11-15",
+    "en": {
+      "title": "Two Mac fixes",
+      "new": [],
+      "fixed": [
+        "Mac: the update card shows its whole text, with Later and Update on a row of their own",
+        "Mac: the menu bar panel no longer looks like it is still sending after a file went out"
+      ]
+    },
+    "nl": {
+      "title": "Twee Mac-fixes",
+      "new": [],
+      "fixed": [
+        "Mac: de updatekaart toont zijn hele tekst, met Later en Bijwerken op een eigen regel",
+        "Mac: het menubalkpaneel lijkt niet meer bezig met sturen nadat een bestand weg is"
+      ]
+    }
+  },
+  {
+    "version": "0.3.21",
+    "date": "2026-11-15",
+    "en": {
+      "title": "Small fixes",
+      "new": [
+        "The apps do less work in the background: no more asking around for the Control Center, the battery widget and the lock state"
+      ],
+      "fixed": [
+        "Mac: files dragged over from another computer no longer leave a copy in Downloads",
+        "Mac: free space is measured on the disk your downloads go to",
+        "Files: a download that is picked up again after the file changed arrives whole",
+        "Quick Share: no half files are left behind, and two files with the same name both arrive"
+      ]
+    },
+    "nl": {
+      "title": "Kleine verbeteringen",
+      "new": [
+        "De apps doen minder werk op de achtergrond: niet meer rondvragen voor het Controlecentrum, de batterijwidget en de vergrendeling"
+      ],
+      "fixed": [
+        "Mac: bestanden die je van een andere computer sleept laten geen kopie meer achter in Downloads",
+        "Mac: de vrije ruimte wordt gemeten op de schijf waar je downloads komen",
+        "Bestanden: een download die verder gaat nadat het bestand veranderde komt heel aan",
+        "Quick Share: er blijven geen halve bestanden staan, en twee bestanden met dezelfde naam komen allebei aan"
+      ]
+    }
+  },
+  {
     "version": "0.3.20",
     "date": "2026-11-15",
     "en": {

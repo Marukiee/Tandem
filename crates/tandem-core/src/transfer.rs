@@ -24,7 +24,7 @@ use crate::ids::now_ms;
 use crate::journal::{ItemState, Key, PARTIAL_DIR, RecordItem, Run, Stage, TransferRecord, partial_name};
 use crate::error::{Error, Result};
 use crate::events::{Event, TransferDone, TransferProgress};
-use crate::ids::DeviceId;
+use crate::ids::{DeviceId, Platform};
 use crate::proto::{
     self, FileAck, FileRequest, FileResponse, FileTrailer, MAX_SMALL_FRAME, Msg, STREAM_FILE, ShareItem,
     ShareOffer, ShareOrigin, ShareReply, ShareResume, ShareResumed,
@@ -373,7 +373,12 @@ impl Inner {
         (changed, gone)
     }
 
-    pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, offer: ShareOffer) {
+    pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, mut offer: ShareOffer) {
+        // A drop comes with the shared mouse and the app lands it without asking. A device that may not control this one gets the
+        // same as any other offer (P6).
+        if offer.origin == ShareOrigin::Drag && !self.allowed(&from, crate::trust::Permission::Control) {
+            offer.origin = ShareOrigin::Files;
+        }
         let key = Key::In(from, offer.id);
         // Numbers are random, so this is the same offer said twice; the one that is here already counts.
         if self.journal.read(key, |_| ()).is_some() {
@@ -788,7 +793,7 @@ impl Inner {
             .collect()
     }
 
-    fn peer_has_cap(&self, id: &DeviceId, cap: &str) -> bool {
+    pub(crate) fn peer_has_cap(&self, id: &DeviceId, cap: &str) -> bool {
         self.peers.lock().unwrap().get(id).and_then(|peer| peer.hello.as_ref()).is_some_and(|hello| hello.caps.iter().any(|c| c == cap))
     }
 
@@ -802,6 +807,7 @@ impl Inner {
         };
         let clipboard_on = self.settings.read().unwrap().for_device(&peer).clipboard;
         let for_clipboard = kept_for_clipboard(&offer, clipboard_on);
+        let for_drag = self.kept_for_drag(&offer);
         let slots = Arc::new(Semaphore::new(CONCURRENT_FILES));
         let mut tasks = tokio::task::JoinSet::new();
         for (index, item) in offer.items.iter().enumerate() {
@@ -815,7 +821,7 @@ impl Inner {
             let cancel = run.cancel.clone();
             tasks.spawn(async move {
                 let _permit = permit;
-                this.receive_item(peer, offer_id, index as u32, item, for_clipboard, cancel).await;
+                this.receive_item(peer, offer_id, index as u32, item, for_clipboard, for_drag, cancel).await;
             });
         }
         while tasks.join_next().await.is_some() {}
@@ -828,6 +834,7 @@ impl Inner {
         index: u32,
         item: ShareItem,
         for_clipboard: bool,
+        for_drag: bool,
         cancel: CancellationToken,
     ) {
         let key = Key::In(peer, offer);
@@ -891,8 +898,17 @@ impl Inner {
                 let mime = item.mime.clone();
                 let path = temp.clone();
                 let clipboard_dir = self.clipboard_dir(peer, offer);
+                let drag_root = self.store.dir().join(DRAG_DIR);
+                let drag_dir = drag_root.join(format!("{peer}-{offer:016x}"));
                 let stored = tokio::task::spawn_blocking(move || {
-                    if for_clipboard { keep_for_clipboard(&path, &clipboard_dir, &name) } else { files.store_download(&path, &name, &mime) }
+                    if for_clipboard {
+                        keep_for_clipboard(&path, &clipboard_dir, &name)
+                    } else if for_drag {
+                        sweep_dir(&drag_root, DRAG_KEPT);
+                        keep_for_drag(&path, &drag_dir, &name)
+                    } else {
+                        files.store_download(&path, &name, &mime)
+                    }
                 })
                 .await;
                 match stored {
@@ -994,6 +1010,13 @@ impl Inner {
 
     /// Where a picture that came for the clipboard waits until the app has put it there. Not Downloads: it is a copy, not a file that
     /// came in, and a folder of its own per offer keeps the name it had without two of them meeting.
+    /// Files that were dragged over from the computer that shares its pointer are put down by the person at that moment, wherever they
+    /// let go, so on a Mac they are not stored with the downloads: the drop copies them from here, and a copy would stay behind in
+    /// Downloads for good (R-D9). Other systems land them from the downloads for now.
+    fn kept_for_drag(&self, offer: &ShareOffer) -> bool {
+        offer.origin == ShareOrigin::Drag && self.cfg.platform == Platform::MacOs
+    }
+
     fn clipboard_dir(&self, peer: DeviceId, offer: u64) -> PathBuf {
         self.store.dir().join(CLIPBOARD_DIR).join(format!("{peer}-{offer:016x}"))
     }
@@ -1324,14 +1347,8 @@ impl Inner {
             }
         }
         // Pictures for the clipboard are removed by the app once they are on it; this catches what a crash or a quit left behind.
-        if let Ok(entries) = std::fs::read_dir(self.store.dir().join(CLIPBOARD_DIR)) {
-            let old = std::time::SystemTime::now() - CLIPBOARD_KEPT;
-            for entry in entries.flatten() {
-                if entry.metadata().and_then(|m| m.modified()).is_ok_and(|modified| modified < old) {
-                    let _ = std::fs::remove_dir_all(entry.path()).or_else(|_| std::fs::remove_file(entry.path()));
-                }
-            }
-        }
+        sweep_dir(&self.store.dir().join(CLIPBOARD_DIR), CLIPBOARD_KEPT);
+        sweep_dir(&self.store.dir().join(DRAG_DIR), DRAG_KEPT);
         let outgoing = self.store.dir().join("outgoing");
         if let Ok(entries) = std::fs::read_dir(outgoing) {
             let old = std::time::SystemTime::now() - Duration::from_secs(24 * 3600);
@@ -1382,6 +1399,22 @@ pub const CLIPBOARD_LIMIT: u64 = 50 * 1024 * 1024;
 /// clipboard after an hour.
 const CLIPBOARD_KEPT: Duration = Duration::from_secs(3600);
 
+/// The folder in the data folder for files that were dragged over, until they are put down.
+pub const DRAG_DIR: &str = "drag";
+/// How long such a file may stay at most. A drop that is never made leaves it; a day is far more than a drag takes.
+const DRAG_KEPT: Duration = Duration::from_secs(24 * 3600);
+
+/// Removes what in `dir` was last touched longer than `kept` ago.
+fn sweep_dir(dir: &Path, kept: Duration) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let old = std::time::SystemTime::now() - kept;
+    for entry in entries.flatten() {
+        if entry.metadata().and_then(|m| m.modified()).is_ok_and(|modified| modified < old) {
+            let _ = std::fs::remove_dir_all(entry.path()).or_else(|_| std::fs::remove_file(entry.path()));
+        }
+    }
+}
+
 /// A picture that was copied (or a screenshot) on a device that shares the clipboard with this one. It goes to the clipboard here
 /// and nowhere else, so it is not stored with the downloads, where it would pile up, and where the screenshot watcher of a phone
 /// would take a screenshot that came in for a new one and send it back. Files that were copied do go to the downloads: pasted,
@@ -1406,6 +1439,30 @@ fn is_picture(item: &ShareItem) -> bool {
 fn keep_for_clipboard(temp: &Path, dir: &Path, name: &str) -> std::io::Result<String> {
     std::fs::create_dir_all(dir)?;
     let target = dir.join(safe_name(name));
+    std::fs::rename(temp, &target)?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+/// Moves a finished file that was dragged over into the folder of its offer, under a name that is free there (two files of one drag
+/// may have the same name).
+fn keep_for_drag(temp: &Path, dir: &Path, name: &str) -> std::io::Result<String> {
+    std::fs::create_dir_all(dir)?;
+    let safe = safe_name(name);
+    let path = Path::new(&safe);
+    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let mut target = dir.join(&safe);
+    for n in 2..1000 {
+        // The name is taken by creating it: files of one offer arrive side by side, and two with one name must not both find it free.
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&target) {
+            Ok(_) => break,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(e) => return Err(e),
+        }
+        target = dir.join(match path.extension() {
+            Some(ext) => format!("{stem} {n}.{}", ext.to_string_lossy()),
+            None => format!("{stem} {n}"),
+        });
+    }
     std::fs::rename(temp, &target)?;
     Ok(target.to_string_lossy().into_owned())
 }
