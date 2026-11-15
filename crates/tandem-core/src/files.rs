@@ -84,6 +84,17 @@ struct Policies {
     default: FilePolicy,
     #[serde(default)]
     devices: HashMap<String, FilePolicy>,
+    /// Switches set for a device that otherwise follows the default (P6, see `trust`): it keeps following it for the rest.
+    #[serde(default)]
+    switches: HashMap<String, Switches>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+struct Switches {
+    #[serde(default)]
+    enabled: Option<bool>,
+    #[serde(default)]
+    delete: Option<bool>,
 }
 
 /// One thing another device did to the files here, for the person to look back at.
@@ -116,6 +127,7 @@ impl FileService {
             _ => Policies {
                 default: FilePolicy { shares: if cfg!(target_os = "android") { default_shares() } else { Vec::new() }, ..FilePolicy::default() },
                 devices: HashMap::new(),
+                switches: HashMap::new(),
             },
         };
         FileService { store, policies: RwLock::new(policies), activity: Mutex::new(VecDeque::new()) }
@@ -124,7 +136,42 @@ impl FileService {
     /// What the device may do: its own choices, or the default for devices that have none.
     pub fn policy(&self, id: &DeviceId) -> FilePolicy {
         let policies = self.policies.read().unwrap();
-        policies.devices.get(&id.to_string()).cloned().unwrap_or_else(|| policies.default.clone())
+        let key = id.to_string();
+        if let Some(own) = policies.devices.get(&key) {
+            return own.clone();
+        }
+        let mut policy = policies.default.clone();
+        if let Some(switches) = policies.switches.get(&key) {
+            policy.enabled = switches.enabled.unwrap_or(policy.enabled);
+            policy.delete = switches.delete.unwrap_or(policy.delete);
+        }
+        policy
+    }
+
+    /// Sets the master switch or the one for removing, for one device, and nothing else: one with choices of its own has them changed,
+    /// one that follows the default keeps following it for the rest.
+    pub fn set_switches(&self, id: &DeviceId, enabled: Option<bool>, delete: Option<bool>) -> Result<()> {
+        self.change(|policies| {
+            let key = id.to_string();
+            if let Some(own) = policies.devices.get_mut(&key) {
+                own.enabled = enabled.unwrap_or(own.enabled);
+                own.delete = delete.unwrap_or(own.delete);
+            } else {
+                // Only an "off" is kept: an "on" means following the default again, so a later "off" there still reaches this device.
+                let keep = |asked: Option<bool>, was: Option<bool>| match asked {
+                    Some(false) => Some(false),
+                    Some(true) => None,
+                    None => was,
+                };
+                let was = policies.switches.get(&key).copied().unwrap_or_default();
+                let now = Switches { enabled: keep(enabled, was.enabled), delete: keep(delete, was.delete) };
+                if now == Switches::default() {
+                    policies.switches.remove(&key);
+                } else {
+                    policies.switches.insert(key, now);
+                }
+            }
+        })
     }
 
     /// Whether the device has choices of its own.
@@ -138,6 +185,7 @@ impl FileService {
 
     pub fn set_policy(&self, id: &DeviceId, policy: FilePolicy) -> Result<()> {
         self.change(|policies| {
+            policies.switches.remove(&id.to_string());
             policies.devices.insert(id.to_string(), policy);
         })
     }
@@ -145,6 +193,7 @@ impl FileService {
     /// Back to the default for this device.
     pub fn clear_policy(&self, id: &DeviceId) -> Result<()> {
         self.change(|policies| {
+            policies.switches.remove(&id.to_string());
             policies.devices.remove(&id.to_string());
         })
     }

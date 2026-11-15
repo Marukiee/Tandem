@@ -813,6 +813,10 @@ final class EngineModel {
         case .lock:
             ScreenLock.lockNow()
 
+        case .refused:
+            // Shown once the page Circle is chosen (P6).
+            break
+
         case .soundMode:
             // A computer has no ringer: only a phone offers this in its status.
             break
