@@ -1646,7 +1646,8 @@ function HealthChoices() {
 
 /** Health as a page of the main window, opened from the page of the watch: the overview, a page per part, and the settings behind the gear. */
 export function HealthPage() {
-  const [part, setPart] = useState(null);
+  // In a plain browser a part can be asked for by name (`?part=heart`), as `?page=` does for pages.
+  const [part, setPart] = useState(() => (native ? null : new URLSearchParams(location.search).get("part")));
   const titles = { sleep: "health_sleep", activity: "health_activity_title", heart: "health_heart_title", settings: "health_settings_title" };
   const back = () => (part ? setPart(null) : set({ page: "watch" }));
   return html`<div class="wrap">

@@ -3,7 +3,7 @@
 //! who works with the lid closed on purpose (the laptop on a dock, with another screen) turns that on in the settings. A locked screen
 //! cannot be used from outside at all (the desktop refuses to let a program play keys and the pointer then), so it is the same.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::mpsc::{Sender, channel};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
@@ -21,9 +21,26 @@ pub fn present() -> bool {
     *PRESENT.get_or_init(|| tandem_winsys::lid_closed().is_some())
 }
 
+/// What the watcher below saw last: 0 not looked yet, 1 yes, 2 no (or cannot be known). Asked all the time (`pointer_ready` every
+/// tick, for every computer), so this is read from here and not asked of logind or the desktop again each time.
+static LOCKED: AtomicU8 = AtomicU8::new(0);
+static CLOSED: AtomicU8 = AtomicU8::new(0);
+
+fn remember(cell: &AtomicU8, now: Option<bool>) {
+    cell.store(if now == Some(true) { 1 } else { 2 }, Ordering::Relaxed);
+}
+
+/// The last look, or a look now when there has been none yet (the very start).
+fn seen(cell: &AtomicU8, look_now: impl FnOnce() -> Option<bool>) -> bool {
+    match cell.load(Ordering::Relaxed) {
+        0 => look_now() == Some(true),
+        seen => seen == 1,
+    }
+}
+
 /// Whether other computers must stay away from this one now.
 pub fn blocked(app: &AppHandle) -> bool {
-    locked() || (!usable_closed(app) && tandem_winsys::lid_closed() == Some(true))
+    locked() || (!usable_closed(app) && seen(&CLOSED, tandem_winsys::lid_closed))
 }
 
 /// Keep awake with the lid closed is there to reach a closed laptop, so it keeps it usable too.
@@ -32,9 +49,9 @@ fn usable_closed(app: &AppHandle) -> bool {
     s.keep_when_lid_closed || (s.keep_awake && s.keep_awake_lid)
 }
 
-/// Whether the screen is locked now.
+/// Whether the screen is locked, as of the last look of the watcher: logind says when it changes, and without logind it looks every second.
 pub fn locked() -> bool {
-    tandem_winsys::screen_locked() == Some(true)
+    seen(&LOCKED, tandem_winsys::screen_locked)
 }
 
 /// What the watcher remembers between two looks.
@@ -142,7 +159,10 @@ pub fn start(app: AppHandle) {
                         engine.network_changed();
                     }
                 }
-                let steps = look.step(tandem_winsys::lid_closed() == Some(true), locked(), usable_closed(&app), settings::get(&app).remote_input);
+                let (closed, locked) = (tandem_winsys::lid_closed(), tandem_winsys::screen_locked());
+                remember(&CLOSED, closed);
+                remember(&LOCKED, locked);
+                let steps = look.step(closed == Some(true), locked == Some(true), usable_closed(&app), settings::get(&app).remote_input);
                 if steps.warm_up {
                     crate::input::warm_up();
                 }
@@ -164,7 +184,22 @@ pub fn start(app: AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Look, Steps};
+    use super::{Look, Steps, remember, seen};
+    use std::sync::atomic::AtomicU8;
+
+    #[test]
+    fn a_look_is_remembered_and_not_asked_again() {
+        let cell = AtomicU8::new(0);
+        // Before the first look it is asked once.
+        assert!(seen(&cell, || Some(true)));
+        remember(&cell, Some(false));
+        assert!(!seen(&cell, || panic!("asked again")));
+        remember(&cell, Some(true));
+        assert!(seen(&cell, || panic!("asked again")));
+        // What cannot be known counts as not locked, as before.
+        remember(&cell, None);
+        assert!(!seen(&cell, || panic!("asked again")));
+    }
 
     #[test]
     fn a_closed_lid_or_a_lock_sends_the_pointer_home() {

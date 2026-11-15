@@ -264,8 +264,6 @@ pub fn run() {
             commands::health_insights,
             commands::health_range,
             commands::health_export,
-            commands::guests_by_default,
-            commands::set_guests_by_default,
             commands::ring,
             commands::ring_watch,
             commands::watch_heart_live,

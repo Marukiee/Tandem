@@ -25,7 +25,8 @@ const devices = empty ? [] : [
     // ?calls=off: the phone may not place calls yet, which the call button in Messages says when it is pressed.
     features: [{ id: "calls", ready: new URLSearchParams(location.search).get("calls") !== "off", name: "Calls", why: "Tandem may not make calls on Pixel 9 yet. Allow it on the phone.", page: "access" }],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
-    status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
+    status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false,
+      watch: { paired: true, online: true, level: 62, charging: false, ringing: false, name: "Pixel Watch", sleeping: false, settings: { mouse: true, sleepQuiet: true, smartWake: true, heartAllDay: true, stepGoal: 8000 } } } },
   { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view", "audio.play"],
     features: [
       { id: "control", ready: false, name: "Control this Mac", why: "Accessibility is off for Tandem on this Mac", page: "accessibility" },
@@ -250,7 +251,6 @@ const qr = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"><rect wi
 const MAIN = { width: 1920, height: 1080 };
 let layout = [{ id: "mac", edge: "left", offset: 100 }];
 const SIZES = { mac: [1512, 982], phone: [412, 915] };
-let guestsMock = false;
 function arrangement() {
   return {
     main: MAIN,
@@ -289,6 +289,31 @@ async function mockCopy(name, number, count) {
     await new Promise((r) => setTimeout(r, 100));
   }
 }
+
+
+// Made up days for the health pages: some nights short, some days higher than usual, nothing after today.
+const DAY = 86400000;
+function mockDay(midnight) {
+  const n = Math.round(midnight / DAY);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (midnight > today.getTime() || n % 17 === 5) return { startMs: midnight, sleepMinutes: null, score: null, resting: null, bedMinutes: null, wakeMinutes: null, steps: null, activeMinutes: null, napMinutes: 0, heartMean: null };
+  return {
+    startMs: midnight, sleepMinutes: 330 + ((n * 37) % 130), score: 70 + ((n * 13) % 28), resting: 52 + ((n * 5) % 6), bedMinutes: -60 + ((n * 11) % 50), wakeMinutes: 400 + ((n * 7) % 60),
+    steps: 2500 + ((n * 2741) % 10500), activeMinutes: 10 + ((n * 9) % 50), napMinutes: 0, heartMean: 63 + ((n * 7) % 11),
+  };
+}
+function mockDays(untilMs, count) {
+  const last = new Date(untilMs); last.setHours(0, 0, 0, 0);
+  return Array.from({ length: count }, (_, k) => {
+    const day = new Date(last); day.setDate(last.getDate() - (count - 1 - k));
+    return mockDay(day.getTime());
+  });
+}
+const mockSummary = (days) => {
+  const mean = (key) => { const v = days.map((d) => d[key]).filter((x) => x != null); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null; };
+  return { naps: 0, napMinutes: 0, meanSteps: mean("steps"), activeMinutes: days.reduce((a, d) => a + (d.activeMinutes || 0), 0), nights: days.filter((d) => d.sleepMinutes != null).length,
+    meanSleepMinutes: mean("sleepMinutes"), meanScore: mean("score"), meanResting: mean("resting"), workouts: 1, workoutMinutes: 47, workoutSteps: 5120 };
+};
 
 export async function call(command, args) {
   await new Promise((r) => setTimeout(r, 40));
@@ -363,6 +388,13 @@ export async function call(command, args) {
       { name: "Laptop", platform: "linux", model: "fedora", kind: "desktop", fits: true },
       { name: "MacBook Pro", platform: "mac", model: "Mac15,7", kind: "mac", fits: false } ] };
     case "settings_restore": return state.settings;
+    case "health_range": { const days = mockDays(args.until, args.count); return { days, summary: mockSummary(days) }; }
+    case "health_insights": {
+      if (empty) return null;
+      const week = mockDays(Date.now(), 7);
+      return { week, thisWeek: mockSummary(week), lastWeek: mockSummary(mockDays(Date.now() - 7 * DAY, 7)), latestNight: null, naps: [], regularity: null, regularityNightsNeeded: 3,
+        resting: { latest: 54, usual: 53, nightsNeeded: 0 }, alertAboveUsual: null, latestDayHeart: null, latestDaySteps: null };
+    }
     case "health_records": return empty ? [] : [
       { id: "night", kind: "sleep", startMs: now - 9 * 3600000, endMs: now - 3600000, sleepMinutes: 441, efficiencyPercent: 92, lightMinutes: 230, deepMinutes: 90, remMinutes: 121, heartRateMean: 57, heartRateLow: 46, heartRateHigh: null, steps: 0,
         stages: [["light", 40], ["deep", 50], ["light", 30], ["rem", 25], ["wake", 3], ["light", 60], ["deep", 40], ["rem", 40], ["light", 100], ["rem", 56]].map(([stage, m]) => ({ stage, seconds: m * 60 })) },
@@ -464,8 +496,6 @@ export async function call(command, args) {
     }
     case "qs_respond": case "qs_dismiss": case "qs_pick_and_send": case "qs_send_clipboard": case "qs_open_link": case "qs_send_paths": return null;
     case "transfers_trash": return args.ids;
-    case "guests_by_default": return guestsMock;
-    case "set_guests_by_default": guestsMock = args.on; return null;
     case "set_settings": Object.assign(state.settings, args.patch); return state.settings;
     case "search_open_pending": return searchOpen();
     case "set_autostart": state.autostart = args.enabled; return args.enabled;

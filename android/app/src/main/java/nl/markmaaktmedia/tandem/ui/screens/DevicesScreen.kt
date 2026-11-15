@@ -347,12 +347,11 @@ private fun WatchCard(
                         stringResource(R.string.watch_glance_night), null, Modifier.weight(1f),
                     ) { onHealth("sleep") }
                 }
-                if (state.stepsToday > 0) {
-                    Glance(
-                        TandemIcons.Steps, java.text.NumberFormat.getIntegerInstance().format(state.stepsToday),
-                        stringResource(R.string.health_steps_title), (state.stepsToday.toFloat() / goal.coerceAtLeast(1)).coerceIn(0f, 1f), Modifier.weight(1f),
-                    ) { onHealth("activity") }
-                }
+                // Also at 0: early in the day the night stood alone, and the tile for the steps seemed gone.
+                Glance(
+                    TandemIcons.Steps, java.text.NumberFormat.getIntegerInstance().format(state.stepsToday),
+                    stringResource(R.string.health_steps_title), (state.stepsToday.toFloat() / goal.coerceAtLeast(1)).coerceIn(0f, 1f), Modifier.weight(1f),
+                ) { onHealth("activity") }
             }
         }
 
@@ -447,7 +446,7 @@ private fun Glance(
                     val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
                     val at = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2)
                     drawArc(track, 0f, 360f, false, at, arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
-                    drawArc(fill, -90f, 360f * share, false, at, arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                    if (share > 0f) drawArc(fill, -90f, 360f * share, false, at, arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
                 }
             }
             Box(

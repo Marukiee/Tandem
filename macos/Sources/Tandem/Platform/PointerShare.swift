@@ -494,14 +494,18 @@ final class PointerShare {
                 PointerLog.write("the drag came back before it was sent: it goes on here")
                 return
             }
+            var sent = false
             switch carried {
-            case let .files(urls)?: await EngineModel.shared.send(urls: urls, to: [device], origin: .drag)?.value
-            case let .text(text)?: try? await engine.sendPointerShare(target: device, msg: .carry(text: text))
+            case let .files(urls)?: sent = await EngineModel.shared.send(urls: urls, to: [device], origin: .drag)?.value ?? false
+            case let .text(text)?: sent = (try? await engine.sendPointerShare(target: device, msg: .carry(text: text))) != nil
             case nil: PointerLog.write("the drag held nothing that could be read")
             }
             guard let self else { return }
-            // The drag here ends only now that the offer is out: had sending failed, it would have been gone already (R-D18).
-            if self.carrying { self.endLocalDrag() }
+            // The drag here ends only now that the offer is out: had sending failed, it would have been gone already (R-D18). When it did
+            // not go out, the drag stays and ends where the pointer comes back or the button is let go.
+            if self.carrying {
+                if sent { self.endLocalDrag() } else { PointerLog.write("the drag was not sent: it stays here") }
+            }
             let wait = 0.35 - Date().timeIntervalSince(crossed)
             if wait > 0 { try? await Task.sleep(for: .milliseconds(Int(wait * 1000))) }
             guard self.remote?.device == device else { return }

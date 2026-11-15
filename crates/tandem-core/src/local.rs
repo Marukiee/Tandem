@@ -48,12 +48,35 @@ mod imp {
         dir.join(format!("{name}.sock"))
     }
 
+    /// What fits in a socket address, with the zero at the end: 104 on the BSDs and macOS, 108 on Linux.
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
+    const MAX_SOCKET_PATH: usize = 104;
+    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd")))]
+    const MAX_SOCKET_PATH: usize = 108;
+
+    pub fn check(dir: &Path, name: &str) -> Result<()> {
+        use std::os::unix::ffi::OsStrExt;
+        let socket = socket_path(dir, name);
+        let length = socket.as_os_str().as_bytes().len();
+        if length >= MAX_SOCKET_PATH {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!(
+                    "the data folder path is too long for the local socket ({length} bytes, at most {}): use a shorter one",
+                    MAX_SOCKET_PATH - 1
+                ),
+            ));
+        }
+        Ok(())
+    }
+
     pub async fn serve<F, Fut>(dir: &Path, name: &str, handler: F) -> Result<()>
     where
         F: Fn(String) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = String> + Send + 'static,
     {
         use std::os::unix::fs::PermissionsExt;
+        check(dir, name)?;
         let socket = socket_path(dir, name);
         let _ = std::fs::remove_file(&socket);
         let listener = UnixListener::bind(&socket)?;
@@ -94,6 +117,11 @@ mod imp {
 
     fn secret() -> String {
         format!("{:016x}{:016x}", crate::engine::rand_u64(), crate::engine::rand_u64())
+    }
+
+    /// A port has no path to be too long.
+    pub fn check(_dir: &Path, _name: &str) -> Result<()> {
+        Ok(())
     }
 
     pub async fn serve<F, Fut>(dir: &Path, name: &str, handler: F) -> Result<()>
@@ -141,6 +169,8 @@ pub use imp::serve;
 pub use imp::ask;
 /// Takes away what `serve` left in the folder.
 pub use imp::forget;
+/// Says up front whether `serve` can work in this folder (a Unix socket path has a length limit).
+pub use imp::check;
 
 #[cfg(test)]
 mod tests {
@@ -162,5 +192,14 @@ mod tests {
     #[tokio::test]
     async fn a_line_without_the_secret_is_refused() {
         assert_eq!(answer("wrong notify\thallo\n", Some("abc")).await, "error\nnot allowed\n");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_folder_with_a_path_too_long_for_a_socket_is_refused() {
+        assert!(check(Path::new("/tmp/short"), "tandemd").is_ok());
+        let long = PathBuf::from(format!("/tmp/{}", "a".repeat(120)));
+        let error = check(&long, "tandemd").unwrap_err();
+        assert!(error.to_string().contains("too long"), "{error}");
     }
 }
