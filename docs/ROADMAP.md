@@ -57,7 +57,39 @@ die ook bij nul stappen staat. Nog open: PR 31, de Mac in het nieuwe ontwerp. Na
 hoofdvenster is nieuw en nog niet op echt glas of in beweging gezien; het wacht op negen kleine punten en op een keer proberen door
 Mark, daarna in 0.3.21.
 
+**In 0.3.21.** Samengevoegd: PR 32 (R-B12, R-B13 en de rest van R-B27), PR 33 (R-B30, R-B34 en vastere tests voor R-B36), PR 35
+(R-B33: de Mac meet de schijf van de downloadmap en de kern kent "onbekend"), PR 37 (R-D9, het Mac-deel van R-V5 en R-D18) en PR 38
+(R-V14). Niet gedaan omdat het geen kleine ingrepen zijn: R-V2 en R-D20. R-D17 is niet gemeten; er staat nu wel een logregel voor
+trage muisgebeurtenissen (`pointer-share.log`). Open als PR, nagelezen en wachtend op de laatste fixes of op samenvoegen: PR 36 (P6,
+de poort in de kern, 12 toestemmingen, alles standaard aan), PR 39 (P4, kern), PR 40 (P9, kern, na 39), PR 42 (R-V15) en PR 31 (de
+Mac in het nieuwe ontwerp). Nog na te lezen: PR 41 en 43 (de pagina Circle op Linux en Windows en op Android). De Mac-schillen van
+P4, P9 en Circle wachten op PR 31.
+
+**Keuzes van Mark op 2026-11-15.** Circle wordt ontwerp C (vier gekleurde groepen met de apparaten als ronde schakelaars, en de
+lijst met niveaus), zonder eigen rij in de zijbalk: in Instellingen onder Apparaten, met Circle als kleine tweede naam, en op de Mac
+ook een regel in het menu Tandem. Mappen (P4): een map komt alleen onder zijn eigen naam in Downloads als hij heel is; stopt de
+verzender, dan verdwijnt wat al binnen was; mislukt een bestand voorgoed, of verloopt de vraag verder gaan of weggooien, dan komt
+wat er is als "Naam (onvolledig)". Die twee laatste regels zijn door de bouwsessie gekozen en door de sturende sessie aangehouden;
+Mark kan ze nog omgooien.
+
+**Mac-ontwerp (PR 31), punten van Mark na zijn proef in de Dev-app, in bewerking.** De hoeken van het zijbalkvlak volgen het venster
+(gedaan). Verder: het gekozen vlak in de zijbalk moet glijden in plaats van twee losse vlakken; het label "Put it right" valt over
+het plaatje van de zijde; de debugstand moet een venster met testapparaten tonen; Scherm en bediening heeft te veel opties ineens;
+een icoonfamilie voor alle apparaten met veel minder verloop, hetzelfde icoon in de zijbalk en in de kop, en een rond horloge in
+plaats van het Apple Watch-icoon; kop en speler van de apparaatpagina rustiger en zonder paarse kaart; de knop rechtsboven op
+Klembord zegt niet wat hij is; het wisselen tussen apparaten vervormt lelijk, vooral tussen een apparaat met en een zonder speler.
+Pas samenvoegen na Marks akkoord.
+
 Gevonden bij het nakijken van die PR's, nog te doen:
+
+- **R-V15. Onderweg op mobiele data houdt Tandem de telefoon wakker** (gemeten door Mark op 2026-11-15: scherm uit 260 mA, de CPU
+  90% van de tijd wakker, 11% accu in 4 uur; thuis 65 mA). Gevonden in de code: de Mac stuurt elke 60 s zijn hele status, ook zonder
+  verandering; apparaten die weg zijn worden steeds opnieuw gebeld (maximum 15 minuten, en elke netwerkwissel begint opnieuw, ook via
+  `notice_new_addresses` elke 5 s, zonder te letten op scherm uit of mobiele data); `MediaMirror` stuurt de spelerslijst bij elke
+  callback. Wat de telefoon in die meting precies zo vaak stuurde is niet bewezen. PR 42 lost de drie op (status alleen bij
+  verandering met elk kwartier een volledige, lang weg zijnde apparaten zelden bellen, spelerslijst alleen bij een echte wijziging) en
+  zet een teller per soort bericht en een regel per belpoging in het logboek (`adb logcat -s Tandem`). Nagelezen: het wacht op fixes,
+  omdat opnieuw verbinden in twee gevallen trager werd. Daarna opnieuw meten.
 
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
