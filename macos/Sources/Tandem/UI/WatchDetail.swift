@@ -328,6 +328,7 @@ private struct WatchHealthCard: View {
                 if night != nil || stepsDay != nil || insights?.resting != nil || watchHere {
                     TimelineView(.periodic(from: .now, by: 2)) { context in
                     let now = model.watchHeartNow[phone.id].flatMap { watchHere && $0.fresh(at: context.date) ? $0.bpm : nil }
+                    // Equally tall, whatever each of them says.
                     HStack(alignment: .top, spacing: 8) {
                         if let night {
                             let score = insights?.latestNight?.id == night.id ? insights?.latestNight?.score : nil
@@ -358,6 +359,7 @@ private struct WatchHealthCard: View {
                             )
                         }
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding([.horizontal, .bottom], 6)
                     }
                 }
@@ -381,7 +383,8 @@ private struct GlanceTile: View {
     let title: LocalizedStringKey
     let number: String
     let caption: String
-    /// How far toward a goal, as a ring around the icon: a bar under the number made the tile taller than the ones beside it.
+    /// How far toward a goal, as a thin line along the foot of the tile. Not a ring around the icon, which made the icon larger
+    /// than those beside it and the tile taller, and not a bar under the number, which did the same.
     var share: Double? = nil
     /// A number that is live: its symbol beats.
     var beating = false
@@ -390,20 +393,8 @@ private struct GlanceTile: View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    if let share {
-                        ZStack {
-                            Circle().stroke(Color.primary.opacity(0.1), lineWidth: 2.5)
-                            Circle()
-                                .trim(from: 0, to: share)
-                                .stroke(Palette.indigo, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                            Image(systemName: symbol).font(.system(size: 9, weight: .bold))
-                        }
-                        .frame(width: 20, height: 20)
-                    } else {
-                        Image(systemName: symbol)
-                            .symbolEffect(.pulse, options: .repeating, isActive: beating)
-                    }
+                    Image(systemName: symbol)
+                        .symbolEffect(.pulse, options: .repeating, isActive: beating)
                     Text(title)
                 }
                 .font(.caption.weight(.semibold))
@@ -418,8 +409,22 @@ private struct GlanceTile: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(14)
+            // In the padding, so it takes no room of its own.
+            .overlay(alignment: .bottom) {
+                if let share {
+                    GeometryReader { proxy in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.primary.opacity(0.08))
+                            Capsule().fill(Palette.indigo).frame(width: max(3, proxy.size.width * share))
+                        }
+                    }
+                    .frame(height: 3)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 7)
+                }
+            }
             .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: Metrics.inner(Metrics.card, inset: 6), style: .continuous))
             .contentShape(.rect)
         }
@@ -455,7 +460,7 @@ private struct WatchActionTile: View {
                 Spacer(minLength: 0)
             }
             .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 64, maxHeight: .infinity, alignment: .leading)
             .background(
                 on ? Palette.indigo.opacity(0.16) : Color.primary.opacity(0.05),
                 in: .rect(cornerRadius: Metrics.inner(Metrics.card, inset: 6), style: .continuous)
