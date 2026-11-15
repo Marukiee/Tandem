@@ -123,6 +123,8 @@ pub(crate) struct Inner {
     pub my_status: Mutex<Status>,
     /// When the whole status was last sent to everybody (see `Engine::update_status`).
     pub status_sent_in_full: Mutex<std::time::Instant>,
+    /// Held while a status is worked out and sent, so that statuses leave in the order they were made.
+    pub status_in_order: tokio::sync::Mutex<()>,
     /// What was last said about the battery of each other device (see `battery_alert`).
     pub battery_said: Mutex<HashMap<DeviceId, Option<crate::battery_alert::BatteryAlert>>>,
     pub settings: RwLock<Settings>,
@@ -238,6 +240,7 @@ impl Engine {
             open_pairings: Mutex::new(HashMap::new()),
             my_status: Mutex::new(Status::default()),
             status_sent_in_full: Mutex::new(std::time::Instant::now()),
+            status_in_order: tokio::sync::Mutex::new(()),
             battery_said: Mutex::new(HashMap::new()),
             settings: RwLock::new(settings),
             last_remote_clip: Mutex::new(None),
@@ -463,6 +466,9 @@ impl Engine {
     /// changes nothing still sends everything once per `Tuning::status_refresh`, so a device that missed something is put right.
     pub async fn update_status(&self, change: Status) {
         let refresh = self.inner.cfg.tuning.status_refresh;
+        // From working out what is news until it is sent: two quick calls (mute on, mute off) must reach the others in the order they were
+        // made, or the older value would stay until the next refresh.
+        let _in_order = self.inner.status_in_order.lock().await;
         let to_send = {
             let mut mine = self.inner.my_status.lock().unwrap();
             let news = mine.changes(&change);
@@ -575,6 +581,7 @@ impl Engine {
             return;
         }
         let change = Status { quiet: Some(quiet), ..Status::default() };
+        let _in_order = self.inner.status_in_order.lock().await;
         self.inner.my_status.lock().unwrap().merge(&change);
         self.inner.beat_changed.notify_waiters();
         self.inner.broadcast(Msg::Status(change)).await;
