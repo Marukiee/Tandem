@@ -1242,7 +1242,7 @@ impl Inner {
     fn away_for_days(&self, id: &DeviceId, peer: &Peer) -> bool {
         let here = peer.lan_seen.is_some_and(|at| at.elapsed() < Duration::from_secs(90));
         let last_seen = self.find.last_seen(id).map(|seen| seen.at_ms);
-        is_away_for_days(now_ms(), last_seen, peer.addrs.newest_ok(), here)
+        is_away_for_days(now_ms(), last_seen, peer.addrs.newest_ok(), peer.addrs.newest_seen(), here)
     }
 
     async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>, fails: u32, long_away: bool, costly: bool) {
@@ -1516,15 +1516,19 @@ const LONG_AWAY_FAILS: u32 = 21;
 const LONG_AWAY_ADDRESSES: usize = 2;
 
 /// Whether a device has been gone for more than a day, given when it was last seen and when a connection to it last worked (Unix ms).
-/// With neither it is new and not away. `here`: it is on the local network now.
-fn is_away_for_days(now: u64, last_seen: Option<u64>, last_worked: Option<u64>, here: bool) -> bool {
+/// With neither, when an address of it was last seen or told about: a device that was never connected to and only known by what others
+/// said ages like any other (a new one has addresses from now). With nothing at all it is not away. `here`: it is on the local network.
+fn is_away_for_days(now: u64, last_seen: Option<u64>, last_worked: Option<u64>, address_seen: Option<u64>, here: bool) -> bool {
     if here {
         return false;
     }
     let newest = match (last_seen, last_worked) {
         (Some(a), Some(b)) => a.max(b),
         (Some(a), None) | (None, Some(a)) => a,
-        (None, None) => return false,
+        (None, None) => match address_seen {
+            Some(a) => a,
+            None => return false,
+        },
     };
     now.saturating_sub(newest) > AWAY_AFTER_MS
 }
@@ -1632,15 +1636,18 @@ mod tests {
     fn a_device_is_away_for_days_after_a_day_without_a_sign_of_it() {
         let now = 100 * AWAY_AFTER_MS;
         let hour = 3_600_000;
-        assert!(!is_away_for_days(now, Some(now - 23 * hour), None, false));
-        assert!(is_away_for_days(now, Some(now - 25 * hour), None, false));
+        assert!(!is_away_for_days(now, Some(now - 23 * hour), None, None, false));
+        assert!(is_away_for_days(now, Some(now - 25 * hour), None, None, false));
         // The newest of the two counts: a connection that worked an hour ago, whatever was last seen.
-        assert!(!is_away_for_days(now, Some(now - 48 * hour), Some(now - hour), false));
-        assert!(!is_away_for_days(now, Some(now - hour), Some(now - 48 * hour), false));
-        assert!(is_away_for_days(now, None, Some(now - 48 * hour), false));
-        // A new device was never seen, and one on the local network is here.
-        assert!(!is_away_for_days(now, None, None, false));
-        assert!(!is_away_for_days(now, Some(now - 48 * hour), None, true));
+        assert!(!is_away_for_days(now, Some(now - 48 * hour), Some(now - hour), None, false));
+        assert!(!is_away_for_days(now, Some(now - hour), Some(now - 48 * hour), None, false));
+        assert!(is_away_for_days(now, None, Some(now - 48 * hour), None, false));
+        // One never connected to is as old as the newest of its addresses, and one without any is new.
+        assert!(is_away_for_days(now, None, None, Some(now - 48 * hour), false));
+        assert!(!is_away_for_days(now, None, None, Some(now - hour), false));
+        assert!(!is_away_for_days(now, None, None, None, false));
+        // One on the local network is here.
+        assert!(!is_away_for_days(now, Some(now - 48 * hour), None, None, true));
     }
 
     #[test]

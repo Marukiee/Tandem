@@ -157,6 +157,11 @@ impl AddrBook {
         self.addrs.iter().map(|a| a.last_ok).filter(|at| *at > 0).max()
     }
 
+    /// When an address of this device was last seen or told about (Unix ms): for a device that was never connected to.
+    pub fn newest_seen(&self) -> Option<u64> {
+        self.addrs.iter().map(|a| a.seen).filter(|at| *at > 0).max()
+    }
+
     /// Every address that is kept is dialled when the device is away: an old one is a cost, for nothing.
     pub fn forget_old(&mut self, now: u64) {
         let Some(newest) = self.addrs.iter().map(|a| a.last_ok.max(a.seen)).max() else { return };
