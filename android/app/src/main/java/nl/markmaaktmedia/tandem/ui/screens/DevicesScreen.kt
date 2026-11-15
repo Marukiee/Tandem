@@ -52,12 +52,14 @@ import nl.markmaaktmedia.tandem.ui.components.BatteryBadge
 import nl.markmaaktmedia.tandem.ui.components.DeviceGlyph
 import nl.markmaaktmedia.tandem.ui.components.DeviceIconChoice
 import nl.markmaaktmedia.tandem.ui.components.EmptyState
+import nl.markmaaktmedia.tandem.ui.components.fileDropTarget
 import nl.markmaaktmedia.tandem.ui.components.PresenceDot
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.StatusChip
 import nl.markmaaktmedia.tandem.ui.components.SwipeToPin
 import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
+import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.ui.components.platformIcon
 import nl.markmaaktmedia.tandem.ui.components.routeName
 import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId
@@ -246,6 +248,10 @@ fun DevicesScreen(
                         modifier = Modifier.routeBounds(routeKey(Route.Device(device.id))),
                         onOpen = { onOpenDevice(device.id) },
                         onSendFiles = { pickerTarget = device.id; picker.launch(arrayOf("*/*")) },
+                        onDropFiles = { uris ->
+                            // In the scope of the app, as the picker does: the send must not stop with this screen.
+                            context.graph.scope.launch { host.sendUris(uris, listOf(device.id), uniffi.tandem_core.TandemShareOrigin.Files, askSpace = true) }.join()
+                        },
                         onControl = { onControl(device.id) },
                         onSendClipboard = {
                             val clip = host.readClipboard()
@@ -468,7 +474,14 @@ fun DeviceCard(
     onWake: () -> Unit = {},
     onControl: () -> Unit = {},
     pinned: Boolean = false,
+    /** Files of another app dropped on the card (R-D4 a); null for a card that sends nothing. */
+    onDropFiles: (suspend (List<android.net.Uri>) -> Unit)? = null,
 ) {
+    var dropOver by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val cardColor by androidx.compose.animation.animateColorAsState(
+        if (dropOver) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        TandemMotion.colourSpec(), label = "dropOver",
+    )
     // Asleep is only known from what the device said as it went, so it is a guess that it can be woken.
     val asleep = !device.online && device.status.asleep == true
     val canWake = asleep && device.status.wakeMac != null
@@ -477,7 +490,8 @@ fun DeviceCard(
         modifier
             .fillMaxWidth()
             .clip(CardSquircle)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(cardColor)
+            .then(if (onDropFiles != null) Modifier.fileDropTarget(onOver = { dropOver = it }, onFiles = onDropFiles) else Modifier)
             .bouncyClickable(onClick = onOpen)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
