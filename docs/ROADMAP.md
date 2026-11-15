@@ -103,6 +103,13 @@ dit apparaat" op elke apparaatpagina), en op Android en Linux en Windows de rij 
 
 Gevonden bij het nakijken van die PR's, nog te doen:
 
+- **R-D22. Mac-ontwerp (PR 31): de bovenkant van de apparaatpagina eerst goed bekijken voordat het in een build komt** (Mark,
+  2026-11-16: "nu is het lelijk"). Het gaat om de kop van het apparaat naast de speler: de kaart is leeg boven en onder de inhoud
+  sinds de pillen eruit gingen, en een poging om ze terug te zetten is op zijn verzoek gestopt. Vóór PR 31 wordt samengevoegd: eerst
+  een paar voorbeelden van de kop (met pillen voor verbonden, route, ms en laden; met systeem en versie; met en zonder speler
+  ernaast, licht en donker) aan Mark laten zien en hem laten kiezen, pas dan bouwen. PR 31 gaat niet in een release voordat Mark de
+  bovenkant heeft goedgekeurd.
+
 - **R-D21. Linux en Windows: dezelfde overgang als de Mac bij het wisselen van pagina** (wens van Mark, 2026-11-16). Op de Mac (PR
   31, commits `94c69597` en `4cfd9f34`) is het wisselen tussen apparaten en pagina's een rustige beweging: de hele pagina vloeit
   kort over (ongeveer 200 tot 250 ms) en schuift een paar punten mee in de richting waarin je in de zijbalk klikt, er vervormt niets
