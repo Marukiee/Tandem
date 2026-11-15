@@ -269,6 +269,9 @@ pub enum Msg {
 pub struct PeerAddrs {
     pub id: DeviceId,
     pub addrs: Vec<String>,
+    /// The sender is connected to this device right now. The receiver that is not tries it at once: it is up, and was missed.
+    #[serde(default)]
+    pub connected: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -494,6 +497,13 @@ pub struct Feature {
     pub page: Option<String>,
 }
 
+/// The fields of a `Status` that `merge` and `changes` go through.
+macro_rules! status_fields {
+    ($m:ident!($($arg:tt)*)) => {
+        $m!($($arg)* battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet, trust)
+    };
+}
+
 /// What `free_storage` says when the disk that files land on cannot be read any more. A status only carries what changed, so "no
 /// number" cannot take an old number away; this one, more than any disk holds, does. The device that says it keeps it as its own
 /// number (it refuses nothing, and a new connection is told it again); the others take it as "no number" (see `session.rs`). An older
@@ -503,11 +513,29 @@ pub const FREE_STORAGE_UNKNOWN: u64 = u64::MAX;
 impl Status {
     pub fn merge(&mut self, other: &Status) {
         macro_rules! take {
-            ($($field:ident),*) => {
-                $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
+            ($other:ident, $this:ident, $($field:ident),*) => {
+                $(if $other.$field.is_some() { $this.$field = $other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet, trust);
+        status_fields!(take!(other, self,));
+    }
+
+    /// What of `said` is news to someone who knows `self`: the fields that are there in `said` and differ. Nothing in it when `said`
+    /// repeats what is known.
+    pub fn changes(&self, said: &Status) -> Status {
+        let mut news = Status::default();
+        macro_rules! differ {
+            ($said:ident, $known:ident, $news:ident, $($field:ident),*) => {
+                $(if $said.$field.is_some() && $said.$field != $known.$field { $news.$field = $said.$field.clone(); })*
+            };
+        }
+        status_fields!(differ!(said, self, news,));
+        news
+    }
+
+    /// Whether no field is filled in.
+    pub fn is_empty(&self) -> bool {
+        *self == Status::default()
     }
 }
 
@@ -1006,6 +1034,30 @@ pub fn bytes(data: Vec<u8>) -> ByteBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_introduction_from_a_device_that_does_not_say_who_is_connected_still_reads() {
+        #[derive(Serialize)]
+        struct Old {
+            id: DeviceId,
+            addrs: Vec<String>,
+        }
+        let id = DeviceId::from_public_key(&[7; 32]);
+        let bytes = encode(&Old { id, addrs: vec!["192.168.1.2:47820".into()] }).unwrap();
+        let read: PeerAddrs = decode(&bytes).unwrap();
+        assert_eq!(read.id, id);
+        assert!(!read.connected);
+    }
+
+    #[test]
+    fn only_what_differs_from_what_is_known_is_news() {
+        let known = Status { dnd: Some(true), free_storage: Some(7), ..Default::default() };
+        // The same said again is nothing, and a field that is not mentioned is not touched.
+        assert!(known.changes(&Status { dnd: Some(true), ..Default::default() }).is_empty());
+        assert!(known.changes(&Status::default()).is_empty());
+        let news = known.changes(&Status { dnd: Some(true), free_storage: Some(8), muted: Some(false), ..Default::default() });
+        assert_eq!(news, Status { free_storage: Some(8), muted: Some(false), ..Default::default() });
+    }
 
     #[test]
     fn a_disk_that_cannot_be_read_stays_unknown_in_the_status_of_the_device_itself() {
