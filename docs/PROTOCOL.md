@@ -93,6 +93,12 @@ regie over gelijktijdigheid en hervatten.
 
 Onvolledige bestanden staan als `.part` en worden pas hernoemd na een goede hash.
 
+**Mappen (P4).** Een apparaat met de cap `share.folders` krijgt een map als map: elk bestand in
+`items` heeft dan `path` (de map binnen het aanbod, delen met `/`), en `folders` noemt de mappen
+waar niets in zit. Beide velden worden alleen geschreven als ze iets bevatten. Een apparaat zonder
+die cap krijgt zo'n aanbod niet (de app stuurt hem een zip), en een ontvanger die de cap niet heeft
+negeert `path` en `folders`. Zie `docs/TRANSFERS.md`.
+
 ### Invoegen vanaf de telefoon
 
 Een computer vraagt de telefoon om een foto, een gescand document of een plaatje uit de

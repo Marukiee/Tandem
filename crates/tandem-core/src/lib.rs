@@ -6,6 +6,7 @@ pub mod engine;
 pub mod error;
 pub mod events;
 pub mod files;
+pub mod folders;
 pub mod ffi;
 pub mod find;
 pub mod focus;

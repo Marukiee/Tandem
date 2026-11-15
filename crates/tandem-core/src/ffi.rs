@@ -728,6 +728,9 @@ pub struct TandemSendReport {
     pub offline: Vec<String>,
     /// Of `offline`, the devices it waits for in the queue (P3): it goes when they come back, for up to 7 days.
     pub queued: Vec<String>,
+    /// Only when this app lists the cap `share.folders`: the offer held folders and these devices do not take them as they are
+    /// (P4). They got nothing; send them the folders as zips.
+    pub no_folders: Vec<String>,
 }
 
 /// An incoming transfer that stopped halfway before this start and waits for the person: go on or throw away (P2).
@@ -2144,6 +2147,7 @@ impl TandemEngine {
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
             queued: ids_to_strings(report.queued),
+            no_folders: ids_to_strings(report.no_folders),
         })
     }
 
@@ -2220,6 +2224,7 @@ impl TandemEngine {
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
             queued: ids_to_strings(report.queued),
+            no_folders: ids_to_strings(report.no_folders),
         })
     }
 

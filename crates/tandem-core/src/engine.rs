@@ -266,6 +266,7 @@ impl Engine {
         inner.sync_peers();
         inner.load_addresses();
         inner.clean_partials();
+        inner.settle_folders();
         info!(id = %inner.my_id, port = inner.port, "tandem engine started");
 
         tokio::spawn(inner.clone().accept_loop());
