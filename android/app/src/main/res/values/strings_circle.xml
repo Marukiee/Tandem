@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings › Devices, also called Circle (P6): what each device of the circle may do on this phone. -->
+    <string name="circle_title">Devices</string>
+    <string name="circle_name">Circle</string>
+    <string name="circle_summary_cat">What each device may do here</string>
+    <string name="circle_and">" and "</string>
+    <string name="circle_empty">No other devices yet. Add one to choose what it may do here.</string>
+    <string name="circle_says_own">may do everything.</string>
+    <string name="circle_says_own_many">may do everything.</string>
+    <string name="circle_says_limited">may not delete, unlock or control.</string>
+    <string name="circle_says_limited_many">may not delete, unlock or control.</string>
+    <string name="circle_says_send">may only send.</string>
+    <string name="circle_says_send_many">may only send.</string>
+    <string name="circle_says_custom">has a choice of its own.</string>
+    <string name="circle_says_custom_many">have a choice of their own.</string>
+    <string name="circle_q_see">Sees what you copy and your notifications</string>
+    <string name="circle_q_files">Opens and changes your files</string>
+    <string name="circle_q_control">Controls this phone</string>
+    <string name="circle_q_phone">Calls and texts from this phone</string>
+    <string name="circle_g_see">See</string>
+    <string name="circle_g_files">Files</string>
+    <string name="circle_g_control">Control</string>
+    <string name="circle_g_phone">Phone</string>
+    <string name="circle_allowed">%1$s: allowed</string>
+    <string name="circle_partly">%1$s: partly</string>
+    <string name="circle_not_allowed">%1$s: not allowed</string>
+    <string name="circle_details">Details</string>
+    <string name="circle_lets_all">Lets you do everything</string>
+    <string name="circle_lets_not">Lets you do everything but: %1$s</string>
+    <string name="circle_lets_unknown">Older version: what it lets you do is not known</string>
+    <string name="circle_add_sub">Scan the code of the new device. It may do everything until you change it here.</string>
+    <string name="circle_refused">%1$s does not allow this. Change it there: Settings › Devices</string>
+    <string name="level_own">Own device</string>
+    <string name="level_limited">Limited</string>
+    <string name="level_send">Send only</string>
+    <string name="level_custom">Own choice</string>
+    <string name="level_own_sub">Everything, as before</string>
+    <string name="level_limited_sub">No deleting, unlocking, control or Wi-Fi password</string>
+    <string name="level_send_sub">Only sends things here, and you are asked</string>
+    <string name="level_custom_sub">Set each one below</string>
+    <string name="perm_clipboard">Clipboard</string>
+    <string name="perm_see_notifications">See notifications</string>
+    <string name="perm_browse_files">Browse files</string>
+    <string name="perm_delete_files">Delete files</string>
+    <string name="perm_files_without_asking">Files without asking</string>
+    <string name="perm_control">Tap and type</string>
+    <string name="perm_unlock">Unlock</string>
+    <string name="perm_lock">Lock</string>
+    <string name="perm_restart">Restart Tandem</string>
+    <string name="perm_calls">Calls</string>
+    <string name="perm_text_messages">Text messages</string>
+    <string name="perm_wifi_password">Wi-Fi password</string>
+</resources>
