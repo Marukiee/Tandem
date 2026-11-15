@@ -38,20 +38,13 @@ struct UpdateBanner: View {
     private func available(_ release: Updater.Release) -> some View {
         if compact {
             card {
-                // On one row when the words and both buttons fit whole; in the narrow panel and sidebar the buttons get a row of their
-                // own, as in the failed state, so no word is cut off and no button wraps.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) {
-                        compactWords(release)
-                        Spacer(minLength: 4)
+                // Always the words on a row and the buttons on a row of their own, as in the failed state. Choosing by what fits did not
+                // hold in the real sidebar: the row was measured wider than it was drawn, and the words were cut off again.
+                VStack(alignment: .leading, spacing: 8) {
+                    compactWords(release)
+                    HStack(spacing: 8) {
+                        Spacer(minLength: 0)
                         compactButtons(release)
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        compactWords(release)
-                        HStack(spacing: 8) {
-                            Spacer(minLength: 0)
-                            compactButtons(release)
-                        }
                     }
                 }
             }
