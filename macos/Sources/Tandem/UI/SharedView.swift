@@ -220,6 +220,7 @@ struct SharedView: View {
                     TransferEntry(
                         item: item, peerName: model.device(item.peer)?.name ?? "?",
                         chosen: chosen.contains(item.id), onTap: { clicked(item) },
+                        onDoubleTap: wide ? { doubleClicked(item) } : nil,
                         columns: columns, picked: shown?.id == item.id
                     )
                         .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
@@ -265,11 +266,21 @@ struct SharedView: View {
         }
         anchor = item.id
         kept = []
-        // With the file beside the list a click picks it and the second click of a double click opens it.
+        // With the file beside the list a click picks it, and a double click opens it (`doubleClicked`).
         if wide {
-            if NSApp.currentEvent?.clickCount ?? 1 >= 2 { model.open(item) } else { withAnimation(.tandem) { pickedID = item.id } }
+            withAnimation(.tandem) { pickedID = item.id }
+            if DebugSupport.directory != nil { DebugInput.note("picked \(item.name)") }
             return
         }
+        model.open(item)
+    }
+
+    /// The second click of a double click on a row. It opens the file where a click only picks it; while rows are being chosen the
+    /// two clicks have chosen and let go, and that is all.
+    private func doubleClicked(_ item: TransferItem) {
+        let flags = NSEvent.modifierFlags
+        guard wide, chosen.isEmpty, !flags.contains(.command), !flags.contains(.shift) else { return }
+        if DebugSupport.directory != nil { DebugInput.note("opened \(item.name)") }
         model.open(item)
     }
 

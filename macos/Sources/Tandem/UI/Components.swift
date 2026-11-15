@@ -1016,6 +1016,8 @@ struct TransferEntry: View {
     var chosen = false
     /// What a click does instead of opening, for a page where rows can be chosen; nil opens.
     var onTap: (() -> Void)?
+    /// What the second click of a double click does, for a page where a click only picks the row; nil leaves it at the two clicks.
+    var onDoubleTap: (() -> Void)?
     /// As a line of the table on the page Shared.
     var columns = TransferColumns.none
     /// The row whose file is shown beside the list.
@@ -1036,6 +1038,9 @@ struct TransferEntry: View {
             focused = true
             if let onTap { onTap() } else { model.open(item) }
         }
+        // Beside the single click and not before it: the first click acts at once, and a second one in time is the double click. As
+        // a gesture of its own it does not depend on which click the app says is being handled when the single one is called.
+        .simultaneousGesture(TapGesture(count: 2).onEnded { onDoubleTap?() }, including: onDoubleTap == nil ? .subviews : .all)
         .focusable()
         .focused($focused)
         .focusEffectDisabled()
