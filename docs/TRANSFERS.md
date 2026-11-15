@@ -346,7 +346,10 @@ elk bestand dat binnen was met `not saved`. Een bestand dat mislukte krijgt zijn
 De overdracht naar de app loopt altijd op een eigen draad (`spawn_blocking`), nooit op de berichtenlus: de app kan een grote map naar een
 andere schijf kopieren. Het boek wordt per map een keer geschreven, niet per bestand. Bij de start wordt elke map waarvan alles eindigde
 afgehandeld zoals hierboven, en wat er nog staat van een aanbod dat niet meer in het boek staat gaat onder de gemerkte naam naar de app
-(zonder gebeurtenis, er luistert dan nog niemand; de app leest het boek). Een aanbod van alleen lege mappen maakt die mappen.
+(zonder gebeurtenis, er luistert dan nog niemand; de app leest het boek). Lege mappen worden een keer gemaakt, als de bestanden van het
+aanbod voor het eerst opgehaald worden (dus pas na een ja), nooit bij een overdracht; een map die al overgedragen is komt zo nooit
+terug. Een bovenste map met alleen lege mappen heeft geen eigen bestand en eindigt zoals het hele aanbod: hij wacht tot elk bestand
+eindigde, gaat weg als er een gestopt werd, en is anders heel. Een aanbod van alleen lege mappen maakt die mappen.
 
 **Wat een app moet doen om het aan te zetten:**
 

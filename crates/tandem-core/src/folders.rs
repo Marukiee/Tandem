@@ -255,6 +255,10 @@ impl Inner {
         let tops = staged_tops(&paths);
         for (top, staged_name) in &tops {
             let mine: Vec<usize> = (0..items.len()).filter(|&i| top_of(&items[i].path).as_ref() == Some(top)).collect();
+            // A top folder with nothing but empty folders has no file of its own to end with, so it ends as the whole offer does: it
+            // waits for every file, goes when one was stopped, and is whole otherwise.
+            let only_empty = mine.is_empty();
+            let mine = if only_empty { (0..items.len()).collect() } else { mine };
             if !mine.iter().all(|&i| states.get(i).is_some_and(|s| s.state.is_final())) {
                 continue;
             }
@@ -264,8 +268,9 @@ impl Inner {
                 continue;
             }
             let cancelled = mine.iter().any(|&i| states[i].state == ItemState::Cancelled || states[i].error.as_deref() == Some(REASON_CANCELLED));
-            let whole = mine.iter().all(|&i| states[i].state == ItemState::Done);
-            let done: Vec<usize> = mine.iter().copied().filter(|&i| states[i].state == ItemState::Done).collect();
+            let whole = only_empty || mine.iter().all(|&i| states[i].state == ItemState::Done);
+            let done: Vec<usize> =
+                mine.iter().copied().filter(|&i| states[i].state == ItemState::Done && top_of(&items[i].path).as_ref() == Some(top)).collect();
             let settled: Vec<Settled> = if cancelled {
                 info!(%peer, offer, files = done.len(), "a folder that was stopped is thrown away");
                 let _ = std::fs::remove_dir_all(&staged);

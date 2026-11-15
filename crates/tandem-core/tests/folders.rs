@@ -457,3 +457,40 @@ async fn a_folder_handed_over_at_the_start_is_not_handed_over_again() {
     let a = record.items.iter().position(|i| i.name == "a.txt").unwrap();
     assert_eq!(PathBuf::from(record.peers[0].items[a].location.clone().unwrap()), mac.downloads.join("A/a.txt"));
 }
+
+/// A top folder of only empty folders ends as the offer does: nothing is made when the offer was declined or stopped.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn empty_folders_are_not_made_for_an_offer_that_was_declined_or_stopped() {
+    let open = Arc::new(AtomicBool::new(false));
+    let phone_dir = tempfile::tempdir().unwrap();
+    let gate = Gate { inner: DesktopFiles { download_dir: phone_dir.path().join("downloads") }, held: "b.bin", passes: Arc::new(AtomicUsize::new(1)), open: open.clone() };
+    let phone = node_with_files("Phone", true, phone_dir, Arc::new(gate)).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(source.path().join("X/one/two")).unwrap();
+    std::fs::create_dir_all(source.path().join("Y")).unwrap();
+    std::fs::write(source.path().join("Y/b.bin"), vec![3u8; 500_000]).unwrap();
+
+    // Stopped while Y comes: X, which holds nothing, is not made either.
+    let report = phone
+        .engine
+        .send_files(&[mac.engine.id()], vec![folder_of(&source.path().join("X")), folder_of(&source.path().join("Y"))], ShareOrigin::Files)
+        .await
+        .unwrap();
+    wait_until("Y is on its way", || states(&mac.engine, report.offer).iter().any(|(_, st)| *st == ItemState::Running)).await;
+    let mut events = mac.engine.subscribe();
+    mac.engine.cancel_transfer(phone.engine.id(), report.offer, true).await;
+    open.store(true, Ordering::SeqCst);
+    finished(&mut events, 1).await;
+    wait_until("nothing waits", || everything_in(&mac.data.join("folders")).is_empty()).await;
+    assert!(everything_in(&mac.downloads).is_empty(), "{:?}", everything_in(&mac.downloads));
+
+    // Declined: nothing is made.
+    mac.engine.set_device_settings(&phone.engine.id(), DeviceSettings { auto_accept: false, ..Default::default() }).unwrap();
+    let report = phone.engine.send_files(&[mac.engine.id()], vec![folder_of(&source.path().join("X"))], ShareOrigin::Files).await.unwrap();
+    expect(&mut events, "the offer", |e| matches!(e, Event::ShareOffered { offer, .. } if offer.id == report.offer).then_some(())).await;
+    mac.engine.decline_offer(phone.engine.id(), report.offer).await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(everything_in(&mac.downloads).is_empty() && everything_in(&mac.data.join("folders")).is_empty());
+}
