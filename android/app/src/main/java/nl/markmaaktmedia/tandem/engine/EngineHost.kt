@@ -498,15 +498,18 @@ class EngineHost(
         val away = origin.queues() && targets.any { device(it)?.online != true }
         // Opening a file of another app can mean fetching it first (a photo only in the cloud): never on the main thread.
         val files = withContext(Dispatchers.IO) { uris.mapNotNull { describe(it, hold, copy = away) } }
+        // What describe copied just now: it is gone again when nothing is sent.
+        val copies = files.map { it.source }.filter { isQueueCopy(it) }
         if (files.isEmpty()) return SendResult()
         if (askSpace && origin == TandemShareOrigin.Files) {
             val short = withContext(Dispatchers.IO) { runCatching { engine.shortOfSpace(targets, files) }.getOrDefault(emptyList()) }
             if (short.isNotEmpty() && !spaceAsker.ask(short.map { device(it)?.name ?: it })) {
                 if (hold) AndroidFiles.abandoned(files.map { it.source })
+                deleteCopies(copies)
                 return SendResult.CANCELLED
             }
         }
-        return sendDescribed(engine, files, targets, origin, hold)
+        return sendDescribed(engine, files, targets, origin, hold, copies)
     }
 
     /** Sends files that are already described (the sources of a transfer that failed, for Send again). */
@@ -516,24 +519,27 @@ class EngineHost(
         // To a device that is away the offer waits for days: a file of another app is copied first, as sendUris does, since its grant
         // does not outlive a restart of this app.
         val away = origin.queues() && targets.any { device(it)?.online != true }
+        val made = mutableListOf<String>()
         val ready = if (away) {
             withContext(Dispatchers.IO) {
                 files.map { file ->
                     val copy = file.source.takeIf { it.startsWith("content://") }?.let { copyForQueue(Uri.parse(it), file.name, file.size.toLong()) }
+                    if (copy != null) made += copy
                     if (copy != null) file.copy(source = copy) else file
                 }
             }
         } else {
             files
         }
-        return sendDescribed(engine, ready, targets, origin, hold = true)
+        return sendDescribed(engine, ready, targets, origin, hold = true, copies = made)
     }
 
-    private suspend fun sendDescribed(engine: TandemEngine, files: List<TandemOutgoingFile>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean): SendResult {
+    private suspend fun sendDescribed(engine: TandemEngine, files: List<TandemOutgoingFile>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean, copies: List<String> = emptyList()): SendResult {
         val report = try {
             engine.sendFiles(targets, files, origin)
         } catch (e: Exception) {
             if (hold) AndroidFiles.abandoned(files.map { it.source })
+            deleteCopies(copies)
             throw e
         }
         // A device in the queue still needs the files: without them a shared file is let go at once and ends as gone when it comes back.
@@ -548,6 +554,13 @@ class EngineHost(
             }
         }
         return SendResult(sent = report.sentTo.size, queued = report.queued.size)
+    }
+
+    private fun isQueueCopy(path: String) = path.startsWith(File(context.filesDir, "tandem/outgoing").absolutePath + "/")
+
+    /** Removes copies made for a send that did not happen: the core only cleans up files of an offer it knows, a day after it is over. */
+    private fun deleteCopies(paths: List<String>) {
+        paths.filter { isQueueCopy(it) }.forEach { runCatching { File(it).delete() } }
     }
 
     /** The kinds of offer that wait for a device that is away (`transfer::queues` in the core): a copy, a capture or a drag belong to a moment. */
