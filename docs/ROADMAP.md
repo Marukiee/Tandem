@@ -149,6 +149,12 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   er een melding "Het geluid haperde, een andere stand kan beter" met een knop die direct naar de volgende stand (normaal, dan soepel)
   gaat, en dezelfde melding in alle vier de apps. Niets automatisch omzetten: de persoon kiest. Zekerheid: een vermoeden, pas te zien
   op een echt toestel.
+- **R-V17. De tegels van Gezondheid mooier, met kleur en inzicht, op alle apparaten** (wens van Mark, 2026-11-16). De slaapscore beter in
+  beeld (een duidelijke score met kleur, rood, oranje, groen, of een kleine meter naast de duur), bij Steps het rare cirkeltje weg en het
+  stappendoel zichtbaar met een voortgangsbalk (stappen van het doel), en de hartslag met een kleur of meter. Rustig, geen gradient,
+  dezelfde iconenfamilie als de rest. Het doel komt uit Health Connect of de horloge-app als dat er is, anders 10.000 als standaard. Op
+  de Mac gevraagd aan de sessie van PR 31 (de tegels staan daar); Android, Linux en Windows volgen in een eigen ronde (alles op elk
+  apparaat).
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
