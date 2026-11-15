@@ -650,7 +650,9 @@ private struct FootButton: View {
                 .hoverHighlight(radius: Sidebar.glyph / 2)
         }
         .buttonStyle(.bouncy)
-        .instantName(name)
+        // The tooltip of the system, as the rows above it have while folded: a name drawn under this button would lie on the plus.
+        .help(name)
+        .accessibilityLabel(Text(name))
         .padding(.leading, Sidebar.inset + 10)
         .padding(.vertical, 2)
     }

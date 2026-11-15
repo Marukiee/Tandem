@@ -867,8 +867,9 @@ private struct SidePicture: View {
                 .animation(.tandemFade, value: taken)
         }
         .buttonStyle(.bouncy)
-        .disabled(taken)
+        // Named before it is switched off: the place the device stands in has no name to show.
         .instantName(name == "left" ? "Put it left" : "Put it right")
+        .disabled(taken)
     }
 }
 

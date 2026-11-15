@@ -908,39 +908,98 @@ struct TransferRow: View {
 
 }
 
-/// The name of a round button, shown above it the moment the pointer is on it, not after the wait of a tooltip.
+/// The name of a round button, shown the moment the pointer is on it, not after the wait of a tooltip.
+///
+/// The button only says where it is and what it is called; the window draws the name (`showsNames`). Drawn by the button itself
+/// the name lay on the button, and under whatever comes after the button: the next row, the next card. In a window that draws no
+/// names the button has the tooltip of the system.
 struct InstantName: ViewModifier {
     let name: LocalizedStringKey
     @Environment(\.hoverEnabled) private var hoverEnabled
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.showsNames) private var hosted
     @LocalState private var hovering = false
+    @LocalState private var id = UUID()
 
     func body(content: Content) -> some View {
-        content
-            .onHover { hovering = $0 }
-            .overlay(alignment: .top) {
-                if hovering && hoverEnabled && isEnabled {
-                    Text(name)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(Color(nsColor: .windowBackgroundColor))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.primary.opacity(0.9), in: .rect(cornerRadius: 8, style: .continuous))
-                        .fixedSize()
-                        // Above the button, clear of it.
-                        .alignmentGuide(.top) { $0[.bottom] + 5 }
-                        .transition(.opacity.combined(with: .offset(y: 3)))
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
+        let shown = (hovering || DebugSupport.pointerEverywhere) && hoverEnabled && isEnabled
+        Group {
+            if hosted {
+                content
+                    .onHover { hovering = $0 }
+                    .anchorPreference(key: ShownNames.self, value: .bounds) { shown ? [ShownName(id: id, name: name, bounds: $0)] : [] }
+            } else {
+                content.help(name)
             }
-            .animation(.hover(hovering), value: hovering)
-            .accessibilityLabel(Text(name))
+        }
+        .accessibilityLabel(Text(name))
     }
+}
+
+/// A name the window has to draw: of which button, and where that button is.
+struct ShownName: Equatable, Identifiable {
+    let id: UUID
+    let name: LocalizedStringKey
+    let bounds: Anchor<CGRect>
+}
+
+struct ShownNames: PreferenceKey {
+    static let defaultValue: [ShownName] = []
+    static func reduce(value: inout [ShownName], nextValue: () -> [ShownName]) { value += nextValue() }
+}
+
+/// Puts a name under its button with a gap between them, in the middle of it, as on Linux and Windows. Near the edge of the
+/// window it moves sideways to stay whole, and at the bottom it goes above the button. It never lies on the button it names.
+private struct NamePlacement: Layout {
+    let button: CGRect
+    private static let gap: CGFloat = 6
+    private static let edge: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let name = subviews.first else { return }
+        let size = name.sizeThatFits(.unspecified)
+        let x = max(Self.edge, min(button.midX - size.width / 2, bounds.width - size.width - Self.edge))
+        let below = button.maxY + Self.gap + size.height <= bounds.height
+        let y = below ? button.maxY + Self.gap : button.minY - size.height - Self.gap
+        name.place(at: CGPoint(x: bounds.minX + x, y: bounds.minY + y), anchor: .topLeading, proposal: .unspecified)
+    }
+}
+
+extension EnvironmentValues {
+    /// This window draws the names of its round buttons (`showsNames`).
+    @Entry var showsNames = false
 }
 
 extension View {
     func instantName(_ name: LocalizedStringKey) -> some View { modifier(InstantName(name: name)) }
+
+    /// The names of the round buttons in this view are drawn here, over everything in it. For the whole of a window.
+    func showsNames() -> some View {
+        environment(\.showsNames, true)
+            .overlayPreferenceValue(ShownNames.self) { names in
+                GeometryReader { proxy in
+                    ForEach(names) { item in
+                        NamePlacement(button: proxy[item.bounds]) {
+                            Text(item.name)
+                                .font(.system(size: 11.5, weight: .medium))
+                                .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.primary.opacity(0.9), in: .rect(cornerRadius: 8, style: .continuous))
+                                .fixedSize()
+                        }
+                        .transition(.opacity.combined(with: .offset(y: 3)))
+                    }
+                }
+                .animation(.hover(!names.isEmpty), value: names.map(\.id))
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+    }
 }
 
 /// The disc of a small round button at the end of a row: nothing at rest, a faint fill under the pointer, the same for a button

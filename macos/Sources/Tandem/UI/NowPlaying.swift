@@ -390,7 +390,7 @@ struct MenuNowPlaying: View {
     }
 }
 
-/// The name of a round button: at once above it, or as the tooltip of the system where there is no room for that.
+/// The name of a round button: at once under it, or as the tooltip of the system where there is no room for that.
 private struct ButtonName: ViewModifier {
     let name: LocalizedStringKey
     let instant: Bool

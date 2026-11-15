@@ -103,6 +103,7 @@ struct MainWindow: View {
             }
         }
         .onAppear { DispatchQueue.main.async { measured = true } }
+        .showsNames()
         .modifier(EscapeKey(active: peek) { withAnimation(.tandemSidebar) { peek = false } })
         // A bar with nothing in it: the window keeps the strip along its top that the pages count on, and its rounder corners.
         .toolbar {
