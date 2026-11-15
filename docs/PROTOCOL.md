@@ -93,6 +93,11 @@ regie over gelijktijdigheid en hervatten.
 
 Onvolledige bestanden staan als `.part` en worden pas hernoemd na een goede hash.
 
+**Sturen tussen twee andere apparaten (P9).** A vraagt B met `ShareRelay { id, to, paths }` om bestanden
+van B naar `to` te sturen, alleen als B de cap `share.relay` heeft. B antwoordt `ShareRelayReply`, stuurt
+een gewoon `ShareOffer` met nummer `id` en `requested_by` (A) naar `to`, en meldt A elke voortgang en elk
+einde met `ShareRelayUpdate`. `ShareRelayCancel { id }` van A stopt het. Zie `docs/TRANSFERS.md`.
+
 ### Invoegen vanaf de telefoon
 
 Een computer vraagt de telefoon om een foto, een gescand document of een plaatje uit de

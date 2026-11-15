@@ -122,6 +122,17 @@ impl FileService {
     }
 
     /// What the device may do: its own choices, or the default for devices that have none.
+    /// Where on this device the file `path` is, as `id` sees it in the files this device shows it, when `id` may read it (P9: a
+    /// device that asks this one to send a file to another may only name what it could read itself).
+    pub(crate) fn readable_file(&self, id: &DeviceId, path: &str) -> std::result::Result<PathBuf, FsCode> {
+        let resolved = resolve(&self.policy(id), path, Need::Read).map_err(|fail| fail.code)?;
+        let meta = std::fs::metadata(&resolved.real).map_err(|e| FsFail::io(&e).code)?;
+        if meta.is_dir() {
+            return Err(FsCode::IsDir);
+        }
+        Ok(resolved.real)
+    }
+
     pub fn policy(&self, id: &DeviceId) -> FilePolicy {
         let policies = self.policies.read().unwrap();
         policies.devices.get(&id.to_string()).cloned().unwrap_or_else(|| policies.default.clone())

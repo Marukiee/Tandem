@@ -26,6 +26,7 @@ pub mod platform;
 pub mod layout;
 pub mod pointer_share;
 pub mod quickshare;
+pub mod relay;
 pub mod proto;
 pub mod session;
 pub mod side;

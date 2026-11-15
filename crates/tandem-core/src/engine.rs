@@ -147,6 +147,8 @@ pub(crate) struct Inner {
     pub(crate) metered: AtomicBool,
     /// Files sent to a device that is away wait for it (P3), as its app says (`set_queue_offline`). Off until an app shows the queue.
     pub(crate) queue_offline: AtomicBool,
+    /// Sending between two other devices (P9): what this device asked others to send.
+    pub(crate) relay: crate::relay::RelayState,
     /// This device is a phone with its screen off, as its app says (`set_quiet`).
     pub(crate) quiet: AtomicBool,
     /// This device or another one became quiet or awake: every heartbeat looks again at its pace (see `Inner::heartbeat`).
@@ -250,6 +252,7 @@ impl Engine {
             said_back: Mutex::new(None),
             metered: AtomicBool::new(false),
             queue_offline: AtomicBool::new(false),
+            relay: Default::default(),
             quiet: AtomicBool::new(false),
             beat_changed: Notify::new(),
             last_hurry: Mutex::new(None),
@@ -606,6 +609,11 @@ impl Engine {
 
     /// The devices among `targets` that said they have less free space than `files` take (P5), for a warning before sending. A device
     /// that does not report its free space is never in it; the receiver refuses by itself when it does not fit.
+    /// Asks `via` to send `paths` of its files to `to` (P9), see `relay.rs`.
+    pub async fn send_between(&self, via: DeviceId, to: DeviceId, paths: Vec<String>) -> crate::relay::RelayAnswer {
+        self.inner.send_between(via, to, paths).await
+    }
+
     pub fn short_of_space(&self, targets: &[DeviceId], files: &[crate::transfer::OutgoingFile]) -> Vec<DeviceId> {
         self.inner.short_of_space(targets, files)
     }
@@ -740,6 +748,7 @@ impl Inner {
     }
 
     pub fn emit(&self, event: Event) {
+        self.tell_requester(&event);
         // No subscribers is fine; the app may not be listening yet.
         let _ = self.events.send(event);
     }

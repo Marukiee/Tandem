@@ -419,7 +419,7 @@ impl Outgoing {
     }
 }
 
-fn mime_of(name: &str) -> &'static str {
+pub(crate) fn mime_of(name: &str) -> &'static str {
     match name.rsplit('.').next().map(str::to_ascii_lowercase).as_deref() {
         Some("jpg" | "jpeg") => "image/jpeg",
         Some("png") => "image/png",

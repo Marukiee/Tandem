@@ -152,8 +152,20 @@ impl Inner {
     pub(crate) async fn send_files(
         self: &Arc<Self>,
         targets: &[DeviceId],
+        files: Vec<OutgoingFile>,
+        origin: ShareOrigin,
+    ) -> Result<SendReport> {
+        self.send_files_as(targets, files, origin, rand_u64(), None).await
+    }
+
+    /// `send_files` with the number of the offer given, and the device on whose request it is made (P9: A asks this device to send).
+    pub(crate) async fn send_files_as(
+        self: &Arc<Self>,
+        targets: &[DeviceId],
         mut files: Vec<OutgoingFile>,
         origin: ShareOrigin,
+        offer_id: u64,
+        requested_by: Option<DeviceId>,
     ) -> Result<SendReport> {
         if files.is_empty() {
             return Err(Error::invalid("nothing to send"));
@@ -174,7 +186,6 @@ impl Inner {
             targets.iter().copied().partition(|id| self.session_of(id).is_some());
         let queue = queues(origin) && self.queue_offline.load(std::sync::atomic::Ordering::Relaxed);
         let queued: Vec<DeviceId> = if queue { offline.clone() } else { Vec::new() };
-        let offer_id = rand_u64();
         let items: Vec<RecordItem> = files
             .into_iter()
             .zip(changed)
@@ -188,7 +199,8 @@ impl Inner {
                 path: String::new(),
             })
             .collect();
-        let record = TransferRecord::outgoing(offer_id, origin, items, &online, &queued);
+        let mut record = TransferRecord::outgoing(offer_id, origin, items, &online, &queued);
+        record.requested_by = requested_by;
         let offer = record.share_offer();
         let key = Key::Out(offer_id);
         // In the journal before it goes out: a receiver that takes it without asking pulls at once.
@@ -404,6 +416,10 @@ impl Inner {
 
     /// Stops a transfer, from either side, and tells the other device so it stops too. The files already done stay.
     pub(crate) async fn cancel_transfer(&self, peer: DeviceId, offer: u64, incoming: bool) {
+        // Sent by another device at this one's request (P9): that device stops it.
+        if !incoming && self.journal.read(Key::Out(offer), |_| ()).is_none() && self.cancel_relay(peer, offer).await {
+            return;
+        }
         if incoming {
             self.stop_incoming(peer, offer);
         } else {
@@ -788,7 +804,7 @@ impl Inner {
             .collect()
     }
 
-    fn peer_has_cap(&self, id: &DeviceId, cap: &str) -> bool {
+    pub(crate) fn peer_has_cap(&self, id: &DeviceId, cap: &str) -> bool {
         self.peers.lock().unwrap().get(id).and_then(|peer| peer.hello.as_ref()).is_some_and(|hello| hello.caps.iter().any(|c| c == cap))
     }
 
@@ -1456,6 +1472,7 @@ mod clipboard_tests {
                 .iter()
                 .map(|(name, mime, size)| ShareItem { name: name.to_string(), size: *size, mime: mime.to_string(), modified: None })
                 .collect(),
+            requested_by: None,
         }
     }
 

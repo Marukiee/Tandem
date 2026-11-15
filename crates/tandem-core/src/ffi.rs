@@ -758,6 +758,23 @@ pub struct TandemTransfer {
     pub held: bool,
     /// Incoming: stopped halfway before this start and waits for go on or throw away (P2), as in `resumable_transfers`.
     pub halfway: bool,
+    /// The device on whose request this offer was made (P9). Outgoing: this device sends it for that one. Incoming: the sender sent
+    /// it because that device asked. `None` for everything else.
+    pub requested_by: Option<String>,
+}
+
+/// The answer of a device that was asked to send its files to another one (P9, `send_between`).
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemRelayAnswer {
+    pub ok: bool,
+    /// The number of the offer: the `offer` of the `Progress` and `Finished` this device gets for it, with the receiver as the peer.
+    /// `cancel_transfer(receiver, offer, false)` stops it.
+    pub offer: u64,
+    /// The receiver was away: it waits in the queue of the device that sends.
+    pub queued: bool,
+    /// Why not: `not allowed`, `gone`, `not a file`, `not in circle`, `not connected`, `no answer`, `unsupported` or `failed`.
+    pub reason: Option<String>,
+    pub items: Vec<TandemShareItem>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -876,6 +893,7 @@ impl TandemTransfer {
                 .collect(),
             held: record.held,
             halfway,
+            requested_by: record.requested_by.map(|id| id.to_string()),
         }
     }
 }
@@ -2144,6 +2162,23 @@ impl TandemEngine {
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
             queued: ids_to_strings(report.queued),
+        })
+    }
+
+    /// Asks `via` to send `paths` of its files (as it shows them to this device in its files, `/Share/sub/name`) to `to` (P9). Only a
+    /// device whose caps say `share.relay` is asked; one that does not answer in 15 seconds gives `no answer`. The progress comes
+    /// as `Progress` and `Finished` with `incoming: false`, `to` as the peer and the `offer` of the answer.
+    pub async fn send_between(&self, via: String, to: String, paths: Vec<String>) -> Result<TandemRelayAnswer, TandemError> {
+        let via = DeviceId::parse(&via)?;
+        let to = DeviceId::parse(&to)?;
+        let engine = self.engine.clone();
+        let answer = self.runtime.spawn(async move { engine.send_between(via, to, paths).await }).await.map_err(join_error)?;
+        Ok(TandemRelayAnswer {
+            ok: answer.ok,
+            offer: answer.offer,
+            queued: answer.queued,
+            reason: answer.reason,
+            items: answer.items.into_iter().map(|i| TandemShareItem { name: i.name, size: i.size, mime: i.mime }).collect(),
         })
     }
 
