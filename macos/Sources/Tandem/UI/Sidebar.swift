@@ -31,13 +31,16 @@ enum SidebarSelection: Hashable {
 /// times and what does not fit is cut off by the edge, so no line of text is wrapped or squeezed on the way.
 struct Sidebar: View {
     static let wideWidth: CGFloat = 264
-    /// The glyph of a row is 38 wide and starts 20 from the edge: this width puts it in the middle.
-    static let railWidth: CGFloat = 78
+    /// The glyph of a row is 38 wide and starts 22 from the edge: this width puts it in the middle. The three buttons of the window
+    /// are in the middle of it too: they run from 19 to 79 points from the edge of the window, and the sidebar from 8 to 90.
+    static let railWidth: CGFloat = 82
+    /// From the edge of the sidebar to a row; the glyph starts ten further in.
+    fileprivate static let inset: CGFloat = 12
     /// How far the sidebar floats from the edge of the window.
     static let margin: CGFloat = 8
     static let glyph: CGFloat = 38
     /// The room the words of a row have in the wide sidebar.
-    fileprivate static let words: CGFloat = wideWidth - 20 - glyph - 11 - 20
+    fileprivate static let words: CGFloat = wideWidth - (inset + 10) * 2 - glyph - 11
 
     @Environment(EngineModel.self) private var model
     @Binding var selection: SidebarSelection?
@@ -186,7 +189,7 @@ struct Sidebar: View {
                     ClipboardRow(folded: folded, selected: selection == .clipboard)
                 }
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, Sidebar.inset)
             .animation(.tandem, value: model.devices.map(\.id))
             .animation(.tandem, value: selection)
         }
@@ -208,7 +211,7 @@ struct Sidebar: View {
                 }
             } else {
                 UpdateBanner(compact: true, fromBottom: true)
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, Sidebar.inset)
                     .frame(width: Sidebar.wideWidth)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                     .transition(.opacity)
@@ -238,7 +241,7 @@ extension View {
     /// Something that is only there in the wide sidebar, a heading for one: it keeps its place and its width while the sidebar
     /// folds, so nothing under it moves and its words are not wrapped, and fades away.
     fileprivate func wideOnly(_ folded: Bool, inset: CGFloat) -> some View {
-        frame(width: Sidebar.wideWidth - 20 - inset * 2, alignment: .leading)
+        frame(width: Sidebar.wideWidth - Sidebar.inset * 2 - inset * 2, alignment: .leading)
             .padding(.horizontal, inset)
             // No width of its own towards the column: with one, the column would stay as wide as this and slide out of the narrow sidebar.
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -622,7 +625,7 @@ private struct FootButton: View {
         }
         .buttonStyle(.bouncy)
         .instantName(name)
-        .padding(.leading, 20)
+        .padding(.leading, Sidebar.inset + 10)
         .padding(.vertical, 2)
     }
 }
@@ -655,7 +658,7 @@ private struct PairButton: View {
                 .hoverHighlight(radius: 14)
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 10)
+        .padding(.horizontal, Sidebar.inset)
         .padding(.top, 4)
         .padding(.bottom, 10)
         .help(folded ? Text("Pair a device") : Text(verbatim: ""))
