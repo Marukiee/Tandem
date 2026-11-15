@@ -884,6 +884,10 @@ impl FsClient {
     }
 
     /// A file to a place on this device. It goes to a temporary name first and takes its own when it is whole, and
+        // The buffer is sized by what was asked, so an answer cannot make this device allocate more than that.
+        if sent > len {
+            return Err(Error::protocol("the other device sent more than was asked"));
+        }
     /// what an earlier try left behind is carried on from.
     pub async fn download(&self, path: &str, to: &Path, mut progress: impl FnMut(u64, u64) + Send) -> Result<()> {
         let part = {
