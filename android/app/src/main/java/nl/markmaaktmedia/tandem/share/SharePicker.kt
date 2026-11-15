@@ -57,7 +57,8 @@ import uniffi.tandem_core.TandemDevice
 sealed interface SendPhase {
     data object Choosing : SendPhase
     data object Sending : SendPhase
-    data class Done(val count: Int) : SendPhase
+    /** [count] devices got it now; [queued] more get it when they are back. */
+    data class Done(val count: Int, val queued: Int = 0) : SendPhase
     data class Failed(val reason: String) : SendPhase
 }
 
@@ -189,7 +190,11 @@ fun SharePickerSheet(
                     Box(Modifier.size(64.dp).scale(scale).clip(CircleShape).background(LocalTandemExtraColors.current.online.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
                         Icon(TandemIcons.CheckCircleFilled, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(38.dp))
                     }
-                    Text(androidx.compose.ui.res.pluralStringResource(R.plurals.share_done_n, current.count, current.count), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (current.count == 0) stringResource(R.string.share_queued)
+                        else androidx.compose.ui.res.pluralStringResource(R.plurals.share_done_n, current.count, current.count),
+                        style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center,
+                    )
                 }
 
                 is SendPhase.Failed -> StatusBlock {
