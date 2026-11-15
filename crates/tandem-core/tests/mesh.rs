@@ -9,7 +9,7 @@ use tandem_core::platform::DesktopFiles;
 use tandem_core::proto::{Battery, ShareOrigin, Status};
 use tandem_core::store::{DeviceSettings, FileSecretStore, Store};
 use tandem_core::transfer::OutgoingFile;
-use tandem_core::{DeviceId, Engine, EngineConfig};
+use tandem_core::{DeviceId, Engine, EngineConfig, Platform};
 use tokio::sync::broadcast::Receiver;
 
 struct Node {
@@ -24,6 +24,10 @@ async fn node(name: &str) -> Node {
 }
 
 async fn node_with_caps(name: &str, caps: &[&str]) -> Node {
+    node_on(name, caps, Platform::current()).await
+}
+
+async fn node_on(name: &str, caps: &[&str], platform: Platform) -> Node {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");
     let downloads = dir.path().join("downloads");
@@ -31,6 +35,7 @@ async fn node_with_caps(name: &str, caps: &[&str]) -> Node {
     cfg.port = 0;
     cfg.enable_mdns = false;
     cfg.loopback = true;
+    cfg.platform = platform;
     cfg.caps.extend(caps.iter().map(|c| c.to_string()));
     let secrets = Arc::new(FileSecretStore::new(Store::new(&data).unwrap()));
     let files = Arc::new(DesktopFiles { download_dir: downloads.clone() });
@@ -300,6 +305,70 @@ async fn a_copied_picture_waits_for_the_clipboard_and_not_in_downloads() {
     assert!(location.starts_with(mac.data.join("clipboard")), "{location:?} is not in the clipboard folder");
     assert_eq!(location.file_name().unwrap(), "Screenshot_20261025.png");
     assert!(!mac.downloads.join("Screenshot_20261025.png").exists());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn files_dragged_to_a_mac_wait_in_their_own_folder_and_not_in_downloads() {
+    let pc = node_on("Pc", &[], Platform::Windows).await;
+    let mac = node_on("Mac", &[], Platform::MacOs).await;
+    pair(&pc, &mac).await;
+    wait_until("connected", || online(&pc, mac.engine.id()) && online(&mac, pc.engine.id())).await;
+
+    let first = random_bytes(5_000, 1);
+    let second = random_bytes(6_000, 2);
+    let source_dir = tempfile::tempdir().unwrap();
+    let mut files = Vec::new();
+    for (n, data) in [&first, &second].into_iter().enumerate() {
+        // Two files of one drag with the same name, from different folders.
+        let folder = source_dir.path().join(format!("folder{n}"));
+        std::fs::create_dir_all(&folder).unwrap();
+        let path = folder.join("photo.bin");
+        std::fs::write(&path, data).unwrap();
+        files.push(OutgoingFile { source: path.to_string_lossy().into_owned(), name: "photo.bin".into(), size: 0, mime: "image/png".into() });
+    }
+    let mut mac_events = mac.engine.subscribe();
+    pc.engine.send_files(&[mac.engine.id()], files, ShareOrigin::Drag).await.unwrap();
+    let mut got = Vec::new();
+    while got.len() < 2 {
+        let done = expect(&mut mac_events, "a dragged file", |e| match e {
+            Event::Finished(done) if done.incoming => Some(done.clone()),
+            _ => None,
+        })
+        .await;
+        assert_eq!(done.error, None);
+        got.push(PathBuf::from(done.location.unwrap()));
+    }
+    for location in &got {
+        assert!(location.starts_with(mac.data.join("drag")), "{location:?} is not in the drag folder");
+    }
+    assert_ne!(got[0], got[1], "the second file took the place of the first");
+    let mut contents: Vec<Vec<u8>> = got.iter().map(|p| std::fs::read(p).unwrap()).collect();
+    contents.sort();
+    let mut want = vec![first, second];
+    want.sort();
+    assert_eq!(contents, want);
+    assert!(!mac.downloads.join("photo.bin").exists(), "a copy stayed in Downloads");
+
+    // Other systems put them down from the downloads, as before.
+    let linux = node_on("Linux", &[], Platform::Linux).await;
+    pair(&pc, &linux).await;
+    wait_until("connected", || online(&pc, linux.engine.id()) && online(&linux, pc.engine.id())).await;
+    let path = source_dir.path().join("folder0").join("photo.bin");
+    let mut linux_events = linux.engine.subscribe();
+    pc.engine
+        .send_files(
+            &[linux.engine.id()],
+            vec![OutgoingFile { source: path.to_string_lossy().into_owned(), name: "photo.bin".into(), size: 0, mime: "image/png".into() }],
+            ShareOrigin::Drag,
+        )
+        .await
+        .unwrap();
+    let done = expect(&mut linux_events, "a dragged file", |e| match e {
+        Event::Finished(done) if done.incoming => Some(done.clone()),
+        _ => None,
+    })
+    .await;
+    assert!(PathBuf::from(done.location.unwrap()).starts_with(&linux.downloads));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -591,9 +660,11 @@ impl Lane {
         self.0.as_ref().unwrap().spawn(future)
     }
 
-    /// Like a process that is killed: nothing runs any more and nobody is told.
-    fn kill(mut self) {
-        self.0.take().unwrap().shutdown_background();
+    /// Like a process that is killed: nothing runs any more and nobody is told. Back when everything of it is gone, so a test
+    /// does not have to guess with a pause how long that took.
+    async fn kill(mut self) {
+        let runtime = self.0.take().unwrap();
+        tokio::task::spawn_blocking(move || runtime.shutdown_timeout(Duration::from_secs(10))).await.unwrap();
     }
 }
 
@@ -624,8 +695,7 @@ async fn a_device_that_was_killed_gets_back_in_before_the_old_connection_times_o
         if a.engine.id() < b.engine.id() { (a, b, "B", lane_b, lane_a) } else { (b, a, "A", lane_a, lane_b) };
     let low_id = low.engine.id();
     let high_id = high.engine.id();
-    high_lane.kill();
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    high_lane.kill().await;
     assert!(online(&low, high_id), "nobody told it, so as far as it knows the connection is fine");
 
     let mut cfg = EngineConfig::new(&high.data, high_name);
@@ -919,10 +989,13 @@ async fn sound_travels_as_datagrams_and_arrives_in_order() {
     let limit = mac.engine.audio_payload_limit(&phone.engine.id()) / 4 * 4;
     assert!(limit >= 400, "a datagram should carry at least a few milliseconds of sound, got {limit}");
     let packet = |n: u32| -> Vec<u8> { (0..limit).map(|i| (i as u32 + n) as u8).collect() };
-    for seq in 0..40u32 {
-        mac.engine.send_audio(&phone.engine.id(), 3, seq, &packet(seq)).unwrap();
-        // A real capture hands over a packet every few milliseconds.
-        tokio::time::sleep(Duration::from_millis(2)).await;
+    // In small bursts, as a capture hands over a few packets at a time: a burst is waited for before the next goes, so a runner that
+    // stalls does not drop datagrams this test has no say over. Within a burst they go back to back and must still arrive in order.
+    for burst in 0..10u32 {
+        for seq in burst * 4..burst * 4 + 4 {
+            mac.engine.send_audio(&phone.engine.id(), 3, seq, &packet(seq)).unwrap();
+        }
+        wait_until("the burst", || heard.0.lock().unwrap().len() >= (burst as usize + 1) * 4).await;
     }
     wait_until("the packets arrive", || heard.0.lock().unwrap().len() >= 40).await;
     let got = heard.0.lock().unwrap().clone();

@@ -15,6 +15,7 @@ use crate::engine::Inner;
 use crate::error::{Error, Result};
 use crate::events::Event;
 use crate::ids::DeviceId;
+use crate::trust::Permission;
 use crate::proto::{
     self, Hello, InputMsg, MAX_CONTROL_FRAME, MAX_SMALL_FRAME, Msg, STREAM_CONTROL, STREAM_FILE, STREAM_FS, decode_msg,
 };
@@ -242,7 +243,7 @@ impl Inner {
         // And tell everyone else where this device can be found.
         let mut mine: Vec<String> = hello.candidates.clone();
         mine.push(remote.to_string());
-        let intro = Msg::Introduce { peers: vec![crate::proto::PeerAddrs { id, addrs: mine }] };
+        let intro = Msg::Introduce { peers: vec![crate::proto::PeerAddrs { id, addrs: mine, connected: true }] };
         for other in self.connected_ids() {
             if other != id {
                 let _ = self.send_to(&other, intro.clone()).await;
@@ -297,11 +298,39 @@ impl Inner {
         };
 
         let writer = async move {
-            while let Some(msg) = rx.recv().await {
-                if let Err(e) = proto::send(&mut send, &msg).await {
+            // What goes out, by kind, written to the log now and then: with the log of the attempts to dial it explains where the
+            // battery of a phone went. Kept here, in the one task that writes, so it costs no lock.
+            let mut tally = crate::sent_tally::SentTally::default();
+            let mut report = tokio::time::interval_at(tokio::time::Instant::now() + crate::sent_tally::REPORT_EVERY, crate::sent_tally::REPORT_EVERY);
+            report.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                let msg = tokio::select! {
+                    msg = rx.recv() => match msg {
+                        Some(msg) => msg,
+                        None => break,
+                    },
+                    _ = report.tick() => {
+                        if let Some(line) = tally.take_line() {
+                            info!("sent to {id}: {line}");
+                        }
+                        continue;
+                    }
+                };
+                let frame = match proto::encode(&msg) {
+                    Ok(frame) => frame,
+                    Err(e) => {
+                        debug!("could not write to the control stream: {e}");
+                        break;
+                    }
+                };
+                if let Err(e) = proto::write_frame(&mut send, &frame).await {
                     debug!("could not write to the control stream: {e}");
                     break;
                 }
+                tally.add(&msg, frame.len() + 4);
+            }
+            if let Some(line) = tally.take_line() {
+                info!("sent to {id}: {line}");
             }
         };
 
@@ -337,7 +366,11 @@ impl Inner {
             async move {
                 while let Ok(data) = conn.read_datagram().await {
                     if let Some((session, counter, x, y)) = crate::live::parse_pointer_datagram(&data) {
-                        this.live_pointer(id, session, counter, x, y);
+                        if this.allowed(&id, Permission::Control) {
+                            this.live_pointer(id, session, counter, x, y);
+                        } else {
+                            this.refuse(id, Permission::Control, None).await;
+                        }
                     } else if let Some((stream, seq, pcm)) = parse_audio(&data) {
                         // Straight to the app, not through the event channel: that one may drop
                         // events when the app is slow, and sound must never take the others with it.
@@ -346,7 +379,11 @@ impl Inner {
                             sink.audio(id, stream, seq, pcm);
                         }
                     } else if let Some(input) = parse_datagram(&data) {
-                        this.emit(Event::Input { from: id, input });
+                        if this.allowed(&id, Permission::Control) {
+                            this.emit(Event::Input { from: id, input });
+                        } else {
+                            this.refuse(id, Permission::Control, None).await;
+                        }
                     }
                 }
             }
@@ -457,6 +494,11 @@ impl Inner {
     }
 
     pub(crate) async fn handle_msg(self: &Arc<Self>, id: DeviceId, msg: Msg) {
+        // The one gate for what another device asks this one to do (P6): refused here, the app never hears it.
+        if let Some(permission) = crate::trust::needed_for(&msg).iter().copied().find(|p| !self.allowed(&id, *p)) {
+            self.refuse(id, permission, Some(&msg)).await;
+            return;
+        }
         match msg {
             Msg::CircleSync { statements } => {
                 let before: std::collections::HashSet<StatementId> =
@@ -473,6 +515,8 @@ impl Inner {
                     if !self.circle.read().unwrap().is_member(&self.identity.public_key()) {
                         warn!("this device was removed from the circle");
                         self.emit(Event::RemovedFromCircle);
+                    } else {
+                        self.follow_own_name().await;
                     }
                 }
             }
@@ -483,6 +527,10 @@ impl Inner {
                         let before = peer.status.battery;
                         let was_quiet = peer.status.quiet;
                         peer.status.merge(&status);
+                        // The disk of that device cannot be read: what it had said before is not true any more.
+                        if status.free_storage == Some(crate::proto::FREE_STORAGE_UNKNOWN) {
+                            peer.status.free_storage = None;
+                        }
                         // Only a real change: a status said again on a new connection must not start every heartbeat over.
                         if peer.status.quiet != was_quiet {
                             self.beat_changed.notify_waiters();
@@ -575,7 +623,12 @@ impl Inner {
             Msg::BtSpeakerState { on, error } => self.emit(Event::BtSpeakerState { from: id, on, error }),
             Msg::SideHeard { id: probe, left, right, heard } => self.emit(Event::SideHeard { from: id, id: probe, left, right, heard }),
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
-            Msg::PointerShare(msg) => self.emit(Event::PointerShare { from: id, msg }),
+            Msg::PointerShare(msg) => {
+                if matches!(msg, crate::pointer_share::PointerShareMsg::Leave { .. }) {
+                    self.pointer_out.lock().unwrap().remove(&id);
+                }
+                self.emit(Event::PointerShare { from: id, msg })
+            }
             Msg::Hotspot(hotspot) => self.emit(Event::Hotspot { from: id, hotspot }),
             Msg::CaptureRequest(request) => {
                 if request.kind == crate::proto::CaptureKind::Other {
@@ -649,8 +702,11 @@ impl Inner {
                     }
                     for text in entry.addrs {
                         if let Ok(addr) = text.parse::<SocketAddr>() {
-                            self.learn_addr(&entry.id, addr, false);
+                            self.learn_introduced_addr(&entry.id, addr);
                         }
+                    }
+                    if entry.connected {
+                        self.try_now(&entry.id);
                     }
                 }
                 self.poke.notify_one();
@@ -670,6 +726,7 @@ impl Inner {
             Msg::HealthRecords { records } => self.health_received(id, records),
             Msg::HealthForget {} => self.health_forget(id),
             Msg::HealthChoices { choices } => self.health_choices_heard(id, choices).await,
+            Msg::Refused { action, reason } => self.on_refused(id, &action, &reason),
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }

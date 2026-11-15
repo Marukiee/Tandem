@@ -84,6 +84,17 @@ struct Policies {
     default: FilePolicy,
     #[serde(default)]
     devices: HashMap<String, FilePolicy>,
+    /// Switches set for a device that otherwise follows the default (P6, see `trust`): it keeps following it for the rest.
+    #[serde(default)]
+    switches: HashMap<String, Switches>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+struct Switches {
+    #[serde(default)]
+    enabled: Option<bool>,
+    #[serde(default)]
+    delete: Option<bool>,
 }
 
 /// One thing another device did to the files here, for the person to look back at.
@@ -116,6 +127,7 @@ impl FileService {
             _ => Policies {
                 default: FilePolicy { shares: if cfg!(target_os = "android") { default_shares() } else { Vec::new() }, ..FilePolicy::default() },
                 devices: HashMap::new(),
+                switches: HashMap::new(),
             },
         };
         FileService { store, policies: RwLock::new(policies), activity: Mutex::new(VecDeque::new()) }
@@ -135,7 +147,42 @@ impl FileService {
 
     pub fn policy(&self, id: &DeviceId) -> FilePolicy {
         let policies = self.policies.read().unwrap();
-        policies.devices.get(&id.to_string()).cloned().unwrap_or_else(|| policies.default.clone())
+        let key = id.to_string();
+        if let Some(own) = policies.devices.get(&key) {
+            return own.clone();
+        }
+        let mut policy = policies.default.clone();
+        if let Some(switches) = policies.switches.get(&key) {
+            policy.enabled = switches.enabled.unwrap_or(policy.enabled);
+            policy.delete = switches.delete.unwrap_or(policy.delete);
+        }
+        policy
+    }
+
+    /// Sets the master switch or the one for removing, for one device, and nothing else: one with choices of its own has them changed,
+    /// one that follows the default keeps following it for the rest.
+    pub fn set_switches(&self, id: &DeviceId, enabled: Option<bool>, delete: Option<bool>) -> Result<()> {
+        self.change(|policies| {
+            let key = id.to_string();
+            if let Some(own) = policies.devices.get_mut(&key) {
+                own.enabled = enabled.unwrap_or(own.enabled);
+                own.delete = delete.unwrap_or(own.delete);
+            } else {
+                // Only an "off" is kept: an "on" means following the default again, so a later "off" there still reaches this device.
+                let keep = |asked: Option<bool>, was: Option<bool>| match asked {
+                    Some(false) => Some(false),
+                    Some(true) => None,
+                    None => was,
+                };
+                let was = policies.switches.get(&key).copied().unwrap_or_default();
+                let now = Switches { enabled: keep(enabled, was.enabled), delete: keep(delete, was.delete) };
+                if now == Switches::default() {
+                    policies.switches.remove(&key);
+                } else {
+                    policies.switches.insert(key, now);
+                }
+            }
+        })
     }
 
     /// Whether the device has choices of its own.
@@ -149,6 +196,7 @@ impl FileService {
 
     pub fn set_policy(&self, id: &DeviceId, policy: FilePolicy) -> Result<()> {
         self.change(|policies| {
+            policies.switches.remove(&id.to_string());
             policies.devices.insert(id.to_string(), policy);
         })
     }
@@ -156,6 +204,7 @@ impl FileService {
     /// Back to the default for this device.
     pub fn clear_policy(&self, id: &DeviceId) -> Result<()> {
         self.change(|policies| {
+            policies.switches.remove(&id.to_string());
             policies.devices.remove(&id.to_string());
         })
     }
@@ -811,6 +860,12 @@ async fn write_body(temp: &Path, size: u64, recv: &mut RecvStream) -> std::resul
     Ok(())
 }
 
+/// The size and time of a file as a download first saw it, kept next to its part.
+fn parse_part_info(text: &str) -> Option<(u64, u64)> {
+    let (size, modified) = text.trim().split_once(' ')?;
+    Some((size.parse().ok()?, modified.parse().ok()?))
+}
+
 // ---- The device that looks --------------------------------------------------------
 
 /// Another device's files, as far as it lets this one see them.
@@ -889,23 +944,49 @@ impl FsClient {
         }
         let (response, _send, mut recv) = self.ask(&FsRequest::Read { path: path.to_string(), offset, len }).await?;
         let FsResponse::Data { sent, .. } = response else { return Err(Self::unexpected()) };
+        // The buffer is sized by what was asked, so an answer cannot make this device allocate more than that.
+        if sent > len {
+            return Err(Error::protocol("the other device sent more than was asked"));
+        }
         let mut data = vec![0u8; sent as usize];
         recv.read_exact(&mut data).await.map_err(Error::connection)?;
         Ok(data)
     }
 
     /// A file to a place on this device. It goes to a temporary name first and takes its own when it is whole, and
-    /// what an earlier try left behind is carried on from.
+    /// what an earlier try left behind is carried on from, as long as the file there is still the same.
     pub async fn download(&self, path: &str, to: &Path, mut progress: impl FnMut(u64, u64) + Send) -> Result<()> {
-        let part = {
+        let with_suffix = |suffix: &str| {
             let mut name = to.file_name().map(|n| n.to_os_string()).unwrap_or_default();
-            name.push(".tandem-part");
+            name.push(suffix);
             to.with_file_name(name)
         };
-        let have = tokio::fs::metadata(&part).await.map(|m| m.len()).unwrap_or(0);
-        let (response, _send, mut recv) = self.ask(&FsRequest::Read { path: path.to_string(), offset: have, len: u64::MAX }).await?;
-        let FsResponse::Data { size, sent, .. } = response else { return Err(Self::unexpected()) };
-        let mut file = tokio::fs::OpenOptions::new().create(true).append(true).open(&part).await?;
+        let part = with_suffix(".tandem-part");
+        let info = with_suffix(".tandem-part-info");
+        // Bytes are only carried on from when the size and time of the first try say they belong to this version.
+        let first_try = tokio::fs::read_to_string(&info).await.ok().and_then(|text| parse_part_info(&text));
+        let mut have = match first_try {
+            Some(_) => tokio::fs::metadata(&part).await.map(|m| m.len()).unwrap_or(0),
+            None => 0,
+        };
+        let (size, modified_ms, sent, _send, mut recv) = loop {
+            let (response, send, recv) = self.ask(&FsRequest::Read { path: path.to_string(), offset: have, len: u64::MAX }).await?;
+            let FsResponse::Data { size, modified_ms, sent } = response else { return Err(Self::unexpected()) };
+            if have == 0 || (first_try == Some((size, modified_ms)) && have <= size) {
+                break (size, modified_ms, sent, send, recv);
+            }
+            // It changed since the first try: what is here is part of another version, so it starts over.
+            have = 0;
+        };
+        if have + sent != size {
+            return Err(Error::transfer("the other device sent less than the file"));
+        }
+        let mut file = if have == 0 {
+            tokio::fs::write(&info, format!("{size} {modified_ms}")).await?;
+            tokio::fs::File::create(&part).await?
+        } else {
+            tokio::fs::OpenOptions::new().append(true).open(&part).await?
+        };
         let mut buffer = vec![0u8; CHUNK];
         let mut done = have;
         let mut left = sent;
@@ -924,7 +1005,15 @@ impl FsClient {
         }
         file.flush().await?;
         drop(file);
+        let length = tokio::fs::metadata(&part).await?.len();
+        if length != size {
+            // Whatever is in the part cannot be trusted any more, so the next try starts clean.
+            let _ = tokio::fs::remove_file(&part).await;
+            let _ = tokio::fs::remove_file(&info).await;
+            return Err(Error::transfer("the file that arrived is not as long as it should be"));
+        }
         tokio::fs::rename(&part, to).await?;
+        let _ = tokio::fs::remove_file(&info).await;
         Ok(())
     }
 

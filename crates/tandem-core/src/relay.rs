@@ -258,7 +258,7 @@ impl Inner {
         ShareRelayReply { id: ask.id, ok: true, reason: None, queued: !sent, items }
     }
 
-    pub(crate) async fn on_share_relay_cancel(&self, from: DeviceId, offer: u64) {
+    pub(crate) async fn on_share_relay_cancel(self: &Arc<Self>, from: DeviceId, offer: u64) {
         let peers = self.journal.read(Key::Out(offer), |record| {
             (record.requested_by == Some(from)).then(|| record.peers.iter().map(|p| p.device).collect::<Vec<_>>())
         });

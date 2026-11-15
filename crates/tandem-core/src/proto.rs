@@ -232,6 +232,9 @@ pub enum Msg {
     Ping { nonce: u64 },
     Pong { nonce: u64 },
     Bye { reason: String },
+    /// What was asked is not allowed for the device that asked (P6, see `trust`). `action` is the code of a permission, `reason` one of
+    /// `trust::REASONS`. Only sent to a device that has `trust::CAP`.
+    Refused { action: String, reason: String },
     /// This device plays a sound now because another one asked with `Ring`, or it stopped (the person stopped it here, it ran out, or
     /// it was asked to stop). Sent to the devices that asked, so their button shows what really happens. Devices that do not know it skip it.
     Ringing { on: bool },
@@ -274,6 +277,9 @@ pub enum Msg {
 pub struct PeerAddrs {
     pub id: DeviceId,
     pub addrs: Vec<String>,
+    /// The sender is connected to this device right now. The receiver that is not tries it at once: it is up, and was missed.
+    #[serde(default)]
+    pub connected: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -368,6 +374,10 @@ pub struct Status {
     /// Set by the engine (`Engine::set_quiet`), not by the app.
     #[serde(default)]
     pub quiet: Option<bool>,
+    /// What this device does not let each other device do (P6, see `trust`): the whole table each time it changes. Nil on a device
+    /// of a version without permissions.
+    #[serde(default)]
+    pub trust: Option<Vec<crate::trust::TrustRow>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -495,14 +505,45 @@ pub struct Feature {
     pub page: Option<String>,
 }
 
+/// The fields of a `Status` that `merge` and `changes` go through.
+macro_rules! status_fields {
+    ($m:ident!($($arg:tt)*)) => {
+        $m!($($arg)* battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet, trust)
+    };
+}
+
+/// What `free_storage` says when the disk that files land on cannot be read any more. A status only carries what changed, so "no
+/// number" cannot take an old number away; this one, more than any disk holds, does. The device that says it keeps it as its own
+/// number (it refuses nothing, and a new connection is told it again); the others take it as "no number" (see `session.rs`). An older
+/// device that does not know it simply sees a disk with room for everything.
+pub const FREE_STORAGE_UNKNOWN: u64 = u64::MAX;
+
 impl Status {
     pub fn merge(&mut self, other: &Status) {
         macro_rules! take {
-            ($($field:ident),*) => {
-                $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
+            ($other:ident, $this:ident, $($field:ident),*) => {
+                $(if $other.$field.is_some() { $this.$field = $other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet);
+        status_fields!(take!(other, self,));
+    }
+
+    /// What of `said` is news to someone who knows `self`: the fields that are there in `said` and differ. Nothing in it when `said`
+    /// repeats what is known.
+    pub fn changes(&self, said: &Status) -> Status {
+        let mut news = Status::default();
+        macro_rules! differ {
+            ($said:ident, $known:ident, $news:ident, $($field:ident),*) => {
+                $(if $said.$field.is_some() && $said.$field != $known.$field { $news.$field = $said.$field.clone(); })*
+            };
+        }
+        status_fields!(differ!(said, self, news,));
+        news
+    }
+
+    /// Whether no field is filled in.
+    pub fn is_empty(&self) -> bool {
+        *self == Status::default()
     }
 }
 
@@ -572,7 +613,7 @@ pub struct CaptureCancel {
     pub why: CaptureWhy,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShareItem {
     pub name: String,
     pub size: u64,
@@ -580,6 +621,10 @@ pub struct ShareItem {
     pub mime: String,
     #[serde(default)]
     pub modified: Option<u64>,
+    /// The folder inside the offer this file belongs in, parts joined by `/` (P4). Only sent to a device with the cap
+    /// `share.folders`; empty for a loose file, and then not written, so the offer is the same as before.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub path: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -587,6 +632,9 @@ pub struct ShareOffer {
     pub id: u64,
     pub origin: ShareOrigin,
     pub items: Vec<ShareItem>,
+    /// Folders inside the offer that hold no file, so they arrive too (P4). Parts joined by `/`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub folders: Vec<String>,
     /// The device on whose request the sender made this offer (P9), so the receiver can say so. An older receiver does not read it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requested_by: Option<DeviceId>,
@@ -1047,6 +1095,41 @@ mod tests {
     use super::*;
 
     #[test]
+    fn an_introduction_from_a_device_that_does_not_say_who_is_connected_still_reads() {
+        #[derive(Serialize)]
+        struct Old {
+            id: DeviceId,
+            addrs: Vec<String>,
+        }
+        let id = DeviceId::from_public_key(&[7; 32]);
+        let bytes = encode(&Old { id, addrs: vec!["192.168.1.2:47820".into()] }).unwrap();
+        let read: PeerAddrs = decode(&bytes).unwrap();
+        assert_eq!(read.id, id);
+        assert!(!read.connected);
+    }
+
+    #[test]
+    fn only_what_differs_from_what_is_known_is_news() {
+        let known = Status { dnd: Some(true), free_storage: Some(7), ..Default::default() };
+        // The same said again is nothing, and a field that is not mentioned is not touched.
+        assert!(known.changes(&Status { dnd: Some(true), ..Default::default() }).is_empty());
+        assert!(known.changes(&Status::default()).is_empty());
+        let news = known.changes(&Status { dnd: Some(true), free_storage: Some(8), muted: Some(false), ..Default::default() });
+        assert_eq!(news, Status { free_storage: Some(8), muted: Some(false), ..Default::default() });
+    }
+
+    #[test]
+    fn a_disk_that_cannot_be_read_stays_unknown_in_the_status_of_the_device_itself() {
+        // The device keeps "unknown" as it is, so the status it tells a new connection says it too.
+        let mut mine = Status::default();
+        mine.merge(&Status { free_storage: Some(5_000_000_000), ..Default::default() });
+        mine.merge(&Status { free_storage: Some(FREE_STORAGE_UNKNOWN), ..Default::default() });
+        assert_eq!(mine.free_storage, Some(FREE_STORAGE_UNKNOWN));
+        mine.merge(&Status { free_storage: Some(7), ..Default::default() });
+        assert_eq!(mine.free_storage, Some(7));
+    }
+
+    #[test]
     fn the_watch_of_a_phone_stays_known_until_the_phone_says_otherwise() {
         let mut known = Status::default();
         let paired = WatchStatus { paired: true, online: true, level: Some(80), ..Default::default() };
@@ -1200,9 +1283,9 @@ mod tests {
     #[test]
     fn the_answer_to_a_capture_keeps_its_request_id_and_old_origins_still_read() {
         // Files dropped on the edge survive the trip, and an older version reads the origin as Other.
-        let dropped = ShareOffer { id: 2, origin: ShareOrigin::Drag, items: vec![], requested_by: None };
+        let dropped = ShareOffer { id: 2, origin: ShareOrigin::Drag, items: vec![], folders: vec![], requested_by: None };
         assert_eq!(decode::<ShareOffer>(&encode(&dropped).unwrap()).unwrap().origin, ShareOrigin::Drag);
-        let offer = ShareOffer { id: 1, origin: ShareOrigin::Capture(77), items: vec![], requested_by: None };
+        let offer = ShareOffer { id: 1, origin: ShareOrigin::Capture(77), items: vec![], folders: vec![], requested_by: None };
         let back: ShareOffer = decode(&encode(&offer).unwrap()).unwrap();
         assert_eq!(back.origin, ShareOrigin::Capture(77));
 
@@ -1234,7 +1317,7 @@ mod tests {
             ShareOffer { id: u64, origin: OldOrigin },
             Ping { nonce: u64 },
         }
-        let bytes = encode(&Msg::ShareOffer(ShareOffer { id: 1, origin: ShareOrigin::Capture(5), items: vec![], requested_by: None })).unwrap();
+        let bytes = encode(&Msg::ShareOffer(ShareOffer { id: 1, origin: ShareOrigin::Capture(5), items: vec![], folders: vec![], requested_by: None })).unwrap();
         // The old reader cannot make sense of it, and that is fine: `decode_msg` falls back to
         // `Msg::Unknown` when the bytes are well formed CBOR, so the offer is skipped and the
         // connection carries on.

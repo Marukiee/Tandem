@@ -42,6 +42,7 @@ mod i18n;
 mod hands;
 mod input;
 mod keepawake;
+mod trust;
 mod unlock;
 mod lid;
 mod insert;
@@ -256,12 +257,13 @@ pub fn run() {
             commands::remove_device,
             commands::rename_self,
             commands::set_device_settings,
+            trust::trust_list,
+            trust::trust_set,
+            trust::trust_set_level,
             commands::health_records,
             commands::health_insights,
             commands::health_range,
             commands::health_export,
-            commands::guests_by_default,
-            commands::set_guests_by_default,
             commands::ring,
             commands::ring_watch,
             commands::watch_heart_live,

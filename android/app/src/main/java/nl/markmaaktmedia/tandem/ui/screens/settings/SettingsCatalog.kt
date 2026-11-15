@@ -10,6 +10,7 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 
 /** The pages of Settings that are made for this overview. The older screens keep their own routes. */
 enum class SettingsPageId(val key: String) {
+    Devices("devices"),
     Look("look"),
     Sharing("sharing"),
     QuickShare("quickshare"),
@@ -34,6 +35,7 @@ internal enum class SettingsCategory(
     val icon: @Composable () -> Painter,
     val route: Route,
 ) {
+    Devices(R.string.circle_title, { TandemIcons.Devices }, Route.SettingsPage(SettingsPageId.Devices)),
     Look(R.string.settings_look, { TandemIcons.Palette }, Route.SettingsPage(SettingsPageId.Look)),
     Sharing(R.string.settings_cat_sharing, { TandemIcons.Devices }, Route.SettingsPage(SettingsPageId.Sharing)),
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),

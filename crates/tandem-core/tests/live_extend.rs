@@ -299,12 +299,14 @@ async fn a_second_screen_that_is_turned_is_resized_within_its_session() {
     mac.engine.media_update(session, MediaUpdate { format: Some(format), control: None, unlock: None }).unwrap();
     wait_until("the new shape on the phone", || !viewer.updates.lock().unwrap().is_empty()).await;
     assert_eq!(viewer.updates.lock().unwrap()[0].format, Some(format));
+    // Each picture is waited for before the next goes: a runner that stalls for a quarter of a second makes the host call the link
+    // jammed and drop a frame, which says nothing about what this test is about.
     for n in 0..5u64 {
         let pts = base.elapsed().as_micros() as u64 + n;
         assert_eq!(mac.engine.media_push_frame(session, unit(n == 0, 4_000), pts, n == 0), MediaPush::Sent);
-        tokio::time::sleep(Duration::from_millis(16)).await;
+        wait_until("the upright picture", || viewer.frames.lock().unwrap().len() == 2 + n as usize).await;
     }
-    wait_until("the upright pictures", || viewer.frames.lock().unwrap().len() == 6).await;
+    assert_eq!(viewer.frames.lock().unwrap().len(), 6);
     assert!(viewer.ended.lock().unwrap().is_none());
 
     // A camera is not a screen made for the phone, so it has no shape to change.

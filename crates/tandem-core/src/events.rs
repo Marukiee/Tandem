@@ -49,6 +49,8 @@ pub enum Event {
     /// Another device removed this one. It can no longer connect until it starts over
     /// with a new identity.
     RemovedFromCircle,
+    /// Another device of the circle gave this device a name (R-I33): it is its own now. The app keeps it where it keeps the name.
+    SelfRenamed { name: String },
 
     Clipboard { from: DeviceId, text: String, is_url: bool },
     ShareOffered { from: DeviceId, offer: ShareOffer },
@@ -89,6 +91,8 @@ pub enum Event {
     Unlock { from: DeviceId },
     /// Another device asks this device to lock its screen.
     Lock { from: DeviceId },
+    /// A device did not do what this one asked: it does not allow it (P6). `reason` is one of `trust::REASONS`.
+    Refused { from: DeviceId, permission: crate::trust::Permission, reason: String },
     /// Another device asks this phone to switch how it sounds.
     SoundMode { from: DeviceId, mode: crate::proto::SoundMode },
     /// Another device is about to play tones to find out on which side of it this one stands: record and answer with `side_heard`.

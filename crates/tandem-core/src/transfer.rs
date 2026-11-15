@@ -24,7 +24,7 @@ use crate::ids::now_ms;
 use crate::journal::{ItemState, Key, PARTIAL_DIR, RecordItem, Run, Stage, TransferRecord, partial_name};
 use crate::error::{Error, Result};
 use crate::events::{Event, TransferDone, TransferProgress};
-use crate::ids::DeviceId;
+use crate::ids::{DeviceId, Platform};
 use crate::proto::{
     self, FileAck, FileRequest, FileResponse, FileTrailer, MAX_SMALL_FRAME, Msg, STREAM_FILE, ShareItem,
     ShareOffer, ShareOrigin, ShareReply, ShareResume, ShareResumed,
@@ -54,6 +54,9 @@ pub struct SendReport {
     pub offline: Vec<DeviceId>,
     /// Of `offline`, the ones it waits in the queue for (P3): the offer goes when they come back.
     pub queued: Vec<DeviceId>,
+    /// The offer holds folders and these devices did not say they take them (P4): they got nothing, and the app sends them the
+    /// folders as zips. A device that is away and was not seen since the start is among them, since what it takes is not known.
+    pub no_folders: Vec<DeviceId>,
 }
 
 /// Whether an offer of this origin waits for a device that is away (P3). What belonged to a moment does not: a copied picture, a photo
@@ -162,7 +165,7 @@ impl Inner {
     pub(crate) async fn send_files_as(
         self: &Arc<Self>,
         targets: &[DeviceId],
-        mut files: Vec<OutgoingFile>,
+        files: Vec<OutgoingFile>,
         origin: ShareOrigin,
         offer_id: u64,
         requested_by: Option<DeviceId>,
@@ -170,8 +173,22 @@ impl Inner {
         if files.is_empty() {
             return Err(Error::invalid("nothing to send"));
         }
+        let (mut files, folders) = if self.folders_on() {
+            crate::folders::open_up(files)?
+        } else {
+            (files.into_iter().map(|file| (file, String::new())).collect(), Vec::new())
+        };
+        if files.is_empty() && folders.is_empty() {
+            return Err(Error::invalid("nothing to send"));
+        }
+        let has_folders = !folders.is_empty() || files.iter().any(|(_, path)| !path.is_empty());
+        let (targets, no_folders): (Vec<DeviceId>, Vec<DeviceId>) = if has_folders {
+            targets.iter().copied().partition(|id| self.peer_has_cap(id, crate::folders::FOLDERS_CAP))
+        } else {
+            (targets.to_vec(), Vec::new())
+        };
         let mut changed = vec![None; files.len()];
-        for (file, changed) in files.iter_mut().zip(changed.iter_mut()) {
+        for ((file, _), changed) in files.iter_mut().zip(changed.iter_mut()) {
             // When it last changed, also when the app knows the size: a resume (P2) and the queue (P3) compare it to see a file that was
             // edited without changing size.
             if let Ok(meta) = self.files.open_read(&file.source).and_then(|opened| opened.metadata()) {
@@ -189,17 +206,18 @@ impl Inner {
         let items: Vec<RecordItem> = files
             .into_iter()
             .zip(changed)
-            .map(|(f, changed)| RecordItem {
+            .map(|((f, path), changed)| RecordItem {
                 name: f.name,
                 size: f.size,
                 mime: f.mime,
                 modified: None,
                 source: f.source,
                 source_modified_ms: changed.map(|d| d.as_millis() as u64),
-                path: String::new(),
+                path,
             })
             .collect();
         let mut record = TransferRecord::outgoing(offer_id, origin, items, &online, &queued);
+        record.folders = folders;
         record.requested_by = requested_by;
         let offer = record.share_offer();
         let key = Key::Out(offer_id);
@@ -239,7 +257,7 @@ impl Inner {
                 tokio::spawn(async move { this.send_queued(id).await });
             }
         }
-        Ok(SendReport { offer: offer_id, sent_to, offline, queued })
+        Ok(SendReport { offer: offer_id, sent_to, offline, queued, no_folders })
     }
 
     /// Sends what waited in the queue for `peer`, which is connected now (P3). Each source is looked at first: a file that is gone or
@@ -385,8 +403,18 @@ impl Inner {
         (changed, gone)
     }
 
-    pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, offer: ShareOffer) {
+    pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, mut offer: ShareOffer) {
+        // A drop comes with the shared mouse and the app lands it without asking. A device that may not control this one gets the
+        // same as any other offer (P6).
+        if offer.origin == ShareOrigin::Drag && !self.allowed(&from, crate::trust::Permission::Control) {
+            offer.origin = ShareOrigin::Files;
+        }
         let key = Key::In(from, offer.id);
+        // This device did not say it takes folders, so it builds none: the files come in loose, as before (P4).
+        if !self.folders_on() {
+            offer.folders.clear();
+            offer.items.iter_mut().for_each(|item| item.path.clear());
+        }
         // Numbers are random, so this is the same offer said twice; the one that is here already counts.
         if self.journal.read(key, |_| ()).is_some() {
             debug!(%from, offer = offer.id, "an offer that is here already, left out");
@@ -423,7 +451,7 @@ impl Inner {
     }
 
     /// Stops a transfer, from either side, and tells the other device so it stops too. The files already done stay.
-    pub(crate) async fn cancel_transfer(&self, peer: DeviceId, offer: u64, incoming: bool) {
+    pub(crate) async fn cancel_transfer(self: &Arc<Self>, peer: DeviceId, offer: u64, incoming: bool) {
         // Sent by another device at this one's request (P9): that device stops it.
         if !incoming && self.journal.read(Key::Out(offer), |_| ()).is_none() && self.cancel_relay(peer, offer).await {
             return;
@@ -453,14 +481,14 @@ impl Inner {
     }
 
     /// The other device stopped a transfer.
-    pub(crate) fn on_share_cancel(&self, peer: DeviceId, offer: u64) {
+    pub(crate) fn on_share_cancel(self: &Arc<Self>, peer: DeviceId, offer: u64) {
         self.stop_incoming(peer, offer);
         self.stop_outgoing(peer, offer, ItemState::Cancelled, None);
     }
 
     /// Stops an incoming offer. Files being pulled stop and take their partial file with them. An offer that is not being pulled
     /// (it waited for a yes, or stopped halfway before a restart) has nothing that would end it, so it ends here.
-    fn stop_incoming(&self, peer: DeviceId, offer: u64) {
+    fn stop_incoming(self: &Arc<Self>, peer: DeviceId, offer: u64) {
         let key = Key::In(peer, offer);
         let Some(run) = self.journal.run(key) else { return };
         run.cancel.cancel();
@@ -498,6 +526,9 @@ impl Inner {
                 location: None,
                 error: ItemState::Cancelled.reason().map(str::to_string),
             }));
+        }
+        if idle {
+            self.hand_over_folders_later(peer, offer);
         }
     }
 
@@ -711,7 +742,7 @@ impl Inner {
     }
 
     /// No to a transfer that stopped halfway before this start (P2). See `Engine::discard_transfer`.
-    pub(crate) async fn discard_transfer(&self, from: DeviceId, offer: u64) -> Result<()> {
+    pub(crate) async fn discard_transfer(self: &Arc<Self>, from: DeviceId, offer: u64) -> Result<()> {
         let key = Key::In(from, offer);
         if !self.journal.resumable().iter().any(|record| record.key() == key) {
             return Err(Error::invalid("that transfer does not wait to go on"));
@@ -724,7 +755,7 @@ impl Inner {
 
     /// Ends files of an incoming offer that will not come: `which` of them, or every one that has not ended. Their partial files go, and
     /// each gets one `Finished` with `reason`. `close`: nothing more is pulled from that sender for this offer.
-    fn end_incoming(&self, from: DeviceId, offer: u64, which: Option<&[u32]>, reason: &str, close: bool) {
+    fn end_incoming(self: &Arc<Self>, from: DeviceId, offer: u64, which: Option<&[u32]>, reason: &str, close: bool) {
         let key = Key::In(from, offer);
         let ended = self
             .journal
@@ -759,6 +790,7 @@ impl Inner {
                 error: Some(reason.to_string()),
             }));
         }
+        self.hand_over_folders_later(from, offer);
     }
 
     /// The bytes still to come for an incoming offer are more than the free space this device last reported in its status (P5). A
@@ -795,7 +827,12 @@ impl Inner {
 
     /// See `Engine::short_of_space`.
     pub(crate) fn short_of_space(&self, targets: &[DeviceId], files: &[OutgoingFile]) -> Vec<DeviceId> {
-        let total: u64 = files
+        // A folder counts for the files in it (P4).
+        let opened: Vec<OutgoingFile> = match self.folders_on().then(|| crate::folders::open_up(files.to_vec())) {
+            Some(Ok((opened, _))) => opened.into_iter().map(|(file, _)| file).collect(),
+            _ => files.to_vec(),
+        };
+        let total: u64 = opened
             .iter()
             .map(|file| {
                 if file.size > 0 {
@@ -826,6 +863,16 @@ impl Inner {
         };
         let clipboard_on = self.settings.read().unwrap().for_device(&peer).clipboard;
         let for_clipboard = kept_for_clipboard(&offer, clipboard_on);
+        let has_folders = !offer.folders.is_empty() || offer.items.iter().any(|item| !item.path.is_empty());
+        // Where each top folder waits, worked out once for the offer and not again for each of its files.
+        let tops = if has_folders {
+            let this = self.clone();
+            tokio::task::spawn_blocking(move || this.begin_folders(peer, offer.id)).await.unwrap_or_default()
+        } else {
+            Default::default()
+        };
+        let tops = Arc::new(tops);
+        let for_drag = self.kept_for_drag(&offer);
         let slots = Arc::new(Semaphore::new(CONCURRENT_FILES));
         let mut tasks = tokio::task::JoinSet::new();
         for (index, item) in offer.items.iter().enumerate() {
@@ -837,14 +884,20 @@ impl Inner {
             let item = item.clone();
             let offer_id = offer.id;
             let cancel = run.cancel.clone();
+            let tops = tops.clone();
             tasks.spawn(async move {
                 let _permit = permit;
-                this.receive_item(peer, offer_id, index as u32, item, for_clipboard, cancel).await;
+                this.receive_item(peer, offer_id, index as u32, item, for_clipboard, for_drag, cancel, tops).await;
             });
         }
         while tasks.join_next().await.is_some() {}
+        if has_folders {
+            let this = self.clone();
+            let _ = tokio::task::spawn_blocking(move || this.hand_over_folders(peer, offer.id)).await;
+        }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn receive_item(
         self: Arc<Self>,
         peer: DeviceId,
@@ -852,7 +905,9 @@ impl Inner {
         index: u32,
         item: ShareItem,
         for_clipboard: bool,
+        for_drag: bool,
         cancel: CancellationToken,
+        tops: Arc<std::collections::BTreeMap<String, String>>,
     ) {
         let key = Key::In(peer, offer);
         let temp = self.partial_path(peer, offer, index);
@@ -909,14 +964,48 @@ impl Inner {
         };
 
         let done = match outcome {
+            // A file of a folder waits with the rest of its folder; its `Finished` comes when the folder goes to its place (P4).
+            Ok(()) if !item.path.is_empty() => {
+                let this = self.clone();
+                let (path, name, from) = (item.path.clone(), item.name.clone(), temp.clone());
+                let staged = tokio::task::spawn_blocking(move || this.stage_folder_file(peer, offer, &tops, &path, &name, &from)).await;
+                match staged {
+                    Ok(Ok(location)) => {
+                        self.journal.file_ended(key, |record| {
+                            if let Some(progress) = record.item_mut(&peer, index) {
+                                progress.state = ItemState::Done;
+                                progress.done = item.size;
+                                progress.error = None;
+                                progress.location = Some(location);
+                            }
+                        });
+                        info!(%peer, offer, name = %item.name, "incoming file of a folder finished");
+                        return;
+                    }
+                    other => {
+                        info!(%peer, offer, index, "could not keep a file of a folder: {other:?}");
+                        let _ = std::fs::remove_file(&temp);
+                        failed(peer, offer, index, &item, REASON_NOT_SAVED)
+                    }
+                }
+            }
             Ok(()) => {
                 let files = self.files.clone();
                 let name = item.name.clone();
                 let mime = item.mime.clone();
                 let path = temp.clone();
                 let clipboard_dir = self.clipboard_dir(peer, offer);
+                let drag_root = self.store.dir().join(DRAG_DIR);
+                let drag_dir = drag_root.join(format!("{peer}-{offer:016x}"));
                 let stored = tokio::task::spawn_blocking(move || {
-                    if for_clipboard { keep_for_clipboard(&path, &clipboard_dir, &name) } else { files.store_download(&path, &name, &mime) }
+                    if for_clipboard {
+                        keep_for_clipboard(&path, &clipboard_dir, &name)
+                    } else if for_drag {
+                        sweep_dir(&drag_root, DRAG_KEPT);
+                        keep_for_drag(&path, &drag_dir, &name)
+                    } else {
+                        files.store_download(&path, &name, &mime)
+                    }
                 })
                 .await;
                 match stored {
@@ -966,7 +1055,11 @@ impl Inner {
     /// Lets offers go that waited, stopped halfway or ended long enough ago (see `journal`), and says so for each file that ended
     /// now. A receiver that lets an offer go that waited for a yes tells the sender, so it ends there too (R-B14, R-B27).
     pub(crate) fn expire_transfers(self: &Arc<Self>) {
-        for lapse in self.journal.expire(now_ms()) {
+        self.expire_transfers_at(now_ms());
+    }
+
+    pub(crate) fn expire_transfers_at(self: &Arc<Self>, now: u64) {
+        for lapse in self.journal.expire(now) {
             let (peer, offer) = match lapse.key {
                 Key::In(sender, offer) => (sender, offer),
                 Key::Out(offer) => (lapse.peer, offer),
@@ -985,6 +1078,9 @@ impl Inner {
                     location: None,
                     error: ItemState::Expired.reason().map(str::to_string),
                 }));
+            }
+            if lapse.incoming {
+                self.hand_over_folders_later(peer, offer);
             }
             if lapse.tell_sender {
                 let this = self.clone();
@@ -1018,6 +1114,13 @@ impl Inner {
 
     /// Where a picture that came for the clipboard waits until the app has put it there. Not Downloads: it is a copy, not a file that
     /// came in, and a folder of its own per offer keeps the name it had without two of them meeting.
+    /// Files that were dragged over from the computer that shares its pointer are put down by the person at that moment, wherever they
+    /// let go, so on a Mac they are not stored with the downloads: the drop copies them from here, and a copy would stay behind in
+    /// Downloads for good (R-D9). Other systems land them from the downloads for now.
+    fn kept_for_drag(&self, offer: &ShareOffer) -> bool {
+        offer.origin == ShareOrigin::Drag && self.cfg.platform == Platform::MacOs
+    }
+
     fn clipboard_dir(&self, peer: DeviceId, offer: u64) -> PathBuf {
         self.store.dir().join(CLIPBOARD_DIR).join(format!("{peer}-{offer:016x}"))
     }
@@ -1348,14 +1451,8 @@ impl Inner {
             }
         }
         // Pictures for the clipboard are removed by the app once they are on it; this catches what a crash or a quit left behind.
-        if let Ok(entries) = std::fs::read_dir(self.store.dir().join(CLIPBOARD_DIR)) {
-            let old = std::time::SystemTime::now() - CLIPBOARD_KEPT;
-            for entry in entries.flatten() {
-                if entry.metadata().and_then(|m| m.modified()).is_ok_and(|modified| modified < old) {
-                    let _ = std::fs::remove_dir_all(entry.path()).or_else(|_| std::fs::remove_file(entry.path()));
-                }
-            }
-        }
+        sweep_dir(&self.store.dir().join(CLIPBOARD_DIR), CLIPBOARD_KEPT);
+        sweep_dir(&self.store.dir().join(DRAG_DIR), DRAG_KEPT);
         let outgoing = self.store.dir().join("outgoing");
         if let Ok(entries) = std::fs::read_dir(outgoing) {
             let old = std::time::SystemTime::now() - Duration::from_secs(24 * 3600);
@@ -1406,6 +1503,22 @@ pub const CLIPBOARD_LIMIT: u64 = 50 * 1024 * 1024;
 /// clipboard after an hour.
 const CLIPBOARD_KEPT: Duration = Duration::from_secs(3600);
 
+/// The folder in the data folder for files that were dragged over, until they are put down.
+pub const DRAG_DIR: &str = "drag";
+/// How long such a file may stay at most. A drop that is never made leaves it; a day is far more than a drag takes.
+const DRAG_KEPT: Duration = Duration::from_secs(24 * 3600);
+
+/// Removes what in `dir` was last touched longer than `kept` ago.
+fn sweep_dir(dir: &Path, kept: Duration) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let old = std::time::SystemTime::now() - kept;
+    for entry in entries.flatten() {
+        if entry.metadata().and_then(|m| m.modified()).is_ok_and(|modified| modified < old) {
+            let _ = std::fs::remove_dir_all(entry.path()).or_else(|_| std::fs::remove_file(entry.path()));
+        }
+    }
+}
+
 /// A picture that was copied (or a screenshot) on a device that shares the clipboard with this one. It goes to the clipboard here
 /// and nowhere else, so it is not stored with the downloads, where it would pile up, and where the screenshot watcher of a phone
 /// would take a screenshot that came in for a new one and send it back. Files that were copied do go to the downloads: pasted,
@@ -1414,6 +1527,7 @@ pub(crate) fn kept_for_clipboard(offer: &ShareOffer, clipboard_on: bool) -> bool
     clipboard_on
         && offer.origin == ShareOrigin::Clipboard
         && offer.items.len() == 1
+        && offer.items[0].path.is_empty()
         && offer.items[0].size <= CLIPBOARD_LIMIT
         && is_picture(&offer.items[0])
 }
@@ -1430,6 +1544,30 @@ fn is_picture(item: &ShareItem) -> bool {
 fn keep_for_clipboard(temp: &Path, dir: &Path, name: &str) -> std::io::Result<String> {
     std::fs::create_dir_all(dir)?;
     let target = dir.join(safe_name(name));
+    std::fs::rename(temp, &target)?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+/// Moves a finished file that was dragged over into the folder of its offer, under a name that is free there (two files of one drag
+/// may have the same name).
+fn keep_for_drag(temp: &Path, dir: &Path, name: &str) -> std::io::Result<String> {
+    std::fs::create_dir_all(dir)?;
+    let safe = safe_name(name);
+    let path = Path::new(&safe);
+    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let mut target = dir.join(&safe);
+    for n in 2..1000 {
+        // The name is taken by creating it: files of one offer arrive side by side, and two with one name must not both find it free.
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&target) {
+            Ok(_) => break,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(e) => return Err(e),
+        }
+        target = dir.join(match path.extension() {
+            Some(ext) => format!("{stem} {n}.{}", ext.to_string_lossy()),
+            None => format!("{stem} {n}"),
+        });
+    }
     std::fs::rename(temp, &target)?;
     Ok(target.to_string_lossy().into_owned())
 }
@@ -1478,8 +1616,9 @@ mod clipboard_tests {
             origin,
             items: items
                 .iter()
-                .map(|(name, mime, size)| ShareItem { name: name.to_string(), size: *size, mime: mime.to_string(), modified: None })
+                .map(|(name, mime, size)| ShareItem { name: name.to_string(), size: *size, mime: mime.to_string(), ..ShareItem::default() })
                 .collect(),
+            folders: vec![],
             requested_by: None,
         }
     }

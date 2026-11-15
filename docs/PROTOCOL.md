@@ -93,6 +93,12 @@ regie over gelijktijdigheid en hervatten.
 
 Onvolledige bestanden staan als `.part` en worden pas hernoemd na een goede hash.
 
+**Mappen (P4).** Een apparaat met de cap `share.folders` krijgt een map als map: elk bestand in
+`items` heeft dan `path` (de map binnen het aanbod, delen met `/`), en `folders` noemt de mappen
+waar niets in zit. Beide velden worden alleen geschreven als ze iets bevatten. Een apparaat zonder
+die cap krijgt zo'n aanbod niet (de app stuurt hem een zip), en een ontvanger die de cap niet heeft
+negeert `path` en `folders`. Zie `docs/TRANSFERS.md`.
+
 **Sturen tussen twee andere apparaten (P9).** A vraagt B met `ShareRelay { id, to, paths }` om bestanden
 van B naar `to` te sturen, alleen als B de cap `share.relay` heeft. B antwoordt `ShareRelayReply`, stuurt
 een gewoon `ShareOffer` met nummer `id` en `requested_by` (A) naar `to`, en meldt A elke voortgang en elk

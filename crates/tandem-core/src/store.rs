@@ -113,6 +113,21 @@ pub struct DeviceSettings {
     /// Gets the nights and workouts this device took from a watch (see `health`). Off until the person says so.
     #[serde(default)]
     pub health: bool,
+    /// What else it may do here (P6, see `trust`). All on unless a person switched one off.
+    #[serde(default = "yes")]
+    pub see_notifications: bool,
+    #[serde(default = "yes")]
+    pub control: bool,
+    #[serde(default = "yes")]
+    pub unlock: bool,
+    #[serde(default = "yes")]
+    pub lock: bool,
+    #[serde(default = "yes")]
+    pub wifi_password: bool,
+    #[serde(default = "yes")]
+    pub calls: bool,
+    #[serde(default = "yes")]
+    pub restart: bool,
 }
 
 fn yes() -> bool {
@@ -121,14 +136,40 @@ fn yes() -> bool {
 
 impl Default for DeviceSettings {
     fn default() -> Self {
-        DeviceSettings { clipboard: true, auto_accept: true, notifications: true, messages: true, health: false }
+        DeviceSettings {
+            clipboard: true,
+            auto_accept: true,
+            notifications: true,
+            messages: true,
+            health: false,
+            see_notifications: true,
+            control: true,
+            unlock: true,
+            lock: true,
+            wifi_password: true,
+            calls: true,
+            restart: true,
+        }
     }
 }
 
 impl DeviceSettings {
     /// What a guest gets: nothing of theirs comes into the clipboard, no notifications, files are asked about first, and no messages.
     pub fn guest() -> DeviceSettings {
-        DeviceSettings { clipboard: false, auto_accept: false, notifications: false, messages: false, health: false }
+        DeviceSettings {
+            clipboard: false,
+            auto_accept: false,
+            notifications: false,
+            messages: false,
+            health: false,
+            see_notifications: false,
+            control: false,
+            unlock: false,
+            lock: false,
+            wifi_password: false,
+            calls: false,
+            restart: false,
+        }
     }
 }
 
@@ -136,11 +177,6 @@ impl DeviceSettings {
 pub struct Settings {
     #[serde(default)]
     pub devices: HashMap<String, DeviceSettings>,
-    /// Once a device without settings of its own started as a guest when this was on. Taken out (2026-10-25): a circle is the person's
-    /// own devices, family on the same network have a circle of their own and never see these. Still read so an old file loads, and
-    /// no longer used.
-    #[serde(default)]
-    pub guests_by_default: bool,
 }
 
 impl Settings {
@@ -149,16 +185,6 @@ impl Settings {
             Some(own) => own.clone(),
             None => DeviceSettings::default(),
         }
-    }
-
-    /// Switches the guest start on or off. `known` are the devices of the circle now: they keep what they have.
-    pub fn set_guests_by_default(&mut self, on: bool, known: &[DeviceId]) {
-        // What each one has now is what it keeps, whichever way this goes.
-        for id in known {
-            let own = self.for_device(id);
-            self.devices.entry(id.to_string()).or_insert(own);
-        }
-        self.guests_by_default = on;
     }
 
     pub fn set_device(&mut self, id: &DeviceId, settings: DeviceSettings) {
@@ -215,5 +241,27 @@ mod tests {
         let read: DeviceSettings = crate::proto::decode(&bytes).unwrap();
         assert!(!read.clipboard && read.messages);
         assert!(!DeviceSettings::guest().messages);
+    }
+
+    #[test]
+    fn the_permissions_of_p6_are_on_for_a_device_from_before_they_existed() {
+        let old = ciborium::Value::Map(vec![(ciborium::Value::Text("auto_accept".into()), ciborium::Value::Bool(false))]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        let read: DeviceSettings = crate::proto::decode(&bytes).unwrap();
+        assert!(!read.auto_accept);
+        assert_eq!(read, DeviceSettings { auto_accept: false, ..DeviceSettings::default() });
+    }
+
+    #[test]
+    fn a_settings_file_from_when_guests_existed_still_loads() {
+        let old = ciborium::Value::Map(vec![
+            (ciborium::Value::Text("devices".into()), ciborium::Value::Map(vec![])),
+            (ciborium::Value::Text("guests_by_default".into()), ciborium::Value::Bool(true)),
+        ]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        let read: Settings = crate::proto::decode(&bytes).unwrap();
+        assert!(read.devices.is_empty());
     }
 }

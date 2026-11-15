@@ -45,7 +45,9 @@ message }` met een van: `not_found`, `denied`, `disabled`, `outside`, `exists`, 
 
 Een bestand komt heel aan of helemaal niet: een schrijfactie gaat eerst naar `.naam.<getal>.tandem-part` naast de
 bestemming en krijgt zijn naam pas als alle bytes er zijn. Een download gaat naar `naam.tandem-part` en wordt
-hervat vanaf wat daar al staat. Gaat het fout nadat een leesactie is begonnen, dan breekt de host de stream af in
+hervat vanaf wat daar al staat, maar alleen als het bestand bij de host nog even groot is en dezelfde wijzigingstijd heeft
+als bij de eerste poging (die staan in `naam.tandem-part-info`). Anders, of zonder dat bestandje, begint hij opnieuw, en
+aan het eind moet de lengte kloppen (R-B12). Gaat het fout nadat een leesactie is begonnen, dan breekt de host de stream af in
 plaats van een foutframe tussen de bytes te zetten, want dat zou voor bestandsinhoud worden aangezien.
 
 ## Wat er niet door kan
