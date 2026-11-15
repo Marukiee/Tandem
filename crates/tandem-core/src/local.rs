@@ -62,7 +62,7 @@ mod imp {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 format!(
-                    "the data folder path is too long for the local socket ({length} characters, at most {}): use a shorter one",
+                    "the data folder path is too long for the local socket ({length} bytes, at most {}): use a shorter one",
                     MAX_SOCKET_PATH - 1
                 ),
             ));
