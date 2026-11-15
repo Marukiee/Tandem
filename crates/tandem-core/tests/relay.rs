@@ -261,3 +261,15 @@ async fn b_notes_each_request_in_its_files_activity() {
     assert!(relays.iter().any(|e| e.path == "/Docs/../x" && !e.ok));
 }
 
+/// A B that says it relays but never answers (an older version that skips the message): A says so after its wait.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_device_that_never_answers_is_reported_after_the_wait() {
+    let (a, b, c, shared) = three(true).await;
+    std::fs::write(shared.path().join("ok.txt"), b"ok").unwrap();
+    b.engine.set_relay_silent(true);
+    let started = std::time::Instant::now();
+    let answer = a.engine.send_between(b.engine.id(), c.engine.id(), vec!["/Docs/ok.txt".into()]).await;
+    assert_eq!((answer.ok, answer.reason.as_deref()), (false, Some("no answer")));
+    assert!(started.elapsed() >= Duration::from_secs(14), "it waited for the answer");
+    assert!(b.engine.transfers().is_empty() && c.engine.transfers().is_empty());
+}

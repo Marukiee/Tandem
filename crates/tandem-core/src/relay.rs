@@ -67,6 +67,8 @@ pub(crate) struct RelayState {
     asked: Mutex<HashMap<u64, Asked>>,
     /// A: answers that are awaited, by the same number.
     answers: Mutex<HashMap<u64, oneshot::Sender<ShareRelayReply>>>,
+    /// B, in tests only: behave like an older device that skips the request.
+    pub(crate) silent: std::sync::atomic::AtomicBool,
 }
 
 /// What A hears back.
@@ -203,6 +205,9 @@ impl Inner {
     // ---- B: the device that sends -----------------------------------------------------------------------------------------------
 
     pub(crate) fn on_share_relay(self: Arc<Self>, from: DeviceId, ask: ShareRelay) {
+        if self.relay.silent.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
         tokio::spawn(async move {
             let reply = self.relay_for(from, &ask).await;
             info!(%from, to = %ask.to, offer = ask.id, ok = reply.ok, reason = ?reply.reason, "a request to send for another device");

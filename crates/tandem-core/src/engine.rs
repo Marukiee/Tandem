@@ -614,6 +614,12 @@ impl Engine {
         self.inner.send_between(via, to, paths).await
     }
 
+    /// Makes this device skip requests to send for another one (P9), as an older version does. For tests of the device that asks.
+    #[doc(hidden)]
+    pub fn set_relay_silent(&self, silent: bool) {
+        self.inner.relay.silent.store(silent, std::sync::atomic::Ordering::Relaxed);
+    }
+
     pub fn short_of_space(&self, targets: &[DeviceId], files: &[crate::transfer::OutgoingFile]) -> Vec<DeviceId> {
         self.inner.short_of_space(targets, files)
     }
