@@ -81,6 +81,10 @@ enum DebugSupport {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { ClipboardPanelController.shared.show() }
             }
         }
+        // `TANDEM_DEBUG_INPUT=<steps>`: clicks, the scroll wheel, keys and a resize, played against a window (see `DebugInput`).
+        if let steps = variable("TANDEM_DEBUG_INPUT") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { DebugInput.run(steps, into: directory) }
+        }
         if variable("TANDEM_DEBUG_SETTINGS") != nil {
             // In a window of its own rather than through the Settings scene, which only opens for an app that is in front.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSettingsWindow() }
