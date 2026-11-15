@@ -97,7 +97,7 @@ daarna voor nu uitbrengen: PR 31 komt in de release erna. Mark meet de accu opni
 
 **Open, voor wie verder gaat (stand 2026-11-15, nacht).** PR 31 (de Mac in het nieuwe
 ontwerp) botst met main; de sessie bouwt de punten 5 (een icoonfamilie), 6 (rond horloge), 7 (kop en speler), 8 (een woord bij de knop
-van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
+van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; bij punt 7 nog: de tegel Steps op de kaart Health is hoger dan de tegels Last night en Heart rate now door zijn grotere icoon in een ring; alle drie even hoog en hetzelfde icoon; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
 Pas samenvoegen na Marks akkoord. Mark wil ze in de release na 0.3.23. Daarna de Mac-schillen van P4, P9, Circle (ook een regel in het menu Tandem) en R-I33 ("Instellingen van
 dit apparaat" op elke apparaatpagina), en op Android en Linux en Windows de rij "Instellingen van dit apparaat" van R-I33.
 
