@@ -834,6 +834,11 @@ impl Inner {
         };
         let clipboard_on = self.settings.read().unwrap().for_device(&peer).clipboard;
         let for_clipboard = kept_for_clipboard(&offer, clipboard_on);
+        let has_folders = !offer.folders.is_empty() || offer.items.iter().any(|item| !item.path.is_empty());
+        if has_folders {
+            let this = self.clone();
+            let _ = tokio::task::spawn_blocking(move || this.begin_folders(peer, offer.id)).await;
+        }
         let slots = Arc::new(Semaphore::new(CONCURRENT_FILES));
         let mut tasks = tokio::task::JoinSet::new();
         for (index, item) in offer.items.iter().enumerate() {
@@ -851,7 +856,7 @@ impl Inner {
             });
         }
         while tasks.join_next().await.is_some() {}
-        if !offer.folders.is_empty() || offer.items.iter().any(|item| !item.path.is_empty()) {
+        if has_folders {
             let this = self.clone();
             let _ = tokio::task::spawn_blocking(move || this.hand_over_folders(peer, offer.id)).await;
         }

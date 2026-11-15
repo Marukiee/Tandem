@@ -185,6 +185,30 @@ impl Inner {
         format!("{name} ({})", self.incomplete_label.read().unwrap())
     }
 
+    /// Before the files of an offer are pulled for the first time: the empty folders of the offer are made where its folders wait.
+    /// Only then, never at a hand-over, so a folder that was handed over is never made again. Gives where each top folder waits.
+    pub(crate) fn begin_folders(&self, peer: DeviceId, offer: u64) -> BTreeMap<String, String> {
+        let Some((paths, folders, first)) = self.journal.read(Key::In(peer, offer), |record| {
+            let paths: Vec<String> = record.items.iter().map(|i| i.path.clone()).chain(record.folders.iter().cloned()).collect();
+            let first = record.peers.first().is_none_or(|p| !p.items.iter().any(|i| i.state.is_final()));
+            (paths, record.folders.clone(), first)
+        }) else {
+            return BTreeMap::new();
+        };
+        let tops = staged_tops(&paths.iter().map(String::as_str).collect::<Vec<_>>());
+        if first {
+            let root = self.staging_root(peer, offer);
+            for folder in &folders {
+                let parts = safe_parts(folder);
+                let Some((top, rest)) = parts.split_first() else { continue };
+                let mut dir = root.join(tops.get(top).unwrap_or(top));
+                dir.extend(rest);
+                let _ = std::fs::create_dir_all(dir);
+            }
+        }
+        tops
+    }
+
     /// Moves a file that came in whole into the folder it belongs in, under the folder of its offer. Gives where it is now.
     pub(crate) fn stage_folder_file(&self, peer: DeviceId, offer: u64, path: &str, name: &str, temp: &Path) -> Result<String> {
         let paths = self
@@ -224,10 +248,6 @@ impl Inner {
             }
             return;
         };
-        // An offer of nothing but empty folders has no file that would have made the folder of the offer.
-        if !folders.is_empty() {
-            let _ = std::fs::create_dir_all(&root);
-        }
         if !root.exists() {
             return;
         }
@@ -238,11 +258,7 @@ impl Inner {
             if !mine.iter().all(|&i| states.get(i).is_some_and(|s| s.state.is_final())) {
                 continue;
             }
-            for folder in folders.iter().filter(|f| top_of(f).as_ref() == Some(top)) {
-                let mut dir = root.join(staged_name);
-                dir.extend(safe_parts(folder).into_iter().skip(1));
-                let _ = std::fs::create_dir_all(dir);
-            }
+            // Gone means handed over (or thrown away) before: a folder is only ever made here when the files start to come.
             let staged = root.join(staged_name);
             if !staged.exists() {
                 continue;

@@ -404,3 +404,56 @@ async fn an_offer_of_only_empty_folders_makes_them() {
     assert_eq!(report.sent_to.len(), 1);
     wait_until("the folders are made", || mac.downloads.join("Empty/inside").is_dir()).await;
 }
+
+/// Two top folders, a restart while A is whole and B halfway: the start hands A over, the yes finishes B, and A is never handed over
+/// a second time (no "A (1)" with only its empty folder, no second `Finished`, its files still say where they are).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_handed_over_at_the_start_is_not_handed_over_again() {
+    let open = Arc::new(AtomicBool::new(false));
+    let phone_dir = tempfile::tempdir().unwrap();
+    let gate = Gate { inner: DesktopFiles { download_dir: phone_dir.path().join("downloads") }, held: "b.bin", passes: Arc::new(AtomicUsize::new(1)), open: open.clone() };
+    let phone = node_with_files("Phone", true, phone_dir, Arc::new(gate)).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(source.path().join("A/empty")).unwrap();
+    std::fs::write(source.path().join("A/a.txt"), b"a").unwrap();
+    std::fs::create_dir_all(source.path().join("B")).unwrap();
+    std::fs::write(source.path().join("B/b.bin"), vec![3u8; 500_000]).unwrap();
+    let report = phone
+        .engine
+        .send_files(&[mac.engine.id()], vec![folder_of(&source.path().join("A")), folder_of(&source.path().join("B"))], ShareOrigin::Files)
+        .await
+        .unwrap();
+    let offer = report.offer;
+    wait_until("A came and B is on its way", || {
+        let s = states(&mac.engine, offer);
+        s.iter().any(|(n, st)| n == "a.txt" && *st == ItemState::Done) && s.iter().any(|(n, st)| n == "b.bin" && *st == ItemState::Running)
+    })
+    .await;
+    // A is whole, but the offer is not: it is handed over at the latest at the start.
+    mac.engine.shutdown().await;
+    open.store(true, Ordering::SeqCst);
+    phone.engine.shutdown().await;
+
+    let mac_again = restart(&mac, "Mac").await;
+    wait_until("A is handed over at the start", || mac.downloads.join("A/a.txt").exists()).await;
+    let phone_again = restart(&phone, "Phone").await;
+    mac_again.add_address(&phone.engine.id(), &format!("127.0.0.1:{}", phone_again.port())).unwrap();
+    wait_until("connected again", || mac_again.is_connected(&phone.engine.id()) && phone_again.is_connected(&mac.engine.id())).await;
+
+    let mut events = mac_again.subscribe();
+    mac_again.resume_transfer(phone.engine.id(), offer).unwrap();
+    let done = finished(&mut events, 1).await;
+    assert_eq!(done[0].name, "b.bin");
+    assert!(done[0].error.is_none(), "{done:?}");
+    // Nothing more comes for A.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    while let Ok(event) = events.try_recv() {
+        assert!(!matches!(&event, Event::Finished(d) if d.name == "a.txt"), "A got a second Finished");
+    }
+    assert_eq!(everything_in(&mac.downloads), vec!["A", "A/a.txt", "A/empty", "B", "B/b.bin"]);
+    let record = mac_again.transfers().into_iter().find(|t| t.offer == offer).unwrap();
+    let a = record.items.iter().position(|i| i.name == "a.txt").unwrap();
+    assert_eq!(PathBuf::from(record.peers[0].items[a].location.clone().unwrap()), mac.downloads.join("A/a.txt"));
+}
