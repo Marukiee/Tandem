@@ -2779,7 +2779,7 @@ impl TandemEngine {
         self.runtime.spawn(async move { engine.files(peer).read(&path, offset, len).await }).await.map_err(join_error)?.map_err(Into::into)
     }
 
-    /// A file of the other device to `to`, a path on this one. What an earlier try left as `to.tandem-part` is carried on.
+    /// A file of the other device to `to`, a path on this one. What an earlier try left as `to.tandem-part` is carried on if the file there did not change.
     pub async fn fs_download(
         &self,
         id: String,
