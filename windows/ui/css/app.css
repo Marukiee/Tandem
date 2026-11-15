@@ -771,19 +771,37 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .health-pager { display: flex; align-items: center; gap: 4px; }
 .health-pager .health-section { margin: 0; }
 .health-month-name { font-weight: 600; text-transform: capitalize; }
-/* A month as a calendar: seven columns, Monday first, a ring around the day number toward the goal of that page. */
-.health-month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px 4px; }
 .health-month-day { text-align: center; font-size: 11px; color: var(--text-2); }
-.health-day { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
-.health-day.later { opacity: .35; }
-.health-day-n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p, 0) * 1%), var(--hover) 0); font-size: 12px; font-variant-numeric: tabular-nums; }
-.health-day-n > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--card); }
-.health-day-n.met { background: var(--accent); }
-.health-day-n.plain { background: none; }
-.health-day-n.met > span { background: var(--accent); color: var(--card); font-weight: 700; }
-.health-day.today .health-day-n > span { font-weight: 700; color: var(--accent); }
-.health-day.today .health-day-n.met > span { color: var(--card); }
-.health-day-v { font-size: 10px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* The month calendar of Health as heat tiles. Colours are mixed with a solid neutral, not made see-through, so tiles read the same on any card. */
+.heat-wrap { container-type: inline-size; }
+.heat-month { --neutral: color-mix(in srgb, var(--text) 8%, var(--card)); --warm: #e8613c; display: grid; grid-template-areas: "detail" "grid" "legend"; gap: 12px; }
+@media (prefers-color-scheme: dark) { .heat-month { --warm: #f08a68; } }
+@container (min-width: 560px) {
+  .heat-month { grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr; grid-template-areas: "detail grid" "legend grid"; column-gap: 28px; }
+  .heat-legend { align-self: end; flex-wrap: wrap; }
+}
+.heat-month.from-older { animation: heat-from-left 0.42s var(--spring) both; }
+.heat-month.from-newer { animation: heat-from-right 0.42s var(--spring) both; }
+@keyframes heat-from-left { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes heat-from-right { from { opacity: 0; transform: translateX(24px); } }
+.heat-detail { grid-area: detail; animation: fade 0.22s ease-out; min-height: 56px; }
+.heat-none { font-size: 17px; font-weight: 500; color: var(--text-2); padding: 6px 0; }
+.heat-empty { padding: 10px 0; }
+.heat-grid { grid-area: grid; display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; align-content: start; }
+.heat-tile { aspect-ratio: 1; display: grid; place-items: center; padding: 0; border: 0; border-radius: 30%; font: inherit; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text); cursor: pointer;
+  background: color-mix(in srgb, var(--accent) var(--s, 0%), var(--neutral)); transition: background-color 0.32s ease, color 0.32s ease, transform 0.32s var(--spring), box-shadow 0.2s ease; }
+.heat-tile.warm { background: color-mix(in srgb, var(--warm) var(--s, 0%), var(--neutral)); }
+.heat-tile.empty { background: var(--neutral); color: var(--text-2); }
+.heat-tile.strong { color: var(--card); }
+.heat-tile.today, .heat-tile.met { font-weight: 700; }
+.heat-tile.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.heat-tile.picked { box-shadow: inset 0 0 0 2px var(--text); transform: scale(1.06); }
+.heat-tile.later { background: none; opacity: 0.35; cursor: default; }
+.heat-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.heat-legend { grid-area: legend; display: flex; align-items: center; gap: 6px; }
+.heat-scale { display: inline-block; width: 56px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--neutral), var(--warm)); }
+.heat-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 4px; background: color-mix(in srgb, var(--accent) var(--s), var(--neutral)); }
+@media (prefers-reduced-motion: reduce) { .heat-month.from-older, .heat-month.from-newer, .heat-detail { animation: none; } .heat-tile { transition: none; } }
 .health-part-card { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 18px; border: 0; border-radius: 24px; text-align: left; color: var(--text); font: inherit; cursor: pointer; }
 .health-part-card.tone-sleep { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
 .health-part-card.tone-activity { background: color-mix(in srgb, #d0679d 16%, var(--card)); }

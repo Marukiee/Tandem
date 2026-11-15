@@ -423,16 +423,16 @@ enum DebugSupport {
             .padding(20)
         }
         .environment(EngineModel.shared)
-        .frame(width: 620, height: 3600)
+        .frame(width: 620, height: 6400)
         let host = NSHostingView(rootView: page)
-        let window = NSWindow(contentRect: NSRect(x: 80, y: 40, width: 620, height: 3600), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: NSRect(x: 80, y: 40, width: 620, height: 6400), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = "Health (debug)"
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
     }
 
-    /// A made up week: five nights and four days, the newest first.
+    /// Made up health: five nights, the newest first, and six weeks of days.
     private static func debugHealthRecords() -> [TandemHealthRecord] {
         let hour: UInt64 = 3_600_000
         let now = UInt64(Date().timeIntervalSince1970 * 1000)
@@ -457,18 +457,20 @@ enum DebugSupport {
                 awakenings: 1, efficiencyPercent: 95, lightMinutes: sleep / 2, deepMinutes: sleep / 4, remMinutes: sleep / 4, stages: stages(),
                 heartRateMean: 58, heartRateLow: UInt32(47 + back % 3), heartRateHigh: 80, steps: 0, activeMinutes: 0, heartCurve: []
             ))
-            if back > 0 {
-                var curve: [UInt32] = []
-                for slot in 0..<288 {
-                    let wave: Int = (slot / 6) % 30
-                    curve.append(slot % 40 == 39 ? 0 : UInt32(58 + wave))
-                }
-                records.append(TandemHealthRecord(
-                    id: "day-\(back)", kind: .day, startMs: day, endMs: day + 24 * hour, sleepMinutes: 0, awakeMinutes: 0, awakenings: 0, efficiencyPercent: 0,
-                    lightMinutes: nil, deepMinutes: nil, remMinutes: nil, stages: [], heartRateMean: 70, heartRateLow: 58, heartRateHigh: 110,
-                    steps: UInt64(4000 + back * 1700), activeMinutes: UInt32(10 + back * 9), heartCurve: curve
-                ))
+        }
+        // Six weeks of days, with some higher and some lower than usual, so the month calendar has something to show.
+        for back in 1..<45 {
+            let day = midnight - UInt64(back) * 24 * hour
+            var curve: [UInt32] = []
+            for slot in 0..<288 {
+                let wave: Int = (slot / 6) % 30
+                curve.append(slot % 40 == 39 ? 0 : UInt32(58 + wave))
             }
+            records.append(TandemHealthRecord(
+                id: "day-\(back)", kind: .day, startMs: day, endMs: day + 24 * hour, sleepMinutes: 0, awakeMinutes: 0, awakenings: 0, efficiencyPercent: 0,
+                lightMinutes: nil, deepMinutes: nil, remMinutes: nil, stages: [], heartRateMean: UInt32(64 + (back * 7) % 13), heartRateLow: 58, heartRateHigh: 110,
+                steps: UInt64(3000 + (back * 1700) % 9000), activeMinutes: UInt32(10 + back * 9 % 50), heartCurve: curve
+            ))
         }
         return records
     }
