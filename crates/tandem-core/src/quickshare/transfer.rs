@@ -293,6 +293,9 @@ where
                     target.written += data.len() as u64;
                     events.progress(&target.offered, target.written);
                     if last {
+                        if target.written != target.offered.size {
+                            return Err(bad("less came than the sender announced"));
+                        }
                         target.file.flush().await?;
                         target.done = true;
                     }
@@ -667,6 +670,22 @@ mod tests {
         };
         let (_, received) = tokio::join!(sender, receive(right, &mut saves));
         assert!(received.is_err());
+        assert!(names_in(to.path()).is_empty(), "left behind: {:?}", names_in(to.path()));
+    }
+
+    #[tokio::test]
+    async fn less_than_announced_is_refused_and_leaves_nothing_behind() {
+        let from = tempfile::tempdir().unwrap();
+        let to = tempfile::tempdir().unwrap();
+        std::fs::write(from.path().join("short.bin"), pattern(1_000, 5)).unwrap();
+        // It says 5,000 bytes and ends after 1,000.
+        let files = vec![Outgoing { path: from.path().join("short.bin"), name: "short.bin".into(), mime: "application/octet-stream".into(), size: 5_000 }];
+        let (left, right) = tokio::io::duplex(1 << 20);
+        let mut saves = Saves { folder: Some(to.path().to_path_buf()), seen: None };
+        let mut watches = Watches::default();
+        let (_, received) = tokio::join!(send(left, "x", DeviceKind::Phone, &files, &[], &mut watches), receive(right, &mut saves));
+        let err = received.unwrap_err();
+        assert!(err.to_string().contains("less came"), "{err}");
         assert!(names_in(to.path()).is_empty(), "left behind: {:?}", names_in(to.path()));
     }
 
