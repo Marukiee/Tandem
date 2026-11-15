@@ -389,7 +389,10 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             SettingsGroup {
                 recent.forEach { item ->
                     Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer)) {
-                        TransferRow(item, device.name, rememberTransferActions(item, onRemove = { host.removeTransfer(item.id) }))
+                        TransferRow(
+                            item, device.name, rememberTransferActions(item, onRemove = { host.removeTransfer(item.id) }),
+                            dragOut = if (item.incoming && item.state == nl.markmaaktmedia.tandem.engine.TransferItem.State.Done) listOfNotNull(item.location) else null,
+                        )
                     }
                 }
             }
