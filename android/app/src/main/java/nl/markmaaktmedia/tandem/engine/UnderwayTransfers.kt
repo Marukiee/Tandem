@@ -103,6 +103,8 @@ class UnderwayTransfers(
         lastRefresh = System.currentTimeMillis()
         val found = runCatching { engine.transfers() }.getOrNull() ?: return
         if (found != _all.value) _all.value = found
+        // An offer that went out and was put back in the queue keeps its files as long as the core keeps the offer.
+        found.filter { !it.incoming && it.peers.any { peer -> peer.stage == TandemTransferStage.QUEUED } }.forEach { AndroidFiles.queued(it.offer) }
     }
 
     /** Stops it for that one device; the others an outgoing offer went to keep going (R-B8). */

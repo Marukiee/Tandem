@@ -513,7 +513,20 @@ class EngineHost(
     suspend fun sendOutgoing(files: List<TandemOutgoingFile>, targets: List<String>, origin: TandemShareOrigin): SendResult {
         val engine = engine ?: return SendResult()
         if (files.isEmpty() || targets.isEmpty()) return SendResult()
-        return sendDescribed(engine, files, targets, origin, hold = true)
+        // To a device that is away the offer waits for days: a file of another app is copied first, as sendUris does, since its grant
+        // does not outlive a restart of this app.
+        val away = origin.queues() && targets.any { device(it)?.online != true }
+        val ready = if (away) {
+            withContext(Dispatchers.IO) {
+                files.map { file ->
+                    val copy = file.source.takeIf { it.startsWith("content://") }?.let { copyForQueue(Uri.parse(it), file.name, file.size.toLong()) }
+                    if (copy != null) file.copy(source = copy) else file
+                }
+            }
+        } else {
+            files
+        }
+        return sendDescribed(engine, ready, targets, origin, hold = true)
     }
 
     private suspend fun sendDescribed(engine: TandemEngine, files: List<TandemOutgoingFile>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean): SendResult {
