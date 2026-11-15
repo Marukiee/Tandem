@@ -297,11 +297,39 @@ impl Inner {
         };
 
         let writer = async move {
-            while let Some(msg) = rx.recv().await {
-                if let Err(e) = proto::send(&mut send, &msg).await {
+            // What goes out, by kind, written to the log now and then: with the log of the attempts to dial it explains where the
+            // battery of a phone went. Kept here, in the one task that writes, so it costs no lock.
+            let mut tally = crate::sent_tally::SentTally::default();
+            let mut report = tokio::time::interval_at(tokio::time::Instant::now() + crate::sent_tally::REPORT_EVERY, crate::sent_tally::REPORT_EVERY);
+            report.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                let msg = tokio::select! {
+                    msg = rx.recv() => match msg {
+                        Some(msg) => msg,
+                        None => break,
+                    },
+                    _ = report.tick() => {
+                        if let Some(line) = tally.take_line() {
+                            info!("sent to {id}: {line}");
+                        }
+                        continue;
+                    }
+                };
+                let frame = match proto::encode(&msg) {
+                    Ok(frame) => frame,
+                    Err(e) => {
+                        debug!("could not write to the control stream: {e}");
+                        break;
+                    }
+                };
+                if let Err(e) = proto::write_frame(&mut send, &frame).await {
                     debug!("could not write to the control stream: {e}");
                     break;
                 }
+                tally.add(&msg, frame.len() + 4);
+            }
+            if let Some(line) = tally.take_line() {
+                info!("sent to {id}: {line}");
             }
         };
 

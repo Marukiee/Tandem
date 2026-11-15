@@ -28,6 +28,7 @@ pub mod pointer_share;
 pub mod quickshare;
 pub mod proto;
 pub mod session;
+mod sent_tally;
 pub mod side;
 pub mod side_check;
 pub mod sms;
