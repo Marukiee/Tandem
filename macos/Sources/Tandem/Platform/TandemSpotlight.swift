@@ -430,6 +430,7 @@ final class TandemSpotlight {
             (.sound, String(localized: "Sound and music"), ["sound", "geluid", "music", "muziek", "speaker", "microphone", "microfoon"]),
             (.devices, String(localized: "Devices"), ["devices", "apparaten", "pair", "koppelen", "remove", "verwijderen"]),
             (.features, String(localized: "What works"), ["features", "functies", "permissions", "rechten", "werkt"]),
+            (.received, String(localized: "Received files"), ["received", "ontvangen", "downloads", "folder", "map", "opslaan"]),
             (.files, String(localized: "Files"), ["files", "bestanden", "share", "delen", "folders", "mappen"]),
             (.clipboard, String(localized: "Clipboard"), ["clipboard", "klembord", "history", "geschiedenis"]),
             (.screen, String(localized: "Remote control"), ["remote", "afstand", "control", "bedienen", "screen", "scherm"]),
