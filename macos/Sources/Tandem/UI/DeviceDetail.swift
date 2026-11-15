@@ -16,45 +16,26 @@ struct DeviceDetail: View {
     /// The address at which this computer answers for ssh, once looked for.
     @LocalState private var sshAddress: String?
 
-    @LocalState private var position = ScrollPosition(edge: .top)
-    /// The page is wide enough for the head and the player side by side.
-    @LocalState private var beside = false
-
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-                // The head and what plays, on a card of its own: side by side where there is room, under each other where there is
-                // not. The player has its own id, so one picked on one device is not the pick on the next.
-                HeadRow(beside: beside) {
+                // The head and what plays, each on a card of its own: side by side where there is room, under each other where
+                // there is not. The row decides that from its own width, so the page arrives in the layout it keeps.
+                HeadRow {
                     header
-                    PlayersCard(device: device, beside: beside)
-                        .id(device.id)
+                    PlayersCard(device: device)
                 }
-                .onGeometryChange(for: Bool.self) { $0.size.width >= HeadRow.room } action: { beside = $0 }
-                // Only what sits under the header is swapped when the device changes.
-                // Stacked, so the old and the new one cross-fade in the same place.
-                ZStack(alignment: .top) {
-                    content
-                        .id(device.id)
-                        .transition(.rise)
-                }
+                content
             }
             .pagePadding()
-            // As wide as the page on Linux and Windows, so the head and the player have room side by side.
-            .frame(maxWidth: 832)
+            // As wide as Shared may be: in a wide window the head and the player each have room for all they say.
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
-        .scrollPosition($position)
-        .animation(.tandem, value: beside)
-        .animation(.tandem, value: device.id)
         .animation(.tandem, value: device.online)
         // The battery comes a moment after the connection, in a status of its own: the space it takes is made smoothly too.
         .animation(.tandem, value: device.status.battery != nil)
         .animation(.tandem, value: shownPlayers)
-        .onChange(of: device.id) {
-            confirmRemoval = false
-            position.scrollTo(edge: .top)
-        }
         .confirmationDialog(
             "Remove \(device.name)?",
             isPresented: $confirmRemoval,
@@ -71,8 +52,8 @@ struct DeviceDetail: View {
 
     private var reach: Reach { model.reach(of: device) }
 
-    private var deviceSubtitle: String {
-        let system: String = switch device.platform {
+    private var system: String {
+        switch device.platform {
         case .android: "Android"
         case .macOs: "macOS"
         case .linux: "Linux"
@@ -80,87 +61,100 @@ struct DeviceDetail: View {
         case .ios: "iOS"
         case .other: String(localized: "Device")
         }
-        guard let version = device.appVersion, !version.isEmpty else { return system }
-        return "\(system) \u{00B7} Tandem \(version)"
     }
 
+    /// Whether it is there, what it is and how fast it answers, as one line. Where the head is narrow the line says less, the
+    /// least important first, instead of ending in dots.
+    private var statusLine: some View {
+        let state = Text(reach.text)
+        return ViewThatFits(in: .horizontal) {
+            if device.online, let rtt = device.rttMs { Text("\(state) \u{00B7} \(system) \u{00B7} \(rtt) ms") }
+            Text("\(state) \u{00B7} \(system)")
+            state
+        }
+    }
+
+    /// The head of the page on the plain card of the page, as tall as what is in it: the device as its row of the sidebar shows
+    /// it, larger; its name; one quiet line in place of a row of pills; and the battery small at the right. Colour only in what
+    /// is small: the glyph, the dot, the ring.
     private var header: some View {
-        Card(radius: Metrics.card, padding: 22, tint: device.online ? Palette.indigo : nil) {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 20) {
-                    // The system's menu, like every other choice from a list in the app.
-                    Menu {
-                        ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
-                            Button { model.setIcon(choice.symbol, for: device.id) } label: {
-                                Label(choice.label, systemImage: choice.symbol)
-                            }
+        Card(radius: Metrics.card, padding: 20) {
+            HStack(spacing: 16) {
+                // The system's menu, like every other choice from a list in the app.
+                Menu {
+                    ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
+                        Button { model.setIcon(choice.symbol, for: device.id) } label: {
+                            Label(choice.label, systemImage: choice.symbol)
                         }
-                        Divider()
-                        Button("Use the default icon") { model.setIcon(nil, for: device.id) }
-                    } label: {
-                        DeviceArt(device: device)
                     }
-                    .menuStyle(.button)
-                    .buttonStyle(.plain)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .help("Change the icon")
+                    Divider()
+                    Button("Use the default icon") { model.setIcon(nil, for: device.id) }
+                } label: {
+                    DeviceGlyph(platform: device.platform, online: device.online, size: 60, deviceID: device.id)
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Change the icon")
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(device.name)
-                            .font(.title.weight(.bold))
-                            .lineLimit(1)
-                            .contentTransition(.opacity)
-
-                        // What it is: the system and the version of Tandem on it, so the card says who this is and not only how it is reached.
-                        Text(deviceSubtitle)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(device.name)
+                        .font(.title2.weight(.semibold))
+                        .lineLimit(1)
+                        // A long name is a little smaller before it is cut short.
+                        .minimumScaleFactor(0.8)
+                    HStack(spacing: 6) {
+                        Circle().fill(reach.reachable ? Color.green : Color.secondary.opacity(0.45)).frame(width: 7, height: 7)
+                        statusLine
                             .font(.callout)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-
-                        // The labels go on to a next line where the head is narrow, as it is beside the player.
-                        FlowRow {
-                            Chip(symbol: reach.symbol, text: reach.text, tint: reach.color, strong: reach.reachable)
-                            if device.online {
-                                if usingItsHotspot {
-                                    // This Mac is on the phone's hotspot: that says more than the kind of address.
-                                    Chip(symbol: "personalhotspot", text: "Via hotspot", tint: Palette.indigo)
-                                } else if let route = device.route {
-                                    Chip(symbol: route.symbol, text: route.label)
-                                }
-                            }
-                            if let rtt = device.rttMs, device.online {
-                                Chip(symbol: "speedometer", text: "\(rtt) ms")
-                            }
-                        }
-                        if device.online {
-                            FlowRow {
-                                phoneNetworkChips
-                                // A computer: the network it is on, as a chip with the others and not as a line of its own under the buttons.
-                                if device.platform != .android, let ssid = device.lastSeen?.ssid {
-                                    Chip(symbol: "wifi", text: "\(ssid)")
-                                }
-                                // A phone says it on its button in the Sound group.
-                                if device.status.dnd == true, device.status.sound == nil {
-                                    Chip(symbol: "moon.fill", text: "Do not disturb")
-                                }
-                            }
-                        } else {
-                            Text("Tandem connects again as soon as this device can be reached.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
                     }
-                    Spacer(minLength: 0)
+                    facts
+                }
+                // The words come first: they get the room there is before any of it is left empty.
+                .layoutPriority(1)
+                Spacer(minLength: 8)
 
-                    if let battery = device.status.battery {
-                        BatteryRing(battery: battery, size: 74, connected: device.online)
-                            .transition(.scale.combined(with: .opacity))
-                    }
+                if let battery = device.status.battery {
+                    BatteryMark(battery: battery, connected: device.online)
+                        .transition(.opacity)
                 }
             }
             // Beside the player the card is as tall as the player, with its content in the middle.
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+    }
+
+    /// What else is known about how it is reached, as a second line that is quieter still. No pills.
+    @ViewBuilder
+    private var facts: some View {
+        if device.online {
+            FlowRow(spacing: 12, lineSpacing: 2) {
+                if usingItsHotspot {
+                    // This Mac is on the phone's hotspot: that says more than the kind of address.
+                    Fact(symbol: "personalhotspot", text: "Via hotspot")
+                } else if let route = device.route {
+                    Fact(symbol: route.symbol, text: route.label)
+                }
+                phoneNetworkFacts
+                // A computer: the network it is on.
+                if device.platform != .android, let ssid = device.lastSeen?.ssid {
+                    Fact(symbol: "wifi", text: "\(ssid)")
+                }
+                // A phone says it on its button in the Sound group.
+                if device.status.dnd == true, device.status.sound == nil {
+                    Fact(symbol: "moon.fill", text: "Do not disturb")
+                }
+                if let version = device.appVersion, !version.isEmpty {
+                    Fact(verbatim: "Tandem \(version)")
+                }
+            }
+        } else {
+            Text("Tandem connects again as soon as this device can be reached.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -176,20 +170,20 @@ struct DeviceDetail: View {
     }
 
     /// What the phone's own connection is, said as the phone's, because on this page "mobile data" next to a Mac
-    /// reads as the Mac's. While its hotspot is on over mobile data one chip says both: the hotspot is that data.
+    /// reads as the Mac's. While its hotspot is on over mobile data one of them says both: the hotspot is that data.
     @ViewBuilder
-    private var phoneNetworkChips: some View {
+    private var phoneNetworkFacts: some View {
         let hotspotOn = device.status.hotspot == true
         // A computer sends its network too (for where it was last seen), and these words are about a phone.
         if let network = device.status.network, !device.isComputer {
             if hotspotOn && network.kind == .cellular {
-                Chip(symbol: "personalhotspot", text: "Hotspot on, sharing mobile data", tint: Palette.indigo)
+                Fact(symbol: "personalhotspot", text: "Hotspot on, sharing mobile data")
             } else {
-                Chip(symbol: networkSymbol(network), text: LocalizedStringKey(phoneNetworkText(network)))
-                if hotspotOn { Chip(symbol: "personalhotspot", text: "Hotspot on", tint: Palette.indigo) }
+                Fact(symbol: networkSymbol(network), text: LocalizedStringKey(phoneNetworkText(network)))
+                if hotspotOn { Fact(symbol: "personalhotspot", text: "Hotspot on") }
             }
         } else if hotspotOn {
-            Chip(symbol: "personalhotspot", text: "Hotspot on", tint: Palette.indigo)
+            Fact(symbol: "personalhotspot", text: "Hotspot on")
         }
     }
 
@@ -526,18 +520,14 @@ extension DeviceDetail {
     }
 }
 
-/// The head of a device and what it plays. With room they stand side by side, the head taking the larger part and both as tall as
-/// the taller one; without it, or with nothing playing, the head has the whole width and the player goes under it.
+/// The head of a device and what it plays. With room they stand side by side, each half of the width and both as tall as the
+/// taller one; without it, or with nothing playing, the head has the whole width at its own height and the player goes under it.
+/// It decides from the width it is given, not from something set after the first layout: a page arrives in the layout it keeps.
 private struct HeadRow: Layout {
     /// From this width on the two fit side by side.
     static let room: CGFloat = 720
-    var beside: Bool
-    var gap: CGFloat = 18
-
-    private func widths(_ width: CGFloat) -> (head: CGFloat, player: CGFloat) {
-        let head = ((width - gap) * 1.6 / 2.6).rounded()
-        return (head, width - gap - head)
-    }
+    /// The gap between the cards under them.
+    var gap: CGFloat = 12
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? 780
@@ -545,12 +535,9 @@ private struct HeadRow: Layout {
         guard subviews.count > 1 else {
             return CGSize(width: width, height: head.sizeThatFits(ProposedViewSize(width: width, height: nil)).height)
         }
-        if beside {
-            let parts = widths(width)
-            let heights = [
-                head.sizeThatFits(ProposedViewSize(width: parts.head, height: nil)).height,
-                subviews[1].sizeThatFits(ProposedViewSize(width: parts.player, height: nil)).height,
-            ]
+        if width >= Self.room {
+            let half = ((width - gap) / 2).rounded(.down)
+            let heights = subviews.prefix(2).map { $0.sizeThatFits(ProposedViewSize(width: half, height: nil)).height }
             return CGSize(width: width, height: heights.max() ?? 0)
         }
         let heights = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)).height }
@@ -563,12 +550,12 @@ private struct HeadRow: Layout {
             head.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
             return
         }
-        if beside {
-            let parts = widths(bounds.width)
-            head.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: parts.head, height: bounds.height))
+        if bounds.width >= Self.room {
+            let half = ((bounds.width - gap) / 2).rounded(.down)
+            head.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: half, height: bounds.height))
             subviews[1].place(
-                at: CGPoint(x: bounds.minX + parts.head + gap, y: bounds.minY), anchor: .topLeading,
-                proposal: ProposedViewSize(width: parts.player, height: bounds.height)
+                at: CGPoint(x: bounds.maxX - half, y: bounds.minY), anchor: .topLeading,
+                proposal: ProposedViewSize(width: half, height: bounds.height)
             )
         } else {
             var y = bounds.minY
@@ -578,6 +565,68 @@ private struct HeadRow: Layout {
                 y += height + gap
             }
         }
+    }
+}
+
+/// Something that is known about a device, in the head of its page: a small glyph and a few words in the quietest colour.
+private struct Fact: View {
+    var symbol: String?
+    let text: Text
+
+    init(symbol: String, text: LocalizedStringKey) {
+        self.symbol = symbol
+        self.text = Text(text)
+    }
+
+    init(verbatim: String) {
+        text = Text(verbatim: verbatim)
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let symbol { Image(systemName: symbol).font(.system(size: 9.5, weight: .medium)) }
+            text.font(.caption).lineLimit(1)
+        }
+        .foregroundStyle(.tertiary)
+    }
+}
+
+/// The battery in the head of a device: a small ring with the number beside it, and a bolt in it while it charges. It is whole
+/// the moment the page is there: nothing fills up or counts on the way in.
+private struct BatteryMark: View {
+    let battery: TandemBattery
+    let connected: Bool
+
+    private var tint: Color {
+        if !connected { return .gray }
+        if battery.charging { return .green }
+        return battery.level <= 15 ? Palette.urgent : Palette.indigo
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                Circle().stroke(Color.primary.opacity(0.1), lineWidth: 4)
+                Circle()
+                    // Anything below full leaves an opening, so 97 percent is not a closed ring with a flaw.
+                    .trim(from: 0, to: battery.level >= 100 ? 1 : CGFloat(battery.level) / 100 * 0.945)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                if battery.charging && connected {
+                    Image(systemName: "bolt.fill").font(.system(size: 12, weight: .bold)).foregroundStyle(.green)
+                }
+            }
+            .frame(width: 36, height: 36)
+            Text(verbatim: "\(battery.level)%")
+                .font(.headline.monospacedDigit())
+                .foregroundStyle(connected ? Color.primary : Color.secondary)
+                .contentTransition(.numericText(value: Double(battery.level)))
+        }
+        // Its number is never squeezed: the words beside it give way.
+        .fixedSize()
+        .animation(.tandem, value: battery.level)
+        .animation(.tandem, value: battery.charging)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -816,7 +865,7 @@ private struct SideRow: View {
                     .disabled(!device.online || finding)
                 }
                 SidePicture(
-                    kind: DeviceKind(symbol: model.deviceIcons[device.id] ?? device.platform.symbol),
+                    symbol: DeviceSymbol.shown(model.deviceIcons[device.id] ?? device.platform.symbol),
                     left: left
                 ) { picked in
                     side = picked
@@ -831,7 +880,8 @@ private struct SideRow: View {
 /// This Mac with a place left and right of it, and the device in one of them. A press on the other place moves it there, and it
 /// slides over with a spring.
 private struct SidePicture: View {
-    let kind: DeviceKind
+    /// The device as it is drawn everywhere else.
+    let symbol: String
     let left: Bool
     let pick: (String) -> Void
 
@@ -839,17 +889,24 @@ private struct SidePicture: View {
     private static let mac: CGFloat = 36
     private static let gap: CGFloat = 4
     /// This Mac as what it is: one with a battery is a laptop.
-    private static let thisMac: DeviceKind = PowerReader.battery() != nil ? .laptop : .desktop
+    private static let thisMac = PowerReader.battery() != nil ? "laptopcomputer" : "desktopcomputer"
 
     var body: some View {
         ZStack {
             HStack(spacing: Self.gap) {
                 place("left", taken: left)
-                DeviceDrawing(kind: Self.thisMac, lit: false, height: 30)
-                    .frame(width: Self.mac)
+                Image(systemName: Self.thisMac)
+                    .font(.system(size: 21, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+                    .frame(width: Self.mac, height: Self.slot.height)
                 place("right", taken: !left)
             }
-            DeviceDrawing(kind: kind, lit: true, height: 26)
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Palette.indigo)
+                .frame(width: Self.slot.width, height: Self.slot.height)
                 .offset(x: (left ? -1 : 1) * (Self.mac / 2 + Self.gap + Self.slot.width / 2))
                 .allowsHitTesting(false)
                 .animation(.tandemSpringy, value: left)
