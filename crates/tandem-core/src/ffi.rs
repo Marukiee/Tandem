@@ -18,7 +18,7 @@ use crate::proto::{
     Battery, CallActionKind, CallMsg, CallState, CaptureKind, CaptureWhy, HotspotMsg, InputMsg, MediaKey, NetKind, NetworkStatus,
     NotifButton, NotificationAction, NotificationMsg, ShareOrigin, Status,
 };
-use crate::store::{DeviceSettings, SecretStore};
+use crate::store::SecretStore;
 use crate::transfer::OutgoingFile;
 
 pub mod health;
@@ -2078,7 +2078,11 @@ impl TandemEngine {
     ) -> Result<(), TandemError> {
         let id = DeviceId::parse(&id)?;
         self.engine
-            .set_device_settings(&id, DeviceSettings { clipboard, auto_accept, notifications, ..self.engine.device_settings(&id) })
+            .update_device_settings(&id, |own| {
+                own.clipboard = clipboard;
+                own.auto_accept = auto_accept;
+                own.notifications = notifications;
+            })
             .map_err(Into::into)
     }
 

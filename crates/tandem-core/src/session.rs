@@ -341,7 +341,7 @@ impl Inner {
                         if this.allowed(&id, Permission::Control) {
                             this.live_pointer(id, session, counter, x, y);
                         } else {
-                            this.refuse(id, Permission::Control).await;
+                            this.refuse(id, Permission::Control, None).await;
                         }
                     } else if let Some((stream, seq, pcm)) = parse_audio(&data) {
                         // Straight to the app, not through the event channel: that one may drop
@@ -354,7 +354,7 @@ impl Inner {
                         if this.allowed(&id, Permission::Control) {
                             this.emit(Event::Input { from: id, input });
                         } else {
-                            this.refuse(id, Permission::Control).await;
+                            this.refuse(id, Permission::Control, None).await;
                         }
                     }
                 }
@@ -467,10 +467,8 @@ impl Inner {
 
     pub(crate) async fn handle_msg(self: &Arc<Self>, id: DeviceId, msg: Msg) {
         // The one gate for what another device asks this one to do (P6): refused here, the app never hears it.
-        if let Some(permission) = crate::trust::needed_for(&msg)
-            && !self.allowed(&id, permission)
-        {
-            self.refuse(id, permission).await;
+        if let Some(permission) = crate::trust::needed_for(&msg).iter().copied().find(|p| !self.allowed(&id, *p)) {
+            self.refuse(id, permission, Some(&msg)).await;
             return;
         }
         match msg {
@@ -584,7 +582,12 @@ impl Inner {
             Msg::BtSpeakerState { on, error } => self.emit(Event::BtSpeakerState { from: id, on, error }),
             Msg::SideHeard { id: probe, left, right, heard } => self.emit(Event::SideHeard { from: id, id: probe, left, right, heard }),
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
-            Msg::PointerShare(msg) => self.emit(Event::PointerShare { from: id, msg }),
+            Msg::PointerShare(msg) => {
+                if matches!(msg, crate::pointer_share::PointerShareMsg::Leave { .. }) {
+                    self.pointer_out.lock().unwrap().remove(&id);
+                }
+                self.emit(Event::PointerShare { from: id, msg })
+            }
             Msg::Hotspot(hotspot) => self.emit(Event::Hotspot { from: id, hotspot }),
             Msg::CaptureRequest(request) => {
                 if request.kind == crate::proto::CaptureKind::Other {

@@ -27,7 +27,7 @@ pub const CAP: &str = "trust";
 pub const REASON_NOT_ALLOWED: &str = "not allowed";
 pub const REASONS: &[&str] = &[REASON_NOT_ALLOWED];
 
-/// A refusal of the same kind is said once in this time: a pointer that is refused sends dozens of moves a second.
+/// A refused pointer sends dozens of moves a second: that refusal is said once in this time. Other refusals are each said.
 const SAY_AGAIN_AFTER: Duration = Duration::from_secs(10);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -148,19 +148,23 @@ pub struct TrustEdge {
     pub denied: Option<Vec<Permission>>,
 }
 
-/// The permission a message from another device needs, for the ones that make this device do something. The rest needs none here: a
-/// clipboard that comes in is checked where it lands, files and offers by their own switches.
-pub fn needed_for(msg: &Msg) -> Option<Permission> {
+/// The permissions a message from another device needs, all of them, for the ones that make this device do something. The rest needs
+/// none here: a clipboard that comes in is checked where it lands, files and offers by their own switches.
+pub fn needed_for(msg: &Msg) -> &'static [Permission] {
     use crate::pointer_share::PointerShareMsg as P;
     match msg {
+        // The Mac types the password it keeps on this one: it unlocks, whatever else control allows.
+        Msg::MediaInput { input: crate::live::MediaInput::Unlock, .. } => &[Permission::Control, Permission::Unlock],
         // Only what hands the pointer over or drops something: `Leave` and `Pong` come back from the computer that has the pointer.
-        Msg::Input(_) | Msg::MediaInput { .. } | Msg::PointerShare(P::Enter { .. } | P::Carry { .. }) => Some(Permission::Control),
-        Msg::Unlock {} => Some(Permission::Unlock),
-        Msg::Lock {} => Some(Permission::Lock),
-        Msg::Wifi(crate::wifi::WifiMsg::Ask { .. }) => Some(Permission::WifiPassword),
-        Msg::Dial { .. } | Msg::CallAction(_) => Some(Permission::Calls),
-        Msg::OpenSettings { page } if page == "restart" => Some(Permission::Restart),
-        _ => None,
+        Msg::Input(_) | Msg::MediaInput { .. } | Msg::PointerShare(P::Enter { .. } | P::Carry { .. }) => &[Permission::Control],
+        Msg::Unlock {} => &[Permission::Unlock],
+        Msg::Lock {} => &[Permission::Lock],
+        Msg::Wifi(crate::wifi::WifiMsg::Ask { .. }) => &[Permission::WifiPassword],
+        Msg::Dial { .. } | Msg::CallAction(_) => &[Permission::Calls],
+        Msg::OpenSettings { page } if page == "restart" => &[Permission::Restart],
+        // Opening, dismissing or answering a notification of this device: only for one that may see them.
+        Msg::NotificationAction(_) => &[Permission::SeeNotifications],
+        _ => &[],
     }
 }
 
@@ -221,19 +225,29 @@ impl Inner {
         Permission::ALL.into_iter().filter(|p| !get(&settings, &policy, *p)).collect()
     }
 
-    /// Switches the permissions in `changes` for `peer`, each in the switch it lives in, and lets the others know.
+    /// Switches the permissions in `changes` for `peer`, each in the switch it lives in, and lets the others know. Only those switches
+    /// change: the rest of the settings is read under the same lock, and a device that follows the default file policy keeps following
+    /// it for everything else.
     pub(crate) fn set_permissions(&self, peer: &DeviceId, changes: &[(Permission, bool)]) -> Result<()> {
-        let mut settings = self.settings.read().unwrap().for_device(peer);
-        let mut policy = self.file_service.policy(peer);
-        let mut files = false;
+        let mut enabled = None;
+        let mut delete = None;
         for (permission, on) in changes {
-            files |= put(&mut settings, &mut policy, *permission, *on);
+            match permission {
+                Permission::BrowseFiles => enabled = Some(*on),
+                Permission::DeleteFiles => delete = Some(*on),
+                _ => {}
+            }
         }
-        if files && policy != self.file_service.policy(peer) {
-            self.file_service.set_policy(peer, policy)?;
+        if enabled.is_some() || delete.is_some() {
+            self.file_service.set_switches(peer, enabled, delete)?;
         }
         // Also says the table changed.
-        self.set_device_settings(peer, settings)
+        self.update_device_settings(peer, |settings| {
+            let mut unused = crate::files::FilePolicy::default();
+            for (permission, on) in changes {
+                put(settings, &mut unused, *permission, *on);
+            }
+        })
     }
 
     /// The table of this device: a line for each other device of the circle that has something switched off.
@@ -271,9 +285,16 @@ impl Inner {
         }
     }
 
-    /// Something `peer` asked was refused: a line in the log, and a word to it when it can understand one.
-    pub(crate) async fn refuse(&self, peer: DeviceId, permission: Permission) {
-        let say = {
+    /// Something `peer` asked was refused: a line in the log, and a word to it when it can understand one. `msg` is what it asked,
+    /// None for an input datagram.
+    pub(crate) async fn refuse(&self, peer: DeviceId, permission: Permission, msg: Option<&Msg>) {
+        // A question for the Wi-Fi gets the answer every version understands, also over Bluetooth, so it does not wait for nothing.
+        if let Some(Msg::Wifi(crate::wifi::WifiMsg::Ask { ssid })) = msg {
+            let refuse = crate::wifi::WifiMsg::Refuse { ssid: ssid.clone(), why: crate::wifi::WifiRefusal::Declined };
+            self.send_many(&[peer], Msg::Wifi(refuse)).await;
+        }
+        let stream = permission == Permission::Control && !matches!(msg, Some(Msg::PointerShare(_)) | Some(Msg::MediaInput { input: crate::live::MediaInput::Unlock, .. }));
+        let say = !stream || {
             let mut said = self.refused_said.lock().unwrap();
             let now = Instant::now();
             let fresh = said.get(&(peer, permission)).is_none_or(|at| now.duration_since(*at) >= SAY_AGAIN_AFTER);
@@ -288,7 +309,7 @@ impl Inner {
         info!(%peer, permission = permission.code(), "refused: that device may not do this here");
         if self.peer_has_cap(&peer, CAP) {
             let msg = Msg::Refused { action: permission.code().to_string(), reason: REASON_NOT_ALLOWED.to_string() };
-            let _ = self.send_to(&peer, msg).await;
+            self.send_many(&[peer], msg).await;
         }
     }
 
@@ -296,7 +317,28 @@ impl Inner {
         // A permission from a newer version cannot be named to the app.
         let Some(permission) = Permission::from_code(action) else { return };
         let reason = REASONS.iter().find(|r| **r == reason).copied().unwrap_or(REASON_NOT_ALLOWED);
+        // The pointer went over and the other computer will not take it: it comes back at once, as if it ran into the edge, instead of
+        // after the pings go unanswered.
+        if permission == Permission::Control
+            && let Some(along) = self.pointer_out.lock().unwrap().remove(&from)
+        {
+            self.emit(Event::PointerShare { from, msg: crate::pointer_share::PointerShareMsg::Leave { along } });
+        }
         self.emit(Event::Refused { from, permission, reason: reason.to_string() });
+    }
+
+    /// Keeps where the pointer of this computer went over to `to`, until it is back, so a refusal can send it back there.
+    pub(crate) fn note_pointer_sent(&self, to: &DeviceId, msg: &Msg) {
+        use crate::pointer_share::PointerShareMsg as P;
+        match msg {
+            Msg::PointerShare(P::Enter { along, .. }) => {
+                self.pointer_out.lock().unwrap().insert(*to, *along);
+            }
+            Msg::PointerShare(P::Release) => {
+                self.pointer_out.lock().unwrap().remove(to);
+            }
+            _ => {}
+        }
     }
 
     /// Who lets whom do what across the circle: this device from its own settings, the others from the table in their status.
@@ -412,18 +454,20 @@ mod tests {
     #[test]
     fn requests_need_their_permission_and_answers_need_none() {
         use crate::pointer_share::{Edge, PointerShareMsg as P};
-        let cases: Vec<(Msg, Option<Permission>)> = vec![
-            (Msg::Unlock {}, Some(Permission::Unlock)),
-            (Msg::Lock {}, Some(Permission::Lock)),
-            (Msg::Dial { number: "112".into() }, Some(Permission::Calls)),
-            (Msg::OpenSettings { page: "restart".into() }, Some(Permission::Restart)),
-            (Msg::OpenSettings { page: "accessibility".into() }, None),
-            (Msg::Wifi(crate::wifi::WifiMsg::Ask { ssid: "Home".into() }), Some(Permission::WifiPassword)),
-            (Msg::Input(crate::proto::InputMsg::Pointer { dx: 1, dy: 1 }), Some(Permission::Control)),
-            (Msg::PointerShare(P::Enter { edge: Edge::Left, along: 0.5 }), Some(Permission::Control)),
-            (Msg::PointerShare(P::Leave { along: 0.5 }), None),
-            (Msg::PointerShare(P::Pong), None),
-            (Msg::Ping { nonce: 1 }, None),
+        let cases: Vec<(Msg, &[Permission])> = vec![
+            (Msg::Unlock {}, &[Permission::Unlock]),
+            (Msg::Lock {}, &[Permission::Lock]),
+            (Msg::Dial { number: "112".into() }, &[Permission::Calls]),
+            (Msg::OpenSettings { page: "restart".into() }, &[Permission::Restart]),
+            (Msg::OpenSettings { page: "accessibility".into() }, &[]),
+            (Msg::Wifi(crate::wifi::WifiMsg::Ask { ssid: "Home".into() }), &[Permission::WifiPassword]),
+            (Msg::Input(crate::proto::InputMsg::Pointer { dx: 1, dy: 1 }), &[Permission::Control]),
+            (Msg::PointerShare(P::Enter { edge: Edge::Left, along: 0.5 }), &[Permission::Control]),
+            (Msg::PointerShare(P::Leave { along: 0.5 }), &[]),
+            (Msg::PointerShare(P::Pong), &[]),
+            (Msg::Ping { nonce: 1 }, &[]),
+            (Msg::MediaInput { session: 1, input: crate::live::MediaInput::Unlock }, &[Permission::Control, Permission::Unlock]),
+            (Msg::MediaInput { session: 1, input: crate::live::MediaInput::Text { text: "a".into() } }, &[Permission::Control]),
         ];
         for (msg, wanted) in cases {
             assert_eq!(needed_for(&msg), wanted, "{msg:?}");

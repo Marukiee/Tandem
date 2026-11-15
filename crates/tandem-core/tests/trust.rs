@@ -164,7 +164,9 @@ async fn permissions_survive_a_restart_and_the_others_see_the_table() {
     let denied_by_mac = |node: &Node| {
         node.engine.trust_web().into_iter().find(|e| e.from == mac_id && e.to == phone_id).and_then(|e| e.denied)
     };
-    wait_until("the table of the Mac on the phone", || denied_by_mac(&phone).is_some_and(|d| !d.is_empty())).await;
+    // Two changes, two tables: wait for the last one.
+    let last = |d: &Vec<Permission>| d.len() == Permission::ALL.len() - 1 && !d.contains(&Permission::Calls);
+    wait_until("the table of the Mac on the phone", || denied_by_mac(&phone).is_some_and(|d| last(&d))).await;
     let seen = denied_by_mac(&phone).unwrap();
     assert!(seen.contains(&Permission::Unlock) && !seen.contains(&Permission::Calls));
     assert_eq!(seen.len(), Permission::ALL.len() - 1);
@@ -204,7 +206,6 @@ async fn every_gated_request_arrives_by_default_is_refused_when_off_and_arrives_
         (Permission::Restart, Msg::OpenSettings { page: "restart".into() }, |e| matches!(e, Event::OpenSettings { .. })),
         (Permission::Control, Msg::PointerShare(PointerShareMsg::Carry { text: "hi".into() }), |e| matches!(e, Event::PointerShare { .. })),
     ];
-    let mut said_before = std::collections::HashSet::new();
     for (permission, msg, arrived) in cases {
         let what = format!("{msg:?}");
         phone.engine.send_msg(&[mac_id], msg.clone()).await;
@@ -212,22 +213,111 @@ async fn every_gated_request_arrives_by_default_is_refused_when_off_and_arrives_
 
         mac.engine.set_permission(&phone_id, permission, false).unwrap();
         phone.engine.send_msg(&[mac_id], msg.clone()).await;
-        // A refusal of the same kind is said once in ten seconds (the second call message is refused without a word).
-        if !said_before.insert(permission) {
-            nothing(&mut mac_events, &format!("a refused {what}"), arrived).await;
-            mac.engine.set_permission(&phone_id, permission, true).unwrap();
-            continue;
-        }
-        let said = expect(&mut phone_events, &format!("the refusal of {what}"), |e| match e {
-            Event::Refused { from, permission: p, .. } if *from == mac_id => Some(*p),
+        expect(&mut phone_events, &format!("the refusal of {what}"), |e| match e {
+            Event::Refused { from, permission: p, .. } if *from == mac_id && *p == permission => Some(()),
             _ => None,
         })
         .await;
-        assert_eq!(said, permission, "{what}");
         nothing(&mut mac_events, &format!("a refused {what}"), arrived).await;
 
         mac.engine.set_permission(&phone_id, permission, true).unwrap();
         phone.engine.send_msg(&[mac_id], msg).await;
         expect(&mut mac_events, &format!("{what} once allowed again"), |e| arrived(e).then_some(())).await;
     }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn unlocking_through_a_shared_screen_needs_unlock_as_well_as_control() {
+    use tandem_core::live::MediaInput;
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let (phone_id, mac_id) = pair(&phone, &mac).await;
+    let mut phone_events = phone.engine.subscribe();
+
+    mac.engine.set_permission(&phone_id, Permission::Unlock, false).unwrap();
+    assert!(mac.engine.allowed(&phone_id, Permission::Control));
+    phone.engine.send_msg(&[mac_id], Msg::MediaInput { session: 1, input: MediaInput::Unlock }).await;
+    expect(&mut phone_events, "the refusal of an unlock through the screen", |e| match e {
+        Event::Refused { from, permission: Permission::Unlock, .. } if *from == mac_id => Some(()),
+        _ => None,
+    })
+    .await;
+    // Other input on the screen is still control alone.
+    phone.engine.send_msg(&[mac_id], Msg::MediaInput { session: 1, input: MediaInput::Text { text: "a".into() } }).await;
+    nothing(&mut phone_events, "a refusal of plain input", |e| matches!(e, Event::Refused { .. })).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_device_that_may_not_see_notifications_may_not_act_on_them_either() {
+    use tandem_core::proto::NotificationAction;
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let (phone_id, mac_id) = pair(&phone, &mac).await;
+    let mut phone_events = phone.engine.subscribe();
+    let open = Msg::NotificationAction(NotificationAction { key: "k".into(), button: String::new(), reply: None, dismiss: false });
+
+    mac.engine.send_msg(&[phone_id], open.clone()).await;
+    expect(&mut phone_events, "the action by default", |e| matches!(e, Event::NotificationAction { .. }).then_some(())).await;
+    phone.engine.set_permission(&mac_id, Permission::SeeNotifications, false).unwrap();
+    mac.engine.send_msg(&[phone_id], open).await;
+    nothing(&mut phone_events, "a refused action", |e| matches!(e, Event::NotificationAction { .. })).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_refused_wifi_question_gets_the_answer_every_version_knows() {
+    use tandem_core::wifi::WifiMsg;
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let (phone_id, mac_id) = pair(&phone, &mac).await;
+    let mut phone_events = phone.engine.subscribe();
+
+    mac.engine.set_permission(&phone_id, Permission::WifiPassword, false).unwrap();
+    phone.engine.send_msg(&[mac_id], Msg::Wifi(WifiMsg::Ask { ssid: "Home".into() })).await;
+    expect(&mut phone_events, "the refusal of the Wi-Fi", |e| match e {
+        Event::Wifi { from, msg: WifiMsg::Refuse { ssid, .. } } if *from == mac_id && ssid == "Home" => Some(()),
+        _ => None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_pointer_that_is_refused_comes_back_at_once() {
+    use tandem_core::pointer_share::{Edge, PointerShareMsg};
+    let mac = node("Mac").await;
+    let laptop = node("Laptop").await;
+    let (mac_id, laptop_id) = pair(&mac, &laptop).await;
+    let mut mac_events = mac.engine.subscribe();
+
+    laptop.engine.set_permission(&mac_id, Permission::Control, false).unwrap();
+    mac.engine.send_msg(&[laptop_id], Msg::PointerShare(PointerShareMsg::Enter { edge: Edge::Right, along: 0.25 })).await;
+    let along = expect(&mut mac_events, "the pointer back", |e| match e {
+        Event::PointerShare { from, msg: PointerShareMsg::Leave { along } } if *from == laptop_id => Some(*along),
+        _ => None,
+    })
+    .await;
+    assert_eq!(along, 0.25);
+    // A second try is answered just as fast: the pointer is not throttled like the moves are.
+    mac.engine.send_msg(&[laptop_id], Msg::PointerShare(PointerShareMsg::Enter { edge: Edge::Right, along: 0.5 })).await;
+    expect(&mut mac_events, "the pointer back again", |e| match e {
+        Event::PointerShare { msg: PointerShareMsg::Leave { along }, .. } if *along == 0.5 => Some(()),
+        _ => None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn switching_files_off_for_a_device_keeps_it_on_the_default_for_the_rest() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let (phone_id, _) = pair(&phone, &mac).await;
+
+    mac.engine.set_permission(&phone_id, Permission::DeleteFiles, false).unwrap();
+    let mut default = mac.engine.file_policy(&phone_id);
+    assert!(!default.delete);
+    default.hidden = !default.hidden;
+    default.delete = true;
+    mac.engine.set_file_default_policy(default.clone()).unwrap();
+    let now = mac.engine.file_policy(&phone_id);
+    assert_eq!(now.hidden, default.hidden, "a later change of the default reaches the device");
+    assert!(!now.delete, "and its own switch stays");
 }

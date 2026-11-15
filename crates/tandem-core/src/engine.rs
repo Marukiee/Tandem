@@ -165,6 +165,8 @@ pub(crate) struct Inner {
     pub(crate) trust_changed: Notify,
     /// When each kind of refusal was last said to a device, so a refused pointer is not answered dozens of times a second.
     pub(crate) refused_said: Mutex<HashMap<(DeviceId, crate::trust::Permission), Instant>>,
+    /// Where the pointer of this computer went over to each other one and has not come back yet (see `trust::on_refused`).
+    pub(crate) pointer_out: Mutex<HashMap<DeviceId, f32>>,
 }
 
 /// Where the sound of the other device goes. Called on the connection's own task for every
@@ -266,6 +268,7 @@ impl Engine {
             health,
             trust_changed: Notify::new(),
             refused_said: Mutex::new(HashMap::new()),
+            pointer_out: Mutex::new(HashMap::new()),
         });
 
         // The peers must exist before their saved addresses can be attached to them.
@@ -364,6 +367,11 @@ impl Engine {
 
     pub fn set_device_settings(&self, id: &DeviceId, settings: DeviceSettings) -> Result<()> {
         self.inner.set_device_settings(id, settings)
+    }
+
+    /// Changes some settings of one device and keeps the rest as they are at that moment.
+    pub fn update_device_settings(&self, id: &DeviceId, change: impl FnOnce(&mut DeviceSettings)) -> Result<()> {
+        self.inner.update_device_settings(id, change)
     }
 
     /// Sends files to every listed device that is connected right now.
@@ -747,10 +755,18 @@ pub(crate) fn rand_u64() -> u64 {
 
 impl Inner {
     pub fn set_device_settings(&self, id: &DeviceId, settings: DeviceSettings) -> Result<()> {
-        {
-            self.settings.write().unwrap().set_device(id, settings);
-        }
-        let snapshot = self.settings.read().unwrap().clone();
+        self.update_device_settings(id, |own| *own = settings)
+    }
+
+    /// Changes the settings of one device under the lock, so a change made at the same moment elsewhere is not lost.
+    pub fn update_device_settings(&self, id: &DeviceId, change: impl FnOnce(&mut DeviceSettings)) -> Result<()> {
+        let snapshot = {
+            let mut all = self.settings.write().unwrap();
+            let mut own = all.for_device(id);
+            change(&mut own);
+            all.set_device(id, own);
+            all.clone()
+        };
         self.store.write_cbor("settings.cbor", &snapshot)?;
         self.trust_changed.notify_one();
         self.emit(Event::DevicesChanged);
@@ -812,6 +828,7 @@ impl Inner {
         {
             return Err(Error::Invalid(crate::trust::REASON_NOT_ALLOWED.into()));
         }
+        self.note_pointer_sent(id, &msg);
         let session = self.session_of(id).ok_or(Error::NotConnected)?;
         session.tx.send(msg).await.map_err(|_| Error::NotConnected)
     }

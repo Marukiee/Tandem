@@ -50,6 +50,7 @@ pub fn allowed(msg: &Msg) -> bool {
             | Msg::MediaCommand { .. }
             | Msg::Ping { .. }
             | Msg::Wifi(_)
+            | Msg::Refused { .. }
     )
 }
 
