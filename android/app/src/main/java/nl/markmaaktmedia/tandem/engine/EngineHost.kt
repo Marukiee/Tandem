@@ -580,7 +580,11 @@ class EngineHost(
         if (name.substringAfterLast('.', "").isEmpty()) {
             android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.let { name = "$name.$it" }
         }
-        if (copy) copyForQueue(uri, name, size)?.let { source = it }
+        if (copy) copyForQueue(uri, name, size)?.let {
+            source = it
+            // The copy is what is sent from now on: the descriptor of the original would stay open for good.
+            if (hold) AndroidFiles.abandoned(listOf(original))
+        }
         if (outgoingSources.size > 200) outgoingSources.clear()
         outgoingSources["$name|$size"] = original
         return TandemOutgoingFile(source = source, name = name, size = size.toULong(), mime = mime)
