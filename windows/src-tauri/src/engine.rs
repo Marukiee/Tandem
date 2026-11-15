@@ -105,6 +105,8 @@ pub fn start(app: AppHandle) {
                 #[cfg(feature = "screen-host")]
                 engine.set_media_host(Arc::new(crate::host::Host::new(app.clone())));
                 log::info!("the engine runs as {} on port {}", engine.name(), engine.port());
+                // A file for a device that is away waits in the journal and goes when it is back (P3), the same on every system.
+                engine.set_queue_offline(true);
                 offer_usual_folders(&app, &engine);
                 *state.engine.write().unwrap() = Some(engine);
                 crate::bluetooth::start(&app);
@@ -113,6 +115,7 @@ pub fn start(app: AppHandle) {
                 crate::focus::start(&app);
                 events::refresh_devices(&app);
                 crate::halfway::refresh(&app);
+                crate::underway::refresh(&app);
                 let _ = app.emit("engine-ready", ());
             }
             Err(reason) => {
