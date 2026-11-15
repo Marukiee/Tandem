@@ -160,20 +160,39 @@ pub trait Receiving: Send {
 /// How long a sender may take from connecting to saying what it wants to send.
 pub(crate) const GREETING_WITHIN: Duration = Duration::from_secs(15);
 
-/// A name that is safe to write in a folder and not taken yet.
-fn free_name(folder: &Path, wanted: &str) -> PathBuf {
+/// The names a file may get in a folder, safe to write there, in the order they are tried: `a.txt`, `a (1).txt`, ...
+fn candidates(folder: &Path, wanted: &str) -> impl Iterator<Item = PathBuf> {
     let base = Path::new(wanted).file_name().and_then(|n| n.to_str()).unwrap_or("file");
     let base = base.trim_start_matches('.');
-    let base = if base.is_empty() { "file" } else { base };
-    let first = folder.join(base);
+    let base = if base.is_empty() { "file" } else { base }.to_string();
+    let (stem, extension) = match base.rsplit_once('.') {
+        Some((stem, extension)) if !stem.is_empty() => (stem.to_string(), format!(".{extension}")),
+        _ => (base.clone(), String::new()),
+    };
+    let folder = folder.to_path_buf();
+    std::iter::once(folder.join(&base)).chain((1..10_000).map(move |n| folder.join(format!("{stem} ({n}){extension}"))))
+}
+
+/// A name that is safe to write in a folder and not taken yet.
+fn free_name(folder: &Path, wanted: &str) -> PathBuf {
+    let mut all = candidates(folder, wanted);
+    let first = all.next().unwrap_or_else(|| folder.join("file"));
     if !first.exists() {
         return first;
     }
-    let (stem, extension) = match base.rsplit_once('.') {
-        Some((stem, extension)) if !stem.is_empty() => (stem.to_string(), format!(".{extension}")),
-        _ => (base.to_string(), String::new()),
-    };
-    (1..10_000).map(|n| folder.join(format!("{stem} ({n}){extension}"))).find(|p| !p.exists()).unwrap_or(first)
+    all.find(|p| !p.exists()).unwrap_or(first)
+}
+
+/// Takes a free name by creating it empty, so nobody else can take it in between; the whole file is then renamed over it.
+fn claim_name(folder: &Path, wanted: &str) -> std::io::Result<PathBuf> {
+    for candidate in candidates(folder, wanted) {
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&candidate) {
+            Ok(_) => return Ok(candidate),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        }
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "no free name left"))
 }
 
 /// Takes one transfer in over a connection that was just accepted. Gives the files that were saved.
@@ -313,9 +332,14 @@ where
         let mut saved = Vec::new();
         for file in &mut open {
             file.file.sync_all().await?;
-            // The name is chosen now, not at the start, so two transfers of the same name do not take the same one.
-            let path = free_name(&folder, &file.offered.name);
-            tokio::fs::rename(&file.part, &path).await?;
+            // The name is claimed now, not at the start, and claimed by creating it, so two transfers of the same name that end
+            // together never take the same one.
+            let (folder, name) = (folder.clone(), file.offered.name.clone());
+            let path = tokio::task::spawn_blocking(move || claim_name(&folder, &name)).await.map_err(|e| Error::transfer(e))??;
+            if let Err(e) = tokio::fs::rename(&file.part, &path).await {
+                let _ = tokio::fs::remove_file(&path).await;
+                return Err(e.into());
+            }
             saved.push(path);
         }
         Ok(saved)
@@ -687,6 +711,50 @@ mod tests {
         let err = received.unwrap_err();
         assert!(err.to_string().contains("less came"), "{err}");
         assert!(names_in(to.path()).is_empty(), "left behind: {:?}", names_in(to.path()));
+    }
+
+    #[test]
+    fn a_name_is_claimed_so_two_files_of_the_same_name_never_share_it() {
+        let folder = tempfile::tempdir().unwrap();
+        let first = claim_name(folder.path(), "a.txt").unwrap();
+        let second = claim_name(folder.path(), "a.txt").unwrap();
+        assert_eq!(first, folder.path().join("a.txt"));
+        assert_eq!(second, folder.path().join("a (1).txt"), "the first claim holds the name before any byte is in it");
+        // Many at once, as transfers that end together: every one gets a name of its own.
+        let claimed: Vec<PathBuf> = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..16).map(|_| scope.spawn(|| claim_name(folder.path(), "b.txt").unwrap())).collect();
+            handles.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        let unique: std::collections::HashSet<&PathBuf> = claimed.iter().collect();
+        assert_eq!(unique.len(), 16);
+    }
+
+    #[tokio::test]
+    async fn two_transfers_of_the_same_name_that_end_together_keep_both() {
+        let from = tempfile::tempdir().unwrap();
+        let to = tempfile::tempdir().unwrap();
+        let (a, b) = (pattern(200_000, 6), pattern(200_000, 7));
+        std::fs::create_dir(from.path().join("1")).unwrap();
+        std::fs::create_dir(from.path().join("2")).unwrap();
+        std::fs::write(from.path().join("1/same.bin"), &a).unwrap();
+        std::fs::write(from.path().join("2/same.bin"), &b).unwrap();
+        let one = vec![Outgoing { path: from.path().join("1/same.bin"), name: "same.bin".into(), mime: "application/octet-stream".into(), size: a.len() as u64 }];
+        let two = vec![Outgoing { path: from.path().join("2/same.bin"), name: "same.bin".into(), mime: "application/octet-stream".into(), size: b.len() as u64 }];
+        let (l1, r1) = tokio::io::duplex(1 << 20);
+        let (l2, r2) = tokio::io::duplex(1 << 20);
+        let (mut s1, mut s2) = (Saves { folder: Some(to.path().to_path_buf()), seen: None }, Saves { folder: Some(to.path().to_path_buf()), seen: None });
+        let (mut w1, mut w2) = (Watches::default(), Watches::default());
+        let (_, _, got1, got2) = tokio::join!(
+            send(l1, "x", DeviceKind::Phone, &one, &[], &mut w1),
+            send(l2, "y", DeviceKind::Phone, &two, &[], &mut w2),
+            receive(r1, &mut s1),
+            receive(r2, &mut s2)
+        );
+        let (p1, p2) = (got1.unwrap().files.remove(0), got2.unwrap().files.remove(0));
+        assert_ne!(p1, p2);
+        assert_eq!(std::fs::read(p1).unwrap(), a);
+        assert_eq!(std::fs::read(p2).unwrap(), b);
+        assert_eq!(names_in(to.path()).len(), 2);
     }
 
     #[tokio::test(start_paused = true)]
