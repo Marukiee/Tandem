@@ -319,10 +319,13 @@ private struct SidebarGlass: View {
     var lifted = false
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        // Its corners turn around the same point as those of the window: the window's radius less the margin between them, so the
+        // strip of window around it is as wide in a corner as along an edge. A fixed radius only fits one window: the corners of a
+        // window are not the same on every macOS. In full screen the window has none, and the sheet keeps what it has in a window.
+        let shape = ConcentricRectangle(corners: .concentric(minimum: .fixed(Sidebar.margin)), isUniform: true)
         Group {
             if DebugSupport.flatGlass {
-                shape.fill(.regularMaterial).overlay { shape.strokeBorder(Color.primary.opacity(0.1), lineWidth: 1) }
+                shape.fill(.regularMaterial).overlay { shape.stroke(Color.primary.opacity(0.1), lineWidth: 1) }
             } else {
                 Color.clear.glassEffect(.regular, in: shape)
             }
