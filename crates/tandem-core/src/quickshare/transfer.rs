@@ -157,6 +157,9 @@ pub trait Receiving: Send {
     fn progress(&mut self, _file: &Offered, _received: u64) {}
 }
 
+/// How long a sender may take from connecting to saying what it wants to send.
+pub(crate) const GREETING_WITHIN: Duration = Duration::from_secs(15);
+
 /// A name that is safe to write in a folder and not taken yet.
 fn free_name(folder: &Path, wanted: &str) -> PathBuf {
     let base = Path::new(wanted).file_name().and_then(|n| n.to_str()).unwrap_or("file");
@@ -180,37 +183,43 @@ where
 {
     let mut link = Link::new(stream);
 
-    // The request, then the key exchange, then both sides say they accept the connection.
-    let request = link.recv_offline_plain().await?;
-    let sender_info = request.connection_request.and_then(|r| r.endpoint_info).and_then(|info| parse_endpoint_info(&info));
-    let first = link.read_raw().await?;
-    let (server, answer) = Server::start(&first)?;
-    link.write_raw(&answer).await?;
-    let last = link.read_raw().await?;
-    let agreed: Agreed = server.finish(&last)?;
-    link.send_plain(&connection_response(true)).await?;
-    link.encrypt_with(Channel::new(&agreed.next_secret, false));
-    let theirs = link.recv_offline().await?;
-    if !is_accepting(&theirs) {
-        return Err(bad("the sender does not go on"));
-    }
-
-    // The exchange that stands in for the check of certificates.
-    let mut got_encryption = false;
-    let mut got_result = false;
-    let introduction = loop {
-        let frame = link.next_sharing().await?;
-        if is_type(&frame, SharingType::PairedKeyEncryption) {
-            got_encryption = true;
-            link.send_sharing(&paired_key_encryption()).await?;
-        } else if is_type(&frame, SharingType::PairedKeyResult) {
-            got_result = true;
-            link.send_sharing(&paired_key_result()).await?;
-        } else if is_type(&frame, SharingType::Introduction) {
-            let _ = (got_encryption, got_result);
-            break frame.v1.and_then(|v1| v1.introduction).ok_or_else(|| bad("an introduction is empty"))?;
+    // Anyone on the network can connect, so a greeting that never ends must not hold a connection forever.
+    let (sender_info, agreed, introduction) = tokio::time::timeout(GREETING_WITHIN, async {
+        // The request, then the key exchange, then both sides say they accept the connection.
+        let request = link.recv_offline_plain().await?;
+        let sender_info = request.connection_request.and_then(|r| r.endpoint_info).and_then(|info| parse_endpoint_info(&info));
+        let first = link.read_raw().await?;
+        let (server, answer) = Server::start(&first)?;
+        link.write_raw(&answer).await?;
+        let last = link.read_raw().await?;
+        let agreed: Agreed = server.finish(&last)?;
+        link.send_plain(&connection_response(true)).await?;
+        link.encrypt_with(Channel::new(&agreed.next_secret, false));
+        let theirs = link.recv_offline().await?;
+        if !is_accepting(&theirs) {
+            return Err(bad("the sender does not go on"));
         }
-    };
+
+        // The exchange that stands in for the check of certificates.
+        let mut got_encryption = false;
+        let mut got_result = false;
+        let introduction = loop {
+            let frame = link.next_sharing().await?;
+            if is_type(&frame, SharingType::PairedKeyEncryption) {
+                got_encryption = true;
+                link.send_sharing(&paired_key_encryption()).await?;
+            } else if is_type(&frame, SharingType::PairedKeyResult) {
+                got_result = true;
+                link.send_sharing(&paired_key_result()).await?;
+            } else if is_type(&frame, SharingType::Introduction) {
+                let _ = (got_encryption, got_result);
+                break frame.v1.and_then(|v1| v1.introduction).ok_or_else(|| bad("an introduction is empty"))?;
+            }
+        };
+        Ok::<_, Error>((sender_info, agreed, introduction))
+    })
+    .await
+    .map_err(|_| bad("the greeting took too long"))??;
 
     let (sender, _) = sender_info.unwrap_or_else(|| (String::new(), DeviceKind::Unknown));
     let offered: Vec<Offered> = introduction
@@ -249,52 +258,77 @@ where
     link.expect_text(texts.iter().map(|t| t.payload_id));
     link.send_sharing(&answer_frame(sharing::connection_response_frame::Status::Accept)).await?;
 
-    // The files.
+    // The files. Each is written under a temporary name and only takes its own when it is whole, so a transfer that
+    // stops halfway leaves nothing that looks like a file.
     struct Open {
         file: File,
-        path: PathBuf,
+        part: PathBuf,
         offered: Offered,
         written: u64,
         done: bool,
     }
     let mut open: Vec<Open> = Vec::new();
-    for offered in &offered {
-        let path = free_name(&folder, &offered.name);
-        let file = File::create(&path).await?;
-        open.push(Open { file, path, offered: offered.clone(), written: 0, done: offered.size == 0 });
-    }
     let mut got_texts: Vec<ReceivedText> = Vec::new();
-    while open.iter().any(|f| !f.done) || got_texts.len() < texts.len() {
-        match link.next().await? {
-            Inbound::Text { id, data } => {
-                let kind = texts.iter().find(|t| t.payload_id == id).map(|t| t.kind).unwrap_or(TextKind::Text);
-                got_texts.push(ReceivedText { kind, text: String::from_utf8_lossy(&data).into_owned() });
-            }
-            Inbound::File { id, offset, data, last } => {
-                let Some(target) = open.iter_mut().find(|f| f.offered.payload_id == id) else { continue };
-                if offset as u64 != target.written {
-                    return Err(bad("a piece of a file came out of order"));
-                }
-                target.file.write_all(&data).await?;
-                target.written += data.len() as u64;
-                events.progress(&target.offered, target.written);
-                if last {
-                    target.file.flush().await?;
-                    target.done = true;
-                }
-            }
-            Inbound::KeepAlive { wants_answer } => {
-                if wants_answer {
-                    link.send_keep_alive(true).await?;
-                }
-            }
-            Inbound::Sharing(frame) if is_type(&frame, SharingType::Cancel) => return Err(bad("the sender cancelled")),
-            Inbound::Disconnected => return Err(Error::NotConnected),
-            _ => {}
+    let taken = async {
+        for offered in &offered {
+            let part = folder.join(format!(".{}.{:x}.part", free_name(&folder, &offered.name).file_name().and_then(|n| n.to_str()).unwrap_or("file"), random_i64()));
+            let file = tokio::fs::OpenOptions::new().write(true).create_new(true).open(&part).await?;
+            open.push(Open { file, part, offered: offered.clone(), written: 0, done: offered.size == 0 });
         }
+        while open.iter().any(|f| !f.done) || got_texts.len() < texts.len() {
+            match link.next().await? {
+                Inbound::Text { id, data } => {
+                    let kind = texts.iter().find(|t| t.payload_id == id).map(|t| t.kind).unwrap_or(TextKind::Text);
+                    got_texts.push(ReceivedText { kind, text: String::from_utf8_lossy(&data).into_owned() });
+                }
+                Inbound::File { id, offset, data, last } => {
+                    let Some(target) = open.iter_mut().find(|f| f.offered.payload_id == id) else { continue };
+                    if offset as u64 != target.written {
+                        return Err(bad("a piece of a file came out of order"));
+                    }
+                    if target.written + data.len() as u64 > target.offered.size {
+                        return Err(bad("more came than the sender announced"));
+                    }
+                    target.file.write_all(&data).await?;
+                    target.written += data.len() as u64;
+                    events.progress(&target.offered, target.written);
+                    if last {
+                        target.file.flush().await?;
+                        target.done = true;
+                    }
+                }
+                Inbound::KeepAlive { wants_answer } => {
+                    if wants_answer {
+                        link.send_keep_alive(true).await?;
+                    }
+                }
+                Inbound::Sharing(frame) if is_type(&frame, SharingType::Cancel) => return Err(bad("the sender cancelled")),
+                Inbound::Disconnected => return Err(Error::NotConnected),
+                _ => {}
+            }
+        }
+        let mut saved = Vec::new();
+        for file in &mut open {
+            file.file.sync_all().await?;
+            // The name is chosen now, not at the start, so two transfers of the same name do not take the same one.
+            let path = free_name(&folder, &file.offered.name);
+            tokio::fs::rename(&file.part, &path).await?;
+            saved.push(path);
+        }
+        Ok(saved)
     }
+    .await;
+    let saved = match taken {
+        Ok(saved) => saved,
+        Err(e) => {
+            for file in &open {
+                let _ = tokio::fs::remove_file(&file.part).await;
+            }
+            return Err(e);
+        }
+    };
     link.disconnect().await;
-    Ok(Received { files: open.into_iter().map(|f| f.path).collect(), texts: got_texts })
+    Ok(Received { files: saved, texts: got_texts })
 }
 
 fn answer_frame(status: sharing::connection_response_frame::Status) -> sharing::Frame {
@@ -577,6 +611,71 @@ mod tests {
         assert_eq!(received.texts[0], ReceivedText { kind: TextKind::Url, text: "https://example.com/a?b=1".into() });
         assert_eq!(received.texts[1].text, "een notitie met é en een regeleinde\nen nog een");
         assert_eq!(saves.seen.unwrap().texts.len(), 2);
+    }
+
+    fn names_in(folder: &Path) -> Vec<String> {
+        std::fs::read_dir(folder).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect()
+    }
+
+    #[tokio::test]
+    async fn more_than_announced_is_refused_and_leaves_nothing_behind() {
+        let from = tempfile::tempdir().unwrap();
+        let to = tempfile::tempdir().unwrap();
+        std::fs::write(from.path().join("ok.txt"), b"fine").unwrap();
+        std::fs::write(from.path().join("big.bin"), pattern(300_000, 3)).unwrap();
+        // The second one says it is 10 bytes and then keeps coming.
+        let files = vec![
+            Outgoing { path: from.path().join("ok.txt"), name: "ok.txt".into(), mime: "text/plain".into(), size: 4 },
+            Outgoing { path: from.path().join("big.bin"), name: "big.bin".into(), mime: "application/octet-stream".into(), size: 10 },
+        ];
+        let (left, right) = tokio::io::duplex(1 << 20);
+        let mut saves = Saves { folder: Some(to.path().to_path_buf()), seen: None };
+        let mut watches = Watches::default();
+        let (_, received) = tokio::join!(send(left, "x", DeviceKind::Phone, &files, &[], &mut watches), receive(right, &mut saves));
+        assert!(received.is_err());
+        assert!(names_in(to.path()).is_empty(), "left behind: {:?}", names_in(to.path()));
+    }
+
+    #[tokio::test]
+    async fn a_transfer_that_stops_halfway_leaves_nothing_behind() {
+        let from = tempfile::tempdir().unwrap();
+        let to = tempfile::tempdir().unwrap();
+        let data = pattern(2_000_000, 4);
+        std::fs::write(from.path().join("big.bin"), &data).unwrap();
+        let files = vec![Outgoing { path: from.path().join("big.bin"), name: "big.bin".into(), mime: "application/octet-stream".into(), size: data.len() as u64 }];
+        let (left, right) = tokio::io::duplex(1 << 16);
+        let mut saves = Saves { folder: Some(to.path().to_path_buf()), seen: None };
+        let mut watches = Watches::default();
+        // The sender goes away as soon as some of the file is out.
+        struct Quits<'a>(&'a mut Watches, tokio::sync::mpsc::UnboundedSender<()>);
+        impl Sending for Quits<'_> {
+            fn pin(&mut self, pin: &str) { self.0.pin(pin) }
+            fn progress(&mut self, sent: u64, total: u64) {
+                if sent > 500_000 {
+                    let _ = self.1.send(());
+                }
+                self.0.progress(sent, total);
+            }
+        }
+        let (quit, mut quitting) = tokio::sync::mpsc::unbounded_channel();
+        let mut quits = Quits(&mut watches, quit);
+        let sender = async {
+            tokio::select! {
+                _ = send(left, "x", DeviceKind::Phone, &files, &[], &mut quits) => {}
+                _ = quitting.recv() => {}
+            }
+        };
+        let (_, received) = tokio::join!(sender, receive(right, &mut saves));
+        assert!(received.is_err());
+        assert!(names_in(to.path()).is_empty(), "left behind: {:?}", names_in(to.path()));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_greeting_that_never_ends_is_dropped() {
+        let (_left, right) = tokio::io::duplex(1 << 16);
+        let mut saves = Saves { folder: None, seen: None };
+        let err = receive(right, &mut saves).await.unwrap_err();
+        assert!(err.to_string().contains("greeting"), "{err}");
     }
 
     #[test]
