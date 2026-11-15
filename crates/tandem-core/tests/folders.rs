@@ -122,7 +122,9 @@ fn everything_in(dir: &Path) -> Vec<String> {
     while let Some(at) = stack.pop() {
         for entry in std::fs::read_dir(&at).into_iter().flatten().flatten() {
             let path = entry.path();
-            out.push(path.strip_prefix(dir).unwrap().to_string_lossy().into_owned());
+            // With `/` on every system, so one list of names holds on Windows too.
+            let parts: Vec<String> = path.strip_prefix(dir).unwrap().components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
+            out.push(parts.join("/"));
             if path.is_dir() {
                 stack.push(path);
             }
