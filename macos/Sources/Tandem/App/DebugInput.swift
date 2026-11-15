@@ -5,7 +5,8 @@ import SwiftUI
 /// app is used (a click, a double click, the scroll wheel, a key, a narrow or full screen window) can be tried without anyone at the
 /// mouse and without a picture of the screen. The steps are separated by `;` and run one after another:
 ///
-/// - `main`: from here on the steps go to the main window; until then to the debug window, the one that is not the main window.
+/// - `main`: from here on the steps go to the main window; until then to the debug window, the one that is not the main window
+///   (and to the main window when there is no other).
 /// - `wait:<seconds>`
 /// - `click:<x>,<y>` and `double:<x>,<y>`: the mouse, at that point of the window counted from its top left corner.
 /// - `wheel:<x>,<y>,<dy>`: the scroll wheel at that point, by that many points (negative scrolls down the page).
@@ -13,6 +14,9 @@ import SwiftUI
 /// - `width:<points>` and `fullscreen`: resizes the window, or takes it in or out of full screen.
 /// - `report`: writes where the window and its three buttons are.
 /// - `snap`: the pictures of the windows, as SIGUSR1 does, kept under a number of their own.
+/// - `film:<frames>,<milliseconds>[,<width>]`: that many pictures of the window, that far apart, of its leading `width` points:
+///   something that moves, seen frame by frame. A `+` in place of the `;` before it starts it without the pause between steps,
+///   as in `click:140,520+film:14,35,290`.
 ///
 /// What every step did is written to `input.txt` in the debug folder. Events go through the window as real ones do, so they land on
 /// whatever a person's click at that place would land on.
@@ -26,7 +30,8 @@ enum DebugInput {
         let steps = script.split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
         Task { @MainActor in
             for step in steps {
-                await play(step, into: directory)
+                // Parts joined by a plus run back to back.
+                for part in step.split(separator: "+") { await play(String(part), into: directory) }
                 try? await Task.sleep(for: .milliseconds(350))
             }
             note("done")
@@ -41,7 +46,7 @@ enum DebugInput {
     private static var window: NSWindow? {
         // The main window has the name of the app; a debug window has another title, which a page may change (Settings does).
         let titled = NSApp.windows.filter { $0.isVisible && $0.styleMask.contains(.titled) && $0.frame.width > 300 }
-        return titled.first { ($0.title == AppIdentity.displayName) == useMain }
+        return titled.first { ($0.title == AppIdentity.displayName) == useMain } ?? titled.first
     }
 
     private static func play(_ step: String, into directory: URL) async {
@@ -68,6 +73,27 @@ enum DebugInput {
                     try? await Task.sleep(for: .milliseconds(40))
                 }
             }
+        case "film":
+            guard numbers.count >= 2, let window, let view = window.contentView?.superview else { return note("\(step): no window") }
+            snaps += 1
+            let folder = directory.appendingPathComponent("film-\(snaps)", isDirectory: true)
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var rect = view.bounds
+            if numbers.count > 2 { rect.size.width = min(rect.width, numbers[2]) }
+            // Drawn first and written afterwards: writing a picture takes longer than the time between two frames.
+            var frames: [(at: Int, picture: NSBitmapImageRep)] = []
+            let start = ProcessInfo.processInfo.systemUptime
+            for _ in 0 ..< Int(numbers[0]) {
+                guard let picture = view.bitmapImageRepForCachingDisplay(in: rect) else { break }
+                view.cacheDisplay(in: rect, to: picture)
+                frames.append((Int((ProcessInfo.processInfo.systemUptime - start) * 1000), picture))
+                try? await Task.sleep(for: .milliseconds(Int(numbers[1])))
+            }
+            for (index, frame) in frames.enumerated() {
+                let name = String(format: "frame-%02d-%04dms.png", index, frame.at)
+                try? frame.picture.representation(using: .png, properties: [:])?.write(to: folder.appendingPathComponent(name))
+            }
+            note("film \(snaps): \(frames.count) frames at \(frames.map { String($0.at) }.joined(separator: " ")) ms")
         case "wheel":
             guard numbers.count == 3, let window else { return note("\(step): no window") }
             let point = NSPoint(x: numbers[0], y: window.frame.height - numbers[1])

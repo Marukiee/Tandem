@@ -28,7 +28,7 @@ struct TandemApp: App {
     var body: some Scene {
         Window(AppIdentity.displayName, id: "main") {
             ReleasedWhenClosed {
-                MainWindow().environment(model)
+                MainWindow().environment(DebugSupport.madeUpModel ?? model)
             }
             // Narrow enough for the sidebar to fold: under 900 it is a column of icons, and the page still has its room.
             .frame(minWidth: 720, minHeight: 600)
