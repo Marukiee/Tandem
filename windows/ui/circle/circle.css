@@ -1,0 +1,159 @@
+/* Examples of the page Circle (P6), for Mark to choose from. Not part of the app and not for release. */
+
+/* The app follows the system; an example can be asked for either look. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --accent: #5b5bd6; --accent-soft: rgba(91, 91, 214, 0.14); --ok: #107c10; --ok-soft: rgba(16, 124, 16, 0.14);
+  --bad: #c42b1c; --bad-soft: rgba(196, 43, 28, 0.12); --bg: #f3f3f7; --nav: #ebebf1; --card: #ffffff; --card-2: #f7f7fb;
+  --line: rgba(0, 0, 0, 0.09); --line-strong: rgba(0, 0, 0, 0.16); --text: #1b1b20; --text-2: #5a5a66; --text-3: #8a8a96;
+  --hover: rgba(0, 0, 0, 0.05); --press: rgba(0, 0, 0, 0.09); --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+  --tone-1: #e3e2fb; --on-tone-1: #2a2980; --tone-2: #ffdde9; --on-tone-2: #6b1f3f; --tone-3: #d6f0da; --on-tone-3: #0f4d1d;
+  --tone-4: #ffe1d3; --on-tone-4: #6a2a10;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --accent: #8b8bf0; --accent-soft: rgba(139, 139, 240, 0.18); --ok: #6ccb5f; --ok-soft: rgba(108, 203, 95, 0.16);
+  --bad: #ff99a4; --bad-soft: rgba(255, 153, 164, 0.16); --bg: #1d1d22; --nav: #17171b; --card: #2a2a30; --card-2: #232328;
+  --line: rgba(255, 255, 255, 0.08); --line-strong: rgba(255, 255, 255, 0.16); --text: #f4f4f7; --text-2: #c2c2cc; --text-3: #8e8e9a;
+  --hover: rgba(255, 255, 255, 0.07); --press: rgba(255, 255, 255, 0.11); --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --tone-1: #30305e; --on-tone-1: #dcdbff; --tone-2: #56283b; --on-tone-2: #ffd7e4; --tone-3: #1f4729; --on-tone-3: #c9edd0;
+  --tone-4: #573020; --on-tone-4: #ffdacb;
+}
+
+/* A colour per kind of permission: the lines, the dots and the tiles all use the same four. */
+:root { --g-see: #5b5bd6; --g-files: #2f9e44; --g-control: #e8590c; --g-phone: #d6336c; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --g-see: #a5a5f7; --g-files: #74d18a; --g-control: #ffa06b; --g-phone: #ff8fb5; } }
+:root[data-theme="dark"] { --g-see: #a5a5f7; --g-files: #74d18a; --g-control: #ffa06b; --g-phone: #ff8fb5; }
+.g-see { --g: var(--g-see); --t: var(--tone-1); --on-t: var(--on-tone-1); }
+.g-files { --g: var(--g-files); --t: var(--tone-3); --on-t: var(--on-tone-3); }
+.g-control { --g: var(--g-control); --t: var(--tone-4); --on-t: var(--on-tone-4); }
+.g-phone { --g: var(--g-phone); --t: var(--tone-2); --on-t: var(--on-tone-2); }
+
+.cpage > .wrap { max-width: 1040px; }
+.ctitle h1 { font: 650 26px var(--font-display); margin: 4px 2px 2px; }
+.ctitle .lead { margin: 0 2px; }
+.lvl { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font: 600 12px var(--font); white-space: nowrap; }
+.lvl.own { background: var(--tone-1); color: var(--on-tone-1); }
+.lvl.limited { background: var(--tone-4); color: var(--on-tone-4); }
+.lvl.send { background: var(--tone-2); color: var(--on-tone-2); }
+.lvl.custom { background: var(--hover); color: var(--text-2); }
+.lvl.unknown { background: transparent; color: var(--text-3); border: 1px dashed var(--line-strong); }
+
+/* The four kinds as small round marks: filled when all of it is allowed, a ring when part of it, faint and struck when none. */
+.gdots { display: inline-flex; gap: 5px; flex: none; }
+.gdot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; border: 0; padding: 0; background: var(--t); color: var(--on-t); position: relative; transition: transform 0.3s var(--spring), opacity 0.15s, background 0.15s; }
+.gdot.some { background: transparent; box-shadow: inset 0 0 0 2px var(--g); color: var(--g); }
+.gdot.none { background: transparent; color: var(--text-3); opacity: 0.55; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.gdot.none::after { content: ""; position: absolute; width: 22px; height: 1.5px; background: currentColor; transform: rotate(-45deg); border-radius: 1px; }
+button.gdot:hover { transform: scale(1.08); }
+button.gdot:active { transform: scale(0.94); }
+
+.prow { display: flex; align-items: center; gap: 10px; padding: 7px 4px; }
+.prow .grow { font-size: 13.5px; }
+.pgroup { border-radius: 14px; padding: 8px 12px 6px; background: color-mix(in srgb, var(--t) 55%, transparent); }
+.pgroup .ph { display: flex; align-items: center; gap: 8px; font: 650 13px var(--font); color: var(--on-t); padding: 2px 4px 4px; }
+.pgroups { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ro .switch { pointer-events: none; }
+
+.joincard { border: 1.5px dashed var(--line-strong); background: transparent; display: flex; align-items: center; gap: 14px; }
+.joincard .plusbig { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; flex: none; }
+.startas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.startas .seg { margin: 0; }
+
+/* ---- A: the ring ---- */
+.a-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr); gap: 14px; align-items: start; }
+.ringcard { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.ringcard .seg { align-self: center; margin: 0; }
+.ringbox { position: relative; width: 100%; max-width: 520px; aspect-ratio: 1; margin: 0 auto; }
+.ringbox svg.web { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ringbox .orbit { fill: none; stroke: var(--line); stroke-width: 0.35; stroke-dasharray: 0.8 1.2; }
+.ringbox .chord { stroke: var(--line-strong); stroke-width: 0.25; }
+.ringbox .base { stroke: var(--line-strong); stroke-width: 0.3; }
+.ringbox .spoke { stroke: var(--g); stroke-width: 0.75; stroke-linecap: round; animation: draw 0.5s ease-out both; }
+.ringbox .spoke.some { stroke-dasharray: 1.3 1.1; }
+.ringbox .unknownline { stroke: var(--text-3); stroke-width: 0.45; stroke-dasharray: 0.6 1.2; }
+@keyframes draw { from { opacity: 0; } }
+.node { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 5px; width: 110px; border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: default;
+  transition: left 0.7s var(--spring), top 0.7s var(--spring); }
+.node .disc { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); color: var(--text-2); transition: width 0.5s var(--spring), height 0.5s var(--spring), transform 0.3s var(--spring); }
+.node:hover .disc { transform: scale(1.06); }
+.node:active .disc { transform: scale(0.96); }
+.node.online .disc { color: var(--accent); }
+.node.center .disc { width: 88px; height: 88px; background: var(--accent); color: #fff; }
+.node .nm { font: 600 12.5px var(--font); text-align: center; line-height: 1.2; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--bg) 82%, transparent); }
+.node .st { font-size: 11px; color: var(--text-3); margin-top: -3px; }
+.node.add .disc { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-strong); color: var(--accent); border: 0; }
+.node.add .disc { outline: 1.5px dashed var(--line-strong); outline-offset: -1.5px; box-shadow: none; }
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 12px; color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 3px; border-radius: 2px; background: var(--g); }
+.legend i.dash { background: repeating-linear-gradient(90deg, var(--text-3) 0 4px, transparent 4px 7px); }
+.apanel .phead { display: flex; align-items: center; gap: 12px; padding: 12px 14px 8px; }
+.apanel .phead .glyph { width: 40px; height: 40px; }
+.apanel .phead .t { font: 650 15px var(--font-display); }
+.arow { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 10px; margin: 0 4px; transition: background 0.12s; }
+.arow:hover { background: var(--hover); }
+.arow.open { background: var(--card-2); }
+.arow .name { font-weight: 600; }
+.aopen { padding: 4px 14px 14px; margin: 0 4px 6px; background: var(--card-2); border-radius: 0 0 10px 10px; display: flex; flex-direction: column; gap: 10px; }
+.apanel .pfoot { display: flex; gap: 8px; align-items: center; padding: 10px 14px 12px; border-top: 1px solid var(--line); margin-top: 4px; flex-wrap: wrap; }
+
+/* ---- B: a level per device ---- */
+.b-tiles { grid-template-columns: repeat(3, 1fr); }
+.b-tiles .tile.own { background: var(--tone-1); color: var(--on-tone-1); }
+.b-tiles .tile.limited { background: var(--tone-4); color: var(--on-tone-4); }
+.b-tiles .tile.send { background: var(--tone-2); color: var(--on-tone-2); }
+.b-tiles .names { display: flex; gap: 4px; flex-wrap: wrap; }
+.b-tiles .names .glyph { width: 26px; height: 26px; background: color-mix(in srgb, currentColor 16%, transparent); color: inherit; }
+.bdev { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; transition: background 0.12s; }
+.bdev:hover { background: var(--hover); }
+.bdev .name { font-weight: 600; }
+.bdev .sub { font-size: 12px; color: var(--text-2); }
+.bopen { padding: 6px 14px 14px 64px; display: flex; flex-direction: column; gap: 12px; }
+.bopen .levelseg button { padding: 5px 16px; }
+
+/* ---- C: by permission ---- */
+.c-summary { font-size: 15px; line-height: 1.5; margin: 2px 2px 4px; color: var(--text-2); }
+.c-summary b { color: var(--text); font-weight: 650; }
+.c-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ctile { border-radius: 20px; padding: 16px 18px; background: var(--t); color: var(--on-t); display: flex; flex-direction: column; gap: 12px; min-height: 150px; }
+.ctile .ch { display: flex; align-items: center; gap: 10px; }
+.ctile .ch .ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, currentColor 14%, transparent); flex: none; }
+.ctile .ch .q { font: 650 15px var(--font-display); }
+.ctile .ch .what { font-size: 12px; opacity: 0.8; }
+.cfaces { display: flex; gap: 8px; flex-wrap: wrap; }
+.cface { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 64px; border: 0; background: none; color: inherit; font: inherit; padding: 0; cursor: default; }
+.cface .disc { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, currentColor 18%, transparent); position: relative; transition: transform 0.3s var(--spring), opacity 0.15s, background 0.15s; }
+.cface.yes .disc { background: var(--g); color: #fff; }
+.cface.some .disc { box-shadow: inset 0 0 0 2.5px var(--g); background: transparent; }
+.cface.no { opacity: 0.5; }
+.cface.no .disc::after { content: ""; position: absolute; width: 34px; height: 2px; background: currentColor; transform: rotate(-45deg); border-radius: 1px; }
+.cface:hover .disc { transform: scale(1.07); }
+.cface:active .disc { transform: scale(0.94); }
+.cface .n { font-size: 11.5px; font-weight: 600; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctile .foot { font-size: 12.5px; opacity: 0.85; margin-top: auto; }
+.cdev { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; }
+.cdev:hover { background: var(--hover); }
+.cdev .name { font-weight: 600; }
+.cdev .sub { font-size: 12px; color: var(--text-2); }
+
+/* The switcher between the examples. Left out of the screenshots. */
+.switcher { position: fixed; right: 14px; bottom: 14px; display: flex; gap: 6px; padding: 6px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); z-index: 30; font-size: 12px; }
+.switcher button { border: 0; background: transparent; border-radius: 999px; padding: 4px 10px; color: var(--text-2); cursor: default; }
+.switcher button.on { background: var(--accent); color: #fff; }
+.switcher .sep { width: 1px; background: var(--line); }
+.example-tag { font-size: 11px; color: var(--text-3); align-self: flex-start; border: 1px dashed var(--line-strong); border-radius: 999px; padding: 1px 8px; }
+
+/* Narrow window: one column everywhere. */
+@media (max-width: 899px) {
+  .a-layout, .c-grid, .pgroups { grid-template-columns: 1fr; }
+  .b-tiles { grid-template-columns: 1fr 1fr 1fr; }
+  .b-tiles .tile { min-height: 92px; padding: 12px; }
+  .b-tiles .tile .big { font-size: 30px; }
+  .bopen { padding-left: 14px; }
+  .bdev .gdots { display: none; }
+  .cpage { padding: 16px 14px 40px; }
+  .node { width: 84px; }
+  .node .disc { width: 46px; height: 46px; }
+  .node.center .disc { width: 68px; height: 68px; }
+}
