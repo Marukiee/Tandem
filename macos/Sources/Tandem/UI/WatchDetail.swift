@@ -339,7 +339,9 @@ private struct WatchHealthCard: View {
                                 caption: score.map { String(localized: "Sleep score \(Int($0))") } ?? dayName(night.endMs)
                             )
                         }
-                        if let day = stepsDay, let steps = day.steps {
+                        // Beside the night also at 0, so the steps never seem gone on a day without any yet.
+                        if let day = stepsDay ?? (night != nil ? insights?.week.last : nil) {
+                            let steps = day.steps ?? 0
                             GlanceTile(
                                 onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: dayName(day.startMs),
                                 share: settings.map { min(1, Double(steps) / Double(max($0.stepGoal, 1))) }
