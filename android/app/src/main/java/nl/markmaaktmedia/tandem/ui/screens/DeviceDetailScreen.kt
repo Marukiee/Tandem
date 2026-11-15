@@ -221,14 +221,15 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             SectionHeader(stringResource(R.string.section_send), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
                 ActionRow(
-                    0, if (device.online) 2 else 1, TandemIcons.Upload, stringResource(R.string.row_send_files),
+                    0, 2, TandemIcons.Upload, stringResource(R.string.row_send_files),
                     stringResource(if (device.online) R.string.send_files_sub else R.string.send_files_sub_away), { picker.launch(arrayOf("*/*")) },
                     iconTint = MaterialTheme.colorScheme.onPrimary, iconContainer = MaterialTheme.colorScheme.primary,
                 )
-                // Sent right here, so a button like Lock, not the arrow of a page.
-                if (device.online) nl.markmaaktmedia.tandem.ui.components.ButtonRow(
+                // Sent right here, so a button like Lock, not the arrow of a page. A copied text is not kept for later (it belongs to a moment),
+                // so for a device that is away the row is grey and says why instead of being gone.
+                nl.markmaaktmedia.tandem.ui.components.ButtonRow(
                     1, 2, TandemIcons.Paste, stringResource(R.string.row_send_clipboard), stringResource(R.string.send_clipboard_sub),
-                    button = stringResource(R.string.send_clipboard_button), buttonIcon = TandemIcons.Upload, ready = true, whyNot = null,
+                    button = stringResource(R.string.send_clipboard_button), buttonIcon = TandemIcons.Upload, ready = device.online, whyNot = R.string.offline_clipboard,
                     onClick = {
                         val clip = host.readClipboard()
                         if (clip == null) {
