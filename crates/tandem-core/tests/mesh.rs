@@ -920,11 +920,13 @@ async fn sound_travels_as_datagrams_and_arrives_in_order() {
     let limit = mac.engine.audio_payload_limit(&phone.engine.id()) / 4 * 4;
     assert!(limit >= 400, "a datagram should carry at least a few milliseconds of sound, got {limit}");
     let packet = |n: u32| -> Vec<u8> { (0..limit).map(|i| (i as u32 + n) as u8).collect() };
-    for seq in 0..40u32 {
-        mac.engine.send_audio(&phone.engine.id(), 3, seq, &packet(seq)).unwrap();
-        // A real capture hands over a packet every few milliseconds. Each is waited for here instead: a datagram is allowed to be
-        // dropped when the link is busy, and a runner that stalls for a moment must not decide what this test finds.
-        wait_until("the packet", || heard.0.lock().unwrap().len() > seq as usize).await;
+    // In small bursts, as a capture hands over a few packets at a time: a burst is waited for before the next goes, so a runner that
+    // stalls does not drop datagrams this test has no say over. Within a burst they go back to back and must still arrive in order.
+    for burst in 0..10u32 {
+        for seq in burst * 4..burst * 4 + 4 {
+            mac.engine.send_audio(&phone.engine.id(), 3, seq, &packet(seq)).unwrap();
+        }
+        wait_until("the burst", || heard.0.lock().unwrap().len() >= (burst as usize + 1) * 4).await;
     }
     wait_until("the packets arrive", || heard.0.lock().unwrap().len() >= 40).await;
     let got = heard.0.lock().unwrap().clone();
