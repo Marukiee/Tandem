@@ -1453,6 +1453,8 @@ pub enum TandemEvent {
     Paired { id: String },
     CircleChanged,
     RemovedFromCircle,
+    /// Another device of the circle gave this device a name (R-I33). The app keeps it where it keeps the name of this device.
+    SelfRenamed { name: String },
     Clipboard { from: String, text: String, is_url: bool },
     ShareOffered { from: String, offer: u64, origin: TandemShareOrigin, items: Vec<TandemShareItem> },
     ShareText { from: String, text: String, is_url: bool, open: bool },
@@ -1566,6 +1568,7 @@ impl From<Event> for TandemEvent {
             Event::Paired { id } => TandemEvent::Paired { id: id.to_string() },
             Event::CircleChanged => TandemEvent::CircleChanged,
             Event::RemovedFromCircle => TandemEvent::RemovedFromCircle,
+            Event::SelfRenamed { name } => TandemEvent::SelfRenamed { name },
             Event::Clipboard { from, text, is_url } => TandemEvent::Clipboard { from: from.to_string(), text, is_url },
             Event::ShareOffered { from, offer } => TandemEvent::ShareOffered {
                 from: from.to_string(),
@@ -2114,6 +2117,20 @@ impl TandemEngine {
         let engine = self.engine.clone();
         self.runtime.spawn(async move { engine.remove_device(id).await }).await.map_err(join_error)??;
         Ok(())
+    }
+
+    /// Gives a device of the circle a name for every device in it, itself included (R-I33). Refused for a device of an older version
+    /// (see `can_rename`), which would keep its own name.
+    pub async fn rename_device(&self, id: String, name: String) -> Result<(), TandemError> {
+        let id = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.rename_device(&id, &name).await }).await.map_err(join_error)??;
+        Ok(())
+    }
+
+    /// Whether `id` can be named from this device: it is this device, or one new enough to take the name.
+    pub fn can_rename(&self, id: String) -> bool {
+        DeviceId::parse(&id).is_ok_and(|id| self.engine.can_rename(&id))
     }
 
     pub async fn rename_self(&self, name: String) -> Result<(), TandemError> {

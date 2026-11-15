@@ -487,6 +487,8 @@ impl Inner {
                     if !self.circle.read().unwrap().is_member(&self.identity.public_key()) {
                         warn!("this device was removed from the circle");
                         self.emit(Event::RemovedFromCircle);
+                    } else {
+                        self.follow_own_name().await;
                     }
                 }
             }

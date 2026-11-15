@@ -275,15 +275,17 @@ impl Circle {
     }
 
     pub fn rename_self(&mut self, identity: &Identity, name: &str) -> Result<Statement> {
+        self.rename(identity, identity.id(), name)
+    }
+
+    /// Gives `subject` a name for the whole circle (R-I33). Any member may name any member; the newest name wins. Versions before this
+    /// only take a device's own rename, which is why a device that is named by another one says the same name again itself.
+    pub fn rename(&mut self, identity: &Identity, subject: DeviceId, name: &str) -> Result<Statement> {
         self.require_member(identity)?;
-        let statement = Statement::create(
-            identity,
-            self.next_seq(),
-            Action::Rename {
-                subject: identity.id(),
-                name: clean_device_name(name),
-            },
-        );
+        if self.member(&subject).is_none() {
+            return Err(Error::invalid("that device is not in the circle"));
+        }
+        let statement = Statement::create(identity, self.next_seq(), Action::Rename { subject, name: clean_device_name(name) });
         self.insert(statement.clone());
         self.recompute();
         Ok(statement)
@@ -443,9 +445,9 @@ fn derive(ordered: &[&Statement], known_removed: &BTreeMap<DeviceId, u64>, root:
                     *entry = (*entry).min(statement.seq);
                 }
             }
+            // Any member may name any member (R-I33), the newest name wins.
             Action::Rename { subject, name } => {
-                if *subject == author
-                    && may_author(&view, known_removed, &author, statement.seq)
+                if may_author(&view, known_removed, &author, statement.seq)
                     && view.name_seq.get(subject).is_none_or(|&seq| statement.seq > seq)
                 {
                     if let Some(member) = view.admitted.get_mut(subject) {
@@ -474,6 +476,44 @@ mod tests {
         assert!(circle.is_member(&a.public_key()));
         assert!(circle.is_alone(&a.id()));
         assert_eq!(circle.members().len(), 1);
+    }
+
+    #[test]
+    fn any_member_names_any_member_and_the_newest_name_wins() {
+        let (a, _) = device("a");
+        let (b, _) = device("b");
+        let mut circle = Circle::genesis(&a, "Phone", Platform::Android);
+        circle.vouch_for(&a, b.public_key(), "Mac", Platform::MacOs).unwrap();
+        // A names B, then B names itself: the later one holds, on every copy of the circle.
+        let by_a = circle.rename(&a, b.id(), "Work Mac").unwrap();
+        assert_eq!(circle.member(&b.id()).unwrap().name, "Work Mac");
+        let by_b = circle.rename_self(&b, "Mac at home").unwrap();
+        assert_eq!(circle.member(&b.id()).unwrap().name, "Mac at home");
+        let mut other = Circle::from_statements(circle.statements().into_iter().filter(|s| s.id() != by_b.id()));
+        assert_eq!(other.member(&b.id()).unwrap().name, "Work Mac");
+        other.merge([by_b, by_a]);
+        assert_eq!(other.member(&b.id()).unwrap().name, "Mac at home");
+    }
+
+    #[test]
+    fn a_stranger_or_a_removed_device_cannot_name_anyone() {
+        let (a, _) = device("a");
+        let (b, _) = device("b");
+        let (stranger, _) = device("s");
+        let mut circle = Circle::genesis(&a, "Phone", Platform::Android);
+        circle.vouch_for(&a, b.public_key(), "Mac", Platform::MacOs).unwrap();
+        assert!(matches!(circle.rename(&stranger, a.id(), "x"), Err(Error::NotTrusted)));
+        let forged = Statement::create(&stranger, 99, Action::Rename { subject: a.id(), name: "Evil".into() });
+        circle.merge([forged]);
+        assert_eq!(circle.member(&a.id()).unwrap().name, "Phone");
+
+        // B is removed; a name it gives afterwards is ignored.
+        circle.remove(&a, b.id()).unwrap();
+        let late = Statement::create(&b, circle.next_seq(), Action::Rename { subject: a.id(), name: "Late".into() });
+        circle.merge([late]);
+        assert_eq!(circle.member(&a.id()).unwrap().name, "Phone");
+        // Naming a device that is not in the circle is refused.
+        assert!(circle.rename(&a, stranger.id(), "x").is_err());
     }
 
     #[test]
@@ -605,20 +645,16 @@ mod tests {
     }
 
     #[test]
-    fn rename_only_works_on_yourself() {
+    fn an_older_name_does_not_undo_a_newer_one() {
         let (a, _) = device("a");
         let (b, _) = device("b");
         let mut circle = Circle::genesis(&a, "Phone", Platform::Android);
         circle.vouch_for(&a, b.public_key(), "Mac", Platform::MacOs).unwrap();
+        let seq = circle.next_seq();
         circle.rename_self(&b, "Work Mac").unwrap();
-        assert_eq!(circle.member(&b.id()).unwrap().name, "Work Mac");
-
-        let vandal = Statement::create(
-            &a,
-            circle.next_seq(),
-            Action::Rename { subject: b.id(), name: "Hacked".into() },
-        );
-        circle.merge([vandal]);
+        // A named B at the same moment, without having seen B's own rename: the older one stays behind (R-I33).
+        let older = Statement::create(&a, seq - 1, Action::Rename { subject: b.id(), name: "Old".into() });
+        circle.merge([older]);
         assert_eq!(circle.member(&b.id()).unwrap().name, "Work Mac");
     }
 
