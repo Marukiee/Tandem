@@ -9,6 +9,7 @@ import TandemCore
 /// A few more variables choose what is on screen, so a snapshot can reach places a
 /// person would click to: `TANDEM_DEBUG_PAGE=shared` or `files` or `files:<device name>`, `TANDEM_DEBUG_SETTINGS=<section>`
 /// and `TANDEM_DEBUG_PANEL=1` (the menu bar panel in an ordinary window).
+/// `TANDEM_DEBUG_UPDATE=1` shows the update card with a made up newer version.
 /// `TANDEM_DEBUG_CLIPBOARD=seed` fills the clipboard history with samples and `=panel` also opens the quick panel,
 /// which then stays open when it loses the focus; `TANDEM_DEBUG_PAGE=clipboard` opens the page of the history.
 /// `TANDEM_DEBUG_LIVE=<file>` opens a window of the phone's screen or camera fed from a recorded stream and writes
@@ -206,6 +207,11 @@ enum DebugSupport {
         }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
+        }
+        // `TANDEM_DEBUG_UPDATE=1`: a made up newer version, so the update card shows without looking for a release or installing one.
+        // (`TANDEM_UPDATE_TEST_FROM` does the whole update, and replaces the app it runs from.)
+        if variable("TANDEM_DEBUG_UPDATE") != nil, let page = URL(string: "https://example.com") {
+            Updater.shared.state = .available(.init(version: "9.9.9", notes: "", zipURL: [], shaURL: [], sigURL: [], size: 0, page: page))
         }
         // `TANDEM_DEBUG_INSERT=choose|which|waiting|receiving|done|ready|refused|offline|timeout|cancelled`: the Insert from phone panel.
         if let stage = variable("TANDEM_DEBUG_INSERT") {
@@ -557,12 +563,16 @@ enum DebugSupport {
         )
         MessagesStore.shared.phone(device.id).fillForDebug()
         PhoneContacts.of(device.id).fillForDebug()
+        var second = device
+        second.id = "debug-phone-2"
+        second.name = "Xperia 1 VI"
         // Under a toolbar beside a stand in for the sidebar, as in the main window: the toolbar and its inset decide where the page
         // starts. (A real split view in a window of its own draws nothing in a snapshot.)
         // `wide`: as with the sidebar hidden, the window's buttons over the page.
         let page = HStack(spacing: 0) {
             if messagesStart != "wide" { Color.gray.opacity(0.12).frame(width: 260).ignoresSafeArea() }
-            MessagesView(device: device)
+            // `TANDEM_DEBUG_MESSAGES=phones`: a second phone, so the pill that switches between them shows.
+            MessagesView(device: device, phones: messagesStart == "phones" ? [device, second] : [])
         }
         .callConfirmation()
         // The main window's toolbar always has the sidebar button, which gives the strip its height.

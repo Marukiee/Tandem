@@ -171,7 +171,7 @@ struct Sidebar: View {
                     SidebarButton(selected: selection == .messages(phone.id), chosen: chosen) {
                         selection = .messages(phone.id)
                     } content: {
-                        MessagesRow(device: phone, phones: phones, folded: folded, selected: selection == .messages(phone.id))
+                        MessagesRow(phones: phones, folded: folded, selected: selection == .messages(phone.id))
                     }
                     .transition(.opacity)
                 }
@@ -530,10 +530,9 @@ private struct PageRow: View {
     }
 }
 
-/// The messages of the phones, and their calls with them (see `MessagesView`), in the second group like Files and Notifications.
-/// One row, whichever phone it opens: what is unread on any of them counts.
+/// The messages of the phones, and their calls with them (see `MessagesView`), in the second group like Files and Notifications. One row
+/// for all phones, with what is unread on any of them.
 private struct MessagesRow: View {
-    let device: TandemDevice
     let phones: [TandemDevice]
     let folded: Bool
     let selected: Bool
@@ -543,13 +542,12 @@ private struct MessagesRow: View {
         PageRow(
             symbol: "message.fill",
             title: String(localized: "Messages"),
-            // With more than one phone the row says whose it opens.
-            subtitle: phones.count > 1 ? device.name : String(localized: "Texts and calls"),
+            subtitle: String(localized: "Texts and calls"),
             badge: unread,
             folded: folded,
             selected: selected
         )
-        .opacity(device.online ? 1 : 0.6)
+        .opacity(phones.contains { $0.online } ? 1 : 0.6)
     }
 }
 

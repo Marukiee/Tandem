@@ -249,7 +249,9 @@ struct MainWindow: View {
                 }
             case let .messages(id):
                 if let device = model.device(id) {
-                    MessagesView(device: device, phones: model.devices.filter(Sidebar.offersMessages)) { selection = .messages($0) }
+                    // A page of its own per phone, so the conversation that was open on one does not stay open on the other.
+                    MessagesView(device: device, phones: model.devices.filter(Sidebar.offersMessages), onPhone: { selection = .messages($0) })
+                        .id(id)
                         .transition(.page)
                 } else {
                     Color.clear
