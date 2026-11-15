@@ -100,6 +100,9 @@ pub(crate) struct Peer {
     pub hurry: bool,
 }
 
+/// This device takes a name given by any device of the circle, and takes its own from it (R-I33).
+pub const NAME_CAP: &str = "name.circle";
+
 pub(crate) struct Inner {
     pub cfg: EngineConfig,
     pub identity: Arc<Identity>,
@@ -322,7 +325,7 @@ impl Engine {
     }
 
     pub async fn rename_self(&self, name: &str) -> Result<()> {
-        *self.inner.my_name.write().unwrap() = name.to_string();
+        *self.inner.my_name.write().unwrap() = crate::circle::clean_device_name(name);
         let statement = {
             let mut circle = self.inner.circle.write().unwrap();
             circle.rename_self(&self.inner.identity, name)?
@@ -331,6 +334,34 @@ impl Engine {
         self.inner.gossip(vec![statement], None).await;
         self.inner.emit(Event::DevicesChanged);
         Ok(())
+    }
+
+    /// Gives a device of the circle a name for every device in it, itself included (R-I33). Being in the circle is enough, as for its own
+    /// name: a name is not something one device lets another do. A device of a version before this would keep its own name, so it is
+    /// refused: `NAME_CAP` says which can.
+    pub async fn rename_device(&self, id: &DeviceId, name: &str) -> Result<()> {
+        if *id == self.inner.my_id {
+            return self.rename_self(name).await;
+        }
+        if crate::circle::clean_device_name(name).trim().is_empty() {
+            return Err(Error::invalid("a name cannot be empty"));
+        }
+        if !self.inner.knows_names(id) {
+            return Err(Error::invalid("that device is of an older version: rename it on the device itself"));
+        }
+        let statement = {
+            let mut circle = self.inner.circle.write().unwrap();
+            circle.rename(&self.inner.identity, *id, name)?
+        };
+        self.inner.persist_circle();
+        self.inner.gossip(vec![statement], None).await;
+        self.inner.emit(Event::DevicesChanged);
+        Ok(())
+    }
+
+    /// Whether `id` can be named from here: it said `NAME_CAP` the last time it said hello.
+    pub fn can_rename(&self, id: &DeviceId) -> bool {
+        *id == self.inner.my_id || self.inner.knows_names(id)
     }
 
     /// Removes a device from the circle for good. Every other device learns of it.
@@ -771,7 +802,7 @@ impl Inner {
     /// What this device can do for the others: what the app says, always letting them look at its files, and keeping health records.
     pub fn caps(&self) -> Vec<String> {
         let mut caps = self.cfg.caps.clone();
-        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP, crate::trust::CAP] {
+        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP, crate::trust::CAP, NAME_CAP] {
             if !caps.iter().any(|c| c == always) {
                 caps.push(always.into());
             }
@@ -867,7 +898,9 @@ impl Inner {
             let hello = peer.and_then(|p| p.hello.as_ref());
             out.push(DeviceInfo {
                 id: member.id,
-                name: hello.map(|h| h.name.clone()).unwrap_or_else(|| member.name.clone()),
+                // The circle has the newest name, also one given from another device (R-I33); what the device says about itself
+                // in its hello only comes in when the circle has none.
+                name: Some(member.name.clone()).filter(|n| !n.trim().is_empty()).or_else(|| hello.map(|h| h.name.clone())).unwrap_or_default(),
                 platform: member.platform,
                 online: session.is_some(),
                 route: session.map(|s| net::route_of(s.remote.ip())),
@@ -932,6 +965,28 @@ impl Inner {
         }
         drop(peers);
         self.poke.notify_one();
+    }
+
+    pub(crate) fn knows_names(&self, id: &DeviceId) -> bool {
+        self.peers.lock().unwrap().get(id).and_then(|p| p.hello.as_ref()).is_some_and(|h| h.caps.iter().any(|c| c == NAME_CAP))
+    }
+
+    /// Another device gave this one a name (R-I33): it becomes its own, and it is said again as its own rename, which is the only kind
+    /// an older version takes. Nothing happens when the circle already has the name this device uses.
+    pub(crate) async fn follow_own_name(&self) {
+        let named = self.circle.read().unwrap().member(&self.my_id).map(|m| m.name.clone()).filter(|n| !n.trim().is_empty());
+        let Some(named) = named else { return };
+        if *self.my_name.read().unwrap() == named {
+            return;
+        }
+        *self.my_name.write().unwrap() = named.clone();
+        let statement = self.circle.write().unwrap().rename_self(&self.identity, &named);
+        if let Ok(statement) = statement {
+            self.persist_circle();
+            self.gossip(vec![statement], None).await;
+        }
+        info!(name = %named, "this device was renamed from another device");
+        self.emit(Event::SelfRenamed { name: named });
     }
 
     pub fn persist_circle(&self) {
