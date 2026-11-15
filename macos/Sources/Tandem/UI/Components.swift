@@ -748,20 +748,18 @@ extension SharedKind {
 struct ReasonLabel: View {
     let text: String
     var tint: Color = Palette.urgent
-    /// In a column of a table it keeps to the width of the column, and says the rest when the pointer rests on it.
-    var inColumn = false
 
     var body: some View {
         Text(text)
             .font(.caption.weight(.semibold))
             .foregroundStyle(tint)
+            // One line that may shrink: with a long name of a device it is cut before it runs past the card, and says the rest when
+            // the pointer rests on it.
             .lineLimit(1)
             .padding(.horizontal, 10)
             .frame(height: 24)
             .background(tint.opacity(0.14), in: .capsule)
-            // In a list the name of the file gives way and the reason is never cut.
-            .fixedSize(horizontal: !inColumn, vertical: true)
-            .help(inColumn ? Text(verbatim: text) : Text(verbatim: ""))
+            .help(Text(verbatim: text))
     }
 }
 
@@ -801,18 +799,21 @@ struct TransferRow: View {
                         .transition(.opacity)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            // The name keeps a little room of its own, so a long reason beside it cannot push it away altogether.
+            .frame(minWidth: 96, maxWidth: .infinity, alignment: .leading)
 
             switch columns {
             case .all:
                 column(item.total > 0 ? formatBytes(item.total) : "", width: Self.sizeWidth)
                 column(when, width: Self.whenWidth)
-                state(inColumn: true).frame(width: Self.stateWidth, alignment: .leading)
+                state.frame(width: Self.stateWidth, alignment: .leading)
             case .state:
-                state(inColumn: false)
+                // Outside a column the reason has the room first and the name gives way.
+                state.layoutPriority(1)
             case .none:
                 if let reason {
                     ReasonLabel(text: reason.text, tint: reason.tint)
+                        .layoutPriority(1)
                         .transition(.opacity)
                 }
             }
@@ -835,9 +836,9 @@ struct TransferRow: View {
 
     /// How it stands, in the last column: the reason it is not here, otherwise how far it is or which way it went.
     @ViewBuilder
-    private func state(inColumn: Bool) -> some View {
+    private var state: some View {
         if let reason {
-            ReasonLabel(text: reason.text, tint: reason.tint, inColumn: inColumn)
+            ReasonLabel(text: reason.text, tint: reason.tint)
         } else {
             Text(item.state == .active ? "\(Int(item.fraction * 100))%" : (item.incoming ? String(localized: "Received") : String(localized: "Sent")))
                 .font(.caption.monospacedDigit())
