@@ -44,8 +44,8 @@ struct ClipboardPage: View {
                 .padding(.top, 2)
             }
         } actions: {
-            Button("Open the quick panel", systemImage: "rectangle.and.text.magnifyingglass") { ClipboardPanelController.shared.show() }
-                .labelStyle(.iconOnly)
+            // With its word: a symbol alone did not say what this opens.
+            Button("Quick panel", systemImage: "rectangle.on.rectangle") { ClipboardPanelController.shared.show() }
                 .buttonStyle(.tandemGlass)
                 .help("Open the quick panel")
             if !history.items.isEmpty {
