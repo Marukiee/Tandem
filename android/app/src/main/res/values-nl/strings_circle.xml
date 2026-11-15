@@ -29,6 +29,7 @@
     <string name="circle_lets_not">Laat jou alles doen behalve: %1$s</string>
     <string name="circle_lets_unknown">Oudere versie: wat het jou laat doen is niet bekend</string>
     <string name="circle_add_sub">Scan de code van het nieuwe apparaat. Het mag alles tot je het hier wijzigt.</string>
+    <string name="circle_follows_default">Volgt de standaard voor alle apparaten in Instellingen › Bestandstoegang, waar %1$s uit staat</string>
     <string name="circle_refused">%1$s staat dit niet toe. Wijzig het daar: Instellingen › Apparaten</string>
     <string name="level_own">Eigen apparaat</string>
     <string name="level_limited">Beperkt</string>

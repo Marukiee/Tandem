@@ -87,8 +87,14 @@ private fun share(denied: List<TandemPermission>, kind: Kind): Share {
     return when (off) { 0 -> Share.All; kind.perms.size -> Share.None; else -> Share.Some }
 }
 
-/** What one device may do here, its level, and what it lets this phone do (null for an older version, which does not say). */
-private data class Trust(val denied: List<TandemPermission>, val level: TandemTrustLevel, val allowsMe: List<TandemPermission>?)
+/** What one device may do here, its level, what it lets this phone do (null for an older version, which does not say), and, for one
+ *  without file choices of its own, the file permissions the default for all devices has off. */
+private data class Trust(
+    val denied: List<TandemPermission>,
+    val level: TandemTrustLevel,
+    val allowsMe: List<TandemPermission>?,
+    val defaultOff: List<TandemPermission> = emptyList(),
+)
 
 private data class Tone(val container: Color, val onContainer: Color, val strong: Color, val onStrong: Color)
 
@@ -162,11 +168,14 @@ internal fun DevicesPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         trust = withContext(Dispatchers.IO) {
             val web = engine.trustWeb()
             val me = host.myId
+            val default = engine.fileDefaultPolicy()
+            val off = listOfNotNull(TandemPermission.BROWSE_FILES.takeIf { !default.enabled }, TandemPermission.DELETE_FILES.takeIf { !default.delete })
             devices.associate { d ->
                 d.id to Trust(
                     runCatching { engine.deniedPermissions(d.id) }.getOrDefault(emptyList()),
                     runCatching { engine.trustLevel(d.id) }.getOrDefault(TandemTrustLevel.OWN),
                     web.firstOrNull { it.from == d.id && it.to == me }?.denied,
+                    if (engine.hasOwnFilePolicy(d.id)) emptyList() else off,
                 )
             }
         }
@@ -221,6 +230,7 @@ internal fun DevicesPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                     { level -> change { host.engine?.setTrustLevel(device.id, level) } }, equalWidth = true,
                 )
                 Text(stringResource(levelSub(e.level)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                followsDefault(e)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Kind.entries.forEach { kind ->
                     val t = tone(kind)
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(t.container).padding(horizontal = 14.dp, vertical = 6.dp)) {
@@ -357,11 +367,20 @@ private fun DeviceTrustRow(index: Int, total: Int, device: TandemDevice, trust: 
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(device.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(lets, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                followsDefault(trust)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 LevelChip(trust.level)
             }
             TandemIconButton(TandemIcons.Delete, stringResource(R.string.action_remove_device), onRemove)
         }
     }
+}
+
+/** For a device without file choices of its own: which file permissions the default for all devices has off, in words. */
+@Composable
+private fun followsDefault(trust: Trust): String? {
+    if (trust.defaultOff.isEmpty()) return null
+    val and = stringResource(R.string.circle_and)
+    return stringResource(R.string.circle_follows_default, trust.defaultOff.map { permName(it).lowercase() }.joinToString(and))
 }
 
 @Composable

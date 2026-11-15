@@ -30,6 +30,7 @@
     <string name="circle_lets_not">Lets you do everything but: %1$s</string>
     <string name="circle_lets_unknown">Older version: what it lets you do is not known</string>
     <string name="circle_add_sub">Scan the code of the new device. It may do everything until you change it here.</string>
+    <string name="circle_follows_default">Follows the default for all devices in Settings › File access, where %1$s is off</string>
     <string name="circle_refused">%1$s does not allow this. Change it there: Settings › Devices</string>
     <string name="level_own">Own device</string>
     <string name="level_limited">Limited</string>
