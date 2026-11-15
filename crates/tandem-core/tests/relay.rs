@@ -165,7 +165,9 @@ async fn b_refuses_what_a_may_not_read_and_a_device_outside_the_circle() {
     assert_eq!(reason(ask(&["/Docs/../secret.txt"], ci).await), "not allowed");
     // What A cannot see in Files is not there for A, as Files says it: a folder that is not shared, a path outside, a hidden file.
     assert_eq!(reason(ask(&["/Other/secret.txt"], ci).await), "gone");
-    assert_eq!(reason(ask(&[&format!("{}/secret.txt", outside_share.path().display())], ci).await), "gone");
+    // A path of B's own disk is no way in: an unknown share on Unix, not a path at all on Windows (it has `\`).
+    let own_disk = reason(ask(&[&format!("{}/secret.txt", outside_share.path().display())], ci).await);
+    assert!(own_disk == "gone" || own_disk == "not allowed", "{own_disk}");
     assert_eq!(reason(ask(&["/Docs/.hidden"], ci).await), "gone");
     assert_eq!(reason(ask(&["/Docs/missing.txt"], ci).await), "gone");
     assert_eq!(reason(ask(&["/Docs/sub"], ci).await), "not a file");
