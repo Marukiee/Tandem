@@ -1,5 +1,41 @@
 [
   {
+    "version": "0.3.20",
+    "date": "2026-11-15",
+    "en": {
+      "title": "Waiting on every device",
+      "new": [
+        "Android, Linux and Windows: files for a device that is away wait and go when it is back",
+        "Android, Linux and Windows: Shared shows everything that is underway, incoming or waiting",
+        "Android: drop files from another app on a device, and drag received files out",
+        "Health: the month calendar shows every day as a coloured tile, warm when your heart rate was higher than usual",
+        "Mac: one Messages row for all your phones, with a switch on the page"
+      ],
+      "fixed": [
+        "Android: going back through the months of the health calendar no longer crashes",
+        "Android: the watch card shows your steps from the start of the day",
+        "Mac: the update card in the sidebar no longer cuts off its text",
+        "Android, Linux and Windows: why a transfer failed is shown in your language"
+      ]
+    },
+    "nl": {
+      "title": "Wachten op elk apparaat",
+      "new": [
+        "Android, Linux en Windows: bestanden voor een apparaat dat weg is wachten en gaan als het terug is",
+        "Android, Linux en Windows: Gedeeld toont alles wat onderweg is, binnenkomt of wacht",
+        "Android: sleep bestanden uit een andere app op een apparaat, en sleep ontvangen bestanden eruit",
+        "Gezondheid: de maandkalender toont elke dag als gekleurde tegel, warm als je hartslag hoger was dan normaal",
+        "Mac: een rij Berichten voor al je telefoons, met wisselen op de pagina"
+      ],
+      "fixed": [
+        "Android: terugbladeren door de maanden van de gezondheidskalender crasht niet meer",
+        "Android: de horlogekaart toont je stappen vanaf het begin van de dag",
+        "Mac: de updatekaart in de zijbalk kapt zijn tekst niet meer af",
+        "Android, Linux en Windows: waarom een overdracht mislukte staat er in je eigen taal"
+      ]
+    }
+  },
+  {
     "version": "0.3.19",
     "date": "2026-11-14",
     "en": {

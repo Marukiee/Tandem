@@ -9,7 +9,7 @@ import WidgetKit
 final class BatteryBridge {
     static let shared = BatteryBridge()
 
-    private var timer: Timer?
+    private var started = false
     private var written: BatteryWidgetSnapshot?
     /// The last level of each device, so one that went away stays in the widget dimmed. The engine forgets a battery when the app
     /// restarts, the file does not.
@@ -18,14 +18,27 @@ final class BatteryBridge {
     static var file: URL { EngineModel.supportDirectory().appendingPathComponent(BatteryWidgetSnapshot.fileName) }
 
     func start() {
-        guard timer == nil else { return }
+        guard !started else { return }
+        started = true
         if let data = try? Data(contentsOf: Self.file), let old = try? JSONDecoder().decode(BatteryWidgetSnapshot.self, from: data) {
             written = old
             for device in old.devices { known[device.id] = device }
         }
         publish()
-        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.publish() }
+        watch()
+    }
+
+    /// Writes again when a device, its name, icon or battery changes (all of it is observable), instead of looking every five seconds.
+    /// The battery of this Mac is not: `EngineModel.pushStatus` runs when it changes and calls `publish`.
+    private func watch() {
+        withObservationTracking {
+            _ = current()
+        } onChange: { [weak self] in
+            // Fires before the new value is in; the hop lets it land.
+            Task { @MainActor in
+                self?.publish()
+                self?.watch()
+            }
         }
     }
 

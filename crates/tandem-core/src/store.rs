@@ -177,11 +177,6 @@ impl DeviceSettings {
 pub struct Settings {
     #[serde(default)]
     pub devices: HashMap<String, DeviceSettings>,
-    /// Once a device without settings of its own started as a guest when this was on. Taken out (2026-10-25): a circle is the person's
-    /// own devices, family on the same network have a circle of their own and never see these. Still read so an old file loads, and
-    /// no longer used.
-    #[serde(default)]
-    pub guests_by_default: bool,
 }
 
 impl Settings {
@@ -190,16 +185,6 @@ impl Settings {
             Some(own) => own.clone(),
             None => DeviceSettings::default(),
         }
-    }
-
-    /// Switches the guest start on or off. `known` are the devices of the circle now: they keep what they have.
-    pub fn set_guests_by_default(&mut self, on: bool, known: &[DeviceId]) {
-        // What each one has now is what it keeps, whichever way this goes.
-        for id in known {
-            let own = self.for_device(id);
-            self.devices.entry(id.to_string()).or_insert(own);
-        }
-        self.guests_by_default = on;
     }
 
     pub fn set_device(&mut self, id: &DeviceId, settings: DeviceSettings) {
@@ -266,5 +251,17 @@ mod tests {
         let read: DeviceSettings = crate::proto::decode(&bytes).unwrap();
         assert!(!read.auto_accept);
         assert_eq!(read, DeviceSettings { auto_accept: false, ..DeviceSettings::default() });
+    }
+
+    #[test]
+    fn a_settings_file_from_when_guests_existed_still_loads() {
+        let old = ciborium::Value::Map(vec![
+            (ciborium::Value::Text("devices".into()), ciborium::Value::Map(vec![])),
+            (ciborium::Value::Text("guests_by_default".into()), ciborium::Value::Bool(true)),
+        ]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        let read: Settings = crate::proto::decode(&bytes).unwrap();
+        assert!(read.devices.is_empty());
     }
 }

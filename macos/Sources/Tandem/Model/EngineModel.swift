@@ -57,8 +57,6 @@ final class EngineModel {
     var healthInsights: TandemHealthInsights?
     /// Made up records of the debug health window: with these, a range is summed from them instead of from what this Mac keeps.
     @ObservationIgnored var debugHealthRecords: [TandemHealthRecord]?
-    /// A device that is paired from now on starts as a guest: clipboard and notifications off, files asked about first.
-    var guestsByDefault = false
     // What was sent and received outlives the app, so an update (which restarts it) no longer
     // empties the Shared page.
     var transfers: [TransferItem] = EngineModel.loadStoredTransfers() {
@@ -467,7 +465,6 @@ final class EngineModel {
         // A phone that was there and just turned on taking this Mac's mouse (its switch or its tile) has its side measured now. One that
         // only came back is checked as a device that connects.
         for device in devices where Self.takesPointer(device) && refusing.contains(device.id) { SideWatch.shared.pointerAllowed(device.id) }
-        guestsByDefault = engine.guestsByDefault()
         clipboard?.setActive(devices.contains { $0.online || $0.ble })
         ScreenshotSender.shared.refresh()
         reconcileSpeakerDevices()
@@ -606,7 +603,9 @@ final class EngineModel {
                 transfers.removeAll { $0.id == transferID(offer: offer, index: index, incoming: incoming) }
                 break
             }
-            finishTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, size: size, location: location, error: error)
+            // A file with the drag origin that nobody took for a drop (accepted by hand, or the app started again meanwhile) is in the
+            // folder that is swept after a day: it goes to the downloads, where a file that came in belongs.
+            finishTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, size: size, location: incoming ? location.map(DragLanding.rescue) : location, error: error)
 
         case let .notification(from, notification):
             let deviceName = device(from)?.name ?? "Phone"
@@ -1239,7 +1238,7 @@ final class EngineModel {
 
     /// The task ends once the offer is out (or failed), for a drag that must not end before that.
     @discardableResult
-    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) -> Task<Void, Never>? {
+    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) -> Task<Bool, Never>? {
         guard let engine, !urls.isEmpty, !ids.isEmpty else { return nil }
         return Task {
             var temporary: [URL] = []
@@ -1273,17 +1272,20 @@ final class EngineModel {
                             },
                         ]
                     )
-                    return
+                    return false
                 }
-                await sendPrepared(engine: engine, files: files, sources: urls.map(\.path), temporary: temporary, to: ids, origin: origin)
+                return await sendPrepared(engine: engine, files: files, sources: urls.map(\.path), temporary: temporary, to: ids, origin: origin)
             } catch {
                 OutgoingFiles.remove(temporary)
                 showToast(error.localizedDescription)
+                return false
             }
         }
     }
 
-    private func sendPrepared(engine: TandemEngine, files: [TandemOutgoingFile], sources: [String], temporary: [URL], to ids: [String], origin: TandemShareOrigin) async {
+    /// Whether the offer went out, to someone now or to the queue.
+    @discardableResult
+    private func sendPrepared(engine: TandemEngine, files: [TandemOutgoingFile], sources: [String], temporary: [URL], to ids: [String], origin: TandemShareOrigin) async -> Bool {
         do {
             let report = try await engine.sendFiles(targets: ids, files: files, origin: origin)
             // A device in the queue (P3) still needs the zips of folders, so they stay until it has them too.
@@ -1301,9 +1303,11 @@ final class EngineModel {
             } else if !report.offline.isEmpty {
                 showToast(String(localized: "\(report.offline.count) device(s) were offline and did not get it"))
             }
+            return !waiting.isEmpty
         } catch {
             OutgoingFiles.remove(temporary)
             showToast(error.localizedDescription)
+            return false
         }
     }
 
@@ -1411,11 +1415,6 @@ final class EngineModel {
         UserDefaults.standard.set(trimmed, forKey: Self.nameKey)
         myName = trimmed
         Task { try? await engine?.renameSelf(name: trimmed) }
-    }
-
-    func setGuestsByDefault(_ on: Bool) {
-        try? engine?.setGuestsByDefault(on: on)
-        refreshDevices()
     }
 
     func setSettings(_ device: TandemDevice, clipboard: Bool? = nil, autoAccept: Bool? = nil, notifications: Bool? = nil) {
@@ -1541,6 +1540,8 @@ final class EngineModel {
 
     func pushStatus() {
         guard let engine else { return }
+        // The battery of this Mac is read here, so the widget hears of it here.
+        BatteryBridge.shared.publish()
         var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac(), muted: OutputMute.isMuted(), awake: KeepAwake.shared.on)
         status.lock = ScreenLock.canLock
         status.btAddress = BluetoothAddress.mine()
@@ -1552,12 +1553,9 @@ final class EngineModel {
             roaming: false,
             signal: nil
         )
-        if let values = try? URL(fileURLWithPath: "/").resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
-           let free = values.volumeAvailableCapacityForImportantUsage {
-            status.freeStorage = UInt64(free)
-        }
         Task {
             var status = status
+            status.freeStorage = await Task.detached { DownloadFolder.freeSpace() }.value
             status.network?.ssid = await WiFiName.current()
             await engine.updateStatus(status: status)
         }

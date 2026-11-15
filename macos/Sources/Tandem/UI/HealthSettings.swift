@@ -1,5 +1,6 @@
 import SwiftUI
 import TandemCore
+import TandemLogic
 
 /// The nights and workouts of the watch, by way of the phone. Which devices get them is a switch on the phone: only that one has a watch.
 struct HealthSettings: View {
@@ -1387,111 +1388,299 @@ private struct WeekPager: View {
     }
 }
 
-/// A month as a calendar, a day per box, Monday first: for sleep how long the night was with a ring toward seven hours, for activity the
-/// steps with a ring toward the goal that is filled on a day it was reached, for the heart the mean heart rate of the day.
+/// A month as heat tiles, Monday first: for sleep and activity the stronger the colour the closer to the goal, for the heart warm on days
+/// above the usual of that month and cool below it. The picked day stands large above the grid; a click picks another.
 private struct MonthCalendar: View {
     let part: HealthPart
     @Environment(EngineModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var back = 0
-
-    private var calendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.firstWeekday = 2
-        calendar.locale = .current
-        return calendar
-    }
+    @State private var older = true
 
     private var info: LocalizedStringKey {
         switch part {
-        case .sleep: "Every night with how long you slept. The ring fills toward seven hours, the start of what most adults need."
-        case .activity: "Every day with your steps. The ring fills toward your step goal; a filled day reached it."
-        default: "Every day with your mean heart rate over the day, from the measuring of your watch."
+        case .sleep: "Every night as a tile. The stronger the colour, the closer to seven hours, the start of what most adults need. Click a day to see it."
+        case .activity: "Every day as a tile. The stronger the colour, the closer to your step goal; a bold day reached it. Click a day to see it."
+        default: "Every day as a tile, by your mean heart rate over the day. Warm days were higher than your usual that month, cool days lower. Click a day to see it."
         }
     }
 
     var body: some View {
         if part != .settings {
-            let calendar = calendar
+            let calendar = CalendarMonth.calendar
             let thisMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
             let month = calendar.date(byAdding: .month, value: -back, to: thisMonth) ?? thisMonth
-            let length = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
-            let until = calendar.date(byAdding: DateComponents(day: length - 1, hour: 12), to: month) ?? month
-            let days = model.healthRange(until: until, count: length)?.days ?? []
-            // Sunday is 1 for the calendar; Monday comes first here.
-            let lead = (calendar.component(.weekday, from: month) + 5) % 7
-            let names = Array(calendar.veryShortStandaloneWeekdaySymbols.dropFirst()) + [calendar.veryShortStandaloneWeekdaySymbols[0]]
             let goal = model.devices.compactMap { $0.status.watch?.settings?.stepGoal }.first.map { Int($0) }
-            let today = calendar.startOfDay(for: Date())
             HealthCard(title: "Calendar", more: info) {
                 HStack(spacing: 4) {
                     Text(month.formatted(.dateTime.month(.wide).year())).font(.callout.weight(.semibold))
                     Spacer()
-                    Button { withAnimation(.tandem) { back += 1 } } label: { Image(systemName: "chevron.left") }
+                    Button { page(+1) } label: { Image(systemName: "chevron.left") }
                         .buttonStyle(.icon(size: 28))
                         .help("A month back")
-                    Button { withAnimation(.tandem) { back = max(0, back - 1) } } label: { Image(systemName: "chevron.right") }
+                    Button { page(-1) } label: { Image(systemName: "chevron.right") }
                         .buttonStyle(.icon(size: 28))
                         .help("A month on")
                         .disabled(back == 0)
                 }
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 8) {
-                    // Ids of their own per kind of cell: shared numbers made the grid drop the first days of the month.
-                    ForEach(Array(names.enumerated()), id: \.offset) { index, name in
-                        Text(verbatim: name).font(.caption2).foregroundStyle(.secondary).id("name\(index)")
-                    }
-                    ForEach((0..<lead).map { "lead\($0)" }, id: \.self) { _ in Color.clear.frame(height: 1) }
-                    ForEach(Array(days.enumerated()).map { (id: "day\($0.offset)", index: $0.offset, day: $0.element) }, id: \.id) { cell in
-                        let index = cell.index
-                        let day = cell.day
-                        let date = calendar.date(byAdding: .day, value: index, to: month) ?? month
-                        CalendarDay(number: index + 1, day: day, part: part, goal: goal, today: date == today, later: date > today)
-                    }
+                // Each month works out its own days, so a month on its way out never draws the days of the one coming in.
+                ZStack(alignment: .topLeading) {
+                    MonthTiles(part: part, month: month, goal: goal)
+                        .id(back)
+                        .transition(reduceMotion ? .opacity : .asymmetric(
+                            insertion: .offset(x: older ? -36 : 36).combined(with: .opacity),
+                            removal: .offset(x: older ? 36 : -36).combined(with: .opacity)
+                        ))
                 }
             }
         }
     }
+
+    private func page(_ step: Int) {
+        older = step > 0
+        withAnimation(reduceMotion ? .tandemFade : .tandem) { back = max(0, back + step) }
+    }
 }
 
-private struct CalendarDay: View {
-    let number: Int
-    let day: TandemWeekDay
+private enum CalendarMonth {
+    static var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+        calendar.locale = .current
+        return calendar
+    }
+}
+
+private struct MonthTiles: View {
     let part: HealthPart
+    let month: Date
     let goal: Int?
-    let today: Bool
-    let later: Bool
+    @Environment(EngineModel.self) private var model
+    @State private var picked: Int?
 
     var body: some View {
-        let (share, value): (Double?, String) = {
+        let calendar = CalendarMonth.calendar
+        let length = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
+        let until = calendar.date(byAdding: DateComponents(day: length - 1, hour: 12), to: month) ?? month
+        // The grid comes from the month itself, and values only from a range that belongs to it.
+        let days = model.healthRange(until: until, count: length)?.days ?? []
+        let fits = days.count == length && days.first.map {
+            calendar.isDate(Date(timeIntervalSince1970: Double($0.startMs) / 1000 + 43_200), inSameDayAs: month)
+        } == true
+        let values: [Int?] = (0..<length).map { index in
+            guard fits else { return nil }
+            let day = days[index]
             switch part {
-            case .sleep:
-                guard let minutes = day.sleepMinutes.map(Int.init) else { return (nil, "") }
-                return (min(1, Double(minutes) / 420), String(format: "%d:%02d", minutes / 60, minutes % 60))
-            case .activity:
-                guard let steps = day.steps.map(Int.init) else { return (nil, "") }
-                let share = goal.map { min(1, Double(steps) / Double(max($0, 1))) }
-                return (share, steps >= 1000 ? (Double(steps) / 1000).formatted(.number.precision(.fractionLength(1))) + "k" : "\(steps)")
-            default:
-                return (nil, day.heartMean.map { String(localized: "\(Int($0)) bpm") } ?? "")
+            case .sleep: return day.sleepMinutes.map(Int.init)
+            case .activity: return day.steps.map(Int.init)
+            default: return day.heartMean.map(Int.init)
             }
-        }()
-        let met = (share ?? 0) >= 1
-        VStack(spacing: 2) {
-            ZStack {
-                if met {
-                    Circle().fill(Palette.indigo)
-                } else if let share {
-                    // Toward the goal of the page as a ring, so a month shows at a glance which days got there.
-                    Circle().stroke(Color.secondary.opacity(0.18), lineWidth: 3)
-                    Circle().trim(from: 0, to: share).stroke(Palette.indigo, style: StrokeStyle(lineWidth: 3, lineCap: .round)).rotationEffect(.degrees(-90))
-                }
-                Text(verbatim: "\(number)")
-                    .font(.caption.weight(today || met ? .bold : .regular))
-                    .foregroundStyle(met ? Color.white : today ? Palette.indigo : Color.primary)
-            }
-            .frame(width: 30, height: 30)
-            Text(verbatim: value).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
         }
-        .opacity(later ? 0.35 : 1)
+        let target: Int? = part == .sleep ? CalendarHeat.sleepGoal : part == .activity ? goal : nil
+        let levels = part == .heart ? CalendarHeat.heart(values) : CalendarHeat.shares(values, goal: target)
+        let usual = CalendarHeat.usual(values)
+        let today = calendar.startOfDay(for: Date())
+        let todayIndex: Int? = calendar.isDate(today, equalTo: month, toGranularity: .month) ? calendar.component(.day, from: today) - 1 : nil
+        let shown = picked ?? CalendarHeat.defaultPick(values, today: todayIndex)
+        let lead = (calendar.component(.weekday, from: month) + 5) % 7
+        let names = Array(calendar.veryShortStandaloneWeekdaySymbols.dropFirst()) + [calendar.veryShortStandaloneWeekdaySymbols[0]]
+        let date = { (index: Int) in calendar.date(byAdding: .day, value: index, to: month) ?? month }
+
+        let detail = Group {
+            ZStack(alignment: .topLeading) {
+                Group {
+                    if let shown {
+                        VStack(alignment: .leading, spacing: 2) {
+                            if let value = values[shown] {
+                                BigNumber(text: Self.text(part, value))
+                            } else {
+                                Text("Nothing measured").font(.title3.weight(.medium)).foregroundStyle(.secondary).padding(.vertical, 4)
+                            }
+                            Text(verbatim: ([Self.longDate(date(shown))] + [Self.note(part, values[shown], usual: usual, goal: target)].compactMap { $0 })
+                                .joined(separator: " · "))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Text("Nothing measured this month").font(.callout).foregroundStyle(.secondary).padding(.vertical, 8)
+                    }
+                }
+                .id(shown ?? -1)
+                .transition(.opacity)
+            }
+
+        }
+        let grid = Group {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 7), spacing: 5) {
+                // Ids of their own per kind of cell: shared numbers made the grid drop the first days of the month.
+                ForEach(Array(names.enumerated()), id: \.offset) { index, name in
+                    Text(verbatim: name).font(.caption2).foregroundStyle(.secondary).id("name\(index)")
+                }
+                ForEach((0..<lead).map { "lead\($0)" }, id: \.self) { _ in Color.clear.frame(height: 1) }
+                ForEach((0..<length).map { (id: "day\($0)", index: $0) }, id: \.id) { cell in
+                    let index = cell.index
+                    let day = date(index)
+                    HeatTile(
+                        number: index + 1, level: levels[index], warm: part == .heart && (levels[index] ?? 0) > 0,
+                        met: CalendarHeat.met(values[index], goal: target), today: index == todayIndex, picked: shown == index, later: day > today,
+                        label: "\(Self.longDate(day)), \(values[index].map { Self.text(part, $0) } ?? String(localized: "Nothing measured"))"
+                    ) {
+                        withAnimation(.tandemFade) { picked = picked == index ? nil : index }
+                    }
+                }
+            }
+        }
+        // Beside each other on a wide card, so the tiles stay the size of a finger and the card has no empty half.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 28) {
+                VStack(alignment: .leading, spacing: 12) {
+                    detail
+                    Spacer(minLength: 0)
+                    CalendarLegend(part: part, usual: usual, stacked: true)
+                }
+                .frame(minWidth: 180, maxWidth: .infinity, alignment: .leading)
+                grid.frame(width: 340)
+            }
+            VStack(alignment: .leading, spacing: 12) {
+                detail.frame(maxWidth: .infinity, alignment: .leading)
+                grid
+                CalendarLegend(part: part, usual: usual, stacked: false)
+            }
+        }
+    }
+
+    static func text(_ part: HealthPart, _ value: Int) -> String {
+        switch part {
+        case .sleep: minutesText(value)
+        case .activity: value.formatted()
+        default: String(localized: "\(value) bpm")
+        }
+    }
+
+    static func longDate(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.wide).day().month(.wide))
+    }
+
+    /// One short line beside the date: for the heart how the day compares with the usual of its month, for activity whether the goal was met.
+    static func note(_ part: HealthPart, _ value: Int?, usual: Int?, goal: Int?) -> String? {
+        guard let value else { return nil }
+        switch part {
+        case .heart:
+            guard let usual else { return nil }
+            let off = value - usual
+            if off > 1 { return String(localized: "\(off) above your usual") }
+            if off < -1 { return String(localized: "\(-off) below your usual") }
+            return String(localized: "Your usual")
+        case .activity:
+            return CalendarHeat.met(value, goal: goal) ? String(localized: "Goal reached") : nil
+        default:
+            return nil
+        }
+    }
+}
+
+private struct HeatTile: View {
+    let number: Int
+    let level: Double?
+    let warm: Bool
+    let met: Bool
+    let today: Bool
+    let picked: Bool
+    let later: Bool
+    let label: String
+    let onPick: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    /// White digits where they read better than the text colour on the tile as it is drawn: a fixed threshold left white on pastel.
+    private func whiteDigits(_ strength: Double) -> Bool {
+        if scheme == .dark { return true }
+        let hue: (Double, Double, Double) = warm ? (0xE8, 0x61, 0x3C) : (0x5B, 0x5B, 0xD6)
+        let base = 0xED as Double
+        func linear(_ channel: Double) -> Double {
+            let value = (channel * strength + base * (1 - strength)) / 255
+            return value <= 0.03928 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linear(hue.0) + 0.7152 * linear(hue.1) + 0.0722 * linear(hue.2)
+        return 1.05 / (luminance + 0.05) > (luminance + 0.05) / 0.05
+    }
+
+    var body: some View {
+        let strength = min(1, max(0, abs(level ?? 0)))
+        let hue = warm ? Palette.urgent : Palette.indigo
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                GeometryReader { geometry in
+                    let shape = RoundedRectangle(cornerRadius: geometry.size.width * 0.3, style: .continuous)
+                    if later {
+                        Text(verbatim: "\(number)").font(.callout).foregroundStyle(.primary.opacity(0.35))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        Button(action: onPick) {
+                            ZStack {
+                                shape.fill(Color.secondary.opacity(0.14))
+                                shape.fill(level == nil ? Color.clear : hue.opacity(strength))
+                                Text(verbatim: "\(number)")
+                                    .font(.callout.weight(today || met ? .bold : .regular))
+                                    .foregroundStyle(level == nil ? Color.secondary : whiteDigits(strength) ? Color.white : Color.primary)
+                            }
+                            .overlay {
+                                shape.strokeBorder(picked ? Color.primary : today ? Palette.indigo : Color.clear, lineWidth: picked ? 2 : 1.5)
+                            }
+                            .contentShape(shape)
+                        }
+                        .buttonStyle(.plain)
+                        .scaleEffect(picked ? 1.06 : 1)
+                        .animation(.tandem, value: picked)
+                        .animation(.tandemFade, value: level)
+                        .help(label)
+                        .accessibilityLabel(Text(verbatim: label))
+                    }
+                }
+            }
+    }
+}
+
+private struct CalendarLegend: View {
+    let part: HealthPart
+    let usual: Int?
+    let stacked: Bool
+
+    var body: some View {
+        if part == .heart && stacked {
+            VStack(alignment: .leading, spacing: 4) {
+                scale
+                if let usual { Text("Usual \(usual) bpm").font(.caption).foregroundStyle(.secondary) }
+            }
+        } else {
+            scale
+        }
+    }
+
+    private var scale: some View {
+        HStack(spacing: 6) {
+            if part == .heart {
+                Text("Lower")
+                Capsule()
+                    .fill(LinearGradient(colors: [Palette.indigo, Color.secondary.opacity(0.14), Palette.urgent], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: 56, height: 8)
+                Text("Higher")
+                if !stacked {
+                    Spacer(minLength: 8)
+                    if let usual { Text("Usual \(usual) bpm") }
+                }
+            } else {
+                Text("Less")
+                ForEach([0.15, 0.43, 0.72, 1.0], id: \.self) { strength in
+                    RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                        .fill(Color.secondary.opacity(0.14))
+                        .overlay { RoundedRectangle(cornerRadius: 3.5, style: .continuous).fill(Palette.indigo.opacity(strength)) }
+                        .frame(width: 12, height: 12)
+                }
+                Text("More")
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 }
 

@@ -47,6 +47,16 @@ alles tot en met PR 22.
 Gedeeld met een voorbeeld ernaast, Instellingen in zeven onderwerpen; alleen `windows/ui`, de Mac volgt in een eigen sessie), en PR
 26 (R-B37, zie daar). Ronde 4 (b) loopt nog.
 
+**In 0.3.20.** Samengevoegd: PR 27 en 28 (ronde 4 (b): de schillen van P3 en P3b en R-V13 op Android en op Linux en Windows; de
+wachtrij staat nu in alle vier de apps aan), PR 30 (R-D4 a en b op Android: neerzetten op een apparaatkaart en ontvangen bestanden
+eruit slepen; dat een andere app het bestand aanneemt is niet tot het eind gezien, en R-D4 c, de kaart naast de aanwijzer van de
+gedeelde muis, is nog open) en PR 29 (Mac: de updatekaart in de zijbalk kapt niets meer af, en een rij Berichten voor alle telefoons
+met wisselen op de pagina). Ook PR 34: de maandkalender van Gezondheid als gekleurde tegels in alle drie de apps, de crash bij
+terugbladeren (Android: de dagen van de vorige maand bleven even staan onder de nieuwe maand) en de stappentegel op de horlogekaart
+die ook bij nul stappen staat. Nog open: PR 31, de Mac in het nieuwe ontwerp. Nagelezen zonder gevonden terugval, maar het hele
+hoofdvenster is nieuw en nog niet op echt glas of in beweging gezien; het wacht op negen kleine punten en op een keer proberen door
+Mark, daarna in 0.3.21.
+
 Gevonden bij het nakijken van die PR's, nog te doen:
 
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
@@ -70,11 +80,13 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   toont de tekst). Linux en Windows: `T/arrange.rs` (`SIZES`, `learned`) doet hetzelfde. Gevolg: na een herstart, of zolang een
   apparaat weg is, staat het scherm er op een gegokte maat en ligt de rand verkeerd. Voorstel: de laatst gehoorde maat per apparaat
   opslaan bij de opstelling, bij de start inlezen, en weghalen als het apparaat uit de circle gaat.
-- **R-B36. Drie tests van de kern falen af en toe op de Windows-runner** (zeker, kost elke keer een herstart van CI). Gezien op
+- **R-B36. Tests van de kern falen af en toe op de runners van CI** (zeker, kost elke keer een herstart van CI). Gezien op
   2026-11-14, steeds los van de wijziging: `a_second_screen_that_is_turned_is_resized_within_its_session`,
   `a_press_carries_its_position_over_the_stream` (`tests/live_touch.rs:118`) en
   `a_device_that_was_killed_gets_back_in_before_the_old_connection_times_out` (`tests/mesh.rs:629`). Alle drie hangen aan een
-  vaste wachttijd. Voorstel: wachten op de gebeurtenis in plaats van op de klok, of de marges ruimer op Windows.
+  vaste wachttijd. Op 2026-11-15 kwamen er twee bij: `a_new_bluetooth_link_carries_the_network_and_a_phone_never_announces`
+  (`tests/wifi.rs`, op de macOS-runner) en `sound_travels_as_datagrams_and_arrives_in_order` (`tests/mesh.rs`, op de
+  Windows-runner). Voorstel: wachten op de gebeurtenis in plaats van op de klok, of de marges ruimer in CI.
 - **R-B37. Een code uit een sms komt niet vanzelf op de computer** (gemeld door Mark 2026-11-14, oorzaak nog niet gezien op een
   toestel). De weg: `A/messages/SmsBridge.kt` (`look`, `sendCodes`) leest het bericht zelf, `A/mirror/MirrorListener.kt` de melding,
   `A/messages/CodeDelivery.kt` stuurt de code, en de Mac kopieert hem in `M/Model/EngineModel.swift` (`.notification`, `copyCodes`).
@@ -149,7 +161,7 @@ Rondes:
   Windows: de schillen van P2 en P5 naar het voorbeeld van de Mac, zoals `docs/TRANSFERS.md` het beschrijft; (c) Mac: R-B11,
   R-B16, R-B23, R-B26 en het slepen vanaf en naar de Mac (R-D5 tot R-D8, R-D12, R-D13, R-D16, R-D17, R-D18).
   Erbij gekomen: R-B35 (de maat van een ander scherm onthouden), de Mac in (c), Linux en Windows in (b).
-- **Ronde 4 (gestart 2026-11-14 met (b); (a) en (c) volgen zodra het limiet het toelaat):** (a) kern en Mac: P4 en P9, en de kleine kernpunten R-B12, R-B13 en de rest van R-B27;
+- **Ronde 4 ((b) klaar in 0.3.20, PR 27, 28 en 30; (a) en (c) gestart 2026-11-15):** (a) kern en Mac: P4 en P9, en de kleine kernpunten R-B12, R-B13 en de rest van R-B27;
   (b) Android en Linux en Windows: de schillen van P3 en P3b, en op Android slepen in en uit de app (R-D4 a en b); (c) P6: de
   poort in de kern en een proef van de pagina Circle in `mock.js`, waarna Mark kiest.
 - **Ronde 5 (wacht op Mark):** P7 en de rest van P8, de schillen van P4 en P9, en de sleeppunten voor Linux en Windows (R-D10,

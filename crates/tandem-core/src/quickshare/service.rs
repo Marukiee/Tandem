@@ -25,6 +25,8 @@ pub const SERVICE_TYPE: &str = "_FC9F5ED42C8A._tcp.local.";
 
 /// How long the person has to answer before a transfer is turned down.
 const ANSWER_WITHIN: Duration = Duration::from_secs(120);
+/// Transfers that may come in at the same time, greetings included.
+const MAX_INCOMING: usize = 8;
 
 #[derive(Clone, Debug)]
 pub struct Peer {
@@ -246,12 +248,18 @@ impl QuickShare {
 
         // Transfers that come in.
         let accepting = inner.clone();
+        let room = Arc::new(tokio::sync::Semaphore::new(MAX_INCOMING));
         tasks.push(tokio::spawn(async move {
             loop {
                 let Ok((stream, _)) = listener.accept().await else { break };
+                // Anyone on the network can connect; past the limit a connection is closed at once.
+                let Ok(permit) = room.clone().try_acquire_owned() else { continue };
                 let _ = stream.set_nodelay(true);
                 let inner = accepting.clone();
-                tokio::spawn(async move { inner.take_in(stream).await });
+                tokio::spawn(async move {
+                    inner.take_in(stream).await;
+                    drop(permit);
+                });
             }
         }));
 

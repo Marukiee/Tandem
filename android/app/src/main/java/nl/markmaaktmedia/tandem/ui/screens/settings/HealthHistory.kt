@@ -1,6 +1,29 @@
 package nl.markmaaktmedia.tandem.ui.screens.settings
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
+import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
+import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,8 +55,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -115,51 +136,39 @@ private fun Pager(offset: Int, onOffset: (Int) -> Unit, back: Int, on: Int) {
 }
 
 /**
- * A month as a calendar, a day per box, Monday first: for sleep how long the night was with a ring toward seven hours, for activity the
- * steps with a ring toward the goal that is filled on a day it was reached, for the heart the mean heart rate of the day.
+ * A month as heat tiles, Monday first: for sleep and activity the stronger the colour the closer to the goal, for the heart warm on days
+ * above the usual of that month and cool below it. The picked day stands large above the grid; a tap picks another.
  */
 @Composable
 internal fun MonthCalendar(kind: CalendarKind, goal: Int? = null) {
     var back by rememberSaveable { mutableIntStateOf(0) }
     val zone = ZoneId.systemDefault()
-    val month = YearMonth.now(zone).minusMonths(back.toLong())
-    val length = month.lengthOfMonth()
-    val range = rememberRange(month.atDay(length).atTime(12, 0).atZone(zone).toInstant().toEpochMilli(), length)
-    val lead = month.atDay(1).dayOfWeek.value - DayOfWeek.MONDAY.value
-    val today = LocalDate.now(zone)
+    val thisMonth = YearMonth.now(zone)
+    val shownMonth = thisMonth.minusMonths(back.toLong())
     val scheme = MaterialTheme.colorScheme
     SettingsGroup {
         HealthCard(0, 1) {
             CardTitle(stringResource(R.string.health_calendar), stringResource(kind.info))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    month.atDay(1).format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())).replaceFirstChar { it.titlecase(Locale.getDefault()) },
+                    shownMonth.atDay(1).format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())).replaceFirstChar { it.titlecase(Locale.getDefault()) },
                     style = MaterialTheme.typography.titleSmall, color = scheme.onSurface, modifier = Modifier.weight(1f),
                 )
                 Pager(back, { back = it }, R.string.health_month_before, R.string.health_month_after)
             }
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                for (index in 0 until 7) {
-                    Text(
-                        DayOfWeek.of(index + 1).getDisplayName(TextStyle.NARROW, Locale.getDefault()),
-                        style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center, modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-            val cells: List<Pair<Int, TandemWeekDay>?> = List(lead) { null } + range?.days.orEmpty().mapIndexed { index, day -> index + 1 to day }
-            cells.chunked(7).forEach { row ->
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    row.forEach { cell ->
-                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            if (cell != null) {
-                                val date = month.atDay(cell.first)
-                                DayCell(cell.first, cell.second, kind, goal, date == today, date.isAfter(today))
-                            }
-                        }
-                    }
-                    repeat(7 - row.size) { Spacer(Modifier.weight(1f)) }
-                }
+            AnimatedContent(
+                targetState = back,
+                transitionSpec = {
+                    // Further back comes in from the left, as the button that asked for it points.
+                    val older = targetState > initialState
+                    (slideInHorizontally(TandemMotion.spatial()) { if (older) -it / 5 else it / 5 } + fadeIn(TandemMotion.fadeSpec()))
+                        .togetherWith(slideOutHorizontally(TandemMotion.spatial()) { if (older) it / 5 else -it / 5 } + fadeOut(TandemMotion.fadeSpec()))
+                        .using(SizeTransform(clip = false))
+                },
+                label = "calendarMonth",
+            ) { shown ->
+                // Each month asks for its own days, so a month on its way out never draws the days of the one coming in.
+                MonthTiles(kind, goal, thisMonth.minusMonths(shown.toLong()))
             }
         }
     }
@@ -172,54 +181,216 @@ internal enum class CalendarKind(val info: Int) {
 }
 
 @Composable
-private fun DayCell(number: Int, day: TandemWeekDay, kind: CalendarKind, goal: Int?, today: Boolean, later: Boolean) {
-    val scheme = MaterialTheme.colorScheme
-    val share: Float?
-    val value: String
-    when (kind) {
-        CalendarKind.SLEEP -> {
-            val minutes = day.sleepMinutes?.toInt()
-            share = minutes?.let { (it / 420f).coerceAtMost(1f) }
-            value = minutes?.let { "${it / 60}:${(it % 60).toString().padStart(2, '0')}" }.orEmpty()
-        }
-        CalendarKind.ACTIVITY -> {
-            val steps = day.steps?.toLong()
-            share = if (steps != null && goal != null && goal > 0) (steps.toFloat() / goal).coerceAtMost(1f) else null
-            value = steps?.let { if (it >= 1000) String.format(Locale.getDefault(), "%.1fk", it / 1000f) else "$it" }.orEmpty()
-        }
-        CalendarKind.HEART -> {
-            share = null
-            value = day.heartMean?.let { stringResource(R.string.health_resting_line, it.toInt()) }.orEmpty()
+private fun MonthTiles(kind: CalendarKind, goal: Int?, month: YearMonth) {
+    val zone = ZoneId.systemDefault()
+    val length = month.lengthOfMonth()
+    val range = rememberRange(month.atDay(length).atTime(12, 0).atZone(zone).toInstant().toEpochMilli(), length)
+    // The grid comes from the month itself. Values only from a range of this month: the one before stays until the new one is in.
+    val days = range?.days?.takeIf { days ->
+        days.size == length && Instant.ofEpochMilli(days.first().startMs.toLong() + DAY_MS / 2).atZone(zone).toLocalDate() == month.atDay(1)
+    }
+    val values: List<Long?> = List(length) { index ->
+        val day = days?.get(index) ?: return@List null
+        when (kind) {
+            CalendarKind.SLEEP -> day.sleepMinutes?.toLong()
+            CalendarKind.ACTIVITY -> day.steps?.toLong()
+            CalendarKind.HEART -> day.heartMean?.toLong()
         }
     }
-    val met = share != null && share >= 1f
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.alpha(if (later) 0.35f else 1f)) {
-        Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
-            if (met) {
-                Box(Modifier.size(34.dp).clip(CircleShape).background(scheme.primary))
-            } else if (share != null) {
-                // Toward the goal of the page as a ring, so a month shows at a glance which days got there.
-                Canvas(Modifier.size(34.dp)) {
-                    val stroke = 3.dp.toPx()
-                    val inset = stroke / 2
-                    val arc = Size(size.width - stroke, size.height - stroke)
-                    drawArc(scheme.surfaceContainerHighest, 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
-                    drawArc(scheme.primary, -90f, 360f * share, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
+    val target = when (kind) {
+        CalendarKind.SLEEP -> CalendarHeat.SLEEP_GOAL
+        CalendarKind.ACTIVITY -> goal?.toLong()
+        CalendarKind.HEART -> null
+    }
+    val levels = if (kind == CalendarKind.HEART) CalendarHeat.heart(values) else CalendarHeat.shares(values, target)
+    val usual = CalendarHeat.usual(values)
+    val today = LocalDate.now(zone)
+    val todayIndex = if (YearMonth.from(today) == month) today.dayOfMonth - 1 else null
+    var picked by rememberSaveable(month) { mutableStateOf<Int?>(null) }
+    val shown = picked ?: CalendarHeat.defaultPick(values, todayIndex)
+    val scheme = MaterialTheme.colorScheme
+    val texts = values.map { value -> value?.let { calendarValue(kind, it) } }
+    val noValue = stringResource(R.string.health_calendar_none)
+
+    Column {
+        AnimatedContent(
+            targetState = shown,
+            transitionSpec = { fadeIn(TandemMotion.fadeSpec()).togetherWith(fadeOut(TandemMotion.fadeSpec())) },
+            contentAlignment = Alignment.TopStart,
+            label = "calendarDay",
+            modifier = Modifier.padding(top = 4.dp),
+        ) { index ->
+            Column(Modifier.fillMaxWidth()) {
+                if (index == null) {
+                    Text(
+                        stringResource(R.string.health_calendar_empty), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 10.dp),
+                    )
+                } else {
+                    val value = values[index]
+                    if (value != null) BigNumber(texts[index]!!)
+                    else Text(noValue, style = MaterialTheme.typography.titleMedium, color = scheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
+                    val note = calendarNote(kind, value, usual, target)
+                    Text(
+                        listOfNotNull(longDate(month.atDay(index + 1)), note).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1,
+                    )
                 }
             }
-            Text(
-                "$number", fontSize = 12.sp,
-                fontWeight = if (today || met) FontWeight.Bold else FontWeight.Normal,
-                color = when {
-                    met -> scheme.onPrimary
-                    today -> scheme.primary
-                    else -> scheme.onSurface
-                },
-            )
         }
-        Text(value, fontSize = 10.sp, color = scheme.onSurfaceVariant, maxLines = 1)
+        Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
+            for (index in 0 until 7) {
+                Text(
+                    DayOfWeek.of(index + 1).getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                    style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center, modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        val lead = month.atDay(1).dayOfWeek.value - DayOfWeek.MONDAY.value
+        val cells: List<Int?> = List(lead) { null } + List(length) { it }
+        Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
+            cells.chunked(7).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
+                    row.forEach { index ->
+                        Box(Modifier.weight(1f).aspectRatio(1f)) {
+                            if (index != null) {
+                                val date = month.atDay(index + 1)
+                                HeatTile(
+                                    number = index + 1,
+                                    level = levels[index],
+                                    heart = kind == CalendarKind.HEART,
+                                    met = CalendarHeat.met(values[index], target),
+                                    today = index == todayIndex,
+                                    picked = shown == index,
+                                    later = date.isAfter(today),
+                                    description = "${longDate(date)}, ${texts[index] ?: noValue}",
+                                    onClick = { picked = if (picked == index) null else index },
+                                )
+                            }
+                        }
+                    }
+                    repeat(7 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+        CalendarLegend(kind, usual, Modifier.padding(top = 14.dp))
     }
 }
+
+private val TILE_GAP = 5.dp
+
+private fun contrast(a: Color, b: Color): Float {
+    val la = a.luminance()
+    val lb = b.luminance()
+    return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
+}
+private val TileShape = RoundedCornerShape(12.dp)
+
+@Composable
+private fun HeatTile(number: Int, level: Float?, heart: Boolean, met: Boolean, today: Boolean, picked: Boolean, later: Boolean, description: String, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    if (later) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("$number", style = MaterialTheme.typography.labelLarge, color = scheme.onSurface.copy(alpha = 0.35f))
+        }
+        return
+    }
+    val strength = kotlin.math.abs(level ?: 0f).coerceIn(0f, 1f)
+    val warm = heart && (level ?: 0f) > 0f
+    val hue = if (warm) scheme.error else scheme.primary
+    val neutral = scheme.surfaceContainerHighest
+    val tile = if (level == null) neutral else hue.copy(alpha = strength).compositeOver(neutral)
+    val fill by animateColorAsState(tile, TandemMotion.colourSpec(), label = "tileFill")
+    // The number takes whichever reads better on the tile as it is: a fixed threshold left dark digits on mid tones in dark mode.
+    val onHue = if (warm) scheme.onError else scheme.onPrimary
+    val ink by animateColorAsState(
+        when {
+            level == null -> scheme.onSurfaceVariant
+            contrast(onHue, tile) > contrast(scheme.onSurface, tile) * 1.25f -> onHue
+            else -> scheme.onSurface
+        },
+        TandemMotion.colourSpec(), label = "tileInk",
+    )
+    val scale by animateFloatAsState(if (picked) 1.06f else 1f, TandemMotion.spatial(), label = "tilePicked")
+    val ring by animateColorAsState(
+        when {
+            picked -> scheme.onSurface
+            today -> scheme.primary
+            else -> Color.Transparent
+        },
+        TandemMotion.colourSpec(), label = "tileRing",
+    )
+    Box(
+        Modifier.fillMaxSize()
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(TileShape)
+            .background(fill)
+            .border(if (picked) 2.dp else 1.5.dp, ring, TileShape)
+            .bouncyClickable(onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "$number", style = MaterialTheme.typography.labelLarge, color = ink,
+            fontWeight = if (today || met) FontWeight.Bold else FontWeight.Normal,
+        )
+    }
+}
+
+@Composable
+private fun CalendarLegend(kind: CalendarKind, usual: Long?, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val caption = MaterialTheme.typography.labelSmall
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (kind == CalendarKind.HEART) {
+            Text(stringResource(R.string.health_calendar_lower), style = caption, color = scheme.onSurfaceVariant)
+            Box(
+                Modifier.width(56.dp).height(8.dp).clip(CircleShape)
+                    .background(Brush.horizontalGradient(listOf(scheme.primary, scheme.surfaceContainerHighest, scheme.error))),
+            )
+            Text(stringResource(R.string.health_calendar_higher), style = caption, color = scheme.onSurfaceVariant)
+            Spacer(Modifier.weight(1f))
+            if (usual != null) {
+                Text(stringResource(R.string.health_calendar_usual, stringResource(R.string.health_resting_line, usual.toInt())), style = caption, color = scheme.onSurfaceVariant)
+            }
+        } else {
+            Text(stringResource(R.string.health_calendar_less), style = caption, color = scheme.onSurfaceVariant)
+            listOf(0.15f, 0.43f, 0.72f, 1f).forEach { alpha ->
+                Box(Modifier.size(12.dp).clip(RoundedCornerShape(4.dp)).background(scheme.surfaceContainerHighest).background(scheme.primary.copy(alpha = alpha)))
+            }
+            Text(stringResource(R.string.health_calendar_more), style = caption, color = scheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun calendarValue(kind: CalendarKind, value: Long): String = when (kind) {
+    CalendarKind.SLEEP -> duration(value.toInt())
+    CalendarKind.ACTIVITY -> number(value)
+    CalendarKind.HEART -> stringResource(R.string.health_resting_line, value.toInt())
+}
+
+/** One short line beside the date: for the heart how the day compares with the usual of its month, for activity whether the goal was met. */
+@Composable
+private fun calendarNote(kind: CalendarKind, value: Long?, usual: Long?, goal: Long?): String? {
+    if (value == null) return null
+    return when (kind) {
+        CalendarKind.HEART -> usual?.let {
+            val off = (value - it).toInt()
+            when {
+                off > 1 -> stringResource(R.string.health_calendar_above, off)
+                off < -1 -> stringResource(R.string.health_calendar_below, -off)
+                else -> stringResource(R.string.health_calendar_usual_day)
+            }
+        }
+        CalendarKind.ACTIVITY -> if (CalendarHeat.met(value, goal)) stringResource(R.string.health_calendar_goal_met) else null
+        CalendarKind.SLEEP -> null
+    }
+}
+
+private fun longDate(date: LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault())).replaceFirstChar { it.titlecase(Locale.getDefault()) }
 
 private fun hourOf(hour: Int) = "%02d:00".format(hour % 24)
 
