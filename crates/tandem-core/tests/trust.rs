@@ -321,3 +321,30 @@ async fn switching_files_off_for_a_device_keeps_it_on_the_default_for_the_rest()
     assert_eq!(now.hidden, default.hidden, "a later change of the default reaches the device");
     assert!(!now.delete, "and its own switch stays");
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn turning_files_on_for_a_device_lets_it_follow_the_default_again() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let (phone_id, _) = pair(&phone, &mac).await;
+    let delete_off_for_all = |engine: &Engine| {
+        let mut default = engine.file_policy(&phone_id);
+        default.delete = false;
+        engine.set_file_default_policy(default).unwrap();
+    };
+
+    // Own changes nothing to see, and must not pin deleting on past a later "off" for all devices.
+    mac.engine.set_trust_level(&phone_id, TrustLevel::Own).unwrap();
+    delete_off_for_all(&mac.engine);
+    assert!(!mac.engine.allowed(&phone_id, Permission::DeleteFiles));
+
+    // The same for an "on" that undoes an earlier "off".
+    let mut default = mac.engine.file_policy(&phone_id);
+    default.delete = true;
+    mac.engine.set_file_default_policy(default).unwrap();
+    mac.engine.set_permission(&phone_id, Permission::DeleteFiles, false).unwrap();
+    mac.engine.set_permission(&phone_id, Permission::DeleteFiles, true).unwrap();
+    assert!(mac.engine.allowed(&phone_id, Permission::DeleteFiles));
+    delete_off_for_all(&mac.engine);
+    assert!(!mac.engine.allowed(&phone_id, Permission::DeleteFiles));
+}
