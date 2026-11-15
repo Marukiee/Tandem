@@ -389,7 +389,7 @@ Alleen gebouwd, niet in de echte app gezien.
 - [ ] Stuur een bestand vanaf de Mac en open het menubalkpaneel: tijdens het sturen de balk, daarna kort "Verstuurd" met een vinkje en zonder balk, en na tien seconden is de regel weg.
 - [ ] Open het paneel een paar minuten later: er staat geen oude regel meer. Een ontvangen bestand blijft een minuut staan.
 
-## 0.3.23, 2026-11-15 (PR 39, 40, 41, 42, 43 en 46, en wat van PR 31 erbij komt)
+## 0.3.23, 2026-11-15 (PR 39, 40, 41, 42, 43 en 46)
 
 Wat veranderde: de telefoon doet op mobiele data met het scherm uit veel minder werk (R-V15), Instellingen heeft op Linux, Windows en
 Android een deel Apparaten waar je per apparaat kiest wat het mag (Circle, P6), een apparaatnaam geldt voor de hele circle (R-I33) en
