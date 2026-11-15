@@ -993,6 +993,7 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .circle-level.send { background: var(--tone-2); color: var(--on-tone-2); }
 .circle-level.custom { background: var(--hover); color: var(--text-2); }
 .circle-device { gap: 12px; }
+.circle-default { color: var(--text-3); margin: 2px 0 0; }
 .circle-join { display: flex; align-items: center; gap: 14px; border-style: dashed; background: transparent; }
 .circle-join .t { font-weight: 600; }
 .circle-join .s { font-size: 12px; color: var(--text-2); }

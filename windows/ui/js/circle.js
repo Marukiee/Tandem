@@ -29,6 +29,12 @@ function names(list) {
   return list.length <= 1 ? list.join("") : list.slice(0, -1).join(", ") + t("circle_and") + list[list.length - 1];
 }
 
+/** For a device without file choices of its own: which file permissions the default for all devices has off, in words. */
+function followsDefault(entry) {
+  const off = entry.defaultOff || [];
+  return off.length === 0 ? null : t("circle_follows_default", names(off.map((p) => t("perm_" + p).toLowerCase())));
+}
+
 /** What a device lets this computer do, in a few words. */
 function letsYou(entry) {
   if (!entry.allowsMe) return t("circle_lets_unknown");
@@ -80,7 +86,8 @@ export function CircleSettings() {
           const e = entry(d.id);
           return html`<div key=${d.id} class="setting circle-device">
             <${DeviceGlyph} device=${d} size=${36} />
-            <div class="grow"><div class="t">${d.name}</div><div class="s">${letsYou(e)}</div></div>
+            <div class="grow"><div class="t">${d.name}</div><div class="s">${letsYou(e)}</div>
+              ${followsDefault(e) && html`<div class="s circle-default">${followsDefault(e)}</div>`}</div>
             <${Level} level=${e.level} />
             <button class="btn small" onClick=${() => setDetails(d.id)}>${t("circle_details")}</button>
             <button class="iconbtn danger" title=${t("remove")} onClick=${() => set({ dialog: { kind: "remove", id: d.id } })}><${Icon} name="trash" size=${16} /></button>
@@ -96,6 +103,7 @@ export function CircleSettings() {
         <div class="circle-details-head"><${DeviceGlyph} device=${open} size=${40} /><h2 class="grow">${open.name}</h2><${Level} level=${entry(open.id).level} /></div>
         <div class="circle-levels"><div class="seg">${LEVELS.map((l) => html`<button key=${l} class=${entry(open.id).level === l ? "on" : ""} onClick=${() => level(open.id, l)}>${t("level_" + l)}</button>`)}</div>
           <span class="small muted">${t(entry(open.id).level === "custom" ? "level_custom_sub" : "level_" + entry(open.id).level + "_sub")}</span></div>
+        ${followsDefault(entry(open.id)) && html`<p class="small muted circle-default">${followsDefault(entry(open.id))}</p>`}
         <div class="circle-groups">${GROUPS.map((g) => html`<div key=${g.id} class=${"circle-group g-" + g.id}>
           <div class="ph"><${Icon} name=${g.icon} size=${16} />${t("circle_g_" + g.id)}</div>
           ${g.perms.map((p) => html`<div key=${p} class="circle-perm"><span class="grow">${t("perm_" + p)}</span>

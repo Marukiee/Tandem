@@ -11,7 +11,13 @@ const trustMock = { linux: [...TRUST_LEVELS.limited], tab: [...TRUST_LEVELS.send
 const trustAllows = { phone: [], mac: ["delete_files"], linux: [], tab: [] };
 function trustList() {
   const levelOf = (denied) => Object.keys(TRUST_LEVELS).find((l) => TRUST_LEVELS[l].length === denied.length && TRUST_LEVELS[l].every((p) => denied.includes(p))) || "custom";
-  return devices.map((d) => { const denied = trustMock[d.id] || []; return { id: d.id, denied, level: levelOf(denied), allowsMe: trustAllows[d.id] ?? null }; });
+  // The pretend default for all devices has deleting off; the phone follows it, the others have file choices of their own.
+  return devices.map((d) => {
+    const own = trustMock[d.id] || [];
+    const followsDefault = d.id === "phone";
+    const denied = followsDefault && !own.includes("delete_files") ? [...own, "delete_files"] : own;
+    return { id: d.id, denied, level: levelOf(denied), allowsMe: trustAllows[d.id] ?? null, defaultOff: followsDefault ? ["delete_files"] : [] };
+  });
 }
 const empty = new URLSearchParams(location.search).get("mock") === "empty";
 

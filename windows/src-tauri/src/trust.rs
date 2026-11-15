@@ -47,11 +47,15 @@ fn level_code(level: TandemTrustLevel) -> &'static str {
     }
 }
 
-/// Per other device: what it may not do here, its level, and what it lets this computer do (null for a device of an older version).
+/// Per other device: what it may not do here, its level, what it lets this computer do (null for a device of an older version), and,
+/// for one without file choices of its own, which file permissions the default for all devices has off.
 fn list(state: &AppState) -> Reply<Vec<Value>> {
     let engine = state.engine()?;
     let me = engine.id();
     let web = engine.trust_web();
+    let default = engine.file_default_policy();
+    let default_off: Vec<&str> =
+        [(!default.enabled).then_some("browse_files"), (!default.delete).then_some("delete_files")].into_iter().flatten().collect();
     let codes = |list: Vec<TandemPermission>| list.into_iter().map(code).collect::<Vec<_>>();
     engine
         .devices()
@@ -61,7 +65,9 @@ fn list(state: &AppState) -> Reply<Vec<Value>> {
             let denied = engine.denied_permissions(d.id.clone()).map_err(shown)?;
             let level = engine.trust_level(d.id.clone()).map_err(shown)?;
             let allows_me = web.iter().find(|e| e.from == d.id && e.to == me).and_then(|e| e.denied.clone()).map(codes);
-            Ok(json!({ "id": d.id, "denied": codes(denied), "level": level_code(level), "allowsMe": allows_me }))
+            let follows = !engine.has_own_file_policy(d.id.clone());
+            let default_off = if follows { default_off.clone() } else { Vec::new() };
+            Ok(json!({ "id": d.id, "denied": codes(denied), "level": level_code(level), "allowsMe": allows_me, "defaultOff": default_off }))
         })
         .collect()
 }
