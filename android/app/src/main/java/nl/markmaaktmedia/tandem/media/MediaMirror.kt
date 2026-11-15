@@ -84,6 +84,8 @@ class MediaMirror(
 
     /** The covers already sent to each device, so one goes out once. */
     private val sentArt = java.util.concurrent.ConcurrentHashMap<String, MutableSet<Long>>()
+    /** What each device was last told about the players. */
+    private val sentPlayers = java.util.concurrent.ConcurrentHashMap<String, SentPlayers>()
     private val artCache = object : LinkedHashMap<Long, ByteArray>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, ByteArray>?) = size > 24
     }
@@ -195,7 +197,12 @@ class MediaMirror(
             val fresh = targets.filter { sentArt.getOrPut(it) { java.util.concurrent.ConcurrentHashMap.newKeySet() }.add(key.toLong()) }
             if (fresh.isNotEmpty()) runCatching { engine.sendMediaArt(fresh, key, cover) }
         }
-        runCatching { engine.sendMediaPlayers(targets, players) }
+        // A player app that writes its progress into the session every few seconds would otherwise wake the radio each time for a
+        // position the other side counts on by itself. A device that was asked for in particular (it just connected) always gets it.
+        val at = SystemClock.elapsedRealtime()
+        val news = if (only != null) targets else targets.filter { isNewsAbout(sentPlayers[it], players, at) }
+        if (news.isEmpty()) return
+        runCatching { engine.sendMediaPlayers(news, players) }.onSuccess { news.forEach { sentPlayers[it] = SentPlayers(players, at) } }
     }
 
     private fun computers(): List<String> = host.devices.value.filter { showsPhoneMusic(it.platform) }.map { it.id }
@@ -305,9 +312,13 @@ class MediaMirror(
             is TandemEvent.Connected -> {
                 // A device that just connected knows nothing yet, and has not seen any cover.
                 sentArt.remove(event.id)
+                sentPlayers.remove(event.id)
                 if (host.device(event.id)?.platform?.let(::showsPhoneMusic) == true) schedulePublish(listOf(event.id))
             }
-            is TandemEvent.Disconnected -> _remote.update { it - event.id }
+            is TandemEvent.Disconnected -> {
+                _remote.update { it - event.id }
+                sentPlayers.remove(event.id)
+            }
             else -> Unit
         }
     }
@@ -367,6 +378,28 @@ class MediaMirror(
         const val DEBOUNCE_MS = 300L
         const val RETRY_MS = 20_000L
         const val COVER_PX = 160
+    }
+}
+
+/** What was last said about the players to one device, and when, so the next one can be left out if it adds nothing. */
+internal class SentPlayers(val players: List<TandemMediaPlayer>, val at: Long)
+
+/** How far the position may be from what the receiver has counted on to before it is told again. */
+internal const val POSITION_DRIFT_MS = 3_000L
+
+/**
+ * Whether `now` tells a device anything it does not know. The receiver counts the position on while a track plays, so the same
+ * players with a position that is where it would be anyway is nothing new. A pause, a seek, a track or a button that appears is.
+ */
+internal fun isNewsAbout(sent: SentPlayers?, now: List<TandemMediaPlayer>, at: Long): Boolean {
+    if (sent == null || sent.players.size != now.size) return true
+    return sent.players.zip(now).any { (old, new) ->
+        if (old.copy(positionMs = null) != new.copy(positionMs = null)) return@any true
+        val was = old.positionMs
+        val is_ = new.positionMs
+        if (was == null || is_ == null) return@any was != is_
+        val counted = if (old.playing) was.toLong() + (at - sent.at) else was.toLong()
+        kotlin.math.abs(is_.toLong() - counted) > POSITION_DRIFT_MS
     }
 }
 
