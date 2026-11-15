@@ -63,13 +63,27 @@ struct DeviceDetail: View {
         }
     }
 
-    /// Whether it is there, what it is and how fast it answers, as one line. Where the head is narrow the line says less, the
-    /// least important first, instead of ending in dots.
-    private var statusLine: some View {
-        let state = Text(reach.text)
+    /// What it is: the system and the version of Tandem on it, where they are known.
+    private var systemLine: String {
+        guard let version = device.appVersion, !version.isEmpty else { return system }
+        return "\(system) \u{00B7} Tandem \(version)"
+    }
+
+    /// The pills of the head that have something to say, in the order they are dropped where the head is narrow: the delay
+    /// first, then the route, then charging (the ring has its bolt). Whether it is there always stays. One line, never two, so
+    /// the head keeps its three rows beside the three rows of the player.
+    private var pills: some View {
+        let charging = device.online && device.status.battery?.charging == true
+        let route: HeadPill? = !device.online ? nil
+            : usingItsHotspot ? HeadPill(symbol: "personalhotspot", text: Text("Via hotspot"))
+            : device.route.map { HeadPill(symbol: $0.symbol, text: Text($0.label)) }
+        let delay: HeadPill? = device.online ? device.rttMs.map { HeadPill(symbol: "speedometer", text: Text("\($0) ms")) } : nil
+        let state = HeadPill(dot: reach.reachable ? .green : Color.secondary.opacity(0.5), text: Text(reach.text))
+        let bolt = HeadPill(symbol: "bolt.fill", symbolTint: .green, text: Text("Charging"))
         return ViewThatFits(in: .horizontal) {
-            if device.online, let rtt = device.rttMs { Text("\(state) \u{00B7} \(system) \u{00B7} \(rtt) ms") }
-            Text("\(state) \u{00B7} \(system)")
+            HStack(spacing: 6) { state; route; delay; if charging { bolt } }
+            HStack(spacing: 6) { state; route; if charging { bolt } }
+            HStack(spacing: 6) { state; if charging { bolt } }
             state
         }
     }
@@ -90,7 +104,7 @@ struct DeviceDetail: View {
                     Divider()
                     Button("Use the default icon") { model.setIcon(nil, for: device.id) }
                 } label: {
-                    DeviceGlyph(platform: device.platform, online: device.online, size: 60, deviceID: device.id)
+                    DeviceGlyph(platform: device.platform, online: device.online, size: 72, deviceID: device.id)
                 }
                 .menuStyle(.button)
                 .buttonStyle(.plain)
@@ -98,21 +112,23 @@ struct DeviceDetail: View {
                 .fixedSize()
                 .help("Change the icon")
 
-                VStack(alignment: .leading, spacing: 4) {
+                // Three rows, as the player beside it has. Alone the head is as tall as they are; beside the player the room
+                // between them grows, so its first and last row stand level with the first and last row of the player.
+                VStack(alignment: .leading, spacing: 0) {
                     Text(device.name)
                         .font(.title2.weight(.semibold))
                         .lineLimit(1)
                         // A long name is a little smaller before it is cut short.
                         .minimumScaleFactor(0.8)
-                    HStack(spacing: 6) {
-                        Circle().fill(reach.reachable ? Color.green : Color.secondary.opacity(0.45)).frame(width: 7, height: 7)
-                        statusLine
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    facts
+                    Spacer(minLength: 2)
+                    Text(verbatim: systemLine)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    pills
                 }
+                .frame(maxHeight: .infinity)
                 // The words come first: they get the room there is before any of it is left empty.
                 .layoutPriority(1)
                 Spacer(minLength: 8)
@@ -127,37 +143,6 @@ struct DeviceDetail: View {
         }
     }
 
-    /// What else is known about how it is reached, as a second line that is quieter still. No pills.
-    @ViewBuilder
-    private var facts: some View {
-        if device.online {
-            FlowRow(spacing: 12, lineSpacing: 2) {
-                if usingItsHotspot {
-                    // This Mac is on the phone's hotspot: that says more than the kind of address.
-                    Fact(symbol: "personalhotspot", text: "Via hotspot")
-                } else if let route = device.route {
-                    Fact(symbol: route.symbol, text: route.label)
-                }
-                phoneNetworkFacts
-                // A computer: the network it is on.
-                if device.platform != .android, let ssid = device.lastSeen?.ssid {
-                    Fact(symbol: "wifi", text: "\(ssid)")
-                }
-                // A phone says it on its button in the Sound group.
-                if device.status.dnd == true, device.status.sound == nil {
-                    Fact(symbol: "moon.fill", text: "Do not disturb")
-                }
-                if let version = device.appVersion, !version.isEmpty {
-                    Fact(verbatim: "Tandem \(version)")
-                }
-            }
-        } else {
-            Text("Tandem connects again as soon as this device can be reached.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-
     /// The players shown under the head, as the page sees them, so the room for their card opens and closes on the same change.
     private var shownPlayers: [String] {
         model.reach(of: device).reachable ? model.visibleMedia(for: device.id).map(\.id) : []
@@ -167,44 +152,6 @@ struct DeviceDetail: View {
     private var usingItsHotspot: Bool {
         if device.platform == .android, case .connected = model.hotspotStatus { return true }
         return false
-    }
-
-    /// What the phone's own connection is, said as the phone's, because on this page "mobile data" next to a Mac
-    /// reads as the Mac's. While its hotspot is on over mobile data one of them says both: the hotspot is that data.
-    @ViewBuilder
-    private var phoneNetworkFacts: some View {
-        let hotspotOn = device.status.hotspot == true
-        // A computer sends its network too (for where it was last seen), and these words are about a phone.
-        if let network = device.status.network, !device.isComputer {
-            if hotspotOn && network.kind == .cellular {
-                Fact(symbol: "personalhotspot", text: "Hotspot on, sharing mobile data")
-            } else {
-                Fact(symbol: networkSymbol(network), text: LocalizedStringKey(phoneNetworkText(network)))
-                if hotspotOn { Fact(symbol: "personalhotspot", text: "Hotspot on") }
-            }
-        } else if hotspotOn {
-            Fact(symbol: "personalhotspot", text: "Hotspot on")
-        }
-    }
-
-    private func phoneNetworkText(_ network: TandemNetwork) -> String {
-        switch network.kind {
-        case .wifi: network.ssid.map { String(localized: "Phone on \($0)") } ?? String(localized: "Phone on Wi-Fi")
-        case .cellular: network.roaming ? String(localized: "Phone on mobile data (roaming)") : String(localized: "Phone on mobile data")
-        case .ethernet: String(localized: "Phone on Ethernet")
-        case .none: String(localized: "Phone has no network")
-        case .other: String(localized: "Phone on a network")
-        }
-    }
-
-    private func networkSymbol(_ network: TandemNetwork) -> String {
-        switch network.kind {
-        case .wifi: "wifi"
-        case .cellular: "antenna.radiowaves.left.and.right"
-        case .ethernet: "cable.connector"
-        case .none: "wifi.slash"
-        case .other: "network"
-        }
     }
 
     // MARK: Content
@@ -568,31 +515,33 @@ private struct HeadRow: Layout {
     }
 }
 
-/// Something that is known about a device, in the head of its page: a small glyph and a few words in the quietest colour.
-private struct Fact: View {
+/// A small tonal pill in the head of a device, in the style of the filters: what it says in the secondary colour on a faint fill.
+private struct HeadPill: View {
     var symbol: String?
+    var symbolTint: Color?
+    var dot: Color?
     let text: Text
 
-    init(symbol: String, text: LocalizedStringKey) {
-        self.symbol = symbol
-        self.text = Text(text)
-    }
-
-    init(verbatim: String) {
-        text = Text(verbatim: verbatim)
-    }
-
     var body: some View {
-        HStack(spacing: 4) {
-            if let symbol { Image(systemName: symbol).font(.system(size: 9.5, weight: .medium)) }
-            text.font(.caption).lineLimit(1)
+        HStack(spacing: 5) {
+            if let dot { Circle().fill(dot).frame(width: 7, height: 7) }
+            if let symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(symbolTint ?? Color.secondary)
+            }
+            text.font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1)
         }
-        .foregroundStyle(.tertiary)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(Color.primary.opacity(0.06), in: .capsule)
+        .fixedSize()
     }
 }
 
-/// The battery in the head of a device: a small ring with the number beside it, and a bolt in it while it charges. It is whole
-/// the moment the page is there: nothing fills up or counts on the way in.
+/// The battery in the head of a device: a ring with its number inside, green while it charges (the pill beside the name says so
+/// too). The number inside and not beside it: beside the player the head has no room to spare. It is whole the moment the page
+/// is there: nothing fills up or counts on the way in.
 private struct BatteryMark: View {
     let battery: TandemBattery
     let connected: Bool
@@ -604,26 +553,19 @@ private struct BatteryMark: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            ZStack {
-                Circle().stroke(Color.primary.opacity(0.1), lineWidth: 4)
-                Circle()
-                    // Anything below full leaves an opening, so 97 percent is not a closed ring with a flaw.
-                    .trim(from: 0, to: battery.level >= 100 ? 1 : CGFloat(battery.level) / 100 * 0.945)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                if battery.charging && connected {
-                    Image(systemName: "bolt.fill").font(.system(size: 12, weight: .bold)).foregroundStyle(.green)
-                }
-            }
-            .frame(width: 36, height: 36)
+        ZStack {
+            Circle().stroke(Color.primary.opacity(0.1), lineWidth: 5)
+            Circle()
+                // Anything below full leaves an opening, so 97 percent is not a closed ring with a flaw.
+                .trim(from: 0, to: battery.level >= 100 ? 1 : CGFloat(battery.level) / 100 * 0.945)
+                .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
             Text(verbatim: "\(battery.level)%")
-                .font(.headline.monospacedDigit())
+                .font(.system(size: 12.5, weight: .semibold).monospacedDigit())
                 .foregroundStyle(connected ? Color.primary : Color.secondary)
                 .contentTransition(.numericText(value: Double(battery.level)))
         }
-        // Its number is never squeezed: the words beside it give way.
-        .fixedSize()
+        .frame(width: 54, height: 54)
         .animation(.tandem, value: battery.level)
         .animation(.tandem, value: battery.charging)
         .accessibilityElement(children: .combine)

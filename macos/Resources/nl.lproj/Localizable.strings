@@ -118,6 +118,7 @@
 "Files you send and receive show up here." = "Bestanden die je verstuurt en ontvangt staan hier.";
 "Clipboard sent" = "Klembord verstuurd";
 "Not connected" = "Niet verbonden";
+"Charging" = "Laadt op";
 "There is no text on the clipboard" = "Er staat geen tekst op het klembord";
 "%lld device(s) were offline and did not get it" = "%lld apparaat/apparaten waren offline en kregen het niet";
 
