@@ -98,13 +98,19 @@ class UnderwayTransfers(
         scope.launch(Dispatchers.IO) { read() }
     }
 
+    // Several reads start at once on the IO threads: the journal is read and the list is set under one lock, so an older read cannot be
+    // set after a newer one and leave a row running.
+    private val readLock = Any()
+
     private fun read() {
         val engine = host.engine ?: return
-        lastRefresh = System.currentTimeMillis()
-        val found = runCatching { engine.transfers() }.getOrNull() ?: return
-        if (found != _all.value) _all.value = found
-        // An offer that went out and was put back in the queue keeps its files as long as the core keeps the offer.
-        found.filter { !it.incoming && it.peers.any { peer -> peer.stage == TandemTransferStage.QUEUED } }.forEach { AndroidFiles.queued(it.offer) }
+        synchronized(readLock) {
+            lastRefresh = System.currentTimeMillis()
+            val found = runCatching { engine.transfers() }.getOrNull() ?: return
+            if (found != _all.value) _all.value = found
+            // An offer that went out and was put back in the queue keeps its files as long as the core keeps the offer.
+            found.filter { !it.incoming && it.peers.any { peer -> peer.stage == TandemTransferStage.QUEUED } }.forEach { AndroidFiles.queued(it.offer) }
+        }
     }
 
     /** Stops it for that one device; the others an outgoing offer went to keep going (R-B8). */
