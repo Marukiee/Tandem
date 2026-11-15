@@ -1204,6 +1204,8 @@ impl Inner {
 
     async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>, fails: u32, long_away: bool) {
         let sockets: Vec<SocketAddr> = addrs.iter().take(addresses_to_try(fails, long_away)).filter_map(|a| a.socket()).collect();
+        // Counted on a phone with `adb logcat -s Tandem`: every attempt wakes the radio.
+        info!(peer = %id, fails, addrs = sockets.len(), "dialling a device that is away");
         let outcome = self.dial_any(Some(key), tls::ALPN_MAIN, &sockets).await;
         match outcome {
             Ok((connection, addr)) => {
