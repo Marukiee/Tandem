@@ -548,6 +548,11 @@ final class EngineModel {
         case .removedFromCircle:
             removedFromCircle = true
 
+        case let .selfRenamed(name):
+            // Another device named this Mac (R-I33): kept as its own name, or the next launch would bring the old one back.
+            UserDefaults.standard.set(name, forKey: Self.nameKey)
+            myName = name
+
         case let .clipboard(from, text, _):
             let name = device(from)?.name ?? "?"
             // Before the pasteboard changes, so the history knows it came from the device and not from the app in front.
