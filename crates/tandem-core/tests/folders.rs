@@ -1,0 +1,496 @@
+//! Folders that travel as folders (P4) between real engines over loopback: layers, empty folders, a name that wants out, a device
+//! that does not take folders, and a folder that stopped halfway across a restart. See docs/TRANSFERS.md.
+
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
+
+use tandem_core::events::{Event, TransferDone};
+use tandem_core::folders::FOLDERS_CAP;
+use tandem_core::journal::ItemState;
+use tandem_core::platform::{DesktopFiles, FileStore};
+use tandem_core::proto::{Msg, ShareItem, ShareOffer, ShareOrigin};
+use tandem_core::store::{DeviceSettings, FileSecretStore, Store};
+use tandem_core::transfer::OutgoingFile;
+use tandem_core::{Engine, EngineConfig};
+use tokio::sync::broadcast::Receiver;
+
+struct Node {
+    engine: Engine,
+    data: PathBuf,
+    downloads: PathBuf,
+    dir: tempfile::TempDir,
+}
+
+fn config(data: &Path, name: &str, folders: bool) -> EngineConfig {
+    let mut cfg = EngineConfig::new(data, name);
+    cfg.port = 0;
+    cfg.enable_mdns = false;
+    cfg.loopback = true;
+    if folders {
+        cfg.caps.push(FOLDERS_CAP.into());
+    }
+    cfg
+}
+
+async fn node(name: &str, folders: bool) -> Node {
+    let dir = tempfile::tempdir().unwrap();
+    let downloads = dir.path().join("downloads");
+    node_with_files(name, folders, dir, Arc::new(DesktopFiles { download_dir: downloads })).await
+}
+
+async fn node_with_files(name: &str, folders: bool, dir: tempfile::TempDir, files: Arc<dyn FileStore>) -> Node {
+    let data = dir.path().join("data");
+    let downloads = dir.path().join("downloads");
+    let secrets = Arc::new(FileSecretStore::new(Store::new(&data).unwrap()));
+    let engine = Engine::start(config(&data, name, folders), secrets, files).await.unwrap();
+    Node { engine, data, downloads, dir }
+}
+
+async fn restart(node: &Node, name: &str) -> Engine {
+    let secrets = Arc::new(FileSecretStore::new(Store::new(&node.data).unwrap()));
+    let files = Arc::new(DesktopFiles { download_dir: node.downloads.clone() });
+    Engine::start(config(&node.data, name, true), secrets, files).await.unwrap()
+}
+
+async fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(45);
+    while !condition() {
+        assert!(std::time::Instant::now() < deadline, "timed out waiting for: {what}");
+        tokio::time::sleep(Duration::from_millis(40)).await;
+    }
+}
+
+async fn expect<T>(rx: &mut Receiver<Event>, what: &str, mut pick: impl FnMut(&Event) -> Option<T>) -> T {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(45);
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        match tokio::time::timeout(remaining, rx.recv()).await {
+            Ok(Ok(event)) => {
+                if let Some(found) = pick(&event) {
+                    return found;
+                }
+            }
+            Ok(Err(tokio::sync::broadcast::error::RecvError::Lagged(_))) => {}
+            other => panic!("timed out or closed while waiting for: {what} ({other:?})"),
+        }
+    }
+}
+
+async fn finished(events: &mut Receiver<Event>, count: usize) -> Vec<TransferDone> {
+    let mut done = Vec::new();
+    while done.len() < count {
+        done.push(
+            expect(events, "a file that came in", |e| match e {
+                Event::Finished(d) if d.incoming => Some(d.clone()),
+                _ => None,
+            })
+            .await,
+        );
+    }
+    done.sort_by_key(|d| d.index);
+    done
+}
+
+async fn paired(phone: &Node, mac: &Node) {
+    let offer = phone.engine.create_pairing_offer().unwrap();
+    mac.engine.pair_with_uri(&offer.uri).await.unwrap();
+    let (p, m) = (phone.engine.id(), mac.engine.id());
+    wait_until("connected", || phone.engine.is_connected(&m) && mac.engine.is_connected(&p)).await;
+}
+
+fn folder_of(source: &Path) -> OutgoingFile {
+    let name = source.file_name().unwrap().to_string_lossy().into_owned();
+    OutgoingFile { source: source.to_string_lossy().into_owned(), name, size: 0, mime: String::new() }
+}
+
+/// Trip/notes.txt, Trip/day 1/a.jpg, Trip/day 1/raw/b.dng (three layers) and Trip/empty.
+fn trip(at: &Path) -> PathBuf {
+    let top = at.join("Trip");
+    std::fs::create_dir_all(top.join("day 1/raw")).unwrap();
+    std::fs::create_dir_all(top.join("empty")).unwrap();
+    std::fs::write(top.join("notes.txt"), b"notes").unwrap();
+    std::fs::write(top.join("day 1/a.jpg"), vec![7u8; 300_000]).unwrap();
+    std::fs::write(top.join("day 1/raw/b.dng"), vec![9u8; 1_000_000]).unwrap();
+    top
+}
+
+fn everything_in(dir: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(at) = stack.pop() {
+        for entry in std::fs::read_dir(&at).into_iter().flatten().flatten() {
+            let path = entry.path();
+            // With `/` on every system, so one list of names holds on Windows too.
+            let parts: Vec<String> = path.strip_prefix(dir).unwrap().components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
+            out.push(parts.join("/"));
+            if path.is_dir() {
+                stack.push(path);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_arrives_as_a_folder_with_its_layers_and_empty_folders() {
+    let phone = node("Phone", true).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    let top = trip(source.path());
+    std::fs::write(source.path().join("loose.pdf"), b"pdf").unwrap();
+    let loose = OutgoingFile { source: source.path().join("loose.pdf").to_string_lossy().into_owned(), name: "loose.pdf".into(), size: 3, mime: "application/pdf".into() };
+
+    let mut events = mac.engine.subscribe();
+    let report = phone.engine.send_files(&[mac.engine.id()], vec![folder_of(&top), loose], ShareOrigin::Files).await.unwrap();
+    assert_eq!(report.sent_to, vec![mac.engine.id()]);
+    assert!(report.no_folders.is_empty());
+    let offered = expect(&mut events, "the offer", |e| match e {
+        Event::ShareOffered { offer, .. } => Some(offer.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(offered.folders, vec!["Trip/empty".to_string()]);
+    let done = finished(&mut events, 4).await;
+    assert!(done.iter().all(|d| d.error.is_none()), "{done:?}");
+
+    assert_eq!(
+        everything_in(&mac.downloads),
+        vec!["Trip", "Trip/day 1", "Trip/day 1/a.jpg", "Trip/day 1/raw", "Trip/day 1/raw/b.dng", "Trip/empty", "Trip/notes.txt", "loose.pdf"]
+    );
+    assert_eq!(std::fs::read(mac.downloads.join("Trip/day 1/raw/b.dng")).unwrap(), vec![9u8; 1_000_000]);
+    // Each file says where it is now: inside the folder, not where it waited for the rest.
+    let at = |name: &str| PathBuf::from(done.iter().find(|d| d.name == name).unwrap().location.clone().unwrap());
+    assert_eq!(at("b.dng"), mac.downloads.join("Trip/day 1/raw/b.dng"));
+    assert_eq!(at("loose.pdf"), mac.downloads.join("loose.pdf"));
+    let journal = mac.engine.transfers();
+    assert_eq!(journal[0].peers[0].items.iter().filter(|i| i.state == ItemState::Done).count(), 4);
+    assert!(everything_in(&mac.data.join("folders")).is_empty(), "nothing waits any more");
+
+    // The same folder again takes a name of its own next to the first.
+    let report = phone.engine.send_files(&[mac.engine.id()], vec![folder_of(&top)], ShareOrigin::Files).await.unwrap();
+    assert_eq!(report.sent_to.len(), 1);
+    finished(&mut events, 3).await;
+    assert!(mac.downloads.join("Trip (1)/day 1/raw/b.dng").exists());
+    assert!(mac.downloads.join("Trip (1)/empty").is_dir());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_name_that_wants_out_stays_in_the_downloads() {
+    let phone = node("Phone", true).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    let top = trip(source.path());
+    let mut events = mac.engine.subscribe();
+    // The name the sender gives the folder is what the receiver builds from, so a sender can try to climb out with it.
+    let sneaky = OutgoingFile { name: "../../escape".into(), ..folder_of(&top) };
+    phone.engine.send_files(&[mac.engine.id()], vec![sneaky], ShareOrigin::Files).await.unwrap();
+    let done = finished(&mut events, 3).await;
+    assert!(done.iter().all(|d| d.error.is_none()), "{done:?}");
+    for d in &done {
+        assert!(Path::new(d.location.as_ref().unwrap()).starts_with(&mac.downloads), "{:?}", d.location);
+    }
+    assert!(!mac.dir.path().join("escape").exists() && !mac.data.join("escape").exists());
+    assert!(everything_in(&mac.downloads).iter().all(|p| !p.split('/').any(|part| part == "..")));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_device_that_does_not_take_folders_gets_nothing_and_is_named_for_a_zip() {
+    let phone = node("Phone", true).await;
+    let old = node("Old", false).await;
+    paired(&phone, &old).await;
+    let source = tempfile::tempdir().unwrap();
+    let top = trip(source.path());
+    let mut events = old.engine.subscribe();
+    let report = phone.engine.send_files(&[old.engine.id()], vec![folder_of(&top)], ShareOrigin::Files).await.unwrap();
+    assert_eq!(report.no_folders, vec![old.engine.id()]);
+    assert!(report.sent_to.is_empty() && report.offline.is_empty());
+    assert!(phone.engine.transfers().is_empty(), "nothing waits for it either");
+
+    // Loose files still go to it as before.
+    std::fs::write(source.path().join("a.txt"), b"a").unwrap();
+    let file = OutgoingFile { source: source.path().join("a.txt").to_string_lossy().into_owned(), name: "a.txt".into(), size: 1, mime: "text/plain".into() };
+    let report = phone.engine.send_files(&[old.engine.id()], vec![file], ShareOrigin::Files).await.unwrap();
+    assert_eq!(report.sent_to, vec![old.engine.id()]);
+    assert!(report.no_folders.is_empty());
+    finished(&mut events, 1).await;
+
+    // A device that never said it takes folders builds none, even when an offer has them: the files would come in loose.
+    let id: u64 = 0xF01D;
+    let item = ShareItem { name: "x.txt".into(), size: 1, path: "Trip/day 1".into(), ..ShareItem::default() };
+    let crafted = ShareOffer { id, origin: ShareOrigin::Files, items: vec![item], folders: vec!["Trip/empty".into()] };
+    old.engine.set_device_settings(&phone.engine.id(), DeviceSettings { auto_accept: false, ..Default::default() }).unwrap();
+    phone.engine.send_msg(&[old.engine.id()], Msg::ShareOffer(crafted)).await;
+    let seen = expect(&mut events, "the crafted offer", |e| match e {
+        Event::ShareOffered { offer, .. } if offer.id == id => Some(offer.clone()),
+        _ => None,
+    })
+    .await;
+    assert!(seen.folders.is_empty() && seen.items[0].path.is_empty());
+    let kept = old.engine.transfers().into_iter().find(|t| t.offer == id).unwrap();
+    assert!(kept.folders.is_empty() && kept.items[0].path.is_empty());
+}
+
+/// Lets every file be opened, but the one named `held` only once (when `send_files` reads its size) until the gate opens: a file
+/// that is slow to come. Closed before sending, so the receiver can never pull it first.
+struct Gate {
+    inner: DesktopFiles,
+    held: &'static str,
+    passes: Arc<AtomicUsize>,
+    open: Arc<AtomicBool>,
+}
+
+impl FileStore for Gate {
+    fn open_read(&self, source: &str) -> std::io::Result<std::fs::File> {
+        if source.ends_with(self.held) && self.passes.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1)).is_err() {
+            let until = std::time::Instant::now() + Duration::from_secs(30);
+            while !self.open.load(Ordering::SeqCst) && std::time::Instant::now() < until {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        }
+        self.inner.open_read(source)
+    }
+
+    fn store_download(&self, temp: &Path, name: &str, mime: &str) -> std::io::Result<String> {
+        self.inner.store_download(temp, name, mime)
+    }
+}
+
+fn states(engine: &Engine, offer: u64) -> Vec<(String, ItemState)> {
+    engine
+        .transfers()
+        .into_iter()
+        .find(|t| t.offer == offer)
+        .map(|t| t.items.iter().zip(&t.peers[0].items).map(|(i, p)| (i.name.clone(), p.state)).collect())
+        .unwrap_or_default()
+}
+
+/// The phone sends Trip; notes.txt and a.jpg arrive, b.dng is slow to come. Gives the offer once that is so.
+async fn a_folder_on_its_way(phone: &Node, mac: &Node, top: &Path, open: &AtomicBool) -> u64 {
+    open.store(false, Ordering::SeqCst);
+    let report = phone.engine.send_files(&[mac.engine.id()], vec![folder_of(top)], ShareOrigin::Files).await.unwrap();
+    let offer = report.offer;
+    wait_until("two files came and b.dng is on its way", || {
+        let s = states(&mac.engine, offer);
+        s.iter().filter(|(_, state)| *state == ItemState::Done).count() == 2 && s.iter().any(|(n, st)| n == "b.dng" && *st == ItemState::Running)
+    })
+    .await;
+    assert!(everything_in(&mac.downloads).is_empty(), "a folder that is not whole is not in the downloads");
+    offer
+}
+
+struct Halfway {
+    phone: Node,
+    mac: Node,
+    mac_again: Engine,
+    _phone_again: Engine,
+    offer: u64,
+    source: tempfile::TempDir,
+}
+
+/// A folder that stopped halfway because both devices stopped, and both started again: it waits for go on or throw away.
+async fn a_folder_halfway() -> Halfway {
+    let open = Arc::new(AtomicBool::new(true));
+    let phone_dir = tempfile::tempdir().unwrap();
+    let gate = Gate { inner: DesktopFiles { download_dir: phone_dir.path().join("downloads") }, held: "b.dng", passes: Arc::new(AtomicUsize::new(1)), open: open.clone() };
+    let phone = node_with_files("Phone", true, phone_dir, Arc::new(gate)).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    let top = trip(source.path());
+    let offer = a_folder_on_its_way(&phone, &mac, &top, &open).await;
+    mac.engine.shutdown().await;
+    open.store(true, Ordering::SeqCst);
+    phone.engine.shutdown().await;
+
+    let mac_again = restart(&mac, "Mac").await;
+    let phone_again = restart(&phone, "Phone").await;
+    mac_again.add_address(&phone.engine.id(), &format!("127.0.0.1:{}", phone_again.port())).unwrap();
+    wait_until("connected again", || mac_again.is_connected(&phone.engine.id()) && phone_again.is_connected(&mac.engine.id())).await;
+    assert!(everything_in(&mac.downloads).is_empty(), "nothing goes on by itself");
+    assert_eq!(mac_again.resumable_transfers().len(), 1);
+    Halfway { phone, mac, mac_again, _phone_again: phone_again, offer, source }
+}
+
+/// Whole: a yes after a restart brings the rest, and the whole folder goes to its place under its own name.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_halfway_keeps_what_came_across_a_restart_and_a_yes_finishes_it() {
+    let h = a_folder_halfway().await;
+    let mut events = h.mac_again.subscribe();
+    h.mac_again.resume_transfer(h.phone.engine.id(), h.offer).unwrap();
+    let done = finished(&mut events, 3).await;
+    assert!(done.iter().all(|d| d.error.is_none()), "{done:?}");
+    assert_eq!(std::fs::read(h.mac.downloads.join("Trip/day 1/raw/b.dng")).unwrap(), vec![9u8; 1_000_000]);
+    assert_eq!(std::fs::read(h.mac.downloads.join("Trip/notes.txt")).unwrap(), b"notes");
+    assert!(h.mac.downloads.join("Trip/empty").is_dir());
+}
+
+/// Thrown away: the half folder goes like a half file does, and the files that had arrived end as cancelled.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_halfway_that_is_thrown_away_leaves_nothing() {
+    let h = a_folder_halfway().await;
+    let mut events = h.mac_again.subscribe();
+    h.mac_again.discard_transfer(h.phone.engine.id(), h.offer).await.unwrap();
+    let done = finished(&mut events, 3).await;
+    assert!(done.iter().all(|d| d.error.as_deref() == Some("cancelled") && d.location.is_none()), "{done:?}");
+    wait_until("the folder is gone", || everything_in(&h.mac.data.join("folders")).is_empty()).await;
+    assert!(everything_in(&h.mac.downloads).is_empty());
+}
+
+/// Lapsed: nobody answered for days. What arrived is not lost, but it goes under a marked name, in the language of the app.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_halfway_whose_question_lapses_is_handed_over_as_incomplete() {
+    let h = a_folder_halfway().await;
+    h.mac_again.set_incomplete_label("onvolledig");
+    let days_later = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64 + 4 * 24 * 3600 * 1000;
+    h.mac_again.expire_transfers_at(days_later);
+    wait_until("handed over", || h.mac.downloads.join("Trip (onvolledig)").exists()).await;
+    wait_until("nothing waits", || everything_in(&h.mac.data.join("folders")).is_empty()).await;
+    assert_eq!(std::fs::read(h.mac.downloads.join("Trip (onvolledig)/notes.txt")).unwrap(), b"notes");
+    assert!(h.mac.downloads.join("Trip (onvolledig)/day 1/a.jpg").exists());
+    assert!(!h.mac.downloads.join("Trip").exists(), "never under its own name, it is not whole");
+}
+
+/// Failed: a file changed at the sender, so the folder can never be whole. What arrived goes under the marked name, each file says
+/// where, and the one that failed says why.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_with_a_file_that_failed_is_handed_over_as_incomplete() {
+    let h = a_folder_halfway().await;
+    std::fs::write(h.source.path().join("Trip/day 1/raw/b.dng"), vec![1u8; 10]).unwrap();
+    let mut events = h.mac_again.subscribe();
+    h.mac_again.resume_transfer(h.phone.engine.id(), h.offer).unwrap();
+    let done = finished(&mut events, 3).await;
+    let by_name = |name: &str| done.iter().find(|d| d.name == name).unwrap().clone();
+    assert_eq!(by_name("b.dng").error.as_deref(), Some("changed"));
+    assert_eq!(PathBuf::from(by_name("notes.txt").location.unwrap()), h.mac.downloads.join("Trip (incomplete)/notes.txt"));
+    assert!(!h.mac.downloads.join("Trip").exists());
+}
+
+/// Cancelled while it runs: stopped by the person here, the half folder goes and nothing shows in the downloads.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_that_is_stopped_while_it_comes_leaves_nothing() {
+    let open = Arc::new(AtomicBool::new(true));
+    let phone_dir = tempfile::tempdir().unwrap();
+    let gate = Gate { inner: DesktopFiles { download_dir: phone_dir.path().join("downloads") }, held: "b.dng", passes: Arc::new(AtomicUsize::new(1)), open: open.clone() };
+    let phone = node_with_files("Phone", true, phone_dir, Arc::new(gate)).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    let top = trip(source.path());
+    let offer = a_folder_on_its_way(&phone, &mac, &top, &open).await;
+    let mut events = mac.engine.subscribe();
+    mac.engine.cancel_transfer(phone.engine.id(), offer, true).await;
+    open.store(true, Ordering::SeqCst);
+    let done = finished(&mut events, 3).await;
+    assert!(done.iter().all(|d| d.error.as_deref() == Some("cancelled")), "{done:?}");
+    wait_until("the folder is gone", || everything_in(&mac.data.join("folders")).is_empty()).await;
+    assert!(everything_in(&mac.downloads).is_empty());
+}
+
+/// Nothing but empty folders still makes the folders.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_offer_of_only_empty_folders_makes_them() {
+    let phone = node("Phone", true).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    let top = source.path().join("Empty");
+    std::fs::create_dir_all(top.join("inside")).unwrap();
+    let report = phone.engine.send_files(&[mac.engine.id()], vec![folder_of(&top)], ShareOrigin::Files).await.unwrap();
+    assert_eq!(report.sent_to.len(), 1);
+    wait_until("the folders are made", || mac.downloads.join("Empty/inside").is_dir()).await;
+}
+
+/// Two top folders, a restart while A is whole and B halfway: the start hands A over, the yes finishes B, and A is never handed over
+/// a second time (no "A (1)" with only its empty folder, no second `Finished`, its files still say where they are).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_folder_handed_over_at_the_start_is_not_handed_over_again() {
+    let open = Arc::new(AtomicBool::new(false));
+    let phone_dir = tempfile::tempdir().unwrap();
+    let gate = Gate { inner: DesktopFiles { download_dir: phone_dir.path().join("downloads") }, held: "b.bin", passes: Arc::new(AtomicUsize::new(1)), open: open.clone() };
+    let phone = node_with_files("Phone", true, phone_dir, Arc::new(gate)).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(source.path().join("A/empty")).unwrap();
+    std::fs::write(source.path().join("A/a.txt"), b"a").unwrap();
+    std::fs::create_dir_all(source.path().join("B")).unwrap();
+    std::fs::write(source.path().join("B/b.bin"), vec![3u8; 500_000]).unwrap();
+    let report = phone
+        .engine
+        .send_files(&[mac.engine.id()], vec![folder_of(&source.path().join("A")), folder_of(&source.path().join("B"))], ShareOrigin::Files)
+        .await
+        .unwrap();
+    let offer = report.offer;
+    wait_until("A came and B is on its way", || {
+        let s = states(&mac.engine, offer);
+        s.iter().any(|(n, st)| n == "a.txt" && *st == ItemState::Done) && s.iter().any(|(n, st)| n == "b.bin" && *st == ItemState::Running)
+    })
+    .await;
+    // A is whole, but the offer is not: it is handed over at the latest at the start.
+    mac.engine.shutdown().await;
+    open.store(true, Ordering::SeqCst);
+    phone.engine.shutdown().await;
+
+    let mac_again = restart(&mac, "Mac").await;
+    wait_until("A is handed over at the start", || mac.downloads.join("A/a.txt").exists()).await;
+    let phone_again = restart(&phone, "Phone").await;
+    mac_again.add_address(&phone.engine.id(), &format!("127.0.0.1:{}", phone_again.port())).unwrap();
+    wait_until("connected again", || mac_again.is_connected(&phone.engine.id()) && phone_again.is_connected(&mac.engine.id())).await;
+
+    let mut events = mac_again.subscribe();
+    mac_again.resume_transfer(phone.engine.id(), offer).unwrap();
+    let done = finished(&mut events, 1).await;
+    assert_eq!(done[0].name, "b.bin");
+    assert!(done[0].error.is_none(), "{done:?}");
+    // Nothing more comes for A.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    while let Ok(event) = events.try_recv() {
+        assert!(!matches!(&event, Event::Finished(d) if d.name == "a.txt"), "A got a second Finished");
+    }
+    assert_eq!(everything_in(&mac.downloads), vec!["A", "A/a.txt", "A/empty", "B", "B/b.bin"]);
+    let record = mac_again.transfers().into_iter().find(|t| t.offer == offer).unwrap();
+    let a = record.items.iter().position(|i| i.name == "a.txt").unwrap();
+    assert_eq!(PathBuf::from(record.peers[0].items[a].location.clone().unwrap()), mac.downloads.join("A/a.txt"));
+}
+
+/// A top folder of only empty folders ends as the offer does: nothing is made when the offer was declined or stopped.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn empty_folders_are_not_made_for_an_offer_that_was_declined_or_stopped() {
+    let open = Arc::new(AtomicBool::new(false));
+    let phone_dir = tempfile::tempdir().unwrap();
+    let gate = Gate { inner: DesktopFiles { download_dir: phone_dir.path().join("downloads") }, held: "b.bin", passes: Arc::new(AtomicUsize::new(1)), open: open.clone() };
+    let phone = node_with_files("Phone", true, phone_dir, Arc::new(gate)).await;
+    let mac = node("Mac", true).await;
+    paired(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(source.path().join("X/one/two")).unwrap();
+    std::fs::create_dir_all(source.path().join("Y")).unwrap();
+    std::fs::write(source.path().join("Y/b.bin"), vec![3u8; 500_000]).unwrap();
+
+    // Stopped while Y comes: X, which holds nothing, is not made either.
+    let report = phone
+        .engine
+        .send_files(&[mac.engine.id()], vec![folder_of(&source.path().join("X")), folder_of(&source.path().join("Y"))], ShareOrigin::Files)
+        .await
+        .unwrap();
+    wait_until("Y is on its way", || states(&mac.engine, report.offer).iter().any(|(_, st)| *st == ItemState::Running)).await;
+    let mut events = mac.engine.subscribe();
+    mac.engine.cancel_transfer(phone.engine.id(), report.offer, true).await;
+    open.store(true, Ordering::SeqCst);
+    finished(&mut events, 1).await;
+    wait_until("nothing waits", || everything_in(&mac.data.join("folders")).is_empty()).await;
+    assert!(everything_in(&mac.downloads).is_empty(), "{:?}", everything_in(&mac.downloads));
+
+    // Declined: nothing is made.
+    mac.engine.set_device_settings(&phone.engine.id(), DeviceSettings { auto_accept: false, ..Default::default() }).unwrap();
+    let report = phone.engine.send_files(&[mac.engine.id()], vec![folder_of(&source.path().join("X"))], ShareOrigin::Files).await.unwrap();
+    expect(&mut events, "the offer", |e| matches!(e, Event::ShareOffered { offer, .. } if offer.id == report.offer).then_some(())).await;
+    mac.engine.decline_offer(phone.engine.id(), report.offer).await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(everything_in(&mac.downloads).is_empty() && everything_in(&mac.data.join("folders")).is_empty());
+}

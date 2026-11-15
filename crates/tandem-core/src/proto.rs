@@ -605,7 +605,7 @@ pub struct CaptureCancel {
     pub why: CaptureWhy,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShareItem {
     pub name: String,
     pub size: u64,
@@ -613,6 +613,10 @@ pub struct ShareItem {
     pub mime: String,
     #[serde(default)]
     pub modified: Option<u64>,
+    /// The folder inside the offer this file belongs in, parts joined by `/` (P4). Only sent to a device with the cap
+    /// `share.folders`; empty for a loose file, and then not written, so the offer is the same as before.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub path: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -620,6 +624,9 @@ pub struct ShareOffer {
     pub id: u64,
     pub origin: ShareOrigin,
     pub items: Vec<ShareItem>,
+    /// Folders inside the offer that hold no file, so they arrive too (P4). Parts joined by `/`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub folders: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1224,9 +1231,9 @@ mod tests {
     #[test]
     fn the_answer_to_a_capture_keeps_its_request_id_and_old_origins_still_read() {
         // Files dropped on the edge survive the trip, and an older version reads the origin as Other.
-        let dropped = ShareOffer { id: 2, origin: ShareOrigin::Drag, items: vec![] };
+        let dropped = ShareOffer { id: 2, origin: ShareOrigin::Drag, items: vec![], folders: vec![] };
         assert_eq!(decode::<ShareOffer>(&encode(&dropped).unwrap()).unwrap().origin, ShareOrigin::Drag);
-        let offer = ShareOffer { id: 1, origin: ShareOrigin::Capture(77), items: vec![] };
+        let offer = ShareOffer { id: 1, origin: ShareOrigin::Capture(77), items: vec![], folders: vec![] };
         let back: ShareOffer = decode(&encode(&offer).unwrap()).unwrap();
         assert_eq!(back.origin, ShareOrigin::Capture(77));
 
@@ -1258,7 +1265,7 @@ mod tests {
             ShareOffer { id: u64, origin: OldOrigin },
             Ping { nonce: u64 },
         }
-        let bytes = encode(&Msg::ShareOffer(ShareOffer { id: 1, origin: ShareOrigin::Capture(5), items: vec![] })).unwrap();
+        let bytes = encode(&Msg::ShareOffer(ShareOffer { id: 1, origin: ShareOrigin::Capture(5), items: vec![], folders: vec![] })).unwrap();
         // The old reader cannot make sense of it, and that is fine: `decode_msg` falls back to
         // `Msg::Unknown` when the bytes are well formed CBOR, so the offer is skipped and the
         // connection carries on.

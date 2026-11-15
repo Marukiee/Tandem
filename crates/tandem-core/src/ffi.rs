@@ -730,6 +730,9 @@ pub struct TandemSendReport {
     pub offline: Vec<String>,
     /// Of `offline`, the devices it waits for in the queue (P3): it goes when they come back, for up to 7 days.
     pub queued: Vec<String>,
+    /// Only when this app lists the cap `share.folders`: the offer held folders and these devices do not take them as they are
+    /// (P4). They got nothing; send them the folders as zips.
+    pub no_folders: Vec<String>,
 }
 
 /// An incoming transfer that stopped halfway before this start and waits for the person: go on or throw away (P2).
@@ -2161,7 +2164,14 @@ impl TandemEngine {
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
             queued: ids_to_strings(report.queued),
+            no_folders: ids_to_strings(report.no_folders),
         })
+    }
+
+    /// What is put after the name of a folder that did not come whole and is handed over anyway (P4), in the language of the app:
+    /// "Trip (incomplete)", "Trip (onvolledig)". Only matters when the app lists `share.folders` in its caps.
+    pub fn set_incomplete_label(&self, label: String) {
+        self.engine.set_incomplete_label(&label);
     }
 
     /// The devices among `targets` that report less free space than `files` take (P5). Ask before sending when it is not empty; the
@@ -2237,6 +2247,7 @@ impl TandemEngine {
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
             queued: ids_to_strings(report.queued),
+            no_folders: ids_to_strings(report.no_folders),
         })
     }
 

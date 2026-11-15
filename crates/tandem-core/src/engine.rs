@@ -158,6 +158,8 @@ pub(crate) struct Inner {
     pub(crate) metered: AtomicBool,
     /// Files sent to a device that is away wait for it (P3), as its app says (`set_queue_offline`). Off until an app shows the queue.
     pub(crate) queue_offline: AtomicBool,
+    /// Put after the name of a folder that did not come whole and is handed over anyway (P4), in the language of the app.
+    pub(crate) incomplete_label: RwLock<String>,
     /// This device is a phone with its screen off, as its app says (`set_quiet`).
     pub(crate) quiet: AtomicBool,
     /// This device or another one became quiet or awake: every heartbeat looks again at its pace (see `Inner::heartbeat`).
@@ -273,6 +275,7 @@ impl Engine {
             said_back: Mutex::new(None),
             metered: AtomicBool::new(false),
             queue_offline: AtomicBool::new(false),
+            incomplete_label: RwLock::new("incomplete".into()),
             quiet: AtomicBool::new(false),
             beat_changed: Notify::new(),
             last_hurry: Mutex::new(None),
@@ -295,6 +298,9 @@ impl Engine {
         inner.load_addresses();
         inner.begin_long_away_at_the_long_backoff();
         inner.clean_partials();
+        // The app may copy a folder to another disk, so not on this thread.
+        let settling = inner.clone();
+        tokio::task::spawn_blocking(move || settling.settle_folders());
         // In what the first connection is told, without waiting for a change.
         let trust = Status { trust: Some(inner.trust_table()), ..Status::default() };
         inner.my_status.lock().unwrap().merge(&trust);
@@ -600,6 +606,12 @@ impl Engine {
     }
 
     /// Tries a short code on the device at these addresses, without looking for it on the network. For tests.
+    /// Lets transfers lapse as if the clock said `now_ms`, for tests of what happens days later.
+    #[doc(hidden)]
+    pub fn expire_transfers_at(&self, now_ms: u64) {
+        self.inner.expire_transfers_at(now_ms);
+    }
+
     #[doc(hidden)]
     pub async fn pair_with_code_at(&self, code: &str, addrs: &[std::net::SocketAddr]) -> Result<DeviceId> {
         use crate::pairing::CodeFailure;
@@ -686,6 +698,15 @@ impl Engine {
 
     /// The devices among `targets` that said they have less free space than `files` take (P5), for a warning before sending. A device
     /// that does not report its free space is never in it; the receiver refuses by itself when it does not fit.
+    /// What is put after the name of a folder that did not come whole when it is handed over anyway (P4): "Trip (incomplete)".
+    /// The app sets it in its own language; "incomplete" until then.
+    pub fn set_incomplete_label(&self, label: &str) {
+        let label = label.trim();
+        if !label.is_empty() {
+            *self.inner.incomplete_label.write().unwrap() = crate::folders::safe_part(label);
+        }
+    }
+
     pub fn short_of_space(&self, targets: &[DeviceId], files: &[crate::transfer::OutgoingFile]) -> Vec<DeviceId> {
         self.inner.short_of_space(targets, files)
     }

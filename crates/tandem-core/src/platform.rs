@@ -28,12 +28,31 @@ impl FileStore for DesktopFiles {
         std::fs::create_dir_all(&self.download_dir)?;
         let target = unique_path(&self.download_dir, &sanitize_name(name));
         if std::fs::rename(temp, &target).is_err() {
-            // Different volume: copy, then drop the temp file.
-            std::fs::copy(temp, &target)?;
-            std::fs::remove_file(temp)?;
+            // Different volume: copy, then drop the temp file. A folder that came whole (P4) is copied with all it holds.
+            if temp.is_dir() {
+                copy_folder(temp, &target)?;
+                std::fs::remove_dir_all(temp)?;
+            } else {
+                std::fs::copy(temp, &target)?;
+                std::fs::remove_file(temp)?;
+            }
         }
         Ok(target.to_string_lossy().into_owned())
     }
+}
+
+fn copy_folder(from: &Path, to: &Path) -> io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_folder(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), target)?;
+        }
+    }
+    Ok(())
 }
 
 /// A file name that is safe to create: no separators, no control characters, not

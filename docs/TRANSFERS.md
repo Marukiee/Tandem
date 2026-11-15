@@ -20,11 +20,12 @@ geschreven met `Store::write`.
 | `offer`, `incoming` | het nummer en de richting |
 | `origin` | `ShareOrigin` (bestanden, klembord, schermafbeelding, ...) |
 | `created_ms`, `updated_ms` | klok in ms: wanneer gemaakt, wanneer de stand laatst veranderde |
-| `items[]` | per bestand: `name`, `size`, `mime`, `modified` (zoals in het aanbod), `source` (uit: pad of content-URI), `source_modified_ms` (uit: wanneer de bron veranderde toen het aanbod gemaakt werd, als dat bekend is), `path` (map binnen het aanbod, voor P4, nu leeg) |
+| `items[]` | per bestand: `name`, `size`, `mime`, `modified` (zoals in het aanbod), `source` (uit: pad of content-URI), `source_modified_ms` (uit: wanneer de bron veranderde toen het aanbod gemaakt werd, als dat bekend is), `path` (de map binnen het aanbod, delen met `/`, leeg voor een los bestand; P4) |
 | `peers[]` | uit: een per ontvanger; in: een, de afzender. Per apparaat `device`, `stage`, `offered_ms` en `items[]` |
 | `peers[].items[]` | per bestand voor dat apparaat: `state`, `done` (bytes), `error`, `location` (in: waar het staat) |
 | `held` | in: wachtte op een ja omdat dit apparaat op mobiele data zat en het groot was |
 | `requested_by` | het apparaat op wiens verzoek dit aanbod gemaakt is, als dat niet dit apparaat is (P9); anders leeg |
+| `folders` | mappen binnen het aanbod waar geen bestand in zit (P4), zoals `ShareOffer::folders` |
 
 `stage` per apparaat: `queued` (P3: nog niet verstuurd, het apparaat was weg), `offered` (verstuurd of binnen, nog niets
 opgehaald; binnenkomend wacht het op een ja), `accepted` (ja gezegd, of de ontvanger haalde op), `closed` (gestopt, geweigerd
@@ -300,13 +301,66 @@ Titel van een rij: de naam van het eerste bestand dat niet af is, met "%1$@ and 
 
 Test: `the_panel_sees_halfway_waiting_queued_failed_and_running_transfers` in `tests/transfers.rs`.
 
-### P4. Echte mappen
+### P4. Echte mappen (gebouwd, kern)
 
-`ShareItem` krijgt `path` (`#[serde(default)]`), met een nieuwe cap; een oude ontvanger krijgt de zip zoals nu. In het boek staat
-het al: `RecordItem::path`. De ontvanger maakt de mappen, elk deel door de naamcontrole (R-V6). Het deelbestand blijft per nummer,
-dus hervatten werkt voor mappen vanzelf.
+Code: `crates/tandem-core/src/folders.rs`. Tests: `tests/folders.rs` en onderin `folders.rs`.
 
-Klaar als een kerntest drie lagen, een lege map en een naam die naar buiten wil dekt, en een oude ontvanger nog de zip krijgt.
+**Aanzetten.** Een app zet het aan door `share.folders` (`folders::FOLDERS_CAP`) in zijn caps te zetten (`EngineConfig::caps`, ffi
+`TandemConfig.caps`). Dat doet twee dingen: dit apparaat stuurt mappen als map, en het zegt de anderen dat het mappen als map neemt.
+Een app zet het pas aan als zijn `store_download` een map aankan (zie hieronder). Zonder de cap verandert er niets.
+
+**Sturen.** `send_files` met een map als `source` (een pad) vouwt die open: elk bestand wordt een item met `path` (de map binnen het
+aanbod, `Trip/day 1`), en mappen waar niets in zit komen in `ShareOffer::folders`. De naam van de bovenste map is de `name` die de app
+meegeeft, anders de mapnaam. Snelkoppelingen (symlinks) gaan niet mee (ze kunnen naar buiten of terug omhoog wijzen), `.DS_Store` ook
+niet. Meer dan 20.000 bestanden in een aanbod wordt geweigerd: het aanbod moet in een bericht passen.
+
+**Oude ontvanger.** Een ontvanger die de cap niet heeft krijgt niets van dat aanbod en staat in `SendReport::no_folders` (ffi
+`TandemSendReport.no_folders`); de app maakt dan zelf een zip van de map en stuurt die naar die apparaten, zoals voor P4. Een apparaat
+dat weg is en sinds de start niet gezien is staat er ook in: wat het aankan is dan niet bekend (de caps komen met de begroeting). De kern
+maakt geen zip: daar is geen bibliotheek voor, en de Mac heeft `ditto`. Een ontvanger zonder de cap die toch een aanbod met `path` krijgt,
+negeert `path` en `folders` en bouwt geen mappen.
+
+**Ontvangen.** Elk bestand wordt opgehaald zoals altijd (het deelbestand blijft per nummer, dus hervatten werkt vanzelf). Is het binnen,
+dan gaat het naar `<datamap>/folders/<afzender>-<aanbod>/<map>/.../<naam>`, met elk deel door de naamcontrole (`folders::safe_part`:
+`..` wordt `file`, `/`, `\` en `:` worden `_`, geen punt of spatie aan het eind, en een naam die Windows voor een apparaat houdt zoals
+`CON`, `NUL` of `COM1` krijgt een `_` ervoor; een pad klimt dus nooit uit die map). De naam wordt geclaimd door hem leeg aan te maken,
+zodat twee bestanden met dezelfde naam elkaar nooit overschrijven. Twee bovenste mappen die alleen in hoofdletters verschillen (`Photos`
+en `photos` van een Linux-afzender) wachten elk in een eigen map (`photos (2)`), want op een Mac of Windows zouden ze er een zijn. In het
+boek is een bestand dan `done` met die plek als `location`, maar er komt nog geen `Finished`.
+
+**Hoe een map eindigt.** Een map komt alleen onder zijn eigen naam in Downloads als hij heel is. Per bovenste map, zodra elk bestand
+erin in een eindstand is:
+
+| Einde | Wanneer | Wat er gebeurt |
+| --- | --- | --- |
+| heel | elk bestand kwam aan | de map gaat in een keer naar de app (`store_download(map, naam, "inode/directory")`, `folders::FOLDER_MIME`), en daarna krijgt elk bestand zijn `Finished` met zijn plek in de nieuwe map |
+| halverwege | een bestand is niet af en kan nog verder (na een herstart: P2) | de map blijft in de datamap; de vraag "verder gaan of weggooien" beslist |
+| weggegooid of gestopt | Weggooien bij P2, of een persoon (hier of bij de afzender) stopte het | de map gaat weg, net als een half bestand; de bestanden die al binnen waren eindigen met `cancelled` |
+| mislukt of verlopen | een bestand mislukte (veranderd of weg bij de afzender, verbinding weg na alle pogingen), of de vraag van P2 bleef 3 dagen zonder antwoord | wat binnen was gaat naar de app onder een gemerkte naam, "Trip (incomplete)", zodat niets stil verdwijnt en niets heel lijkt wat het niet is |
+
+Het woord tussen haakjes zet de app in zijn eigen taal met `set_incomplete_label` (Engels "incomplete", Nederlands "onvolledig");
+zonder dat is het "incomplete". Bij verlopen staat het aanbod daarna niet meer in het boek en komt er geen `Finished` voor de bestanden die
+binnen waren (ze kregen die van verlopen ook niet); het paneel ziet het verlopen. Lukt het opslaan niet, dan gaat de map weg en eindigt
+elk bestand dat binnen was met `not saved`. Een bestand dat mislukte krijgt zijn `Finished` meteen, zoals altijd.
+
+De overdracht naar de app loopt altijd op een eigen draad (`spawn_blocking`), nooit op de berichtenlus: de app kan een grote map naar een
+andere schijf kopieren. Het boek wordt per map een keer geschreven, niet per bestand. Bij de start wordt elke map waarvan alles eindigde
+afgehandeld zoals hierboven, en wat er nog staat van een aanbod dat niet meer in het boek staat gaat onder de gemerkte naam naar de app
+(zonder gebeurtenis, er luistert dan nog niemand; de app leest het boek). Lege mappen worden een keer gemaakt, als de bestanden van het
+aanbod voor het eerst opgehaald worden (dus pas na een ja), nooit bij een overdracht; een map die al overgedragen is komt zo nooit
+terug. Een bovenste map met alleen lege mappen heeft geen eigen bestand en eindigt zoals het hele aanbod: hij wacht tot elk bestand
+eindigde, gaat weg als er een gestopt werd, en is anders heel. Een aanbod van alleen lege mappen maakt die mappen.
+
+**Wat een app moet doen om het aan te zetten:**
+
+1. `store_download` moet een map aankunnen als het type `inode/directory` is: de hele map verplaatsen (of kopieren en weghalen) naar
+   een vrije naam in Downloads en dat pad teruggeven. De Mac doet het met `moveItem` en zet de quarantainevlag op elk bestand erin.
+   Android heeft geen pad voor een map in Downloads (MediaStore): daar moet de app de map zelf nalopen en elk bestand opslaan, en een
+   pad of URI van de map teruggeven.
+2. `share.folders` in de caps zetten, en `set_incomplete_label` met het woord voor "incomplete" in de taal van de app.
+3. Bij het sturen een map gewoon als `source` meegeven (niet meer zelf zippen), en voor de apparaten in `no_folders` de map zippen en
+   die zip met een tweede `send_files` sturen.
+4. In de lijst van wat binnenkwam de bestanden van een map samen tonen (een rij met de mapnaam), niet honderd losse rijen.
 
 ### P9. Sturen tussen twee andere apparaten
 
