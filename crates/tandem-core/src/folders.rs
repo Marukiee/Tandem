@@ -209,14 +209,10 @@ impl Inner {
         tops
     }
 
-    /// Moves a file that came in whole into the folder it belongs in, under the folder of its offer. Gives where it is now.
-    pub(crate) fn stage_folder_file(&self, peer: DeviceId, offer: u64, path: &str, name: &str, temp: &Path) -> Result<String> {
-        let paths = self
-            .journal
-            .read(Key::In(peer, offer), |record| record.items.iter().map(|i| i.path.clone()).chain(record.folders.iter().cloned()).collect::<Vec<_>>())
-            .unwrap_or_default();
-        let tops = staged_tops(&paths.iter().map(String::as_str).collect::<Vec<_>>());
-        let target = staged_path(&self.staging_root(peer, offer), &tops, path, name)?;
+    /// Moves a file that came in whole into the folder it belongs in, under the folder of its offer (`tops` from `begin_folders`).
+    /// Gives where it is now.
+    pub(crate) fn stage_folder_file(&self, peer: DeviceId, offer: u64, tops: &BTreeMap<String, String>, path: &str, name: &str, temp: &Path) -> Result<String> {
+        let target = staged_path(&self.staging_root(peer, offer), tops, path, name)?;
         if let Err(e) = std::fs::rename(temp, &target) {
             let _ = std::fs::remove_file(&target);
             return Err(e.into());

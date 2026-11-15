@@ -835,10 +835,14 @@ impl Inner {
         let clipboard_on = self.settings.read().unwrap().for_device(&peer).clipboard;
         let for_clipboard = kept_for_clipboard(&offer, clipboard_on);
         let has_folders = !offer.folders.is_empty() || offer.items.iter().any(|item| !item.path.is_empty());
-        if has_folders {
+        // Where each top folder waits, worked out once for the offer and not again for each of its files.
+        let tops = if has_folders {
             let this = self.clone();
-            let _ = tokio::task::spawn_blocking(move || this.begin_folders(peer, offer.id)).await;
-        }
+            tokio::task::spawn_blocking(move || this.begin_folders(peer, offer.id)).await.unwrap_or_default()
+        } else {
+            Default::default()
+        };
+        let tops = Arc::new(tops);
         let slots = Arc::new(Semaphore::new(CONCURRENT_FILES));
         let mut tasks = tokio::task::JoinSet::new();
         for (index, item) in offer.items.iter().enumerate() {
@@ -850,9 +854,10 @@ impl Inner {
             let item = item.clone();
             let offer_id = offer.id;
             let cancel = run.cancel.clone();
+            let tops = tops.clone();
             tasks.spawn(async move {
                 let _permit = permit;
-                this.receive_item(peer, offer_id, index as u32, item, for_clipboard, cancel).await;
+                this.receive_item(peer, offer_id, index as u32, item, for_clipboard, cancel, tops).await;
             });
         }
         while tasks.join_next().await.is_some() {}
@@ -862,6 +867,7 @@ impl Inner {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn receive_item(
         self: Arc<Self>,
         peer: DeviceId,
@@ -870,6 +876,7 @@ impl Inner {
         item: ShareItem,
         for_clipboard: bool,
         cancel: CancellationToken,
+        tops: Arc<std::collections::BTreeMap<String, String>>,
     ) {
         let key = Key::In(peer, offer);
         let temp = self.partial_path(peer, offer, index);
@@ -930,7 +937,7 @@ impl Inner {
             Ok(()) if !item.path.is_empty() => {
                 let this = self.clone();
                 let (path, name, from) = (item.path.clone(), item.name.clone(), temp.clone());
-                let staged = tokio::task::spawn_blocking(move || this.stage_folder_file(peer, offer, &path, &name, &from)).await;
+                let staged = tokio::task::spawn_blocking(move || this.stage_folder_file(peer, offer, &tops, &path, &name, &from)).await;
                 match staged {
                     Ok(Ok(location)) => {
                         self.journal.file_ended(key, |record| {
