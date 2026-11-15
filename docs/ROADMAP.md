@@ -103,6 +103,14 @@ dit apparaat" op elke apparaatpagina), en op Android en Linux en Windows de rij 
 
 Gevonden bij het nakijken van die PR's, nog te doen:
 
+- **R-D21. Linux en Windows: dezelfde overgang als de Mac bij het wisselen van pagina** (wens van Mark, 2026-11-16). Op de Mac (PR
+  31, commits `94c69597` en `4cfd9f34`) is het wisselen tussen apparaten en pagina's een rustige beweging: de hele pagina vloeit
+  kort over (ongeveer 200 tot 250 ms) en schuift een paar punten mee in de richting waarin je in de zijbalk klikt, er vervormt niets
+  (geen kop die van halve naar hele breedte rekt, geen accuring die van de ene waarde naar de andere draait, geen kaart die groeit
+  terwijl de inhoud nog de oude is), en het gekozen vlak in de zijbalk glijdt mee als een vlak. Vooral tussen een apparaat met en
+  een zonder speler. Met verminderde beweging alleen overvloeien. Hetzelfde in `windows/ui` (de zijbalk van PR 24, `pages.js`, de
+  overgangen die daar al zijn); Android heeft zijn eigen navigatie en hoort hier niet bij.
+
 - **R-I33. Instellingen van een apparaat op zijn eigen pagina, met de naam aanpasbaar vanaf elk apparaat** (wens van Mark,
   2026-11-15). Op de pagina van elk apparaat komt een rij "Instellingen van dit apparaat" (de Mac heeft die nu alleen op de pagina van
   het horloge, `M/UI/WatchDetail.swift`). Daarachter staat alles van dat apparaat wat niet al op de apparaatpagina zelf staat (daar
