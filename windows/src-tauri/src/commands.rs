@@ -364,7 +364,9 @@ pub async fn send_paths_with(state: &AppState, ids: Vec<String>, paths: Vec<Path
         return Ok(json!({ "sent": 0, "queued": 0, "offline": 0, "folders": folders }));
     }
     let report = engine.send_files(ids, files, origin).await.map_err(shown)?;
-    Ok(json!({ "sent": report.sent_to.len(), "queued": report.queued.len(), "offline": report.offline.len(), "folders": folders }))
+    // The core counts a queued device among the offline ones; only what will not arrive is told as lost.
+    let lost = report.offline.len().saturating_sub(report.queued.len());
+    Ok(json!({ "sent": report.sent_to.len(), "queued": report.queued.len(), "offline": lost, "folders": folders }))
 }
 
 /// The devices that report less free space than these plain files take (P5), by id and name. Empty: send without asking.
