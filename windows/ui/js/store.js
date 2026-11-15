@@ -12,6 +12,8 @@ export const state = {
   offers: [],
   // Incoming transfers that stopped halfway and wait for Go on or Throw away.
   halfway: [],
+  // What is underway and incoming (P3b), one row per transfer and device: running, waiting for a yes, queued for a device that is away, failed.
+  underway: [],
   notifications: [],
   players: {},
   art: {},

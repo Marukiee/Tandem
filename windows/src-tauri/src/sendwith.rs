@@ -145,7 +145,7 @@ pub fn send_pick(app: AppHandle, to: Vec<String>) {
         let names = to.iter().map(|id| events::device_name(&app, id)).collect::<Vec<_>>().join(", ");
         let state = app.state::<AppState>();
         match commands::send_paths_with(&state, to, files, TandemShareOrigin::Files).await {
-            Ok(_) => events::toast(&app, "Tandem", &i18n::t2(&app, "send_with_sent", &count, &names)),
+            Ok(result) => events::toast(&app, "Tandem", &told(&app, &result, &count, &names)),
             Err(error) => events::toast(&app, "Tandem", &error),
         }
     });
@@ -155,7 +155,7 @@ async fn send(app: &AppHandle, to: Option<String>, files: Vec<PathBuf>) {
     // Tandem may just have been started by the file manager: the devices need a moment to be found.
     let mut targets = Vec::new();
     for _ in 0..30 {
-        targets = online(app, to.as_deref());
+        targets = reachable(app, to.as_deref());
         if !targets.is_empty() {
             break;
         }
@@ -171,18 +171,25 @@ async fn send(app: &AppHandle, to: Option<String>, files: Vec<PathBuf>) {
     let names = targets.iter().map(|id| events::device_name(app, id)).collect::<Vec<_>>().join(", ");
     let state = app.state::<AppState>();
     match commands::send_paths_with(&state, targets, files, TandemShareOrigin::Files).await {
-        Ok(_) => events::toast(app, "Tandem", &i18n::t2(app, "send_with_sent", &count, &names)),
+        Ok(result) => events::toast(app, "Tandem", &told(app, &result, &count, &names)),
         Err(error) => events::toast(app, "Tandem", &error),
     }
 }
 
-/// The reachable devices to send to: the one asked for, or all of them when none was named.
-fn online(app: &AppHandle, to: Option<&str>) -> Vec<String> {
+/// What the person is told after a send: sent, or waiting in the queue for a device that is away (P3).
+fn told(app: &AppHandle, result: &serde_json::Value, count: &str, names: &str) -> String {
+    let key = if result["sent"].as_u64().unwrap_or(0) == 0 && result["queued"].as_u64().unwrap_or(0) > 0 { "send_with_queued" } else { "send_with_sent" };
+    i18n::t2(app, key, count, names)
+}
+
+/// The devices to send to: the one asked for, even when it is away (what goes to it waits in the queue, P3), or all that are
+/// connected when none was named.
+fn reachable(app: &AppHandle, to: Option<&str>) -> Vec<String> {
     let state = app.state::<AppState>();
     let data = state.data.held();
     data.devices
         .iter()
-        .filter(|d| d["online"].as_bool() == Some(true))
+        .filter(|d| to.is_some() || d["online"].as_bool() == Some(true))
         .filter_map(|d| d["id"].as_str())
         .filter(|id| to.is_none_or(|wanted| wanted == *id))
         .map(str::to_string)
@@ -440,7 +447,7 @@ class TandemSend(GObject.GObject, Nautilus.MenuProvider):
         for device in listed:
             online = device.get("online", True)
             label = device["name"] if online else device["name"] + " (" + AWAY + ")"
-            entry = Nautilus.MenuItem(name="TandemSend::" + device["id"], label=label, sensitive=online)
+            entry = Nautilus.MenuItem(name="TandemSend::" + device["id"], label=label)
             entry.connect("activate", self.send, paths, device["id"])
             menu.append_item(entry)
         return [item]

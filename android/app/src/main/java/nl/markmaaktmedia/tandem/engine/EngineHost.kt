@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.BuildConfig
+import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import uniffi.tandem_core.TandemCaptureWhy
 import uniffi.tandem_core.TandemConfig
@@ -52,6 +53,14 @@ data class TransferBatch(
     val done: Int = 0,
     val updatedAt: Long = System.currentTimeMillis(),
 )
+
+/** What a send came to: the devices it went to now, and the devices it waits for in the queue (P3). It is not "sent" for those. */
+data class SendResult(val sent: Int = 0, val queued: Int = 0, val cancelled: Boolean = false) {
+    companion object {
+        /** The person said Cancel at the question about room. */
+        val CANCELLED = SendResult(cancelled = true)
+    }
+}
 
 data class TransferItem(
     val id: String,
@@ -210,6 +219,9 @@ class EngineHost(
     /** Incoming transfers that stopped halfway, waiting on Go on or Throw away (P2). */
     val halfway = HalfwayTransfers(context, this, scope)
 
+    /** What runs, waits for a yes, waits in the queue or failed, in and out (P3b). */
+    val underway = UnderwayTransfers(context, this, scope)
+
     val myId: String get() = engine?.id().orEmpty()
     val myName: String get() = engine?.name().orEmpty()
 
@@ -270,10 +282,13 @@ class EngineHost(
                 screenChanged(context.getSystemService(android.os.PowerManager::class.java)?.isInteractive != false)
                 audioSink?.let { started.setAudioSink(it) }
                 mediaViewer?.let { started.setMediaViewer(it) }
+                // This app shows the queue (P3b), so files sent to a device that is away may wait for it.
+                started.setQueueOffline(true)
                 _state.value = EngineState.Running
                 refreshDevices()
                 refreshHealth()
                 halfway.refresh()
+                underway.refresh()
             } catch (e: Exception) {
                 Log.e(TAG, "engine failed to start", e)
                 _state.value = EngineState.Failed(e.message ?: e.toString())
@@ -325,7 +340,11 @@ class EngineHost(
                 refreshDevices()
                 // The sender is here again: Go on may work now.
                 if (event is TandemEvent.Connected) halfway.refresh()
+                if (event is TandemEvent.Connected || event is TandemEvent.Disconnected) underway.refresh(soon = true)
             }
+
+            // The queue moved an offer (it went out, or came back in the queue) without anything else saying so.
+            is TandemEvent.TransfersChanged -> underway.refresh()
 
             is TandemEvent.HealthChanged -> refreshHealth()
 
@@ -353,9 +372,16 @@ class EngineHost(
                 }
             }
 
-            is TandemEvent.ShareOffered -> batchStarted(event.offer, event.from, true, event.items.size)
-            is TandemEvent.Progress -> updateTransfer(event)
+            is TandemEvent.ShareOffered -> {
+                batchStarted(event.offer, event.from, true, event.items.size)
+                underway.refresh()
+            }
+            is TandemEvent.Progress -> {
+                updateTransfer(event)
+                underway.refresh(soon = true)
+            }
             is TandemEvent.Finished -> {
+                underway.refresh()
                 if (!event.incoming) AndroidFiles.finished(event.offer, event.index.toInt(), event.peer, event.error)
                 finishTransfer(event)
                 batchProgressed(event.offer, event.incoming)
@@ -458,32 +484,89 @@ class EngineHost(
     // ---- Actions --------------------------------------------------------------
 
     /**
-     * Sends content shared into the app. Returns how many devices it went to, or [SEND_CANCELLED] when a device is short of space
-     * and the person said Cancel. With [askSpace] that question comes first (P5), only for files a person picked: not for a drag, a
-     * copy or a screenshot, which the other side refuses by itself if they do not fit.
+     * Sends content shared into the app. Returns how many devices it went to and how many it waits for in the queue (P3), apart, or
+     * [SendResult.CANCELLED] when a device is short of space and the person said Cancel. With [askSpace] that question comes first (P5), only for files a person
+     * picked: not for a drag, a copy or a screenshot, which the other side refuses by itself if they do not fit.
+     *
+     * A device that is away gets the offer in the queue, and the files are copied first: the grant of a file of another app does not
+     * outlive a restart of this app, and the offer may wait for days. The copy is in the data folder of the core, which cleans it up
+     * a day after the offer is over.
      */
-    suspend fun sendUris(uris: List<Uri>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean = true, askSpace: Boolean = false): Int {
-        val engine = engine ?: return 0
-        if (uris.isEmpty() || targets.isEmpty()) return 0
+    suspend fun sendUris(uris: List<Uri>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean = true, askSpace: Boolean = false): SendResult {
+        val engine = engine ?: return SendResult()
+        if (uris.isEmpty() || targets.isEmpty()) return SendResult()
+        val away = origin.queues() && targets.any { device(it)?.online != true }
         // Opening a file of another app can mean fetching it first (a photo only in the cloud): never on the main thread.
-        val files = withContext(Dispatchers.IO) { uris.mapNotNull { describe(it, hold) } }
-        if (files.isEmpty()) return 0
+        val files = withContext(Dispatchers.IO) { uris.mapNotNull { describe(it, hold, copy = away) } }
+        // What describe copied just now: it is gone again when nothing is sent.
+        val copies = files.map { it.source }.filter { isQueueCopy(it) }
+        if (files.isEmpty()) return SendResult()
         if (askSpace && origin == TandemShareOrigin.Files) {
             val short = withContext(Dispatchers.IO) { runCatching { engine.shortOfSpace(targets, files) }.getOrDefault(emptyList()) }
             if (short.isNotEmpty() && !spaceAsker.ask(short.map { device(it)?.name ?: it })) {
                 if (hold) AndroidFiles.abandoned(files.map { it.source })
-                return SEND_CANCELLED
+                deleteCopies(copies)
+                return SendResult.CANCELLED
             }
         }
+        return sendDescribed(engine, files, targets, origin, hold, copies)
+    }
+
+    /** Sends files that are already described (the sources of a transfer that failed, for Send again). */
+    suspend fun sendOutgoing(files: List<TandemOutgoingFile>, targets: List<String>, origin: TandemShareOrigin): SendResult {
+        val engine = engine ?: return SendResult()
+        if (files.isEmpty() || targets.isEmpty()) return SendResult()
+        // To a device that is away the offer waits for days: a file of another app is copied first, as sendUris does, since its grant
+        // does not outlive a restart of this app.
+        val away = origin.queues() && targets.any { device(it)?.online != true }
+        val made = mutableListOf<String>()
+        val ready = if (away) {
+            withContext(Dispatchers.IO) {
+                files.map { file ->
+                    val copy = file.source.takeIf { it.startsWith("content://") }?.let { copyForQueue(Uri.parse(it), file.name, file.size.toLong()) }
+                    if (copy != null) made += copy
+                    if (copy != null) file.copy(source = copy) else file
+                }
+            }
+        } else {
+            files
+        }
+        return sendDescribed(engine, ready, targets, origin, hold = true, copies = made)
+    }
+
+    private suspend fun sendDescribed(engine: TandemEngine, files: List<TandemOutgoingFile>, targets: List<String>, origin: TandemShareOrigin, hold: Boolean, copies: List<String> = emptyList()): SendResult {
         val report = try {
             engine.sendFiles(targets, files, origin)
         } catch (e: Exception) {
             if (hold) AndroidFiles.abandoned(files.map { it.source })
+            deleteCopies(copies)
             throw e
         }
-        if (hold) AndroidFiles.offered(report.offer, files.map { it.source }, report.sentTo)
+        // A device in the queue still needs the files: without them a shared file is let go at once and ends as gone when it comes back.
+        if (hold) AndroidFiles.offered(report.offer, files.map { it.source }, report.sentTo, report.queued)
         report.sentTo.firstOrNull()?.let { batchStarted(report.offer, it, false, files.size * report.sentTo.size) }
-        return report.sentTo.size
+        underway.refresh()
+        if (report.queued.isNotEmpty()) {
+            // It waits in the queue: no warning that it failed, only where it is.
+            val names = report.queued.joinToString(", ") { device(it)?.name ?: context.getString(R.string.halfway_other_device) }
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(context, context.getString(R.string.queue_waits_toast, names), android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+        return SendResult(sent = report.sentTo.size, queued = report.queued.size)
+    }
+
+    private fun isQueueCopy(path: String) = path.startsWith(File(context.filesDir, "tandem/outgoing").absolutePath + "/")
+
+    /** Removes copies made for a send that did not happen: the core only cleans up files of an offer it knows, a day after it is over. */
+    private fun deleteCopies(paths: List<String>) {
+        paths.filter { isQueueCopy(it) }.forEach { runCatching { File(it).delete() } }
+    }
+
+    /** The kinds of offer that wait for a device that is away (`transfer::queues` in the core): a copy, a capture or a drag belong to a moment. */
+    private fun TandemShareOrigin.queues() = when (this) {
+        is TandemShareOrigin.Files, is TandemShareOrigin.Screenshot, is TandemShareOrigin.Photo, is TandemShareOrigin.Other -> true
+        else -> false
     }
 
     /** Sends what another device asked for, tagged with its request so it knows what the file answers. */
@@ -504,7 +587,7 @@ class EngineHost(
     private fun sourceOf(incoming: Boolean, name: String, size: Long): String? =
         if (incoming) null else outgoingSources["$name|$size"]
 
-    private fun describe(uri: Uri, hold: Boolean): TandemOutgoingFile? {
+    private fun describe(uri: Uri, hold: Boolean, copy: Boolean = false): TandemOutgoingFile? {
         val resolver = context.contentResolver
         var name = uri.lastPathSegment?.substringAfterLast('/') ?: "file"
         var size = 0L
@@ -516,7 +599,9 @@ class EngineHost(
                 }
             }
         }
-        val source = uri.toString()
+        var source = uri.toString()
+        // What the history can still open of a file that was sent: the file of the other app, not the private copy.
+        val original = source
         if (hold) {
             runCatching {
                 val descriptor = resolver.openFileDescriptor(uri, "r") ?: return@runCatching
@@ -529,9 +614,35 @@ class EngineHost(
         if (name.substringAfterLast('.', "").isEmpty()) {
             android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.let { name = "$name.$it" }
         }
+        if (copy) copyForQueue(uri, name, size)?.let {
+            source = it
+            // The copy is what is sent from now on: the descriptor of the original would stay open for good.
+            if (hold) AndroidFiles.abandoned(listOf(original))
+        }
         if (outgoingSources.size > 200) outgoingSources.clear()
-        outgoingSources["$name|$size"] = source
+        outgoingSources["$name|$size"] = original
         return TandemOutgoingFile(source = source, name = name, size = size.toULong(), mime = mime)
+    }
+
+    /**
+     * Copies a file for an offer that waits for a device that is away, and returns where the copy is. Null when there is no room for it
+     * (the file is then sent from where it is, which works until this app restarts) or the file could not be read.
+     */
+    private fun copyForQueue(uri: Uri, name: String, size: Long): String? {
+        val folder = File(context.filesDir, "tandem/outgoing").apply { mkdirs() }
+        if (size > 0 && folder.usableSpace < size + COPY_SPARE) {
+            Log.w(TAG, "no room to copy $name for the queue")
+            return null
+        }
+        val copy = File(folder, "${System.currentTimeMillis()}-${name.replace('/', '_')}")
+        return try {
+            (context.contentResolver.openInputStream(uri) ?: return null).use { input -> copy.outputStream().use { input.copyTo(it, 256 * 1024) } }
+            copy.absolutePath
+        } catch (e: Exception) {
+            Log.w(TAG, "could not copy $name for the queue", e)
+            copy.delete()
+            null
+        }
     }
 
     /** What is on this phone's clipboard. Android only lets it be read while a window of the app has focus. */
@@ -556,7 +667,7 @@ class EngineHost(
                 runCatching { context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull() ?: 0L
             }
             // The other side takes a clipboard without asking, so only what is small enough; larger goes as files it is asked about.
-            sendUris(clip.uris, targets, if (size <= CLIPBOARD_FILES_LIMIT) TandemShareOrigin.Clipboard else TandemShareOrigin.Files)
+            sendUris(clip.uris, targets, if (size <= CLIPBOARD_FILES_LIMIT) TandemShareOrigin.Clipboard else TandemShareOrigin.Files).sent
         }
     }
 
@@ -608,8 +719,9 @@ class EngineHost(
         /** After a file of a set is done, this long with nothing of it running means the set is over. */
         private const val IDLE_BATCH_MS = 15_000L
         private const val TAG = "EngineHost"
-        /** What [sendUris] returns when the person cancelled the send. */
-        const val SEND_CANCELLED = -1
+        /** What must stay free after a copy for the queue. */
+        private const val COPY_SPARE = 200L * 1024 * 1024
+
 
         /** The same as on the Mac: what a copy may send by itself. */
         const val CLIPBOARD_FILES_LIMIT = 50L * 1024 * 1024

@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,22 +34,11 @@ import nl.markmaaktmedia.tandem.ui.components.formatBytes
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
-import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemResumable
-
-/**
- * On top of the page Transfers: transfers that stopped halfway before Tandem started again, each with "Go on or throw away?" (P2).
- * Nothing goes on by itself.
- */
-fun LazyListScope.halfwayRows(waiting: List<TandemResumable>, devices: List<TandemDevice>) {
-    items(waiting, key = { "halfway-${it.from}-${it.offer}" }) { transfer ->
-        HalfwayRow(transfer, online = devices.firstOrNull { it.id == transfer.from }?.online == true, Modifier.animateItem())
-    }
-}
 
 /** One transfer that stopped halfway: what it is, how far it got, and the two answers. Laid out like the rows under it. */
 @Composable
-private fun HalfwayRow(transfer: TandemResumable, online: Boolean, modifier: Modifier = Modifier) {
+internal fun HalfwayRow(transfer: TandemResumable, online: Boolean, modifier: Modifier = Modifier) {
     val halfway = LocalContext.current.graph.host.halfway
     val (done, total) = HalfwayTransfers.bytes(transfer)
     val name = halfway.senderName(transfer)

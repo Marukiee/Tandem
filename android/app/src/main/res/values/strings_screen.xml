@@ -52,6 +52,7 @@
     <string name="section_control">Control</string>
     <string name="control_no_access_computer">That computer does not let you use its mouse and keyboard, so you can look but not click or type. Choose Allow when it asks.</string>
     <string name="offline_control">The computer has to be online to see and control it</string>
+    <string name="offline_clipboard">The device has to be online to send the clipboard to it. A copy is not kept for later</string>
     <string name="offline_trackpad">The computer has to be online to use this as its trackpad</string>
     <string name="offline_display">The computer has to be online to use this phone as its screen</string>
     <string name="display_offer_title">%1$s wants to use this phone as a second screen</string>

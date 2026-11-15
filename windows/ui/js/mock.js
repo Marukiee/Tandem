@@ -89,6 +89,17 @@ const state = {
     { from: "phone", offer: "21", name: "Vakantiefilm 2026 definitieve versie.mov", more: 2, done: 1100000000, total: 2400000000, updatedMs: now - 3600000 },
     { from: "linux", offer: "22", name: "Back-up.tar", more: 0, done: 40000000, total: 160000000, updatedMs: now - 7200000 },
   ],
+  // What is underway and incoming (P3b): queued for a device that is away, waiting for a yes, running, failed, and a file coming in
+  // (`?underway=no` for none).
+  underway: new URLSearchParams(location.search).get("underway") === "no" || empty ? [] : [
+    { id: "out-31-linux", offer: "31", peer: "linux", incoming: false, kind: "queued", name: "Reisschema.pdf", more: 1, done: 0, total: 3400000, error: null },
+    { id: "out-32-mac", offer: "32", peer: "mac", incoming: false, kind: "waiting", name: "Ontwerp.psd", more: 0, done: 0, total: 84000000, error: null },
+    { id: "out-33-phone", offer: "33", peer: "phone", incoming: false, kind: "running", name: "Vakantiefilm.mov", more: 0, done: 640000000, total: 1200000000, error: null },
+    { id: "out-34-phone", offer: "34", peer: "phone", incoming: false, kind: "failed", name: "Verslag.docx", more: 0, done: 20000, total: 52000, error: "connection lost" },
+    { id: "out-35-mac", offer: "35", peer: "mac", incoming: false, kind: "failed", name: "Muziek.zip", more: 2, done: 0, total: 9000000, error: "checksum failed" },
+    { id: "in-36-mac", offer: "36", peer: "mac", incoming: true, kind: "waiting", name: "Foto's.zip", more: 0, done: 0, total: 48000000, error: null },
+    { id: "in-37-phone", offer: "37", peer: "phone", incoming: true, kind: "running", name: "Opname.wav", more: 0, done: 300000, total: 900000, error: null },
+  ],
   offers: empty ? [] : [{ from: "mac", fromName: "MacBook Pro", offer: "7", origin: "files", items: [{ name: "Foto's vakantie.zip", size: 48000000, mime: "application/zip" }] }],
   notifications: empty ? [] : [
     { device: "phone", deviceName: "Pixel 9", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
@@ -206,6 +217,7 @@ function emit(event, payload) {
 // start, and `mockEmit("search-open", {...})` from the console while the page is open.
 window.mockEmit = emit;
 function snapshotHalfway() { return state.halfway; }
+const dropUnderway = (id) => { state.underway = state.underway.filter((x) => x.id !== id); emit("underway", state.underway); };
 function searchOpen() {
   const [page, a, b] = (new URLSearchParams(location.search).get("open") || "").split("/");
   if (!page) return null;
@@ -377,6 +389,15 @@ export async function call(command, args) {
     case "send_clipboard": return args.ids.length;
     case "wifi_here": return "Thuis";
     case "wifi_share": return "Wi-Fi sent to " + (devices.find((d) => d.id === args.id)?.name ?? "?");
+    case "underway_list": return state.underway;
+    case "underway_stop": case "underway_hide": dropUnderway(args.id || state.underway.find((x) => x.peer === args.peer && x.offer === args.offer)?.id); return null;
+    case "underway_send_again": {
+      // `?gone=yes`: the file is no longer there.
+      if (new URLSearchParams(location.search).get("gone") === "yes") return { sent: 0, queued: 0, offline: 0, folders: 0, gone: true };
+      dropUnderway(`out-${args.offer}-${args.peer}`);
+      return { sent: 1, queued: 0, offline: 0, folders: 0 };
+    }
+    case "accept_offer": case "decline_offer": dropUnderway(`in-${args.offer}-${args.from}`); state.offers = state.offers.filter((o) => !(o.from === args.from && o.offer === args.offer)); emit("offer-gone", { from: args.from, offer: args.offer }); return null;
     case "halfway_list": return snapshotHalfway();
     case "halfway_go_on": case "halfway_throw_away": {
       state.halfway = snapshotHalfway().filter((x) => !(x.from === args.from && x.offer === args.offer));
@@ -399,7 +420,9 @@ export async function call(command, args) {
         emit("transfer", { id, peer: args.ids[0], name: "Voorbeeld.mov", incoming: false, state: done >= total ? "done" : "active", done, total, speed: 6e6, updatedAt: Date.now(), startedAt: Date.now() - 2000 });
         if (done >= total) clearInterval(timer);
       }, 400);
-      return { sent: 1, offline: 0, folders: 0 };
+      // A device that is away takes the files into the queue (P3).
+      const away = args.ids.filter((id) => !(devices.find((d) => d.id === id) || {}).online).length;
+      return { sent: args.ids.length - away, queued: away, offline: 0, folders: 0 };
     }
     case "qs_state": return {
       enabled: true,

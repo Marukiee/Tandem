@@ -543,6 +543,8 @@ fun TransferRow(
     modifier: Modifier = Modifier,
     /** Null when nothing is being chosen; otherwise whether this row is, shown as a check over its square. */
     selected: Boolean? = null,
+    /** The files that leave with this row when it is dragged into another app (R-D4 b); null when it is not to be dragged. */
+    dragOut: List<String>? = null,
 ) {
     val context = LocalContext.current
     val tint = when (item.state) {
@@ -557,6 +559,8 @@ fun TransferRow(
         modifier
             .fillMaxWidth()
             .then(if (tappable) Modifier.bouncyClickable(onClickLabel = stringResource(R.string.transfer_menu_open)) { actions.open?.invoke() } else Modifier)
+            // What came in can be pulled out into another app with a long press (R-D4 b).
+            .fileDragSource(dragOut)
             .padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -582,16 +586,7 @@ fun TransferRow(
                 TransferItem.State.Active -> "${formatBytes(item.done)} / ${formatBytes(item.total)}" +
                     if (item.speed > 1) "  ${formatBytes(item.speed.toLong())}/s" else ""
                 TransferItem.State.Done -> stringResource(if (item.incoming) R.string.transfer_from else R.string.transfer_to, peerName)
-                // The reasons the core gives in its own words, in the words of the person.
-                TransferItem.State.Failed -> when (item.error) {
-                    "cancelled" -> stringResource(R.string.transfer_cancelled)
-                    "declined" -> stringResource(R.string.transfer_declined)
-                    "expired" -> stringResource(R.string.transfer_expired)
-                    "gone" -> if (item.incoming) stringResource(R.string.transfer_gone_in, peerName) else stringResource(R.string.transfer_gone_out)
-                    "changed" -> if (item.incoming) stringResource(R.string.transfer_changed_in, peerName) else stringResource(R.string.transfer_changed_out)
-                    "no space" -> if (item.incoming) stringResource(R.string.transfer_no_space_in) else stringResource(R.string.transfer_no_space_out, peerName)
-                    else -> item.error ?: stringResource(R.string.transfer_failed)
-                }
+                TransferItem.State.Failed -> transferReason(item.error, item.incoming, peerName)
             }
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             if (item.state == TransferItem.State.Active) {

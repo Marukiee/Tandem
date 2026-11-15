@@ -158,11 +158,12 @@ class ShareTargetActivity : ComponentActivity() {
         lifecycleScope.launch {
             val end = ShareSends.phase(launch).first { it is SendPhase.Done || it is SendPhase.Failed }
             val text = when (end) {
-                is SendPhase.Done -> resources.getQuantityString(R.plurals.share_done_n, end.count, end.count)
+                // Only in the queue: the toast "waits for ..." has said it, and a second one would call it sent.
+                is SendPhase.Done -> if (end.count == 0) "" else resources.getQuantityString(R.plurals.share_done_n, end.count, end.count)
                 is SendPhase.Failed -> end.reason
                 else -> ""
             }
-            Toast.makeText(app, text, if (end is SendPhase.Failed) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+            if (text.isNotEmpty()) Toast.makeText(app, text, if (end is SendPhase.Failed) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
             finish()
         }
     }
@@ -213,8 +214,8 @@ class ShareTargetActivity : ComponentActivity() {
                         ShareSends.start(app, launch, again = true) {
                             val reached = sendShared(app, shared, targets)
                             when {
-                                reached > 0 -> SendPhase.Done(reached)
-                                reached == nl.markmaaktmedia.tandem.engine.EngineHost.SEND_CANCELLED -> SendPhase.Failed(app.getString(R.string.share_not_sent))
+                                reached.cancelled -> SendPhase.Failed(app.getString(R.string.share_not_sent))
+                                reached.sent > 0 || reached.queued > 0 -> SendPhase.Done(reached.sent, reached.queued)
                                 else -> SendPhase.Failed(app.getString(R.string.share_none_online))
                             }
                         }
@@ -307,24 +308,26 @@ private suspend fun sendPicked(context: Context, shared: Shared, target: ShareSh
     }
     withTimeoutOrNull(3500) { host.devices.first { list -> list.any { it.id in wanted && it.online } } }
     val reached = sendShared(context, shared, wanted)
-    return if (reached == nl.markmaaktmedia.tandem.engine.EngineHost.SEND_CANCELLED) SendPhase.Failed(context.getString(R.string.share_not_sent)) else SendPhase.Done(reached)
+    return if (reached.cancelled) SendPhase.Failed(context.getString(R.string.share_not_sent)) else SendPhase.Done(reached.sent, reached.queued)
 }
 
 /**
- * Sends to the devices of [targets] that are online. Returns how many it reached. Every caller comes after a tap (on the
+ * Sends files to the devices of [targets], also those that are away (they wait in the queue), and text to those that are online. Returns how many it reached and how many wait in the queue. Every caller comes after a tap (on the
  * device sheet, or on a device in the share sheet itself), so a link may open on the other side.
  */
-private suspend fun sendShared(context: Context, shared: Shared, targets: List<String>): Int {
+private suspend fun sendShared(context: Context, shared: Shared, targets: List<String>): nl.markmaaktmedia.tandem.engine.SendResult {
     val host = context.graph.host
-    val online = targets.filter { id -> host.devices.value.any { it.id == id && it.online } }
-    if (online.isEmpty()) return 0
     if (shared.uris.isNotEmpty()) {
         val screenshot = withContext(Dispatchers.IO) { shared.uris.any { looksLikeScreenshot(context, it) } }
-        return host.sendUris(shared.uris, online, if (screenshot) TandemShareOrigin.Screenshot else TandemShareOrigin.Files, askSpace = true)
+        // Also the devices that are away: files wait for them in the queue (P3). Only text needs the device to be here.
+        return host.sendUris(shared.uris, targets, if (screenshot) TandemShareOrigin.Screenshot else TandemShareOrigin.Files, askSpace = true)
     }
-    val text = shared.text ?: return 0
+    val none = nl.markmaaktmedia.tandem.engine.SendResult()
+    val online = targets.filter { id -> host.devices.value.any { it.id == id && it.online } }
+    if (online.isEmpty()) return none
+    val text = shared.text ?: return none
     val isUrl = text.startsWith("http://") || text.startsWith("https://")
-    return host.engine?.sendText(online, text, isUrl, isUrl)?.size ?: 0
+    return nl.markmaaktmedia.tandem.engine.SendResult(sent = host.engine?.sendText(online, text, isUrl, isUrl)?.size ?: 0)
 }
 
 /** Sends what was shared to a device that Quick Share found, and waits for the end of it. */

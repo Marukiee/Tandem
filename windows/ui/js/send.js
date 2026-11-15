@@ -1,5 +1,5 @@
 // "Send with Tandem" from the file manager without a device named: a card that asks which one, like the Share sheet of a Mac. Every
-// device is in it; one that is not connected is grey and says why when pressed. Devices that come online while it is open turn on.
+// device is in it; what goes to one that is not connected waits in the queue until it is back (P3).
 import { html, render } from "../vendor/preact-htm.js";
 import { call, listen } from "./backend.js";
 import { Icon } from "./icons.js";
@@ -8,7 +8,6 @@ import { platformIcon } from "./components.js";
 
 let devices = [];
 let files = { count: 0, name: null };
-let why = null;
 let busy = false;
 
 const choose = (to) => {
@@ -36,12 +35,11 @@ function Card() {
       ? html`<div class="send-empty">${t("send_pick_none")}</div>`
       : html`<div class="send-list">
           ${listed.map((d) => html`<${Row} key=${d.id} icon=${platformIcon(d.platform)} name=${d.name}
-            detail=${d.online ? t("connected") : t("not_connected")} on=${d.online}
-            onPress=${() => { if (d.online) choose([d.id]); else { why = t("send_pick_away", d.name); draw(); } }} />`)}
+            detail=${d.online ? t("connected") : t("send_pick_queue")} on=${true}
+            onPress=${() => choose([d.id])} />`)}
           ${online.length > 1 && html`<div class="send-line"></div>
             <${Row} icon="devices" name=${t("all_devices")} on=${true} onPress=${() => choose(online.map((d) => d.id))} />`}
         </div>`}
-    <div class=${"send-why" + (why ? " shown" : "")}>${why && html`<${Icon} name="info-circle" size=${15} />`}<span>${why || ""}</span></div>
     <div class="qs-buttons send-buttons"><button class="btn quiet" onClick=${() => choose([])}>${t("cancel")}</button></div>
   </div>`;
 }
@@ -56,5 +54,5 @@ devices = state.devices || [];
 files = await call("send_pick_state");
 draw();
 listen("devices", (list) => { devices = list; draw(); });
-listen("send_pick", (next) => { files = next; why = null; busy = false; draw(); });
+listen("send_pick", (next) => { files = next; busy = false; draw(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") choose([]); });
