@@ -561,6 +561,38 @@ async fn a_file_that_changed_at_the_sender_is_reported_and_the_rest_comes() {
     assert!(!mac.data.join("incoming").join(format!("{}-{offer:016x}-1.part", phone.engine.id())).exists());
 }
 
+/// A disk that cannot be read says "unknown" once, also when nobody is connected to hear it: the one that comes back must not keep the
+/// old number.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_disk_that_went_away_while_the_other_was_gone_is_not_told_as_the_old_number() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+    let mac_id = mac.engine.id();
+    mac.engine.update_status(tandem_core::proto::Status { free_storage: Some(50_000_000_000), ..Default::default() }).await;
+    wait_until("the phone knows the free space", || {
+        phone.engine.devices().iter().any(|d| d.id == mac_id && d.status.free_storage == Some(50_000_000_000))
+    })
+    .await;
+
+    // The Mac goes away, its disk with it, and it comes back with a disk that cannot be read.
+    mac.engine.shutdown().await;
+    let again = restart(&mac, "Mac").await;
+    again
+        .update_status(tandem_core::proto::Status { free_storage: Some(tandem_core::proto::FREE_STORAGE_UNKNOWN), ..Default::default() })
+        .await;
+    wait_until("the Mac is back", || online(&phone, mac_id)).await;
+    wait_until("the phone lets go of the old number", || {
+        phone.engine.devices().iter().any(|d| d.id == mac_id && d.status.free_storage.is_none())
+    })
+    .await;
+    // Nothing is refused for lack of room on a disk nobody can read.
+    let source = tempfile::tempdir().unwrap();
+    let large = vec![outgoing(source.path(), "large.bin", &random_bytes(2_000_000, 42))];
+    assert!(phone.engine.short_of_space(&[mac_id], &large).is_empty());
+}
+
 /// P5: a receiver refuses an offer larger than its free space before anything is pulled or asked, and the sender hears why; the
 /// sender can see it coming from the free space the receiver reports.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

@@ -483,6 +483,10 @@ impl Inner {
                         let before = peer.status.battery;
                         let was_quiet = peer.status.quiet;
                         peer.status.merge(&status);
+                        // The disk of that device cannot be read: what it had said before is not true any more.
+                        if status.free_storage == Some(crate::proto::FREE_STORAGE_UNKNOWN) {
+                            peer.status.free_storage = None;
+                        }
                         // Only a real change: a status said again on a new connection must not start every heartbeat over.
                         if peer.status.quiet != was_quiet {
                             self.beat_changed.notify_waiters();
