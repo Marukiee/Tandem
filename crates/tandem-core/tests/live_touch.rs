@@ -119,7 +119,9 @@ async fn a_press_carries_its_position_over_the_stream() {
     assert!(is_at(&got[presses[1] - 1], 0.75, 0.7), "{got:?}");
     // The position of the press came twice, once as a datagram and once on the stream in front of the press; the move in between only
     // as a datagram.
-    wait_until("the datagrams", || host.inputs.lock().unwrap().iter().filter(|i| is_at(i, 0.25, 0.5)).count() == 2).await;
+    // The datagrams come on their own time (late, on a busy runner), so each one is waited for before the counts are compared.
+    let count = |x: f32, y: f32| host.inputs.lock().unwrap().iter().filter(|i| is_at(i, x, y)).count();
+    wait_until("the datagrams", || count(0.25, 0.5) >= 2 && count(0.75, 0.7) >= 2 && count(0.5, 0.6) >= 1).await;
     let got = host.inputs.lock().unwrap().clone();
     assert_eq!(got.iter().filter(|i| is_at(i, 0.75, 0.7)).count(), 2, "{got:?}");
     assert_eq!(got.iter().filter(|i| is_at(i, 0.5, 0.6)).count(), 1, "{got:?}");
@@ -129,7 +131,13 @@ async fn a_press_carries_its_position_over_the_stream() {
     send(MediaInput::PointerAbs { x: 0.1, y: 0.1 });
     send(MediaInput::PointerRel { dx: 40, dy: 0 });
     send(MediaInput::Button { button: 0, down: true, clicks: 1 });
-    wait_until("the press", || host.inputs.lock().unwrap().iter().any(|i| matches!(i, MediaInput::Button { .. }))).await;
+    // The copy of the position on the stream sits right in front of the press, so it is there when the press is. Only the datagram
+    // can still be on its way.
+    wait_until("the press and the datagram", || {
+        host.inputs.lock().unwrap().iter().any(|i| matches!(i, MediaInput::Button { .. })) && count(0.1, 0.1) >= 1
+    })
+    .await;
+    // A wrong second copy of the position would be on its way too: it gets time to show (this cannot fail a good run).
     tokio::time::sleep(Duration::from_millis(200)).await;
     let got = host.inputs.lock().unwrap().clone();
     assert_eq!(got.iter().filter(|i| is_at(i, 0.1, 0.1)).count(), 1, "{got:?}");

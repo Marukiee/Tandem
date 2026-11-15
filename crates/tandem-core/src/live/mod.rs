@@ -459,6 +459,10 @@ impl Engine {
         let _rt = self.inner.live.handle.enter();
         let host = self.inner.live_host_session_any(session)?;
         let mut update = update;
+        // The Mac types the password it keeps once the viewer answers: only offered to a device that may unlock this one (P6).
+        if update.unlock == Some(true) && !self.inner.allowed(&host.peer, crate::trust::Permission::Unlock) {
+            update.unlock = None;
+        }
         if let Some(grant) = update.control {
             let granted = grant && host.control_allowed && host.request.control && host.kind == MediaKind::Screen;
             host.st.lock().unwrap().control = granted;

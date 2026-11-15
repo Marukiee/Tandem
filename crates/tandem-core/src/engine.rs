@@ -163,6 +163,12 @@ pub(crate) struct Inner {
     pub wifi: Mutex<Option<crate::wifi::WifiNetwork>>,
     pub(crate) focus: Mutex<crate::focus::FocusSync>,
     pub(crate) health: Mutex<crate::health::Health>,
+    /// A permission changed: the table in the status goes out again (see `trust`).
+    pub(crate) trust_changed: Notify,
+    /// When each kind of refusal was last said to a device, so a refused pointer is not answered dozens of times a second.
+    pub(crate) refused_said: Mutex<HashMap<(DeviceId, crate::trust::Permission), Instant>>,
+    /// Where the pointer of this computer went over to each other one and has not come back yet (see `trust::on_refused`).
+    pub(crate) pointer_out: Mutex<HashMap<DeviceId, f32>>,
 }
 
 /// Where the sound of the other device goes. Called on the connection's own task for every
@@ -263,6 +269,9 @@ impl Engine {
             wifi: Mutex::new(None),
             focus,
             health,
+            trust_changed: Notify::new(),
+            refused_said: Mutex::new(HashMap::new()),
+            pointer_out: Mutex::new(HashMap::new()),
         });
 
         // The peers must exist before their saved addresses can be attached to them.
@@ -272,10 +281,14 @@ impl Engine {
         // The app may copy a folder to another disk, so not on this thread.
         let settling = inner.clone();
         tokio::task::spawn_blocking(move || settling.settle_folders());
+        // In what the first connection is told, without waiting for a change.
+        let trust = Status { trust: Some(inner.trust_table()), ..Status::default() };
+        inner.my_status.lock().unwrap().merge(&trust);
         info!(id = %inner.my_id, port = inner.port, "tandem engine started");
 
         tokio::spawn(inner.clone().accept_loop());
         tokio::spawn(inner.clone().supervise());
+        tokio::spawn(inner.clone().keep_trust_published());
         if inner.cfg.enable_mdns {
             inner.clone().start_discovery();
         }
@@ -344,22 +357,13 @@ impl Engine {
         self.inner.settings.read().unwrap().for_device(id)
     }
 
-    /// Whether a device that comes into the circle starts as a guest: clipboard and notifications off, files asked about first.
-    pub fn guests_by_default(&self) -> bool {
-        self.inner.settings.read().unwrap().guests_by_default
-    }
-
-    pub fn set_guests_by_default(&self, on: bool) -> Result<()> {
-        let known: Vec<DeviceId> = self.inner.devices().into_iter().map(|d| d.id).collect();
-        self.inner.settings.write().unwrap().set_guests_by_default(on, &known);
-        let snapshot = self.inner.settings.read().unwrap().clone();
-        self.inner.store.write_cbor("settings.cbor", &snapshot)?;
-        self.inner.emit(Event::DevicesChanged);
-        Ok(())
-    }
-
     pub fn set_device_settings(&self, id: &DeviceId, settings: DeviceSettings) -> Result<()> {
         self.inner.set_device_settings(id, settings)
+    }
+
+    /// Changes some settings of one device and keeps the rest as they are at that moment.
+    pub fn update_device_settings(&self, id: &DeviceId, change: impl FnOnce(&mut DeviceSettings)) -> Result<()> {
+        self.inner.update_device_settings(id, change)
     }
 
     /// Sends files to every listed device that is connected right now.
@@ -384,16 +388,23 @@ impl Engine {
         self.inner.file_service.default_policy()
     }
 
+    // The file policy holds two permissions (see `trust`): each change may change the table.
     pub fn set_file_policy(&self, id: &DeviceId, policy: crate::files::FilePolicy) -> Result<()> {
-        self.inner.file_service.set_policy(id, policy)
+        self.inner.file_service.set_policy(id, policy)?;
+        self.inner.trust_changed.notify_one();
+        Ok(())
     }
 
     pub fn clear_file_policy(&self, id: &DeviceId) -> Result<()> {
-        self.inner.file_service.clear_policy(id)
+        self.inner.file_service.clear_policy(id)?;
+        self.inner.trust_changed.notify_one();
+        Ok(())
     }
 
     pub fn set_file_default_policy(&self, policy: crate::files::FilePolicy) -> Result<()> {
-        self.inner.file_service.set_default_policy(policy)
+        self.inner.file_service.set_default_policy(policy)?;
+        self.inner.trust_changed.notify_one();
+        Ok(())
     }
 
     /// What other devices did to the files of this one, newest first.
@@ -751,11 +762,20 @@ pub(crate) fn rand_u64() -> u64 {
 
 impl Inner {
     pub fn set_device_settings(&self, id: &DeviceId, settings: DeviceSettings) -> Result<()> {
+        self.update_device_settings(id, |own| *own = settings)
+    }
+
+    /// Changes the settings of one device under the lock, so a change made at the same moment elsewhere is not lost.
+    pub fn update_device_settings(&self, id: &DeviceId, change: impl FnOnce(&mut DeviceSettings)) -> Result<()> {
         {
-            self.settings.write().unwrap().set_device(id, settings);
+            // Written while the lock is held, so two changes at the same moment reach the disk in the order they were made.
+            let mut all = self.settings.write().unwrap();
+            let mut own = all.for_device(id);
+            change(&mut own);
+            all.set_device(id, own);
+            self.store.write_cbor("settings.cbor", &*all)?;
         }
-        let snapshot = self.settings.read().unwrap().clone();
-        self.store.write_cbor("settings.cbor", &snapshot)?;
+        self.trust_changed.notify_one();
         self.emit(Event::DevicesChanged);
         Ok(())
     }
@@ -772,7 +792,7 @@ impl Inner {
     /// What this device can do for the others: what the app says, always letting them look at its files, and keeping health records.
     pub fn caps(&self) -> Vec<String> {
         let mut caps = self.cfg.caps.clone();
-        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP] {
+        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP, crate::trust::CAP] {
             if !caps.iter().any(|c| c == always) {
                 caps.push(always.into());
             }
@@ -809,6 +829,13 @@ impl Inner {
     }
 
     pub async fn send_to(&self, id: &DeviceId, msg: Msg) -> Result<()> {
+        // What another device may not see does not leave this one, whichever app or feature sends it.
+        if let Some(permission) = crate::trust::needed_to_send(&msg)
+            && !self.allowed(id, permission)
+        {
+            return Err(Error::Invalid(crate::trust::REASON_NOT_ALLOWED.into()));
+        }
+        self.note_pointer_sent(id, &msg);
         let session = self.session_of(id).ok_or(Error::NotConnected)?;
         session.tx.send(msg).await.map_err(|_| Error::NotConnected)
     }

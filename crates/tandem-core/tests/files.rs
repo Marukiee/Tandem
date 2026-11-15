@@ -159,17 +159,68 @@ async fn big_files_arrive_whole_in_both_directions_and_a_download_carries_on() {
     let resumed = client._dir.path().join("resumed.bin");
     let part = client._dir.path().join("resumed.bin.tandem-part");
     std::fs::write(&part, &data[..5_000_000]).unwrap();
+    std::fs::write(client._dir.path().join("resumed.bin.tandem-part-info"), fingerprint(&shared.path().join("big.bin"))).unwrap();
     let mut first = None;
     files.download("/Docs/big.bin", &resumed, |done, _| { first.get_or_insert(done); }).await.unwrap();
     assert_eq!(first, Some(5_000_000), "it must start where the earlier try ended");
     assert_eq!(std::fs::read(&resumed).unwrap(), data);
     assert!(!part.exists());
+    assert!(!client._dir.path().join("resumed.bin.tandem-part-info").exists());
 
     // Up.
     let up = client._dir.path().join("up.bin");
     std::fs::write(&up, noise(9 * 1024 * 1024 + 7, 9)).unwrap();
     files.upload(&up, "/Docs/up.bin", false, |_, _| {}).await.unwrap();
     assert_eq!(std::fs::read(shared.path().join("up.bin")).unwrap(), std::fs::read(&up).unwrap());
+}
+
+/// What a download writes next to its part on the first try: the size and time of the file there.
+fn fingerprint(path: &Path) -> String {
+    let meta = std::fs::metadata(path).unwrap();
+    let modified = meta.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
+    format!("{} {modified}", meta.len())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_download_starts_over_when_the_file_changed_or_nothing_vouches_for_the_part() {
+    let (host, client, shared) = pair_up().await;
+    let files = client.engine.files(host_id(&host));
+    let source = shared.path().join("doc.bin");
+    let old = noise(3_000_000, 4);
+    std::fs::write(&source, &old).unwrap();
+    let old_fingerprint = fingerprint(&source);
+
+    // The first try got half of the old version, then the file there changed (and got shorter).
+    let to = client._dir.path().join("doc.bin");
+    let part = client._dir.path().join("doc.bin.tandem-part");
+    let info = client._dir.path().join("doc.bin.tandem-part-info");
+    std::fs::write(&part, &old[..1_500_000]).unwrap();
+    std::fs::write(&info, &old_fingerprint).unwrap();
+    let new = noise(1_000_000, 5);
+    std::fs::write(&source, &new).unwrap();
+    let mut first = None;
+    files.download("/Docs/doc.bin", &to, |done, _| { first.get_or_insert(done); }).await.unwrap();
+    assert_eq!(first, Some(0), "a part of another version is not carried on from");
+    assert_eq!(std::fs::read(&to).unwrap(), new);
+    assert!(!part.exists() && !info.exists());
+
+    // Same size, other content and time: still another version.
+    let same_size = noise(1_000_000, 6);
+    std::fs::write(&part, &new[..400_000]).unwrap();
+    std::fs::write(&info, fingerprint(&source)).unwrap();
+    std::thread::sleep(Duration::from_millis(20));
+    std::fs::write(&source, &same_size).unwrap();
+    std::fs::remove_file(&to).unwrap();
+    files.download("/Docs/doc.bin", &to, |_, _| {}).await.unwrap();
+    assert_eq!(std::fs::read(&to).unwrap(), same_size);
+
+    // A part with nothing next to it (from an older version of Tandem) is not trusted either.
+    std::fs::write(&part, b"garbage that is not the start of the file").unwrap();
+    std::fs::remove_file(&to).unwrap();
+    let mut first = None;
+    files.download("/Docs/doc.bin", &to, |done, _| { first.get_or_insert(done); }).await.unwrap();
+    assert_eq!(first, Some(0));
+    assert_eq!(std::fs::read(&to).unwrap(), same_size);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

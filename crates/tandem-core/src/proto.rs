@@ -224,6 +224,9 @@ pub enum Msg {
     Ping { nonce: u64 },
     Pong { nonce: u64 },
     Bye { reason: String },
+    /// What was asked is not allowed for the device that asked (P6, see `trust`). `action` is the code of a permission, `reason` one of
+    /// `trust::REASONS`. Only sent to a device that has `trust::CAP`.
+    Refused { action: String, reason: String },
     /// This device plays a sound now because another one asked with `Ring`, or it stopped (the person stopped it here, it ran out, or
     /// it was asked to stop). Sent to the devices that asked, so their button shows what really happens. Devices that do not know it skip it.
     Ringing { on: bool },
@@ -360,6 +363,10 @@ pub struct Status {
     /// Set by the engine (`Engine::set_quiet`), not by the app.
     #[serde(default)]
     pub quiet: Option<bool>,
+    /// What this device does not let each other device do (P6, see `trust`): the whole table each time it changes. Nil on a device
+    /// of a version without permissions.
+    #[serde(default)]
+    pub trust: Option<Vec<crate::trust::TrustRow>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -487,6 +494,12 @@ pub struct Feature {
     pub page: Option<String>,
 }
 
+/// What `free_storage` says when the disk that files land on cannot be read any more. A status only carries what changed, so "no
+/// number" cannot take an old number away; this one, more than any disk holds, does. The device that says it keeps it as its own
+/// number (it refuses nothing, and a new connection is told it again); the others take it as "no number" (see `session.rs`). An older
+/// device that does not know it simply sees a disk with room for everything.
+pub const FREE_STORAGE_UNKNOWN: u64 = u64::MAX;
+
 impl Status {
     pub fn merge(&mut self, other: &Status) {
         macro_rules! take {
@@ -494,7 +507,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet, trust);
     }
 }
 
@@ -1000,6 +1013,17 @@ pub fn bytes(data: Vec<u8>) -> ByteBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_disk_that_cannot_be_read_stays_unknown_in_the_status_of_the_device_itself() {
+        // The device keeps "unknown" as it is, so the status it tells a new connection says it too.
+        let mut mine = Status::default();
+        mine.merge(&Status { free_storage: Some(5_000_000_000), ..Default::default() });
+        mine.merge(&Status { free_storage: Some(FREE_STORAGE_UNKNOWN), ..Default::default() });
+        assert_eq!(mine.free_storage, Some(FREE_STORAGE_UNKNOWN));
+        mine.merge(&Status { free_storage: Some(7), ..Default::default() });
+        assert_eq!(mine.free_storage, Some(7));
+    }
 
     #[test]
     fn the_watch_of_a_phone_stays_known_until_the_phone_says_otherwise() {

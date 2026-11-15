@@ -289,3 +289,102 @@ moeten allebei op 0.3.19 staan.
 - [ ] Kijk bij Instellingen, Meldingen, rij Codes: zonder Shizuku staat er dat chatberichten (RCS) en achtergehouden berichten gemist worden; met Shizuku staat er de gewone tekst.
 - [ ] Krijg je de code via een chatbericht (RCS) in Google Berichten en niet als sms? Dan komt hij zonder Shizuku niet aan, met Shizuku wel: probeer dat apart.
 - [ ] Komt er daarna nog een code niet aan? Zeg welke telefoon, welke berichten-app, en of het een sms of een chatbericht was.
+
+## 0.3.20, 2026-11-15 (PR 27 tot 30 en 34)
+
+### Wachtrij, paneel en redenen op Android (PR 27)
+
+Gezien op een emulator met `tandemd` als ander apparaat, nog niet op een echte telefoon.
+
+- [ ] Zet de Mac of een ander apparaat uit, kies op de telefoon bij dat apparaat Bestanden versturen: je ziet "Wacht op ...", en onder Gedeeld een rij Onderweg met "Niet sturen".
+- [ ] Start het apparaat weer: het bestand komt aan zonder iets te doen, ook na een herstart van Tandem op de telefoon.
+- [ ] Tik bij zo'n rij op het kruisje: de rij verdwijnt en er komt niets aan.
+- [ ] Stuur vanaf de Mac een bestand naar de telefoon dat om een ja vraagt: je ziet het onder Inkomend met Weigeren en Accepteer.
+- [ ] Zet de telefoon op Nederlands en kijk of alle regels in het paneel kloppen, ook de redenen bij een mislukt bestand.
+
+### Wachtrij, paneel en redenen op Linux en Windows (PR 28)
+
+Gebouwd en in de proefweergave gezien, nog niet op een echte Linux- of Windows-computer.
+
+- [ ] Stuur een bestand naar een apparaat dat uit staat (sleep het op de kaart, of "Bestanden versturen"): het staat onder Onderweg met "Wacht op ...", en gaat zodra het apparaat terug is.
+- [ ] Zet het apparaat weer aan: de rij wordt een lopende overdracht en verdwijnt als hij klaar is.
+- [ ] "Niet sturen" op een wachtende rij: de rij is weg en er komt niets aan.
+- [ ] Een bestand dat onderweg mislukt (haal het wifi weg): rij met de reden in woorden en "Opnieuw sturen"; "Verberg" haalt hem weg.
+- [ ] Een overdracht die halverwege stopte gaat niet vanzelf verder, ook niet na het opstarten van Tandem.
+- [ ] Een inkomend aanbod staat onder Inkomend met Accepteren en Weigeren.
+- [ ] "Verzenden met Tandem" in de bestandsbeheerder: een apparaat dat uit staat is kiesbaar en het bericht zegt dat het wacht.
+
+### Android: slepen in en uit de app (PR 30)
+
+Neerzetten op een apparaatkaart is gezien op een emulator. Dat een andere app een bestand uit Tandem echt aanneemt is niet tot het
+eind gezien: de apps op de emulator weigerden het.
+
+- [ ] Sleep een foto of bestand uit een andere app (Foto's of Bestanden, met twee vensters naast elkaar) op de kaart van een apparaat dat aan staat: de kaart kleurt, het bestand komt aan en staat onder Gedeeld.
+- [ ] Hetzelfde op een apparaat dat uit staat (zodra #27 erin zit): het wacht en gaat zodra het terug is.
+- [ ] Sleep tekst of een link op de kaart: er gebeurt niets en de andere app laat zien dat het terugkwam.
+- [ ] Een ontvangen bestand op de pagina van een apparaat lang indrukken en naar een andere app slepen (berichten, mail): de andere app krijgt het bestand.
+- [ ] Op Gedeeld: lang indrukken kiest de rij, daarna dezelfde rij weer lang indrukken en slepen neemt alles mee wat gekozen is.
+
+### Mac: de updatekaart en een rij Berichten (PR 29)
+
+Gezien in de Dev-app als momentopname, niet op echt glas.
+
+- [ ] Zijbalk van het hoofdvenster als er een update is: staan "Versie ..." en "Je hebt ..." er helemaal, en staan Later en Bijwerken heel op hun eigen regel?
+- [ ] Menubalkpaneel als er een update is: past alles op een regel zonder afgekapte tekst?
+- [ ] Met twee telefoons: staat er nog maar een rij Berichten, met het aantal ongelezen van beide samen?
+- [ ] Open Berichten: staat boven de lijst een knop met de naam van de telefoon, en wissel je daarmee naar de andere telefoon?
+- [ ] Wissel heen en weer: opent elke telefoon zijn eigen gesprekken, en onthoudt de rij Berichten welke telefoon je het laatst open had?
+- [ ] Zet een telefoon uit: kun je via de knop nog naar de andere?
+
+### De maandkalender en de stappentegel (PR 34)
+
+Op Android, de Mac en Linux en Windows. Gezien op een emulator, in de Dev-app en in de proefweergave.
+
+- [ ] Telefoon, start van de dag zonder stappen: staat de stappentegel met 0 naast de slaap op het startscherm?
+- [ ] Gezondheid, Hart, Kalender: een paar maanden terug bladeren (ook van oktober naar september), geen crash.
+- [ ] Zie je in één oogopslag welke dagen hoger (warm) en lager (koel) waren dan normaal?
+- [ ] Tik op een dag: groot getal, datum en "hoger/lager dan normaal" erboven; nog eens tikken gaat terug.
+- [ ] Slaap en Activiteit: kleur sterker naarmate je dichter bij 7 uur of je stappendoel zat, vet bij doel gehaald.
+- [ ] Mac en Linux/Windows: dezelfde kalender, klikken en bladeren voelen goed, licht en donker leesbaar.
+
+## 0.3.21, 2026-11-15 (PR 32, 33, 35, 37 en 38)
+
+### Bestanden en Quick Share in de kern (PR 32)
+
+Getest in de kern, niet op een echt toestel.
+
+- [ ] Bestanden: een groot bestand van de telefoon naar de Mac halen, halverwege de wifi uit, het bestand op de telefoon veranderen, opnieuw halen: het nieuwe bestand komt heel aan.
+- [ ] Zelfde zonder te veranderen: hij gaat verder waar hij was.
+- [ ] Quick Share van de telefoon naar de Mac, halverwege annuleren op de telefoon: in Downloads staat niets half.
+- [ ] Quick Share gewoon: bestanden komen aan met hun eigen naam.
+
+### Kern en tandemd: dode instelling weg, te lang pad geweigerd, vastere tests (PR 33)
+
+- [ ] Niets te testen: je ziet er niets van.
+
+### Vrije ruimte op de juiste schijf (PR 35)
+
+- [ ] Zet op de Mac de downloadmap op een andere schijf (bijvoorbeeld een externe SSD) en stuur vanaf een telefoon een bestand dat groter is dan de vrije ruimte van de Mac, maar kleiner dan die van de systeemschijf: de telefoon moet vragen of hij toch wil sturen.
+- [ ] Haal de externe schijf eruit en stuur weer iets: het moet niet meer geweigerd worden om ruimte.
+
+### Mac: slepen zonder kopie in Downloads, Controlecentrum zonder rondvragen (PR 37)
+
+Gebouwd en in de kern getest; het slepen zelf is niet tussen twee echte computers gezien.
+
+- [ ] Sleep een of meer bestanden vanaf Linux of Windows over de rand naar de Mac en laat ze los op het bureaublad en in een Finder-venster: de bestanden moeten daar komen en er mag geen kopie in Downloads blijven.
+- [ ] Sleep twee bestanden met dezelfde naam tegelijk: allebei moeten aankomen.
+- [ ] Zet Control Center-knoppen en de batterijwidget aan en koppel een telefoon los of aan: ze moeten nog steeds bijwerken.
+- [ ] Gebruik de gedeelde muis een dag en kijk dan met `grep "slow mouse event" ~/Library/Application\ Support/Tandem/pointer-share.log` of er trage regels in staan (voor R-D17).
+
+### Linux en Windows: vergrendeling uit de waarnemer (PR 38)
+
+- [ ] Op Linux: sluit het scherm (vergrendelen) en kijk of de Mac zijn muis niet meer naar de Linux-pc laat gaan, en weer wel na het ontgrendelen (zoals voor deze wijziging).
+- [ ] Verder niets te zien; het scheelt vooral rondvragen bij logind.
+
+## 0.3.22, 2026-11-15 (PR 44 en 45)
+
+Alleen gebouwd, niet in de echte app gezien.
+
+- [ ] Als er een update klaarstaat: staat in de zijbalk "Versie ..." en "Je hebt ..." er helemaal, met Later en Bijwerken op een eigen regel eronder? Hetzelfde in het menubalkpaneel. (Je ziet dit pas bij de update na 0.3.22: de kaart wordt getekend door de versie die je draait.)
+- [ ] Stuur een bestand vanaf de Mac en open het menubalkpaneel: tijdens het sturen de balk, daarna kort "Verstuurd" met een vinkje en zonder balk, en na tien seconden is de regel weg.
+- [ ] Open het paneel een paar minuten later: er staat geen oude regel meer. Een ontvangen bestand blijft een minuut staan.

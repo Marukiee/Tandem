@@ -18,12 +18,13 @@ use crate::proto::{
     Battery, CallActionKind, CallMsg, CallState, CaptureKind, CaptureWhy, HotspotMsg, InputMsg, MediaKey, NetKind, NetworkStatus,
     NotifButton, NotificationAction, NotificationMsg, ShareOrigin, Status,
 };
-use crate::store::{DeviceSettings, SecretStore};
+use crate::store::SecretStore;
 use crate::transfer::OutgoingFile;
 
 pub mod health;
 pub mod sms;
 pub mod side_check;
+pub mod trust;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum TandemError {
@@ -527,7 +528,8 @@ impl From<TandemStatus> for Status {
             lock: s.lock,
             watch: s.watch.map(Into::into),
             bt_address: s.bt_address,
-            // Said by the engine itself (`set_quiet`).
+            // Said by the engine itself (`set_quiet`, `trust`).
+            trust: None,
             quiet: None,
             // The features go their own way, with `set_features`.
             features: None,
@@ -1489,6 +1491,8 @@ pub enum TandemEvent {
     KeepAwake { from: String, on: bool },
     Unlock { from: String },
     Lock { from: String },
+    /// A device did not do what this one asked: it does not allow it (P6). `reason` is a code of `trust::REASONS` ("not allowed").
+    Refused { from: String, permission: trust::TandemPermission, reason: String },
     SoundMode { from: String, mode: TandemSoundMode },
     /// `quiet` when the other device checks by itself: listen only when the microphone is free and allowed, without asking for it.
     SideListen { from: String, id: u64, quiet: bool },
@@ -1639,6 +1643,7 @@ impl From<Event> for TandemEvent {
             Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
             Event::Unlock { from } => TandemEvent::Unlock { from: from.to_string() },
             Event::Lock { from } => TandemEvent::Lock { from: from.to_string() },
+            Event::Refused { from, permission, reason } => TandemEvent::Refused { from: from.to_string(), permission: permission.into(), reason },
             Event::SoundMode { from, mode } => TandemEvent::SoundMode { from: from.to_string(), mode: mode.into() },
             Event::SideListen { from, id, quiet } => TandemEvent::SideListen { from: from.to_string(), id, quiet },
             Event::SideReady { from, id } => TandemEvent::SideReady { from: from.to_string(), id },
@@ -2058,15 +2063,6 @@ impl TandemEngine {
         self.engine.cancel_pairing_offer();
     }
 
-    /// Whether a device that comes into the circle starts as a guest: clipboard and notifications off, files asked about first.
-    pub fn guests_by_default(&self) -> bool {
-        self.engine.guests_by_default()
-    }
-
-    pub fn set_guests_by_default(&self, on: bool) -> Result<(), TandemError> {
-        self.engine.set_guests_by_default(on).map_err(Into::into)
-    }
-
     pub fn set_device_settings(
         &self,
         id: String,
@@ -2076,7 +2072,11 @@ impl TandemEngine {
     ) -> Result<(), TandemError> {
         let id = DeviceId::parse(&id)?;
         self.engine
-            .set_device_settings(&id, DeviceSettings { clipboard, auto_accept, notifications, ..self.engine.device_settings(&id) })
+            .update_device_settings(&id, |own| {
+                own.clipboard = clipboard;
+                own.auto_accept = auto_accept;
+                own.notifications = notifications;
+            })
             .map_err(Into::into)
     }
 
@@ -2790,7 +2790,7 @@ impl TandemEngine {
         self.runtime.spawn(async move { engine.files(peer).read(&path, offset, len).await }).await.map_err(join_error)?.map_err(Into::into)
     }
 
-    /// A file of the other device to `to`, a path on this one. What an earlier try left as `to.tandem-part` is carried on.
+    /// A file of the other device to `to`, a path on this one. What an earlier try left as `to.tandem-part` is carried on if the file there did not change.
     pub async fn fs_download(
         &self,
         id: String,
