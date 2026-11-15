@@ -33,11 +33,24 @@ struct Sidebar: View {
     private var order: [SidebarSelection] {
         model.devices.flatMap { device -> [SidebarSelection] in
             device.id == model.watchPhoneID ? [.device(device.id), .watch(device.id)] : [.device(device.id)]
-        } + [.shared] + phones.map { .messages($0.id) } + [.notifications, .clipboard]
+        } + [.shared] + (messagesTarget.map { [.messages($0)] } ?? []) + [.notifications, .clipboard]
     }
 
-    /// The phones whose messages have a row in the second group.
+    /// The phones whose messages are behind the row in the second group.
     private var phones: [TandemDevice] { model.devices.filter(Sidebar.offersMessages) }
+
+    /// The phone whose messages were open last, so the row of Messages goes back to it.
+    @AppStorage("messagesPhone") private var lastPhone = ""
+
+    /// Where the row of Messages leads: the phone that is open, else the one that was open last, else one that is there.
+    private var messagesTarget: String? {
+        if case let .messages(id) = selection, phones.contains(where: { $0.id == id }) { return id }
+        return (phones.first { $0.id == lastPhone } ?? phones.first { $0.online } ?? phones.first)?.id
+    }
+
+    private var showsMessages: Bool {
+        if case .messages = selection { true } else { false }
+    }
 
     /// A phone has its messages, and its calls with them, as a place of its own in the second group. What a device can do is only
     /// known while it is connected, so a phone that is away keeps the place: the page itself says that it cannot be reached.
@@ -79,12 +92,12 @@ struct Sidebar: View {
                 } content: {
                     SharedRow()
                 }
-                ForEach(phones, id: \.id) { device in
-                    SidebarButton(selected: selection == .messages(device.id), chosen: chosen) {
-                        selection = .messages(device.id)
+                // One row however many phones there are: the page says whose messages it shows and switches between them.
+                if let target = messagesTarget {
+                    SidebarButton(selected: showsMessages, chosen: chosen) {
+                        selection = .messages(target)
                     } content: {
-                        // With more than one phone each row says whose it is.
-                        MessagesRow(device: device, named: phones.count > 1)
+                        MessagesRow(phones: phones)
                     }
                     .transition(.opacity)
                 }
@@ -108,6 +121,9 @@ struct Sidebar: View {
         .focusEffectDisabled()
         .onKeyPress(.upArrow) { move(-1) }
         .onKeyPress(.downArrow) { move(1) }
+        .onChange(of: selection) { _, chosen in
+            if case let .messages(id) = chosen { lastPhone = id }
+        }
         // At the foot of the sidebar: the update sits just above the way to pair, out of the way of the pages.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
@@ -298,20 +314,20 @@ private struct SideRow: View {
     }
 }
 
-/// The messages of a phone, and its calls with them (see `MessagesView`), in the second group like Files and Notifications.
+/// The messages of the phones, and their calls with them (see `MessagesView`), in the second group like Files and Notifications. One row
+/// for all phones, with what is unread on any of them.
 private struct MessagesRow: View {
-    let device: TandemDevice
-    let named: Bool
+    let phones: [TandemDevice]
 
     var body: some View {
-        let unread = MessagesStore.shared.phone(device.id).unreadCount
+        let unread = phones.reduce(0) { $0 + MessagesStore.shared.phone($1.id).unreadCount }
         SideRow(
             symbol: "message.fill",
             title: "Messages",
-            subtitle: named ? device.name : String(localized: "Texts and calls"),
+            subtitle: String(localized: "Texts and calls"),
             badge: unread
         )
-        .opacity(device.online ? 1 : 0.6)
+        .opacity(phones.contains { $0.online } ? 1 : 0.6)
     }
 }
 

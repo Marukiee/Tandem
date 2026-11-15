@@ -12,6 +12,9 @@ import TandemCore
 /// each have a call button. Every call is asked first (see `CallConfirmation`).
 struct MessagesView: View {
     let device: TandemDevice
+    /// The phones that have messages, so the page can go to those of another one, and what to do when one is chosen.
+    var phones: [TandemDevice] = []
+    var onPhone: (String) -> Void = { _ in }
 
     @LocalState private var selection: UInt64?
     @LocalState private var composing = false
@@ -26,10 +29,10 @@ struct MessagesView: View {
         let phone = phone
         Group {
             if phone.conversations.isEmpty && phone.load != .ready && !composing {
-                MessagesNotice(phone: phone, device: device)
+                MessagesNotice(phone: phone, device: device, phones: phones, onPhone: onPhone)
             } else {
                 HStack(spacing: 0) {
-                    ConversationList(phone: phone, device: device, search: $search, tab: $tab, selection: $selection, composing: $composing,
+                    ConversationList(phone: phone, device: device, phones: phones, onPhone: onPhone, search: $search, tab: $tab, selection: $selection, composing: $composing,
                                      onCompose: { compose(to: nil) }, onOpen: open)
                         .frame(minWidth: 250, idealWidth: 300, maxWidth: 330)
                     detail(phone)
@@ -119,11 +122,39 @@ struct MessagesView: View {
 
 enum MessagesTab: Hashable { case conversations, contacts }
 
+/// With more than one phone: whose messages these are, and the way to those of another phone. One phone needs no such pill.
+private struct PhonePicker: View {
+    let device: TandemDevice
+    let phones: [TandemDevice]
+    let onPick: (String) -> Void
+
+    var body: some View {
+        if phones.count > 1 {
+            FilterMenu(title: Text(verbatim: device.name), symbol: "iphone", active: false) {
+                ForEach(phones, id: \.id) { phone in
+                    Button { onPick(phone.id) } label: {
+                        Label(title(phone), systemImage: phone.id == device.id ? "checkmark" : "iphone")
+                    }
+                }
+            }
+            .help("Choose a phone")
+        }
+    }
+
+    /// The name, with how many messages wait unread there.
+    private func title(_ phone: TandemDevice) -> String {
+        let unread = MessagesStore.shared.phone(phone.id).unreadCount
+        return unread > 0 ? "\(phone.name) (\(unread))" : phone.name
+    }
+}
+
 // MARK: The list
 
 private struct ConversationList: View {
     let phone: PhoneMessages
     let device: TandemDevice
+    let phones: [TandemDevice]
+    let onPhone: (String) -> Void
     @Binding var search: String
     @Binding var tab: MessagesTab
     @Binding var selection: UInt64?
@@ -166,6 +197,14 @@ private struct ConversationList: View {
             }
             .padding(.horizontal, 12)
         } content: {
+            if phones.count > 1 {
+                HStack(spacing: 0) {
+                    PhonePicker(device: device, phones: phones, onPick: onPhone)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 8)
+            }
             Picker("Show", selection: $tab) {
                 Text("Conversations").tag(MessagesTab.conversations)
                 Text("Contacts").tag(MessagesTab.contacts)
@@ -977,12 +1016,19 @@ private struct MessagesNotice: View {
     @Environment(EngineModel.self) private var model
     let phone: PhoneMessages
     let device: TandemDevice
+    let phones: [TandemDevice]
+    let onPhone: (String) -> Void
 
     @LocalState private var asked = false
 
     var body: some View {
-        UnderToolbar {
-            Color.clear
+        UnderToolbar(avoidsWindowButtons: true) {
+            // A phone without messages to show still leads to the other one.
+            HStack(spacing: 0) {
+                PhonePicker(device: device, phones: phones, onPick: onPhone)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
         } content: {
             content
                 .frame(maxWidth: 380)
