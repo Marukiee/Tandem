@@ -218,3 +218,46 @@ async fn a_device_that_does_not_relay_gets_a_clear_answer() {
     assert!(started.elapsed() < Duration::from_secs(5), "known up front, not after a wait");
     assert!(b.engine.transfers().is_empty());
 }
+
+/// C takes an offer that A asked for without asking only when C would also take it from A: auto-accept from B is not enough.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn c_asks_first_when_it_would_ask_the_device_that_asked() {
+    let (a, b, c, shared) = three(true).await;
+    std::fs::write(shared.path().join("ok.txt"), b"ok").unwrap();
+    // C takes files from B without asking, but asks first for files from A.
+    c.engine.set_device_settings(&a.engine.id(), DeviceSettings { auto_accept: false, ..Default::default() }).unwrap();
+    let mut c_events = c.engine.subscribe();
+    let answer = a.engine.send_between(b.engine.id(), c.engine.id(), vec!["/Docs/ok.txt".into()]).await;
+    assert!(answer.ok, "{answer:?}");
+    expect(&mut c_events, "the offer at C", |e| matches!(e, Event::ShareOffered { .. }).then_some(())).await;
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    let record = c.engine.transfers().into_iter().find(|t| t.offer == answer.offer).unwrap();
+    assert_eq!(record.peers[0].stage, tandem_core::journal::Stage::Offered, "it waits for a yes at C");
+    assert!(std::fs::read_dir(c.dir.path().join("downloads")).map(|d| d.count() == 0).unwrap_or(true));
+
+    // A yes at C takes it as usual.
+    c.engine.accept_offer(b.engine.id(), answer.offer).unwrap();
+    let done = expect(&mut c_events, "the file at C", |e| match e {
+        Event::Finished(d) if d.incoming => Some(d.clone()),
+        _ => None,
+    })
+    .await;
+    assert!(done.error.is_none());
+}
+
+/// B writes each request in the activity of Files, so the person on B can see what another device had sent on.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn b_notes_each_request_in_its_files_activity() {
+    let (a, b, c, shared) = three(true).await;
+    std::fs::write(shared.path().join("ok.txt"), b"ok").unwrap();
+    let answer = a.engine.send_between(b.engine.id(), c.engine.id(), vec!["/Docs/ok.txt".into()]).await;
+    assert!(answer.ok);
+    let refused = a.engine.send_between(b.engine.id(), c.engine.id(), vec!["/Docs/../x".into()]).await;
+    assert!(!refused.ok);
+    let relays: Vec<_> = b.engine.file_activity().into_iter().filter(|e| e.action == "relay").collect();
+    assert_eq!(relays.len(), 2, "{relays:?}");
+    assert!(relays.iter().all(|e| e.peer == a.engine.id()));
+    assert!(relays.iter().any(|e| e.path == "/Docs/ok.txt" && e.ok));
+    assert!(relays.iter().any(|e| e.path == "/Docs/../x" && !e.ok));
+}
+

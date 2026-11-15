@@ -223,7 +223,11 @@ impl Inner {
         }
         let mut files = Vec::new();
         for path in &ask.paths {
-            let real = match self.file_service.readable_file(&from, path) {
+            let readable = self.file_service.readable_file(&from, path);
+            // In the activity of Files, like a download by that device: the person here can see what another device had sent on.
+            let noted = readable.as_ref().map(|_| ()).map_err(|code| crate::files::FsFail::new(*code, "refused"));
+            self.file_service.note(from, "relay", path, &noted);
+            let real = match readable {
                 Ok(real) => real,
                 Err(FsCode::NotFound) => return reply_no(ask.id, REASON_GONE),
                 Err(FsCode::IsDir | FsCode::NotDir) => return reply_no(ask.id, REASON_NOT_A_FILE),

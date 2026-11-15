@@ -174,7 +174,7 @@ impl FileService {
         self.activity.lock().unwrap().iter().rev().cloned().collect()
     }
 
-    fn note(&self, peer: DeviceId, action: &str, path: &str, result: &std::result::Result<(), FsFail>) {
+    pub(crate) fn note(&self, peer: DeviceId, action: &str, path: &str, result: &std::result::Result<(), FsFail>) {
         let mut log = self.activity.lock().unwrap();
         if log.len() >= ACTIVITY_KEPT {
             log.pop_front();
@@ -332,7 +332,7 @@ pub struct FsFail {
 }
 
 impl FsFail {
-    fn new(code: FsCode, message: impl Into<String>) -> FsFail {
+    pub(crate) fn new(code: FsCode, message: impl Into<String>) -> FsFail {
         FsFail { code, message: message.into(), late: false }
     }
 

@@ -351,10 +351,15 @@ stuurt; de app toont het dus als uitgaand naar C. `cancel_transfer(to, offer, fa
 paneel van A toont het nog niet (zie hieronder), en A kan het na een herstart niet meer volgen. Antwoordde B ja, dan luistert A een dag.
 
 **Bij B en C** staat het in het boek met `requested_by` (ffi `TandemTransfer.requested_by`). Bij B is het een gewoon uitgaand aanbod:
-wachtrij, hervatten en stoppen werken zoals altijd. Zit C op mobiele data of vraagt C eerst, dan wacht het op C.
+wachtrij, hervatten en stoppen werken zoals altijd. B zet elk verzoek in de activiteit van Bestanden (`file_activity`, actie `relay`, met het
+pad en of het mocht), zodat de persoon op B kan zien wat een ander apparaat liet doorsturen.
+
+**C neemt het alleen zonder vragen** als C het van B zonder vragen neemt en ook van A zou nemen (`auto_accept` voor beide), en A in de
+circle zit. Anders wacht het op een ja, zoals elk aanbod; zit C op mobiele data, dan ook.
 
 **Nog niet:** de poort van P6 (`allowed(A, send_for)`), want P6 is er nog niet: nu mag elk apparaat in de circle dat de bestanden van B
-mag zien ze ook laten doorsturen. Mappen (na P4). Het paneel van A (P3b) toont het nog niet; dat kan als A het in zijn boek zet zonder dat
+mag zien ze ook laten doorsturen. Komt het vertrouwen per apparaat (PR 36, met `browse_files` en `files_without_asking`), dan moet een
+verzoek op B door `browse_files` van A en op C door `files_without_asking` van zowel B als A. Mappen (na P4). Het paneel van A (P3b) toont het nog niet; dat kan als A het in zijn boek zet zonder dat
 de wachtrij of het bedienen er iets mee doet.
 
 **Wat een app moet doen:**

@@ -394,7 +394,15 @@ impl Inner {
         }
         let size: u64 = offer.items.iter().map(|item| item.size).sum();
         let held = self.metered.load(std::sync::atomic::Ordering::Relaxed) && size > METERED_ASK_BYTES;
-        let auto = self.settings.read().unwrap().for_device(&from).auto_accept && !held;
+        let auto = {
+            let settings = self.settings.read().unwrap();
+            // Sent because a third device asked (P9): taken without asking only if this device would also take it from that one. One
+            // that is not in the circle never is.
+            let asker_too = offer.requested_by.is_none_or(|asker| {
+                settings.for_device(&asker).auto_accept && self.circle.read().unwrap().members().iter().any(|member| member.id == asker)
+            });
+            settings.for_device(&from).auto_accept && asker_too && !held
+        };
         let run = self.journal.insert(TransferRecord::incoming(from, &offer, held));
         // Nobody is asked about what cannot fit (P5); the files end at once, here and at the sender.
         if self.too_big_here(key) {
