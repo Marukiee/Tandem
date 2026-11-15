@@ -3,10 +3,15 @@ import SwiftUI
 import TandemCore
 
 extension AnyTransition {
-    /// How a whole page arrives and leaves: a plain fade. The page is a scroll view under the
-    /// toolbar, and moving or scaling it while it fades uncovers the strip under the toolbar
-    /// for a few frames, which shows as a light bar along the top edge.
+    /// A page that is not one of the rows of the sidebar (the start, an error): a plain fade.
     static var page: AnyTransition { .opacity }
+
+    /// How a page arrives when another row of the sidebar is chosen: whole, in a short fade with a small shift, from below when
+    /// its row is further down and from above when it is further up, so the page follows the fill that glides to that row. The
+    /// page it replaces only fades. Nothing of one page turns into something of the other.
+    static func page(from shift: Int) -> AnyTransition {
+        .asymmetric(insertion: .opacity.combined(with: .offset(y: CGFloat(shift) * 10)), removal: .opacity)
+    }
 
     /// What sits inside a page, where a slight rise is safe: a short fade with a small lift.
     static var rise: AnyTransition {
@@ -26,6 +31,9 @@ struct MainWindow: View {
 
     @Environment(EngineModel.self) private var model
     @LocalState private var selection: SidebarSelection? = MainWindow.remembered
+    /// Where the page that is open came from: 1 when its row is under the row of the page before it, -1 when above, 0 otherwise.
+    @LocalState private var shift = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The device this window opened on while nothing was connected yet: the first one to connect takes over, unless the person went
     /// somewhere else. At the start of the app the connections come a few seconds after the window.
     @LocalState private var waitingOn: String?
@@ -42,6 +50,29 @@ struct MainWindow: View {
     /// Under this width of the window the sidebar folds.
     private static let foldBelow: CGFloat = 900
 
+    /// Where the row of a page is in the sidebar, counted from the top. The files of a device are under its row, health under the watch.
+    private func rank(_ page: SidebarSelection?) -> Int {
+        guard let page else { return -1 }
+        func device(_ id: String, _ step: Int) -> Int { (model.devices.firstIndex { $0.id == id } ?? 0) * 2 + step }
+        switch page {
+        case let .device(id), let .files(id): return device(id, 0)
+        case let .watch(id), let .health(id): return device(id, 1)
+        case .shared: return 10_000
+        case .messages: return 10_001
+        case .notifications: return 10_002
+        case .clipboard: return 10_003
+        }
+    }
+
+    /// Opens a page, and remembers on which side of the last one its row is.
+    private func open(_ next: SidebarSelection?) {
+        shift = reduceMotion ? 0 : (rank(next) - rank(selection)).signum()
+        selection = next
+    }
+
+    /// The open page for what chooses one: every choice goes through `open`.
+    private var chosen: Binding<SidebarSelection?> { Binding(get: { selection }, set: { open($0) }) }
+
     /// A window that opens on a device that is not connected goes to one that is. Another page stays as it was left.
     private func openOnConnected() {
         guard case let .device(id) = selection, model.device(id)?.online == false else {
@@ -49,7 +80,7 @@ struct MainWindow: View {
             return
         }
         if let connected = model.devices.first(where: \.online) {
-            selection = .device(connected.id)
+            open(.device(connected.id))
             waitingOn = nil
         } else {
             waitingOn = id
@@ -71,7 +102,7 @@ struct MainWindow: View {
                 .scrollEdgeEffectHidden(true, for: .top)
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
                 .toolbar(removing: .title)
-                .animation(.tandem, value: selection)
+                .animation(.easeOut(duration: 0.24), value: selection)
                 .onChange(of: selection) {
                     MainWindow.remembered = selection
                     if case let .messages(id) = selection { Sidebar.lastMessagesPhone = id }
@@ -79,7 +110,7 @@ struct MainWindow: View {
                     // A page was chosen: the sidebar that was opened over the page has done its work.
                     if peek { withAnimation(.tandemSidebar) { peek = false } }
                 }
-            Sidebar(selection: $selection, showPairing: $showPairing, folded: folded) {
+            Sidebar(selection: chosen, showPairing: $showPairing, folded: folded) {
                 withAnimation(.tandemSidebar) { peek = true }
             }
             .frame(width: folded ? Sidebar.railWidth : Sidebar.wideWidth)
@@ -165,14 +196,14 @@ struct MainWindow: View {
     var body: some View {
         windowWithQuestions
         .onChange(of: deviceIDs) { _, ids in
-            if case let .device(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
-            if case let .files(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
-            if case let .messages(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
-            if case let .watch(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
-            if case let .health(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
+            if case let .device(id) = selection, !ids.contains(id) { open(ids.first.map { .device($0) }) }
+            if case let .files(id) = selection, !ids.contains(id) { open(ids.first.map { .device($0) }) }
+            if case let .messages(id) = selection, !ids.contains(id) { open(ids.first.map { .device($0) }) }
+            if case let .watch(id) = selection, !ids.contains(id) { open(ids.first.map { .device($0) }) }
+            if case let .health(id) = selection, !ids.contains(id) { open(ids.first.map { .device($0) }) }
             chooseDebugPage()
             if selection == nil, let first = ids.first {
-                selection = .device(first)
+                open(.device(first))
                 openOnConnected()
             }
         }
@@ -183,13 +214,13 @@ struct MainWindow: View {
         .onChange(of: capCounts) { chooseDebugPage() }
         .onAppear {
             if let debug = DebugSupport.initialSelection(devices: model.devices) {
-                selection = debug
+                open(debug)
             } else if case let .device(id) = selection, model.device(id) == nil {
                 // The device that was open when the window went away has been removed since.
-                selection = model.devices.first.map { .device($0.id) }
+                open(model.devices.first.map { .device($0.id) })
                 openOnConnected()
             } else if selection == nil, let first = model.devices.first {
-                selection = .device(first.id)
+                open(.device(first.id))
                 openOnConnected()
             } else {
                 openOnConnected()
@@ -199,7 +230,7 @@ struct MainWindow: View {
                 showPairing = true
             }
         }
-        .modifier(SpotlightNavigation(selection: $selection))
+        .modifier(SpotlightNavigation(selection: chosen))
         .onReceive(NotificationCenter.default.publisher(for: .tandemShowPairing)) { _ in
             MainWindow.wantsPairing = false
             showPairing = true
@@ -209,7 +240,7 @@ struct MainWindow: View {
     private func chooseDebugPage() {
         guard !debugChosen, let debug = DebugSupport.initialSelection(devices: model.devices) else { return }
         debugChosen = true
-        selection = debug
+        open(debug)
     }
 
     private var trashTitle: String {
@@ -232,52 +263,54 @@ struct MainWindow: View {
             switch selection {
             case let .device(id):
                 if let device = model.device(id) {
-                    // One DeviceDetail for every device, so its glyph and title can morph
-                    // from one device to the next instead of being replaced.
+                    // A page of its own for every device: the one of the device before leaves whole and this one arrives whole.
+                    // As one page for all of them its head, its ring and its cards turned into those of the next device.
                     DeviceDetail(
                         device: device,
-                        onBrowse: { selection = .files(device.id) },
+                        onBrowse: { open(.files(device.id)) },
                         onViewAll: {
                             model.sharedDeviceFilter = device.id
-                            selection = .shared
+                            open(.shared)
                         }
-                    ).transition(.page)
+                    )
+                    .id(id)
+                    .transition(.page(from: shift))
                 } else {
                     Color.clear
                 }
             case let .files(id):
                 if let device = model.device(id) {
-                    FilesView(device: device, onBack: { selection = .device(id) }).transition(.page)
+                    FilesView(device: device, onBack: { open(.device(id)) }).id(id).transition(.page(from: shift))
                 } else {
                     Color.clear
                 }
             case let .messages(id):
                 if let device = model.device(id) {
                     // A page of its own per phone, so the conversation that was open on one does not stay open on the other.
-                    MessagesView(device: device, phones: model.devices.filter(Sidebar.offersMessages), onPhone: { selection = .messages($0) })
+                    MessagesView(device: device, phones: model.devices.filter(Sidebar.offersMessages), onPhone: { open(.messages($0)) })
                         .id(id)
-                        .transition(.page)
+                        .transition(.page(from: shift))
                 } else {
                     Color.clear
                 }
             case let .watch(id):
                 if let device = model.device(id), device.status.watch?.paired == true {
-                    WatchDetail(phone: device, onOpenPhone: { selection = .device(id) }, onOpenHealth: { selection = .health(id) }).transition(.page)
+                    WatchDetail(phone: device, onOpenPhone: { open(.device(id)) }, onOpenHealth: { open(.health(id)) }).id(id).transition(.page(from: shift))
                 } else {
                     Color.clear
                 }
             case let .health(id):
                 if let device = model.device(id) {
-                    HealthPage(phone: device, onBack: { selection = .watch(id) }).transition(.page)
+                    HealthPage(phone: device, onBack: { open(.watch(id)) }).id(id).transition(.page(from: shift))
                 } else {
                     Color.clear
                 }
             case .shared:
-                SharedView().transition(.page)
+                SharedView().transition(.page(from: shift))
             case .notifications:
-                NotificationsView().transition(.page)
+                NotificationsView().transition(.page(from: shift))
             case .clipboard:
-                ClipboardPage().transition(.page)
+                ClipboardPage().transition(.page(from: shift))
             case nil:
                 Color.clear
             }
