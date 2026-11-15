@@ -266,6 +266,9 @@ pub enum Msg {
 pub struct PeerAddrs {
     pub id: DeviceId,
     pub addrs: Vec<String>,
+    /// The sender is connected to this device right now. The receiver that is not tries it at once: it is up, and was missed.
+    #[serde(default)]
+    pub connected: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1018,6 +1021,20 @@ pub fn bytes(data: Vec<u8>) -> ByteBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_introduction_from_a_device_that_does_not_say_who_is_connected_still_reads() {
+        #[derive(Serialize)]
+        struct Old {
+            id: DeviceId,
+            addrs: Vec<String>,
+        }
+        let id = DeviceId::from_public_key(&[7; 32]);
+        let bytes = encode(&Old { id, addrs: vec!["192.168.1.2:47820".into()] }).unwrap();
+        let read: PeerAddrs = decode(&bytes).unwrap();
+        assert_eq!(read.id, id);
+        assert!(!read.connected);
+    }
 
     #[test]
     fn only_what_differs_from_what_is_known_is_news() {

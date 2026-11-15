@@ -242,7 +242,7 @@ impl Inner {
         // And tell everyone else where this device can be found.
         let mut mine: Vec<String> = hello.candidates.clone();
         mine.push(remote.to_string());
-        let intro = Msg::Introduce { peers: vec![crate::proto::PeerAddrs { id, addrs: mine }] };
+        let intro = Msg::Introduce { peers: vec![crate::proto::PeerAddrs { id, addrs: mine, connected: true }] };
         for other in self.connected_ids() {
             if other != id {
                 let _ = self.send_to(&other, intro.clone()).await;
@@ -672,6 +672,9 @@ impl Inner {
                         if let Ok(addr) = text.parse::<SocketAddr>() {
                             self.learn_introduced_addr(&entry.id, addr);
                         }
+                    }
+                    if entry.connected {
+                        self.try_now(&entry.id);
                     }
                 }
                 self.poke.notify_one();

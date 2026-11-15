@@ -98,6 +98,10 @@ pub(crate) struct Peer {
     pub lan_seen: Option<Instant>,
     /// The network changed: the next try goes to every address, whatever the back-off says about how many.
     pub hurry: bool,
+    /// Something made this device reachable that was not: the next try is made whatever the screen and the data (see `Inner::hurry_with`).
+    pub force: bool,
+    /// When a change of network last gave this device its one try after it had been gone for days.
+    pub long_hurried: Option<Instant>,
 }
 
 pub(crate) struct Inner {
@@ -856,6 +860,7 @@ impl Inner {
             .map(|(id, peer)| crate::proto::PeerAddrs {
                 id: *id,
                 addrs: peer.addrs.ordered().into_iter().take(4).map(|a| a.addr).collect(),
+                connected: peer.session.is_some(),
             })
             .collect()
     }
@@ -923,6 +928,8 @@ impl Inner {
                 hello: None,
                 lan_seen: None,
                 hurry: false,
+                force: false,
+                long_hurried: None,
             });
         }
         let gone: Vec<DeviceId> = peers.keys().filter(|id| !wanted.contains(id)).copied().collect();
@@ -961,13 +968,13 @@ impl Inner {
         }
     }
 
-    /// A device that has been gone for days is tried once when this starts (it may just have come back) and after that at the long
-    /// back-off, as if it had failed all this time, and not from the quick tries of a device that was here a moment ago.
+    /// A device that has been gone for days is tried once when this starts, on every address (it may just have come back), and after
+    /// that at the long back-off, as if it had failed all this time, and not from the quick tries of a device that was here a moment ago.
     fn begin_long_away_at_the_long_backoff(&self) {
         let mut peers = self.peers.lock().unwrap();
         for (id, peer) in peers.iter_mut() {
             if peer.session.is_none() && self.away_for_days(id, peer) {
-                peer.fail_count = peer.fail_count.max(LONG_AWAY_FAILS);
+                start_long_away(peer);
             }
         }
     }
@@ -1008,6 +1015,19 @@ impl Inner {
         }
     }
 
+    /// Another device says that `id` is connected to it right now, and this device is not: it is up, and one try is made at once, on every
+    /// address and whatever the screen and the data, but the back-off is left as it was (see `apply_hurry`).
+    pub(crate) fn try_now(&self, id: &DeviceId) {
+        if let Some(peer) = self.peers.lock().unwrap().get_mut(id)
+            && peer.session.is_none()
+        {
+            peer.next_dial = Instant::now();
+            peer.hurry = true;
+            peer.force = true;
+            self.poke.notify_one();
+        }
+    }
+
     pub fn add_address(self: &Arc<Self>, id: &DeviceId, addr: SocketAddr) -> Result<()> {
         {
             let mut peers = self.peers.lock().unwrap();
@@ -1030,16 +1050,22 @@ impl Inner {
     /// reconnects, the screen going on) leaves the back-off as it was, so the radio of a phone does not keep trying a computer that is
     /// off; and a change soon after the last waits for `HURRY_GAP`. `at_once`: now, for a device that just joined.
     pub(crate) fn hurry(self: &Arc<Self>, at_once: bool) {
+        self.hurry_with(at_once, false);
+    }
+
+    /// `force`: something happened that makes a device reachable that was not (Tailscale was turned on after it was asked for): every
+    /// device that is away is tried now, whatever the screen, the data and how long it has been gone.
+    pub(crate) fn hurry_with(self: &Arc<Self>, at_once: bool, force: bool) {
         let now = Instant::now();
         let (at, quiet_before) = {
             let mut last = self.last_hurry.lock().unwrap();
             let quiet_before = at_once || last.is_none_or(|previous| now > previous + QUIET_NETWORK);
-            let at = hurry_at(*last, now, at_once);
+            let at = if force { now } else { hurry_at(*last, now, at_once) };
             *last = Some(at);
             (at, quiet_before)
         };
         // A device that just joined is wanted now, whatever the screen and the data.
-        let costly = !at_once && self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed);
+        let costly = !at_once && !force && self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed);
         // The one try each device gets there is given at most once in a while, however often the network is said to have changed.
         let skip = costly && {
             let mut last = self.last_costly_hurry.lock().unwrap();
@@ -1052,7 +1078,7 @@ impl Inner {
         let mut peers = self.peers.lock().unwrap();
         for (id, peer) in peers.iter_mut().filter(|(_, p)| p.session.is_none() && !skip) {
             let long_away = self.away_for_days(id, peer);
-            apply_hurry(peer, at, quiet_before, long_away, costly);
+            apply_hurry(peer, at, quiet_before, long_away, costly, force);
         }
         drop(peers);
         self.probe_sessions();
@@ -1204,7 +1230,7 @@ impl Inner {
         if if_addrs::get_if_addrs().map(|all| all.iter().any(|i| net::is_tailnet(i.ip()))).unwrap_or(false) {
             // Asked again only after it has gone away again.
             *self.tailscale_asked.lock().unwrap() = None;
-            self.network_changed();
+            self.hurry_with(false, true);
         }
     }
 
@@ -1219,9 +1245,10 @@ impl Inner {
             for (id, peer) in peers.iter_mut() {
                 if peer.session.is_none() && !peer.dialing && now >= peer.next_dial && !peer.addrs.is_empty() {
                     let long_away = self.away_for_days(id, peer);
-                    if long_away && costly {
+                    if !may_dial(long_away, costly, peer.force) {
                         continue;
                     }
+                    peer.force = false;
                     peer.dialing = true;
                     peer.addrs.forget_old(now_ms());
                     // After a change of network every address, as for a device that never failed.
@@ -1508,6 +1535,8 @@ const COSTLY_HURRY_GAP: Duration = Duration::from_secs(120);
 const COSTLY_ADDRESS_CHANGE_GAP: Duration = Duration::from_secs(300);
 /// A device that has not been seen for this long is "away for days": see `is_away_for_days`.
 const AWAY_AFTER_MS: u64 = 24 * 3600 * 1000;
+/// How often a change of network may give such a device its one try.
+const LONG_AWAY_HURRY_GAP: Duration = Duration::from_secs(300);
 /// How often such a device is tried at most.
 const LONG_AWAY_CAP: Duration = Duration::from_secs(6 * 3600);
 /// The failures that start the long back-off (see `backoff`): more than the quick tries and the 5 minute waits.
@@ -1533,13 +1562,28 @@ fn is_away_for_days(now: u64, last_seen: Option<u64>, last_worked: Option<u64>, 
     now.saturating_sub(newest) > AWAY_AFTER_MS
 }
 
-/// A change of network has a device that is away tried soon, on all its addresses. Not one that has been gone for days: it keeps its
-/// long back-off, because every try is paid for in battery and that device dials this one itself when it is back.
+/// A change of network has a device that is away tried soon, on all its addresses.
 ///
-/// With the screen off on metered data (`costly`) a device that was here lately gets one try soon, on its best addresses, so that a
-/// notification is not lost because the way to it changed; but its back-off is left as it was, so the quick tries do not start again.
-fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool, costly: bool) {
+/// One that has been gone for days gets that one try as well, since the change may be the reason it can be reached now (a laptop that
+/// is opened, a Tailscale that is turned on), but its back-off is left as it was: the tries after it are the long ones, and not more than
+/// one such try per `LONG_AWAY_HURRY_GAP` however often the network changes. With the screen off on metered data (`costly`) it is not
+/// dialled at all, apart from `force` (see `Inner::hurry_with`).
+///
+/// With the screen off on metered data a device that was here lately gets one try soon, on its best addresses, so that a notification is
+/// not lost because the way to it changed; but its back-off is left as it was, so the quick tries do not start again.
+fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool, costly: bool, force: bool) {
+    if force {
+        peer.force = true;
+    }
     if long_away {
+        if costly && !force {
+            return;
+        }
+        if force || peer.long_hurried.is_none_or(|previous| at >= previous + LONG_AWAY_HURRY_GAP) {
+            peer.long_hurried = Some(at);
+            peer.next_dial = peer.next_dial.min(at);
+            peer.hurry = true;
+        }
         return;
     }
     if costly {
@@ -1551,6 +1595,18 @@ fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool
     if quiet_before {
         peer.fail_count = peer.fail_count.min(QUICK_TRIES);
     }
+}
+
+/// Whether a device that is due is dialled now: not one that has been gone for days while the screen is off on metered data, unless
+/// something asked for it in particular.
+fn may_dial(long_away: bool, costly: bool, forced: bool) -> bool {
+    !(long_away && costly) || forced
+}
+
+/// What a device that has been gone for days starts at when this device starts: one try on every address, and then the long back-off.
+fn start_long_away(peer: &mut Peer) {
+    peer.fail_count = peer.fail_count.max(LONG_AWAY_FAILS);
+    peer.hurry = true;
 }
 
 /// See `Inner::hurry`.
@@ -1629,6 +1685,8 @@ mod tests {
             hello: None,
             lan_seen: None,
             hurry: false,
+            force: false,
+            long_hurried: None,
         }
     }
 
@@ -1672,21 +1730,62 @@ mod tests {
     }
 
     #[test]
-    fn a_change_of_network_hurries_a_device_that_was_here_yesterday_and_not_one_that_has_been_away_for_days() {
+    fn a_change_of_network_gives_a_device_that_has_been_away_for_days_one_try_on_every_address_and_leaves_its_back_off() {
         let now = Instant::now();
-        let later = now + Duration::from_secs(3600);
+        let later = now + Duration::from_secs(6 * 3600);
 
         let mut recent = a_peer(30, later);
-        apply_hurry(&mut recent, now, true, false, false);
+        apply_hurry(&mut recent, now, true, false, false, false);
         assert_eq!(recent.next_dial, now);
         assert!(recent.hurry);
         assert_eq!(recent.fail_count, QUICK_TRIES);
 
+        // The laptop that is opened after three days and joins its Wi-Fi: tried at once, on every address.
         let mut gone = a_peer(LONG_AWAY_FAILS, later);
-        apply_hurry(&mut gone, now, true, true, false);
-        assert_eq!(gone.next_dial, later, "its back-off is not shortened");
-        assert!(!gone.hurry);
-        assert_eq!(gone.fail_count, LONG_AWAY_FAILS, "and it does not start counting from the quick tries again");
+        apply_hurry(&mut gone, now, true, true, false, false);
+        assert_eq!(gone.next_dial, now);
+        assert!(gone.hurry, "on every address");
+        assert_eq!(gone.fail_count, LONG_AWAY_FAILS, "but it does not start counting from the quick tries again");
+
+        // A network that keeps changing gives it one such try per 5 minutes.
+        gone.next_dial = later;
+        apply_hurry(&mut gone, now + Duration::from_secs(60), true, true, false, false);
+        assert_eq!(gone.next_dial, later);
+        apply_hurry(&mut gone, now + LONG_AWAY_HURRY_GAP, true, true, false, false);
+        assert_eq!(gone.next_dial, now + LONG_AWAY_HURRY_GAP);
+    }
+
+    #[test]
+    fn tailscale_turned_on_dials_a_device_that_has_been_away_for_days_even_with_the_screen_off_on_metered_data() {
+        let now = Instant::now();
+        let later = now + Duration::from_secs(6 * 3600);
+
+        // Without a reason it is not dialled at all in that state, and a change of network does not make it so.
+        let mut gone = a_peer(LONG_AWAY_FAILS, later);
+        apply_hurry(&mut gone, now, true, true, true, false);
+        assert_eq!(gone.next_dial, later);
+        assert!(!gone.force);
+        assert!(!may_dial(true, true, gone.force));
+
+        // Tailscale arriving is a reason: now, on every address, whatever the screen and the data.
+        apply_hurry(&mut gone, now, true, true, false, true);
+        assert_eq!(gone.next_dial, now);
+        assert!(gone.hurry && gone.force);
+        assert!(may_dial(true, true, gone.force));
+        assert_eq!(gone.fail_count, LONG_AWAY_FAILS);
+
+        // Nothing else is held back: not away, or the screen on or Wi-Fi.
+        assert!(may_dial(false, true, false));
+        assert!(may_dial(true, false, false));
+    }
+
+    #[test]
+    fn a_device_that_has_been_away_for_days_starts_with_one_try_on_every_address_and_then_the_long_wait() {
+        let mut peer = a_peer(0, Instant::now());
+        start_long_away(&mut peer);
+        assert!(peer.hurry, "every address on the one try at start");
+        assert_eq!(peer.fail_count, LONG_AWAY_FAILS, "and the long back-off after it");
+        assert_eq!(addresses_to_try(0, true), usize::MAX);
     }
 
     #[test]
@@ -1694,13 +1793,13 @@ mod tests {
         let now = Instant::now();
         let later = now + Duration::from_secs(3600);
         let mut lately = a_peer(7, later);
-        apply_hurry(&mut lately, now, true, false, true);
+        apply_hurry(&mut lately, now, true, false, true, false);
         assert_eq!(lately.next_dial, now, "one try soon, so a notification is not lost");
         assert!(!lately.hurry, "not on every address");
         assert_eq!(lately.fail_count, 7, "and the quick tries do not start again");
         // Already due earlier: not pushed back.
         let mut due = a_peer(7, now - Duration::from_secs(5));
-        apply_hurry(&mut due, now, true, false, true);
+        apply_hurry(&mut due, now, true, false, true, false);
         assert_eq!(due.next_dial, now - Duration::from_secs(5));
     }
 
