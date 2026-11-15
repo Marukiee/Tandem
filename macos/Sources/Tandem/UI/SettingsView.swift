@@ -403,6 +403,8 @@ private struct GeneralSettings: View {
 
             KeepAwakeSettings()
 
+            // The rest is set once, if at all.
+            MoreSettings(holds: "Connection, Focus, Spotlight, backup, starting over") {
             Section("Connection") {
                 DescribedToggle(
                     "Turn on Tailscale when needed",
@@ -442,6 +444,7 @@ private struct GeneralSettings: View {
                 LabeledContent("Forgets this Mac's identity and all pairings. You can pair again afterwards.") {
                     Button("Reset Tandem…", role: .destructive) { confirmReset = true }
                 }
+            }
             }
         }
         .formStyle(.grouped)
@@ -626,6 +629,9 @@ private struct SoundSettings: View {
 private struct DevicesSettings: View {
     @Environment(EngineModel.self) private var model
     @LocalState private var removing: TandemDevice?
+    /// The devices whose settings are open. Closed, a device is one row: with a handful of devices the page was four rows for
+    /// each of them.
+    @LocalState private var opened: Set<String> = []
 
     var body: some View {
         Form {
@@ -643,16 +649,28 @@ private struct DevicesSettings: View {
                 Section {
                     // Not a LabeledContent: that sets the state level with the first line of the name, and with two lines
                     // beside it the state belongs in the middle.
-                    HStack(spacing: 10) {
-                        DeviceGlyph(platform: device.platform, online: device.online, size: 30)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(device.name).font(.body.weight(.medium))
-                            Text(device.platform.label).font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        withAnimation(.tandem) { if opened.contains(device.id) { opened.remove(device.id) } else { opened.insert(device.id) } }
+                    } label: {
+                        HStack(spacing: 10) {
+                            DeviceGlyph(platform: device.platform, online: device.online, size: 30, deviceID: device.id)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(device.name).font(.body.weight(.medium))
+                                Text(device.platform.label).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 12)
+                            Text(model.reach(of: device).text)
+                                .foregroundStyle(model.reach(of: device).color)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                                .rotationEffect(.degrees(opened.contains(device.id) ? 90 : 0))
                         }
-                        Spacer(minLength: 12)
-                        Text(model.reach(of: device).text)
-                            .foregroundStyle(model.reach(of: device).color)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(opened.contains(device.id) ? .isSelected : [])
+                    if opened.contains(device.id) {
                     DescribedToggle(
                         "Sync clipboard",
                         subtitle: "Text and links you copy show up on both devices",
@@ -689,6 +707,7 @@ private struct DevicesSettings: View {
                         }
                         Spacer(minLength: 12)
                         Button("Remove…", role: .destructive) { removing = device }
+                    }
                     }
                 }
             }
