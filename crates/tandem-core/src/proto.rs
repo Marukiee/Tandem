@@ -487,6 +487,11 @@ pub struct Feature {
     pub page: Option<String>,
 }
 
+/// What `free_storage` says when the disk that files land on cannot be read any more. A status only carries what changed, so "no
+/// number" cannot take an old number away; this one, more than any disk holds, does. An older device that does not know it simply
+/// sees a disk with room for everything.
+pub const FREE_STORAGE_UNKNOWN: u64 = u64::MAX;
+
 impl Status {
     pub fn merge(&mut self, other: &Status) {
         macro_rules! take {
@@ -495,6 +500,9 @@ impl Status {
             };
         }
         take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet);
+        if other.free_storage == Some(FREE_STORAGE_UNKNOWN) {
+            self.free_storage = None;
+        }
     }
 }
 
@@ -993,6 +1001,18 @@ pub fn bytes(data: Vec<u8>) -> ByteBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_disk_that_cannot_be_read_takes_its_old_free_space_away() {
+        let mut known = Status::default();
+        known.merge(&Status { free_storage: Some(5_000_000_000), ..Default::default() });
+        known.merge(&Status { dnd: Some(true), ..Default::default() });
+        assert_eq!(known.free_storage, Some(5_000_000_000));
+        known.merge(&Status { free_storage: Some(FREE_STORAGE_UNKNOWN), ..Default::default() });
+        assert_eq!(known.free_storage, None);
+        known.merge(&Status { free_storage: Some(7), ..Default::default() });
+        assert_eq!(known.free_storage, Some(7));
+    }
 
     #[test]
     fn the_watch_of_a_phone_stays_known_until_the_phone_says_otherwise() {
