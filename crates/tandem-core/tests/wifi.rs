@@ -148,6 +148,8 @@ async fn a_new_bluetooth_link_carries_the_network_and_a_phone_never_announces() 
     mac.engine.pair_with_uri(&offer.uri).await.unwrap();
     let (phone_id, mac_id) = (phone.engine.id(), mac.engine.id());
     wait_until("the Bluetooth key", || mac.engine.ble_ready(&phone_id) && phone.engine.ble_ready(&mac_id)).await;
+    // The network over QUIC below needs the connection to be up, and the key does not say so.
+    wait_until("connected", || online(&phone, mac_id) && online(&mac, phone_id)).await;
 
     // A phone that says which network it is on tells nobody: it has no `wifi.share`.
     let mut mac_events = mac.engine.subscribe();
@@ -155,23 +157,35 @@ async fn a_new_bluetooth_link_carries_the_network_and_a_phone_never_announces() 
 
     let mut phone_events = phone.engine.subscribe();
     mac.engine.set_wifi_network(Some(home())).await;
-    expect(&mut phone_events, "the network over QUIC", |e| network_from(e, mac_id)).await;
+    // A connection that has just come up announces "no network" first, which is not what this waits for.
+    expect(&mut phone_events, "the network over QUIC", |e| network_from(e, mac_id).filter(|n| n.is_some())).await;
 
     // The phone says hello over the air; the Mac takes the link and queues its network for it. Nothing changed, so a second
     // network can only have come this way.
     for chunk in phone.engine.ble_hello(&mac_id, 180) {
         mac.engine.ble_receive("phone", &chunk).await;
     }
-    let waiting = mac.engine.ble_take_outbox(&phone_id, 180);
-    assert!(!waiting.is_empty(), "the Mac queued nothing for the new link");
+    let mut waiting = Vec::new();
+    wait_until("the Mac queues its network for the new link", || {
+        waiting.extend(mac.engine.ble_take_outbox(&phone_id, 180));
+        !waiting.is_empty()
+    })
+    .await;
     for chunk in waiting {
         phone.engine.ble_receive("mac", &chunk).await;
     }
-    let heard = expect(&mut phone_events, "the network over Bluetooth", |e| network_from(e, mac_id)).await;
+    // Also not the "no network" of the connection coming up, which can still be on its way on a slow runner.
+    let heard = expect(&mut phone_events, "the network over Bluetooth", |e| network_from(e, mac_id).filter(|n| n.is_some())).await;
     assert_eq!(heard, Some(home()));
 
-    tokio::time::sleep(Duration::from_millis(300)).await;
-    while let Ok(event) = mac_events.try_recv() {
-        assert!(network_from(&event, phone_id).is_none(), "the phone announced its network");
-    }
+    // Whatever the phone had announced would have been sent before this question, so it is in the events once the question is.
+    phone.engine.send_msg(&[mac_id], Msg::Wifi(WifiMsg::Ask { ssid: "Last".into() })).await;
+    expect(&mut mac_events, "the last question", |e| {
+        assert!(network_from(e, phone_id).is_none(), "the phone announced its network");
+        match e {
+            Event::Wifi { msg: WifiMsg::Ask { ssid }, .. } if ssid == "Last" => Some(()),
+            _ => None,
+        }
+    })
+    .await;
 }

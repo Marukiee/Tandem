@@ -1,5 +1,89 @@
 [
   {
+    "version": "0.3.22",
+    "date": "2026-11-15",
+    "en": {
+      "title": "Two Mac fixes",
+      "new": [],
+      "fixed": [
+        "Mac: the update card shows its whole text, with Later and Update on a row of their own",
+        "Mac: the menu bar panel no longer looks like it is still sending after a file went out"
+      ]
+    },
+    "nl": {
+      "title": "Twee Mac-fixes",
+      "new": [],
+      "fixed": [
+        "Mac: de updatekaart toont zijn hele tekst, met Later en Bijwerken op een eigen regel",
+        "Mac: het menubalkpaneel lijkt niet meer bezig met sturen nadat een bestand weg is"
+      ]
+    }
+  },
+  {
+    "version": "0.3.21",
+    "date": "2026-11-15",
+    "en": {
+      "title": "Small fixes",
+      "new": [
+        "The apps do less work in the background: no more asking around for the Control Center, the battery widget and the lock state"
+      ],
+      "fixed": [
+        "Mac: files dragged over from another computer no longer leave a copy in Downloads",
+        "Mac: free space is measured on the disk your downloads go to",
+        "Files: a download that is picked up again after the file changed arrives whole",
+        "Quick Share: no half files are left behind, and two files with the same name both arrive"
+      ]
+    },
+    "nl": {
+      "title": "Kleine verbeteringen",
+      "new": [
+        "De apps doen minder werk op de achtergrond: niet meer rondvragen voor het Controlecentrum, de batterijwidget en de vergrendeling"
+      ],
+      "fixed": [
+        "Mac: bestanden die je van een andere computer sleept laten geen kopie meer achter in Downloads",
+        "Mac: de vrije ruimte wordt gemeten op de schijf waar je downloads komen",
+        "Bestanden: een download die verder gaat nadat het bestand veranderde komt heel aan",
+        "Quick Share: er blijven geen halve bestanden staan, en twee bestanden met dezelfde naam komen allebei aan"
+      ]
+    }
+  },
+  {
+    "version": "0.3.20",
+    "date": "2026-11-15",
+    "en": {
+      "title": "Waiting on every device",
+      "new": [
+        "Android, Linux and Windows: files for a device that is away wait and go when it is back",
+        "Android, Linux and Windows: Shared shows everything that is underway, incoming or waiting",
+        "Android: drop files from another app on a device, and drag received files out",
+        "Health: the month calendar shows every day as a coloured tile, warm when your heart rate was higher than usual",
+        "Mac: one Messages row for all your phones, with a switch on the page"
+      ],
+      "fixed": [
+        "Android: going back through the months of the health calendar no longer crashes",
+        "Android: the watch card shows your steps from the start of the day",
+        "Mac: the update card in the sidebar no longer cuts off its text",
+        "Android, Linux and Windows: why a transfer failed is shown in your language"
+      ]
+    },
+    "nl": {
+      "title": "Wachten op elk apparaat",
+      "new": [
+        "Android, Linux en Windows: bestanden voor een apparaat dat weg is wachten en gaan als het terug is",
+        "Android, Linux en Windows: Gedeeld toont alles wat onderweg is, binnenkomt of wacht",
+        "Android: sleep bestanden uit een andere app op een apparaat, en sleep ontvangen bestanden eruit",
+        "Gezondheid: de maandkalender toont elke dag als gekleurde tegel, warm als je hartslag hoger was dan normaal",
+        "Mac: een rij Berichten voor al je telefoons, met wisselen op de pagina"
+      ],
+      "fixed": [
+        "Android: terugbladeren door de maanden van de gezondheidskalender crasht niet meer",
+        "Android: de horlogekaart toont je stappen vanaf het begin van de dag",
+        "Mac: de updatekaart in de zijbalk kapt zijn tekst niet meer af",
+        "Android, Linux en Windows: waarom een overdracht mislukte staat er in je eigen taal"
+      ]
+    }
+  },
+  {
     "version": "0.3.19",
     "date": "2026-11-14",
     "en": {

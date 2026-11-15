@@ -50,6 +50,7 @@ pub fn allowed(msg: &Msg) -> bool {
             | Msg::MediaCommand { .. }
             | Msg::Ping { .. }
             | Msg::Wifi(_)
+            | Msg::Refused { .. }
     )
 }
 
@@ -316,6 +317,10 @@ impl Inner {
     /// Queues a message for a device that is only reachable over Bluetooth.
     pub(crate) fn ble_queue(&self, peer: &DeviceId, msg: Msg) -> bool {
         if !allowed(&msg) || !self.ble_linked(peer) {
+            return false;
+        }
+        // The same gate as `send_to`: what another device may not see does not cross the air either.
+        if crate::trust::needed_to_send(&msg).is_some_and(|permission| !self.allowed(peer, permission)) {
             return false;
         }
         let Ok(frame) = self.ble_seal(peer, msg) else { return false };

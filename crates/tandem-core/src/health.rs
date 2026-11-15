@@ -19,7 +19,7 @@ use crate::error::Result;
 use crate::events::Event;
 use crate::ids::{DeviceId, Platform, now_ms};
 use crate::proto::Msg;
-use crate::store::{DeviceSettings, Store};
+use crate::store::Store;
 
 /// The device knows the health messages.
 pub const CAP: &str = "health";
@@ -288,7 +288,7 @@ impl Engine {
     /// phone keeps getting them either way. The other phones hear the choice and make the same one.
     pub async fn set_health_allowed(&self, id: &DeviceId, on: bool) -> Result<()> {
         let on_before = self.device_settings(id).health;
-        self.set_device_settings(id, DeviceSettings { health: on, ..self.device_settings(id) })?;
+        self.update_device_settings(id, |own| own.health = on)?;
         if self.inner.phone_to_phone(id) {
             return Ok(());
         }
@@ -396,8 +396,8 @@ impl Inner {
             taken
         };
         for choice in &taken {
-            let changed = DeviceSettings { health: choice.on, ..settings.for_device(&choice.device) };
-            if let Err(e) = self.set_device_settings(&choice.device, changed) {
+            // Only this one switch: the rest is read under the lock, so a permission switched at the same moment stays as it is.
+            if let Err(e) = self.update_device_settings(&choice.device, |own| own.health = choice.on) {
                 tracing::warn!("could not keep a health choice: {e}");
             }
             self.health_follow(&choice.device, choice.on).await;
@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn health_starts_off_for_every_device() {
-        assert!(!DeviceSettings::default().health);
-        assert!(!DeviceSettings::guest().health);
+        assert!(!crate::store::DeviceSettings::default().health);
+        assert!(!crate::store::DeviceSettings::guest().health);
     }
 }

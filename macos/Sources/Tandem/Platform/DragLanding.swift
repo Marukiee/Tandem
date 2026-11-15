@@ -47,6 +47,16 @@ final class DragLanding {
         return true
     }
 
+    /// Where files that came by a drag wait until they are put down (`DRAG_DIR` of the core). The core sweeps it after a day.
+    nonisolated static var waitingFolder: URL { EngineModel.supportDirectory().appendingPathComponent("drag") }
+
+    /// A file that is still in the waiting folder is moved to the downloads, with a name that is free there, and its new place is
+    /// given. Anything else stays where it is.
+    nonisolated static func rescue(_ path: String) -> String {
+        guard path.hasPrefix(waitingFolder.path + "/") else { return path }
+        return place(URL(fileURLWithPath: path), in: DownloadFolder.url).path
+    }
+
     /// Puts a file that came by a drag where a drop on the edge goes, and shows it in Finder.
     func land(_ file: URL, name: String, from device: String) {
         let from = EngineModel.shared.device(device)?.name ?? "?"
@@ -65,7 +75,7 @@ final class DragLanding {
     }
 
     /// Moves the file to the folder where it was dropped, with a name that is free there.
-    static func place(_ source: URL, in folder: URL) -> URL {
+    nonisolated static func place(_ source: URL, in folder: URL) -> URL {
         let manager = FileManager.default
         // Dropped on the folder it was received into: it is there already, and a free name would only rename it after itself.
         if source.deletingLastPathComponent().resolvingSymlinksInPath().path == folder.resolvingSymlinksInPath().path { return source }

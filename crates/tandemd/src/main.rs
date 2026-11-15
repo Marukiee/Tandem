@@ -776,6 +776,9 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
     let data_dir = cli.data_dir.clone().unwrap_or_else(default_data_dir);
+    // With a path too long for the socket nothing could be reached: `run` would start without a way to be asked, and every other
+    // command would start an engine of its own with the same identity next to it.
+    tandem_core::local::check(&data_dir, "tandemd").map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Most commands go to the daemon when there is one.
     if let Some(line) = command_line(&cli.command)
@@ -814,13 +817,21 @@ async fn main() -> Result<()> {
             engine.focus_local(false, "").await;
             let mut events = engine.subscribe();
             let control_dir = data_dir.clone();
-            let control = tokio::spawn({
+            let mut control = tokio::spawn({
                 let engine = engine.clone();
                 async move { serve_control(engine, &control_dir).await }
             });
             loop {
                 tokio::select! {
                     _ = tokio::signal::ctrl_c() => break,
+                    // Without its socket nobody can ask this daemon anything, and the next command would start a second engine.
+                    done = &mut control => {
+                        return match done {
+                            Ok(Err(e)) => Err(e),
+                            Ok(Ok(())) => Ok(()),
+                            Err(e) => Err(e.into()),
+                        };
+                    }
                     event = events.recv() => match event {
                         Ok(event) => {
                             if let (true, tandem_core::events::Event::Connected { id }) = (cli.pretend_player, &event) {

@@ -76,9 +76,9 @@ struct MenuBarPanel: View {
     private var quickShare: some View {
         VStack(alignment: .leading, spacing: 4) {
             MenuQuickShare()
-            // Read again every few seconds: a file that came in stays a few minutes and then goes by itself, and a transfer that
-            // has said nothing for a while is no longer shown as running.
-            TimelineView(.periodic(from: .now, by: 5)) { context in
+            // Read again every second while the panel is open: a file that is done stays a moment and then goes by itself, a transfer
+            // that has said nothing for a while is no longer shown as running, and a panel opened later shows nothing old.
+            TimelineView(.periodic(from: .now, by: 1)) { context in
                 if let item = recentTransfer(at: context.date) {
                     VStack(alignment: .leading, spacing: 5) {
                         HStack {
@@ -87,10 +87,11 @@ struct MenuBarPanel: View {
                             if item.state == .active {
                                 Text(formatSpeed(item.speed)).font(.caption).foregroundStyle(.secondary)
                             } else {
-                                Text(item.incoming ? "Received" : "Sent").font(.caption).foregroundStyle(.secondary)
+                                Label(item.incoming ? "Received" : "Sent", systemImage: "checkmark").font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        ProgressCapsule(fraction: item.fraction).frame(height: 5)
+                        // The bar only while it moves: a full bar under a file that is done reads as still sending.
+                        if item.state == .active { ProgressCapsule(fraction: item.fraction).frame(height: 5) }
                     }
                     .padding(.horizontal, 10)
                     .padding(.bottom, 8)
@@ -102,13 +103,14 @@ struct MenuBarPanel: View {
         .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
     }
 
-    /// The newest transfer worth a line: one still moving, or one that finished in the last four minutes.
+    /// The newest transfer worth a line: one still moving, or one that just finished. What was sent only says so for a moment; what
+    /// came in stays a minute, so it is seen by someone who opens the panel for it.
     private func recentTransfer(at now: Date) -> TransferItem? {
         model.transfers.first { item in
             let quiet = now.timeIntervalSince(item.updated)
             switch item.state {
             case .active: return quiet < 30
-            case .done: return quiet < 240
+            case .done: return quiet < (item.incoming ? 60 : 10)
             case .failed: return false
             }
         }

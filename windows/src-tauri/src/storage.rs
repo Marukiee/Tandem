@@ -9,9 +9,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::state::AppState;
 
-/// What is told when the disk cannot be read. The core only takes over a number that is there and cannot be told "unknown" again, so an
-/// old number would keep refusing files; this one is more than any disk holds, so nothing is refused for lack of room.
-const UNKNOWN: u64 = u64::MAX;
+/// What is told when the disk cannot be read: the core takes the old number away on it.
+const UNKNOWN: u64 = tandem_core::proto::FREE_STORAGE_UNKNOWN;
 
 pub fn start(app: AppHandle) {
     std::thread::Builder::new()
