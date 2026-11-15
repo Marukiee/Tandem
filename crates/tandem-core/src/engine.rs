@@ -760,14 +760,14 @@ impl Inner {
 
     /// Changes the settings of one device under the lock, so a change made at the same moment elsewhere is not lost.
     pub fn update_device_settings(&self, id: &DeviceId, change: impl FnOnce(&mut DeviceSettings)) -> Result<()> {
-        let snapshot = {
+        {
+            // Written while the lock is held, so two changes at the same moment reach the disk in the order they were made.
             let mut all = self.settings.write().unwrap();
             let mut own = all.for_device(id);
             change(&mut own);
             all.set_device(id, own);
-            all.clone()
-        };
-        self.store.write_cbor("settings.cbor", &snapshot)?;
+            self.store.write_cbor("settings.cbor", &*all)?;
+        }
         self.trust_changed.notify_one();
         self.emit(Event::DevicesChanged);
         Ok(())
