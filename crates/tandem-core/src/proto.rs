@@ -488,8 +488,9 @@ pub struct Feature {
 }
 
 /// What `free_storage` says when the disk that files land on cannot be read any more. A status only carries what changed, so "no
-/// number" cannot take an old number away; this one, more than any disk holds, does. An older device that does not know it simply
-/// sees a disk with room for everything.
+/// number" cannot take an old number away; this one, more than any disk holds, does. The device that says it keeps it as its own
+/// number (it refuses nothing, and a new connection is told it again); the others take it as "no number" (see `session.rs`). An older
+/// device that does not know it simply sees a disk with room for everything.
 pub const FREE_STORAGE_UNKNOWN: u64 = u64::MAX;
 
 impl Status {
@@ -500,9 +501,6 @@ impl Status {
             };
         }
         take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet);
-        if other.free_storage == Some(FREE_STORAGE_UNKNOWN) {
-            self.free_storage = None;
-        }
     }
 }
 
@@ -1003,15 +1001,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_disk_that_cannot_be_read_takes_its_old_free_space_away() {
-        let mut known = Status::default();
-        known.merge(&Status { free_storage: Some(5_000_000_000), ..Default::default() });
-        known.merge(&Status { dnd: Some(true), ..Default::default() });
-        assert_eq!(known.free_storage, Some(5_000_000_000));
-        known.merge(&Status { free_storage: Some(FREE_STORAGE_UNKNOWN), ..Default::default() });
-        assert_eq!(known.free_storage, None);
-        known.merge(&Status { free_storage: Some(7), ..Default::default() });
-        assert_eq!(known.free_storage, Some(7));
+    fn a_disk_that_cannot_be_read_stays_unknown_in_the_status_of_the_device_itself() {
+        // The device keeps "unknown" as it is, so the status it tells a new connection says it too.
+        let mut mine = Status::default();
+        mine.merge(&Status { free_storage: Some(5_000_000_000), ..Default::default() });
+        mine.merge(&Status { free_storage: Some(FREE_STORAGE_UNKNOWN), ..Default::default() });
+        assert_eq!(mine.free_storage, Some(FREE_STORAGE_UNKNOWN));
+        mine.merge(&Status { free_storage: Some(7), ..Default::default() });
+        assert_eq!(mine.free_storage, Some(7));
     }
 
     #[test]
