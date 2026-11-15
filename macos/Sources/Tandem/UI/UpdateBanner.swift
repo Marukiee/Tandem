@@ -38,29 +38,53 @@ struct UpdateBanner: View {
     private func available(_ release: Updater.Release) -> some View {
         if compact {
             card {
-                HStack(spacing: 10) {
-                    icon("arrow.down.circle.fill")
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Version \(release.version)").font(.callout.weight(.semibold)).lineLimit(1)
-                        Text("You have \(updater.currentVersion)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                // On one row when the words and both buttons fit whole; in the narrow panel and sidebar the buttons get a row of their
+                // own, as in the failed state, so no word is cut off and no button wraps.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        compactWords(release)
+                        Spacer(minLength: 4)
+                        compactButtons(release)
                     }
-                    Spacer(minLength: 4)
-                    Button { dismissedVersion = release.version } label: {
-                        Text("Later").font(.caption.weight(.semibold))
+                    VStack(alignment: .leading, spacing: 8) {
+                        compactWords(release)
+                        HStack(spacing: 8) {
+                            Spacer(minLength: 0)
+                            compactButtons(release)
+                        }
                     }
-                    .buttonStyle(.tandemGlass)
-                    .controlSize(.small)
-                    Button { Task { await updater.install() } } label: {
-                        Text("Update").font(.caption.weight(.semibold))
-                    }
-                    .buttonStyle(.tandemGlassProminent)
-                    .controlSize(.small)
-                    .help("Update and restart")
                 }
             }
         } else {
             wide(release)
         }
+    }
+
+    private func compactWords(_ release: Updater.Release) -> some View {
+        HStack(spacing: 10) {
+            icon("arrow.down.circle.fill")
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Version \(release.version)").font(.callout.weight(.semibold)).lineLimit(1)
+                Text("You have \(updater.currentVersion)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func compactButtons(_ release: Updater.Release) -> some View {
+        Button { dismissedVersion = release.version } label: {
+            Text("Later").font(.caption.weight(.semibold))
+        }
+        .buttonStyle(.tandemGlass)
+        .controlSize(.small)
+        .fixedSize()
+        Button { Task { await updater.install() } } label: {
+            Text("Update").font(.caption.weight(.semibold))
+        }
+        .buttonStyle(.tandemGlassProminent)
+        .controlSize(.small)
+        .fixedSize()
+        .help("Update and restart")
     }
 
     private func wide(_ release: Updater.Release) -> some View {
