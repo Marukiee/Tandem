@@ -155,6 +155,10 @@ pub(crate) struct Inner {
     pub(crate) beat_changed: Notify,
     /// When the devices that are away were last (or will next be) tried because the network changed (see `hurry`).
     last_hurry: Mutex<Option<Instant>>,
+    /// The last time a change of the addresses of this device hurried the others, with the screen off on metered data.
+    last_address_hurry: Mutex<Option<Instant>>,
+    /// The last time a change of network gave the devices that are away their one try, with the screen off on metered data.
+    last_costly_hurry: Mutex<Option<Instant>>,
     pub ble: Mutex<crate::ble::BleHub>,
     pub audio: RwLock<Option<Arc<dyn AudioSink>>>,
     pub ble_msg_id: std::sync::atomic::AtomicU8,
@@ -256,6 +260,8 @@ impl Engine {
             quiet: AtomicBool::new(false),
             beat_changed: Notify::new(),
             last_hurry: Mutex::new(None),
+            last_address_hurry: Mutex::new(None),
+            last_costly_hurry: Mutex::new(None),
             ble: Mutex::new(Default::default()),
             audio: RwLock::new(None),
             ble_msg_id: std::sync::atomic::AtomicU8::new(0),
@@ -1025,10 +1031,21 @@ impl Inner {
             *last = Some(at);
             (at, quiet_before)
         };
+        // A device that just joined is wanted now, whatever the screen and the data.
+        let costly = !at_once && self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed);
+        // The one try each device gets there is given at most once in a while, however often the network is said to have changed.
+        let skip = costly && {
+            let mut last = self.last_costly_hurry.lock().unwrap();
+            let recent = last.is_some_and(|previous| previous.elapsed() < COSTLY_HURRY_GAP);
+            if !recent {
+                *last = Some(Instant::now());
+            }
+            recent
+        };
         let mut peers = self.peers.lock().unwrap();
-        for (id, peer) in peers.iter_mut().filter(|(_, p)| p.session.is_none()) {
+        for (id, peer) in peers.iter_mut().filter(|(_, p)| p.session.is_none() && !skip) {
             let long_away = self.away_for_days(id, peer);
-            apply_hurry(peer, at, quiet_before, long_away);
+            apply_hurry(peer, at, quiet_before, long_away, costly);
         }
         drop(peers);
         self.probe_sessions();
@@ -1143,9 +1160,19 @@ impl Inner {
         if let Some(discovery) = self.discovery.lock().unwrap().as_mut() {
             discovery.stay_quiet();
         }
-        if !first {
-            self.network_changed();
+        if first {
+            return;
         }
+        // An address on an interface that changed while the app reported no change of network: with the screen off on metered data
+        // this is a reason to try again at most once in a while (see `apply_hurry`).
+        if self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed) {
+            let mut last = self.last_address_hurry.lock().unwrap();
+            if last.is_some_and(|at| at.elapsed() < COSTLY_ADDRESS_CHANGE_GAP) {
+                return;
+            }
+            *last = Some(Instant::now());
+        }
+        self.network_changed();
     }
 
     /// Says on the local network that this device is here again. A phone calls `network_changed` for each small change, so not every time.
@@ -1192,13 +1219,13 @@ impl Inner {
                     peer.addrs.forget_old(now_ms());
                     // After a change of network every address, as for a device that never failed.
                     let fails = if std::mem::take(&mut peer.hurry) { 0 } else { peer.fail_count };
-                    due.push((*id, peer.key, peer.addrs.ordered(), fails, long_away));
+                    due.push((*id, peer.key, peer.addrs.ordered(), fails, long_away, costly));
                 }
             }
         }
-        for (id, key, addrs, fails, long_away) in due {
+        for (id, key, addrs, fails, long_away, costly) in due {
             let this = self.clone();
-            tokio::spawn(async move { this.dial_peer(id, key, addrs, fails, long_away).await });
+            tokio::spawn(async move { this.dial_peer(id, key, addrs, fails, long_away, costly).await });
         }
     }
 
@@ -1211,8 +1238,9 @@ impl Inner {
         is_away_for_days(now_ms(), last_seen, peer.addrs.newest_ok(), here)
     }
 
-    async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>, fails: u32, long_away: bool) {
-        let sockets: Vec<SocketAddr> = addrs.iter().take(addresses_to_try(fails, long_away)).filter_map(|a| a.socket()).collect();
+    async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>, fails: u32, long_away: bool, costly: bool) {
+        let tries = addresses_to_try(fails, long_away).min(if costly { COSTLY_ADDRESSES } else { usize::MAX });
+        let sockets: Vec<SocketAddr> = addrs.iter().take(tries).filter_map(|a| a.socket()).collect();
         // Counted on a phone with `adb logcat -s Tandem`: every attempt wakes the radio.
         info!(peer = %id, fails, addrs = sockets.len(), "dialling a device that is away");
         let outcome = self.dial_any(Some(key), tls::ALPN_MAIN, &sockets).await;
@@ -1464,6 +1492,13 @@ fn backoff(failures: u32, long_away: bool) -> Duration {
     Duration::from_millis(millis + jitter)
 }
 
+/// With the screen off on metered data each try on a device that was here lately uses at most this many of its addresses.
+const COSTLY_ADDRESSES: usize = 3;
+/// With the screen off on metered data, changes of network give the devices that are away one try each at most this often.
+const COSTLY_HURRY_GAP: Duration = Duration::from_secs(120);
+/// With the screen off on metered data a change of the addresses of this device (and not of the network, as its app says) is a reason to
+/// try the devices that are away at most this often.
+const COSTLY_ADDRESS_CHANGE_GAP: Duration = Duration::from_secs(300);
 /// A device that has not been seen for this long is "away for days": see `is_away_for_days`.
 const AWAY_AFTER_MS: u64 = 24 * 3600 * 1000;
 /// How often such a device is tried at most.
@@ -1489,8 +1524,15 @@ fn is_away_for_days(now: u64, last_seen: Option<u64>, last_worked: Option<u64>, 
 
 /// A change of network has a device that is away tried soon, on all its addresses. Not one that has been gone for days: it keeps its
 /// long back-off, because every try is paid for in battery and that device dials this one itself when it is back.
-fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool) {
+///
+/// With the screen off on metered data (`costly`) a device that was here lately gets one try soon, on its best addresses, so that a
+/// notification is not lost because the way to it changed; but its back-off is left as it was, so the quick tries do not start again.
+fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool, costly: bool) {
     if long_away {
+        return;
+    }
+    if costly {
+        peer.next_dial = peer.next_dial.min(at);
         return;
     }
     peer.next_dial = peer.next_dial.min(at);
@@ -1621,16 +1663,31 @@ mod tests {
         let later = now + Duration::from_secs(3600);
 
         let mut recent = a_peer(30, later);
-        apply_hurry(&mut recent, now, true, false);
+        apply_hurry(&mut recent, now, true, false, false);
         assert_eq!(recent.next_dial, now);
         assert!(recent.hurry);
         assert_eq!(recent.fail_count, QUICK_TRIES);
 
         let mut gone = a_peer(LONG_AWAY_FAILS, later);
-        apply_hurry(&mut gone, now, true, true);
+        apply_hurry(&mut gone, now, true, true, false);
         assert_eq!(gone.next_dial, later, "its back-off is not shortened");
         assert!(!gone.hurry);
         assert_eq!(gone.fail_count, LONG_AWAY_FAILS, "and it does not start counting from the quick tries again");
+    }
+
+    #[test]
+    fn with_the_screen_off_on_metered_data_a_change_of_network_gives_one_try_and_leaves_the_back_off() {
+        let now = Instant::now();
+        let later = now + Duration::from_secs(3600);
+        let mut lately = a_peer(7, later);
+        apply_hurry(&mut lately, now, true, false, true);
+        assert_eq!(lately.next_dial, now, "one try soon, so a notification is not lost");
+        assert!(!lately.hurry, "not on every address");
+        assert_eq!(lately.fail_count, 7, "and the quick tries do not start again");
+        // Already due earlier: not pushed back.
+        let mut due = a_peer(7, now - Duration::from_secs(5));
+        apply_hurry(&mut due, now, true, false, true);
+        assert_eq!(due.next_dial, now - Duration::from_secs(5));
     }
 
     #[test]
