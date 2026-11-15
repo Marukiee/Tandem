@@ -10,7 +10,7 @@ struct KeepAwakeSettings: View {
         Section("Keep awake") {
             DescribedToggle(
                 "Keep this Mac awake",
-                subtitle: "So your other devices can reach it while you are away. Turns itself off when the battery drops below \(KeepAwake.batteryFloor)%.",
+                subtitle: "So your other devices can reach it. Turns itself off below \(KeepAwake.batteryFloor)% battery.",
                 isOn: Binding(get: { awake.on }, set: { awake.set($0) })
             )
             DescribedToggle(

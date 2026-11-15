@@ -425,7 +425,9 @@ final class TandemSpotlight {
     /// The pages of Settings and the main switches, with words in both languages: someone with Tandem in English may still type Dutch.
     static func settingEntries() -> [SpotlightEntry] {
         let pages: [(SettingsSection, String, [String])] = [
-            (.general, String(localized: "General"), ["general", "algemeen", "name", "naam", "behaviour", "gedrag"]),
+            (.general, String(localized: "This Mac"), ["general", "algemeen", "name", "naam", "mac", "computer"]),
+            (.phone, String(localized: "Phone"), ["phone", "telefoon", "codes", "battery", "batterij"]),
+            (.sound, String(localized: "Sound and music"), ["sound", "geluid", "music", "muziek", "speaker", "microphone", "microfoon"]),
             (.devices, String(localized: "Devices"), ["devices", "apparaten", "pair", "koppelen", "remove", "verwijderen"]),
             (.features, String(localized: "What works"), ["features", "functies", "permissions", "rechten", "werkt"]),
             (.files, String(localized: "Files"), ["files", "bestanden", "share", "delen", "folders", "mappen"]),
@@ -442,7 +444,7 @@ final class TandemSpotlight {
             (.pointer, "universal-mouse", String(localized: "Universal mouse"), ["universal", "universele", "shared", "gedeelde", "mouse", "muis", "keyboard", "toetsenbord"]),
             (.pointer, "side-check", String(localized: "Check the side by itself"), ["side", "kant", "check", "controleren", "sound", "geluid", "automatic", "vanzelf"]),
             (.clipboard, "history", String(localized: "Clipboard history"), ["clipboard", "klembord", "history", "geschiedenis", "klembordgeschiedenis", "keep", "bewaren"]),
-            (.general, "downloads", String(localized: "Downloads folder"), ["downloads", "folder", "map", "received", "ontvangen", "files", "bestanden", "opslaan"]),
+            (.received, "downloads", String(localized: "Downloads folder"), ["downloads", "folder", "map", "received", "ontvangen", "files", "bestanden", "opslaan"]),
             (.general, "login", String(localized: "Start at login"), ["start", "login", "inloggen", "opstarten", "automatisch"]),
             (.general, "language", String(localized: "Language"), ["language", "taal", "english", "engels", "nederlands", "dutch"]),
             (.general, "dock", String(localized: "Show in the Dock"), ["dock", "icon", "icoon"]),
@@ -867,24 +869,6 @@ struct SpotlightNavigation: ViewModifier {
         guard let wanted = MainWindow.requested else { return }
         MainWindow.requested = nil
         selection = wanted
-    }
-}
-
-/// On Settings: goes to the section a pick asked for.
-struct SpotlightSettingsNavigation: ViewModifier {
-    @Binding var selection: SettingsSection
-
-    func body(content: Content) -> some View {
-        content
-            .onAppear(perform: take)
-            .onReceive(NotificationCenter.default.publisher(for: .tandemSettingsSection)) { _ in take() }
-    }
-
-    private func take() {
-        guard let wanted = SettingsSection.requested else { return }
-        SettingsSection.requested = nil
-        selection = wanted
-        if DebugSupport.directory != nil { DebugSupport.write("settings section \(wanted.rawValue)\n", named: "spotlight-settings.txt") }
     }
 }
 

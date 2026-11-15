@@ -102,7 +102,7 @@ struct FindSoundSettings: View {
         } header: {
             Text("Find this Mac")
         } footer: {
-            Text("When your phone or another computer looks for this Mac, this sound plays loudly until you stop it, for two minutes at most.")
+            Text("Plays loudly when another device looks for this Mac, for two minutes at most.")
         }
         .onAppear { sounds = FindSounds.all() }
         .onDisappear { FindSounds.stopPreview() }

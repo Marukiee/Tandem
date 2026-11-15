@@ -104,7 +104,7 @@ struct PointerSettings: View {
             Section {
                 DescribedToggle(
                     "Check the side by itself",
-                    subtitle: "When a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. With a sound too high to hear, and only when this Mac plays through its own speakers.",
+                    subtitle: "When a second screen or the shared mouse starts, and every few minutes. With a sound too high to hear.",
                     isOn: $checkByItself
                 )
                 Picker("Sound for finding the side", selection: $sideSound) {
@@ -134,7 +134,7 @@ struct PointerSettings: View {
             } header: {
                 Text("Finding the side by sound")
             } footer: {
-                Text("This Mac plays a short sound from its left and its right speaker, and the other device listens with its microphone. A second screen goes on that side too.")
+                Text("This Mac plays a short sound left and right, and the other device listens. A second screen goes on that side too.")
             }
 
             Section {
@@ -162,7 +162,7 @@ struct PointerSettings: View {
             }
 
             Section {
-                Text("A phone can sit next to this Mac too, when you turn on \"Universal mouse\" in its Tandem. Or show its screen in a window here and move the pointer into it: clicks, scrolling and typing go to the phone. Both need Tandem's control under Accessibility on the phone.")
+                Text("A phone can sit next to this Mac too: turn on \"Universal mouse\" in its Tandem. Or show its screen here and move the pointer into it.")
                     .foregroundStyle(.secondary)
                 ForEach(phones, id: \.id) { device in
                     LabeledContent(device.name) {
