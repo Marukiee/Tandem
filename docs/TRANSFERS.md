@@ -362,26 +362,71 @@ eindigde, gaat weg als er een gestopt werd, en is anders heel. Een aanbod van al
    die zip met een tweede `send_files` sturen.
 4. In de lijst van wat binnenkwam de bestanden van een map samen tonen (een rij met de mapnaam), niet honderd losse rijen.
 
-### P9. Sturen tussen twee andere apparaten
+### P9. Sturen tussen twee andere apparaten (gebouwd, kern)
 
-Vanaf A zeg je tegen B: stuur dit naar C. B controleert dat A die bestanden mag lezen (`FilePolicy`, zoals bij Bestanden) en
-dat C in de circle zit, en stuurt ze dan zelf naar C als gewoon aanbod. C beslist zoals altijd voor B. B geeft de voortgang door
-aan A.
+Code: `crates/tandem-core/src/relay.rs`. Test: `tests/relay.rs` (drie apparaten).
 
-- Een bericht van A naar B, bijvoorbeeld `ShareOnBehalf { id, to, paths }` met de paden uit de mappen die B aan A toont. Een
-  oude B kent het niet en slaat het over, dus A wacht met een tijdslimiet op antwoord en zegt dan dat B het niet kan (een cap
-  `relay` voorkomt dat het geprobeerd wordt).
-- B maakt een gewoon uitgaand aanbod met `requested_by: A` in het boek. Dat veld staat al in het formaat (P1), leeg voor alles
-  wat iemand op B zelf stuurt.
-- `ShareOffer` krijgt `requested_by` (`#[serde(default)]`), zodat C "op verzoek van A" kan tonen; C zet het ook in zijn boek. Een
-  oude C leest het niet en ziet een gewoon aanbod van B.
-- B stuurt A de voortgang en het einde per bestand (een klein bericht met aanbod, nummer, bytes en `TransferDone::error`), en
-  A toont dat als uitgaand bij zichzelf met C als ontvanger. Stop op A gaat via B (`cancel_transfer` op B voor C).
-- Na P6 vraagt B ook de poort `allowed(A, send_for)`; het paneel (P3b) toont het aanbod op alle drie.
+Vanaf A zeg je tegen B: stuur dit naar C. B controleert dat A die bestanden mag lezen (zijn `FilePolicy` voor A, zoals bij Bestanden) en
+dat C in de circle zit, en stuurt ze dan zelf naar C als gewoon aanbod. C beslist zoals altijd voor B. B geeft de voortgang door aan A.
 
-Klaar als een kerntest met drie apparaten dekt: A laat B een bestand naar C sturen en het komt heel aan, A ziet de voortgang en
-het einde; B weigert een pad dat A niet mag lezen en een C buiten de circle, met een reden bij A; C ziet `requested_by: A`; stop
-op A stopt het bij C; een oude B (die het bericht niet kent) geeft A een nette melding.
+**Aanzetten.** B doet alleen mee als zijn app `share.relay` (`relay::RELAY_CAP`) in zijn caps zet; A vraagt alleen een B die dat zegt.
+Een B met een nieuwe kern zonder de cap antwoordt `unsupported`. A zet niets aan: het is een nieuwe functie die een app pas aanroept als
+hij de knop toont.
+
+**Berichten.**
+- A naar B: `ShareRelay { id, to, paths }`. `paths` zijn de paden zoals B ze in Bestanden aan A toont (`/Docs/sub/video.mp4`). `id`
+  kiest A, en B gebruikt hem als nummer van zijn aanbod naar C, zodat A, B en C hetzelfde nummer kennen.
+- B naar A: `ShareRelayReply { id, ok, reason, queued, items }`. Bij `ok` de bestanden zoals B ze aanbood.
+- B naar A: `ShareRelayUpdate { id, index, name, done, size, ended, error }` bij elke voortgang (hooguit elke 100 ms per bestand) en
+  bij het einde van elk bestand (`error` is dan de code van `TransferDone::error`, leeg als het aankwam).
+- A naar B: `ShareRelayCancel { id }`. B stopt dan zijn aanbod voor elke ontvanger (`cancel_transfer`) en zegt A het einde van elk
+  bestand, ook van bestanden die nog niet opgehaald werden.
+- `ShareOffer::requested_by` (alleen geschreven als het iets is): C ziet op wiens verzoek B het stuurt en zet het in zijn boek. Een oude
+  C leest het niet en ziet een gewoon aanbod van B.
+
+**B weigert** met een vaste code, en stuurt dan niets, ook niet de paden die wel mochten:
+
+| Code | Wanneer | Tekst bij A (Engels / Nederlands) |
+| --- | --- | --- |
+| `not allowed` | een pad met `..`, of B laat A zijn bestanden niet zien | %@ does not let you send that / %@ laat je dat niet sturen |
+| `gone` | het pad is er niet, of A kan het in Bestanden niet zien (niet gedeelde map, verborgen bestand): B zegt hetzelfde als Bestanden en verraadt niet wat er is | That file is no longer on %@ / Dat bestand staat niet meer op %@ |
+| `not a file` | het pad is een map (mappen gaan nog niet zo) | Only files can be sent this way / Zo kunnen alleen bestanden |
+| `not in circle` | C zit niet in de circle | %@ is not in your circle / %@ zit niet in je circle |
+| `not connected` | C is weg en B zet het niet in zijn wachtrij, of B is weg | %@ is not connected / %@ is niet verbonden |
+| `no answer` | B zei binnen 15 seconden niets (een oudere versie die het bericht niet kent) | %@ did not answer. Update Tandem there. / %@ antwoordde niet. Werk Tandem daar bij. |
+| `unsupported` | B zegt niet dat het dit doet | %@ cannot send to other devices / %@ kan niet naar andere apparaten sturen |
+| `failed` | iets anders | Failed / Mislukt |
+
+`%@` is de naam van het apparaat waar het over gaat (B, of C bij `not in circle` en `not connected`).
+
+**Bij A.** ffi `send_between(via, to, paths) -> TandemRelayAnswer { ok, offer, queued, reason, items }` (Rust `Engine::send_between`).
+Daarna komen `Progress` en `Finished` met `incoming: false`, `peer: to` en `offer` uit het antwoord, net als bij een bestand dat A zelf
+stuurt; de app toont het dus als uitgaand naar C. `cancel_transfer(to, offer, false)` stopt het via B. A zet niets in zijn boek: het
+paneel van A toont het nog niet (zie hieronder), en A kan het na een herstart niet meer volgen. Antwoordde B ja, dan luistert A een dag.
+
+**Bij B en C** staat het in het boek met `requested_by` (ffi `TandemTransfer.requested_by`). Bij B is het een gewoon uitgaand aanbod:
+wachtrij, hervatten en stoppen werken zoals altijd. B zet elk verzoek in de activiteit van Bestanden (`file_activity`, actie `relay`, met het
+pad en of het mocht), zodat de persoon op B kan zien wat een ander apparaat liet doorsturen.
+
+**De tekst bij `relay` in de activiteit.** De actie heet `relay`, een app toont dat nooit zo. Alle vier de apps tonen "Sent on request"
+(Nederlands "Verstuurd op verzoek") in de plaats van het woord, met het pad erachter, en een geweigerd verzoek als "Refused request"
+("Geweigerd verzoek"). De naam van het apparaat dat vroeg staat al in de activiteit als apparaat van die regel.
+
+**C neemt het alleen zonder vragen** als C het van B zonder vragen neemt en ook van A zou nemen (`auto_accept` voor beide), en A in de
+circle zit. Anders wacht het op een ja, zoals elk aanbod; zit C op mobiele data, dan ook.
+
+**Nog niet:** de poort van P6 (`allowed(A, send_for)`), want P6 is er nog niet: nu mag elk apparaat in de circle dat de bestanden van B
+mag zien ze ook laten doorsturen. Komt het vertrouwen per apparaat (PR 36, met `browse_files` en `files_without_asking`), dan moet een
+verzoek op B door `browse_files` van A en op C door `files_without_asking` van zowel B als A. Mappen (na P4). Het paneel van A (P3b) toont het nog niet; dat kan als A het in zijn boek zet zonder dat
+de wachtrij of het bedienen er iets mee doet.
+
+**Wat een app moet doen:**
+1. Bij Bestanden van een ander apparaat B een knop "Send to / Stuur naar" met de andere apparaten in de circle (niet B en niet zichzelf),
+   alleen als B `share.relay` in zijn caps heeft; anders grijs met een uitleg bij gebruik. `send_between`, en bij `ok: false` de tekst bij
+   de reden als melding.
+2. Om B te kunnen zijn: `share.relay` in de caps zetten, en in het paneel bij een uitgaand aanbod met `requested_by` "for %@ / voor %@"
+   tonen.
+3. Bij een binnenkomend aanbod met `requested_by` (lees `transfers()`): "from %1$@, sent by %2$@ / van %1$@, gestuurd door %2$@".
 
 ## Na R-V7 voor de Android-app
 

@@ -222,7 +222,7 @@ async fn a_device_that_does_not_take_folders_gets_nothing_and_is_named_for_a_zip
     // A device that never said it takes folders builds none, even when an offer has them: the files would come in loose.
     let id: u64 = 0xF01D;
     let item = ShareItem { name: "x.txt".into(), size: 1, path: "Trip/day 1".into(), ..ShareItem::default() };
-    let crafted = ShareOffer { id, origin: ShareOrigin::Files, items: vec![item], folders: vec!["Trip/empty".into()] };
+    let crafted = ShareOffer { id, origin: ShareOrigin::Files, items: vec![item], folders: vec!["Trip/empty".into()], requested_by: None };
     old.engine.set_device_settings(&phone.engine.id(), DeviceSettings { auto_accept: false, ..Default::default() }).unwrap();
     phone.engine.send_msg(&[old.engine.id()], Msg::ShareOffer(crafted)).await;
     let seen = expect(&mut events, "the crafted offer", |e| match e {

@@ -206,6 +206,7 @@ mod tests {
             }],
             held: false,
             halfway: false,
+            requested_by: None,
         }
     }
 

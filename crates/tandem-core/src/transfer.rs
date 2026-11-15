@@ -158,6 +158,18 @@ impl Inner {
         files: Vec<OutgoingFile>,
         origin: ShareOrigin,
     ) -> Result<SendReport> {
+        self.send_files_as(targets, files, origin, rand_u64(), None).await
+    }
+
+    /// `send_files` with the number of the offer given, and the device on whose request it is made (P9: A asks this device to send).
+    pub(crate) async fn send_files_as(
+        self: &Arc<Self>,
+        targets: &[DeviceId],
+        files: Vec<OutgoingFile>,
+        origin: ShareOrigin,
+        offer_id: u64,
+        requested_by: Option<DeviceId>,
+    ) -> Result<SendReport> {
         if files.is_empty() {
             return Err(Error::invalid("nothing to send"));
         }
@@ -191,7 +203,6 @@ impl Inner {
             targets.iter().copied().partition(|id| self.session_of(id).is_some());
         let queue = queues(origin) && self.queue_offline.load(std::sync::atomic::Ordering::Relaxed);
         let queued: Vec<DeviceId> = if queue { offline.clone() } else { Vec::new() };
-        let offer_id = rand_u64();
         let items: Vec<RecordItem> = files
             .into_iter()
             .zip(changed)
@@ -207,6 +218,7 @@ impl Inner {
             .collect();
         let mut record = TransferRecord::outgoing(offer_id, origin, items, &online, &queued);
         record.folders = folders;
+        record.requested_by = requested_by;
         let offer = record.share_offer();
         let key = Key::Out(offer_id);
         // In the journal before it goes out: a receiver that takes it without asking pulls at once.
@@ -410,7 +422,15 @@ impl Inner {
         }
         let size: u64 = offer.items.iter().map(|item| item.size).sum();
         let held = self.metered.load(std::sync::atomic::Ordering::Relaxed) && size > METERED_ASK_BYTES;
-        let auto = self.settings.read().unwrap().for_device(&from).auto_accept && !held;
+        let auto = {
+            let settings = self.settings.read().unwrap();
+            // Sent because a third device asked (P9): taken without asking only if this device would also take it from that one. One
+            // that is not in the circle never is.
+            let asker_too = offer.requested_by.is_none_or(|asker| {
+                settings.for_device(&asker).auto_accept && self.circle.read().unwrap().members().iter().any(|member| member.id == asker)
+            });
+            settings.for_device(&from).auto_accept && asker_too && !held
+        };
         let run = self.journal.insert(TransferRecord::incoming(from, &offer, held));
         // Nobody is asked about what cannot fit (P5); the files end at once, here and at the sender.
         if self.too_big_here(key) {
@@ -432,6 +452,10 @@ impl Inner {
 
     /// Stops a transfer, from either side, and tells the other device so it stops too. The files already done stay.
     pub(crate) async fn cancel_transfer(self: &Arc<Self>, peer: DeviceId, offer: u64, incoming: bool) {
+        // Sent by another device at this one's request (P9): that device stops it.
+        if !incoming && self.journal.read(Key::Out(offer), |_| ()).is_none() && self.cancel_relay(peer, offer).await {
+            return;
+        }
         if incoming {
             self.stop_incoming(peer, offer);
         } else {
@@ -1595,6 +1619,7 @@ mod clipboard_tests {
                 .map(|(name, mime, size)| ShareItem { name: name.to_string(), size: *size, mime: mime.to_string(), ..ShareItem::default() })
                 .collect(),
             folders: vec![],
+            requested_by: None,
         }
     }
 
