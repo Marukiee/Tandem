@@ -240,7 +240,7 @@ Bekeken in een browser met proefgegevens, in het Engels en Nederlands. Niets dra
 **Beide**
 - [ ] Open Schermen indelen, sluit en start Tandem opnieuw: de formaten van de andere schermen staan er meteen weer.
 
-## Na 0.3.18 (PR 19 en 25, changelog 0.3.19, nog niet uitgebracht)
+## 0.3.19, 2026-11-14 (PR 19, 24, 25 en 26)
 
 ### Wachtrij, paneel en vaste redenen (PR 19)
 
@@ -265,3 +265,27 @@ Windows houden hun oude gedrag tot hun schermen er zijn.
 
 **Linux**
 - [ ] Niets nieuws te testen; ontvangen bestanden openen zoals eerst.
+
+### Linux en Windows: het nieuwe ontwerp (PR 24)
+
+Alleen het venster van Linux en Windows; de Mac volgt in een eigen ronde. Nog niet op een echte Linux- of Windows-computer gezien.
+
+- [ ] Maak het venster smal en weer breed: de zijbalk klapt in en uit. Loopt dat soepel?
+- [ ] Open Instellingen: de zijbalk wordt smal. Staat alles waar je het zoekt in de zeven onderwerpen?
+- [ ] Speel muziek in twee apps op de telefoon: komen er twee tabs, en wisselt de kaart?
+- [ ] Gedeeld op een breed venster: klik een bestand aan en kijk of het voorbeeld ernaast klopt. Dubbelklik opent het.
+- [ ] De drie puntjes bij een bestand: Openen, Toon in map, Uit lijst halen.
+- [ ] Wijs een ronde knop aan: staat de naam er meteen onder?
+- [ ] Een update: staat de melding in de smalle zijbalk als icoon, en klapt hij open als je erop klikt?
+
+### Codes uit een sms (PR 26, R-B37)
+
+Gezien op emulators met Android 15 en 16 en `tandemd` als ontvanger, nog niet op een echte telefoon of Mac. De Mac en de telefoon
+moeten allebei op 0.3.19 staan.
+
+- [ ] Zet Berichten onder Instellingen, Meldingen, Apps uit en stuur jezelf een sms met een code: de code staat op de computer op het klembord, en je krijgt alleen "code gekopieerd", geen melding van het bericht.
+- [ ] Zet "Meldingen naar je apparaten sturen" uit en stuur nog een code: ook die komt aan en wordt gekopieerd, andere meldingen niet.
+- [ ] Start de Tandem-app op de telefoon opnieuw (of wacht tot Android hem stopt) en stuur direct daarna een code: komt hij aan?
+- [ ] Kijk bij Instellingen, Meldingen, rij Codes: zonder Shizuku staat er dat chatberichten (RCS) en achtergehouden berichten gemist worden; met Shizuku staat er de gewone tekst.
+- [ ] Krijg je de code via een chatbericht (RCS) in Google Berichten en niet als sms? Dan komt hij zonder Shizuku niet aan, met Shizuku wel: probeer dat apart.
+- [ ] Komt er daarna nog een code niet aan? Zeg welke telefoon, welke berichten-app, en of het een sms of een chatbericht was.

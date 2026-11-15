@@ -39,9 +39,11 @@ internal fun NotificationsPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     val status = nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus()
     // Reading texts or Shizuku's app-op: given outside this page, so looked at again while it is open.
     var seesCodes by remember { mutableStateOf(true) }
+    var textsOnly by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (true) {
             seesCodes = nl.markmaaktmedia.tandem.messages.CodeGrant.canSeeCodes(context)
+            textsOnly = nl.markmaaktmedia.tandem.messages.CodeGrant.readsTextsOnly(context)
             delay(2_000)
         }
     }
@@ -61,7 +63,8 @@ internal fun NotificationsPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
             )
             SettingsTarget(FocusKeys.Codes, 2, 5) {
                 SwitchRow(
-                    2, 5, TandemIcons.Key, stringResource(R.string.settings_codes), stringResource(R.string.settings_codes_sub), copyCodes, { scope.launch { prefs.setCopyCodes(it) } },
+                    2, 5, TandemIcons.Key, stringResource(R.string.settings_codes),
+                    stringResource(if (textsOnly) R.string.settings_codes_texts_only else R.string.settings_codes_sub), copyCodes, { scope.launch { prefs.setCopyCodes(it) } },
                     blocked = when {
                         !status.notificationAccess -> stringResource(R.string.perm_needs_listener)
                         !seesCodes -> stringResource(R.string.settings_codes_hidden)

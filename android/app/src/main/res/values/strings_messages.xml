@@ -20,4 +20,5 @@
     <string name="perm_messages">Text messages</string>
     <string name="perm_messages_why">To show your conversations on your computers and send texts from there.</string>
     <string name="settings_codes_hidden">Android hides codes from notifications. Tap to let Tandem read your texts.</string>
+    <string name="settings_codes_texts_only">Reads the texts themselves. Chat (RCS) messages and texts Android holds back are missed. Shizuku can lift that.</string>
 </resources>

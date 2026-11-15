@@ -43,12 +43,16 @@ agreement is missing or has expired". Mark moet de nieuwe overeenkomst van het A
 mislukte job van de release-run opnieuw. Opgelost op 2026-11-14: Mark accepteerde de overeenkomst en `v0.3.18` is uitgekomen, met
 alles tot en met PR 22.
 
+**Na 0.3.18, in 0.3.19.** Samengevoegd: PR 24, het nieuwe ontwerp op Linux en Windows (een zijbalk die inklapt, de apparaatpagina,
+Gedeeld met een voorbeeld ernaast, Instellingen in zeven onderwerpen; alleen `windows/ui`, de Mac volgt in een eigen sessie), en PR
+26 (R-B37, zie daar). Ronde 4 (b) loopt nog.
+
 Gevonden bij het nakijken van die PR's, nog te doen:
 
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
-  soorten als `runs_something` in `T/browse.rs`); documenten openen gewoon. Nog te bouwen.
+  soorten als `runs_something` in `T/browse.rs`); documenten openen gewoon. Gebouwd in PR 25.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
@@ -83,6 +87,12 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   codes met een hash, Nederlandse teksten, en de sms-app uitgezonderd; dan per oorzaak oplossen, de sms-app niet laten meetellen
   voor codes, en uitzoeken of een koppeling als begeleidende app (CompanionDeviceManager) de toestemming zonder Shizuku geeft. De rij
   Codes in de instellingen zegt al wanneer de telefoon geen codes kan zien; nakijken of dat op het juiste moment gebeurt.
+  Stand (PR 26): drie oorzaken gevonden op emulators (Android 15 en 16) en opgelost: de sms-app uitgezonderd bij Apps, "Meldingen
+  naar je apparaten sturen" uit, en de eerste sms vlak na een herstart van de app. Codes hebben nu een eigen weg (`code_only` in
+  `NotificationMsg`): de computer kopieert de code en toont de melding niet. Niet op te lossen zonder Shizuku: een code in een
+  chatbericht (RCS) en berichten die Android achterhoudt; de rij Codes zegt dat nu. CompanionDeviceManager is uitgezocht en kan
+  niet: het profiel voor een computer is alleen voor systeem-apps. Nog open: een oudere Mac of pc die `code_only` niet kent toont de
+  melding van een uitgezonderde app toch, en op een echte telefoon is het nog niet gezien.
 - **R-V13. De redenen van de kern zijn Engelse zinnen, in elke taal** (zeker, klein tot middel). Een overdracht die mislukt toont
   de tekst van de kern zoals hij is, bijvoorbeeld "The connection dropped" in een Nederlandse app (gezien in de proefversie van de
   Linux- en Windows-app, 2026-11-14). Alleen "cancelled", "declined" en "expired" zijn vertaald. Voorstel: de kern geeft een vaste
@@ -144,7 +154,7 @@ Rondes:
   poort in de kern en een proef van de pagina Circle in `mock.js`, waarna Mark kiest.
 - **Ronde 5 (wacht op Mark):** P7 en de rest van P8, de schillen van P4 en P9, en de sleeppunten voor Linux en Windows (R-D10,
   R-D14, R-D15). Alleen te beoordelen op echte computers: vraagt toegang tot de Linux-laptop en een Windows-pc. Ook wachtend op
-  een keuze van Mark: het ontwerp van de pagina Circle, en R-B31.
+  een keuze van Mark: het ontwerp van de pagina Circle.
 
 Pakketten, in deze volgorde:
 

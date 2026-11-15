@@ -6,22 +6,26 @@
       "title": "Waiting for a device",
       "new": [
         "Mac: files sent to a device that is away wait and go when it is back",
-        "Mac: Shared shows everything that is underway, incoming or waiting"
+        "Mac: Shared shows everything that is underway, incoming or waiting",
+        "Linux and Windows: a new look, with a sidebar that folds away, a preview next to your shared files and shorter settings"
       ],
       "fixed": [
         "Mac: why a transfer failed is shown in your language",
-        "Windows: documents from your other devices open normally, only programs and scripts get the download mark"
+        "Windows: documents from your other devices open normally, only programs and scripts get the download mark",
+        "Android: a code from a text reaches your computers, also when the notifications of your messages app are off"
       ]
     },
     "nl": {
       "title": "Wachten op een apparaat",
       "new": [
         "Mac: bestanden voor een apparaat dat weg is wachten en gaan als het terug is",
-        "Mac: Gedeeld toont alles wat onderweg is, binnenkomt of wacht"
+        "Mac: Gedeeld toont alles wat onderweg is, binnenkomt of wacht",
+        "Linux en Windows: een nieuw uiterlijk, met een zijbalk die inklapt, een voorbeeld naast je gedeelde bestanden en kortere instellingen"
       ],
       "fixed": [
         "Mac: waarom een overdracht mislukte staat er in je eigen taal",
-        "Windows: documenten van je andere apparaten openen gewoon, alleen programma's en scripts krijgen het downloadmerk"
+        "Windows: documenten van je andere apparaten openen gewoon, alleen programma's en scripts krijgen het downloadmerk",
+        "Android: een code uit een sms komt op je computers, ook als de meldingen van je berichten-app uit staan"
       ]
     }
   },

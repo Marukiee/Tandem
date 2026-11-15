@@ -193,9 +193,12 @@ class SmsBridge(
         val changed = newest.filter { seen[key(it)] != signature(it) }
         seen.clear()
         newest.forEach { seen[key(it)] = signature(it) }
-        // The first look only learns what is there, also while the engine is still starting, so the first message after it counts.
+        // The first look learns what is there. A text that came in just before it (a phone that started after being put to sleep by
+        // Android, or an app that was only just opened) was never seen as new, so its code still goes if it is fresh enough.
         if (!primed) {
             primed = true
+            val engine = waitForEngine() ?: return
+            sendCodes(engine, changed)
             return
         }
         val engine = host.engine ?: return
@@ -203,6 +206,15 @@ class SmsBridge(
         if (changed.isEmpty() || !anyReader()) return
         val conversations = safely { reader.conversations(changed.map { it.thread.toLong() }.toSet()) }.orEmpty()
         runCatching { engine.smsChanged(conversations, changed) }
+    }
+
+    /** The engine starts at the same time as the first look; a code is worth a few seconds of waiting for it. */
+    private suspend fun waitForEngine(): TandemEngine? {
+        repeat(20) {
+            host.engine?.let { return it }
+            delay(500)
+        }
+        return null
     }
 
     private fun key(m: TandemSmsMessage) = (if (m.mms) "m" else "s") + m.id
@@ -218,13 +230,15 @@ class SmsBridge(
      */
     private suspend fun sendCodes(engine: TandemEngine, changed: List<TandemSmsMessage>) {
         val prefs = context.graph.prefs
-        if (!prefs.mirrorNotifications.first() || !prefs.copyCodes.first()) return
+        if (!prefs.copyCodes.first()) return
         val now = System.currentTimeMillis()
         val fresh = changed.filter { it.status == TandemSmsStatus.RECEIVED && now - it.date.toLong() < CODE_FRESH_MS && codesSent.add(key(it)) }
         if (codesSent.size > 500) codesSent.clear()
         if (fresh.isEmpty()) return
         val app = Telephony.Sms.getDefaultSmsPackage(context) ?: context.packageName
-        if (!prefs.mirrors(app)) return
+        // Copying codes has its own switch: a phone that sends no notifications of the messages app (so as not to get them twice) still
+        // passes on the code, and the computer shows nothing but that it copied it.
+        val codeOnly = !prefs.mirrorNotifications.first() || !prefs.mirrors(app)
         val targets = host.devices.value.filter { it.platform != TandemPlatform.ANDROID }.map { it.id }
         if (targets.isEmpty()) return
         val label = runCatching {
@@ -238,6 +252,7 @@ class SmsBridge(
             val notification = TandemNotification(
                 key = "tandem-code-${key(m)}", appId = app, appName = label, title = sender, text = m.body, subText = null,
                 ts = m.date, ongoing = false, silent = false, buttons = emptyList(), otp = code, progressDone = null, progressTotal = null,
+                codeOnly = codeOnly,
             )
             scope.launch { CodeDelivery.deliver(host, targets, notification) }
         }
