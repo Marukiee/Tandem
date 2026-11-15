@@ -57,8 +57,6 @@ final class EngineModel {
     var healthInsights: TandemHealthInsights?
     /// Made up records of the debug health window: with these, a range is summed from them instead of from what this Mac keeps.
     @ObservationIgnored var debugHealthRecords: [TandemHealthRecord]?
-    /// A device that is paired from now on starts as a guest: clipboard and notifications off, files asked about first.
-    var guestsByDefault = false
     // What was sent and received outlives the app, so an update (which restarts it) no longer
     // empties the Shared page.
     var transfers: [TransferItem] = EngineModel.loadStoredTransfers() {
@@ -467,7 +465,6 @@ final class EngineModel {
         // A phone that was there and just turned on taking this Mac's mouse (its switch or its tile) has its side measured now. One that
         // only came back is checked as a device that connects.
         for device in devices where Self.takesPointer(device) && refusing.contains(device.id) { SideWatch.shared.pointerAllowed(device.id) }
-        guestsByDefault = engine.guestsByDefault()
         clipboard?.setActive(devices.contains { $0.online || $0.ble })
         ScreenshotSender.shared.refresh()
         reconcileSpeakerDevices()
@@ -1407,11 +1404,6 @@ final class EngineModel {
         UserDefaults.standard.set(trimmed, forKey: Self.nameKey)
         myName = trimmed
         Task { try? await engine?.renameSelf(name: trimmed) }
-    }
-
-    func setGuestsByDefault(_ on: Bool) {
-        try? engine?.setGuestsByDefault(on: on)
-        refreshDevices()
     }
 
     func setSettings(_ device: TandemDevice, clipboard: Bool? = nil, autoAccept: Bool? = nil, notifications: Bool? = nil) {
