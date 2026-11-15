@@ -487,14 +487,39 @@ pub struct Feature {
     pub page: Option<String>,
 }
 
+/// The fields of a `Status` that `merge` and `changes` go through.
+macro_rules! status_fields {
+    ($m:ident!($($arg:tt)*)) => {
+        $m!($($arg)* battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet)
+    };
+}
+
 impl Status {
     pub fn merge(&mut self, other: &Status) {
         macro_rules! take {
-            ($($field:ident),*) => {
-                $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
+            ($other:ident, $this:ident, $($field:ident),*) => {
+                $(if $other.$field.is_some() { $this.$field = $other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet);
+        status_fields!(take!(other, self,));
+    }
+
+    /// What of `said` is news to someone who knows `self`: the fields that are there in `said` and differ. Nothing in it when `said`
+    /// repeats what is known.
+    pub fn changes(&self, said: &Status) -> Status {
+        let mut news = Status::default();
+        macro_rules! differ {
+            ($said:ident, $known:ident, $news:ident, $($field:ident),*) => {
+                $(if $said.$field.is_some() && $said.$field != $known.$field { $news.$field = $said.$field.clone(); })*
+            };
+        }
+        status_fields!(differ!(said, self, news,));
+        news
+    }
+
+    /// Whether no field is filled in.
+    pub fn is_empty(&self) -> bool {
+        *self == Status::default()
     }
 }
 
@@ -993,6 +1018,16 @@ pub fn bytes(data: Vec<u8>) -> ByteBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_what_differs_from_what_is_known_is_news() {
+        let known = Status { dnd: Some(true), free_storage: Some(7), ..Default::default() };
+        // The same said again is nothing, and a field that is not mentioned is not touched.
+        assert!(known.changes(&Status { dnd: Some(true), ..Default::default() }).is_empty());
+        assert!(known.changes(&Status::default()).is_empty());
+        let news = known.changes(&Status { dnd: Some(true), free_storage: Some(8), muted: Some(false), ..Default::default() });
+        assert_eq!(news, Status { free_storage: Some(8), muted: Some(false), ..Default::default() });
+    }
 
     #[test]
     fn the_watch_of_a_phone_stays_known_until_the_phone_says_otherwise() {

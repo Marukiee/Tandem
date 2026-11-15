@@ -121,6 +121,8 @@ pub(crate) struct Inner {
     pub pairing: Mutex<Option<PendingPairing>>,
     pub open_pairings: Mutex<HashMap<discovery::Hint, crate::pairing::OpenPairing>>,
     pub my_status: Mutex<Status>,
+    /// When the whole status was last sent to everybody (see `Engine::update_status`).
+    pub status_sent_in_full: Mutex<std::time::Instant>,
     /// What was last said about the battery of each other device (see `battery_alert`).
     pub battery_said: Mutex<HashMap<DeviceId, Option<crate::battery_alert::BatteryAlert>>>,
     pub settings: RwLock<Settings>,
@@ -231,6 +233,7 @@ impl Engine {
             pairing: Mutex::new(None),
             open_pairings: Mutex::new(HashMap::new()),
             my_status: Mutex::new(Status::default()),
+            status_sent_in_full: Mutex::new(std::time::Instant::now()),
             battery_said: Mutex::new(HashMap::new()),
             settings: RwLock::new(settings),
             last_remote_clip: Mutex::new(None),
@@ -447,12 +450,29 @@ impl Engine {
         self.inner.my_status.lock().unwrap().clone()
     }
 
-    /// Updates what this device reports about itself and sends the change on.
+    /// Updates what this device reports about itself and sends the change on: only the fields that are different from what the others
+    /// were told, and nothing when none is. Each radio message of a phone on mobile data keeps its connection to the others awake, so a
+    /// status said again every minute would cost more than the status is worth. A new connection is told everything, and a call that
+    /// changes nothing still sends everything once per `Tuning::status_refresh`, so a device that missed something is put right.
     pub async fn update_status(&self, change: Status) {
-        {
-            self.inner.my_status.lock().unwrap().merge(&change);
+        let refresh = self.inner.cfg.tuning.status_refresh;
+        let to_send = {
+            let mut mine = self.inner.my_status.lock().unwrap();
+            let news = mine.changes(&change);
+            mine.merge(&change);
+            let mut refreshed = self.inner.status_sent_in_full.lock().unwrap();
+            if news.is_empty() && refreshed.elapsed() < refresh {
+                None
+            } else if news.is_empty() || refreshed.elapsed() >= refresh {
+                *refreshed = std::time::Instant::now();
+                Some(mine.clone())
+            } else {
+                Some(news)
+            }
+        };
+        if let Some(status) = to_send {
+            self.inner.broadcast(Msg::Status(status)).await;
         }
-        self.inner.broadcast(Msg::Status(change)).await;
     }
 
     /// Any control message, for the feature modules (notifications, calls, input).

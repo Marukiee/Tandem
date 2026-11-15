@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tandem_core::platform::DesktopFiles;
+use tandem_core::proto::{Battery, Status};
 use tandem_core::store::{FileSecretStore, Store};
 use tandem_core::tls::Tuning;
 use tandem_core::{DeviceId, Engine, EngineConfig, Platform};
@@ -19,6 +20,7 @@ fn fast() -> Tuning {
         beat_quiet: Duration::from_millis(2_400),
         answer_within: Duration::from_millis(150),
         answer_within_quiet: Duration::from_millis(400),
+        status_refresh: Duration::from_secs(3_600),
     }
 }
 
@@ -129,4 +131,95 @@ async fn a_device_that_goes_silent_is_let_go_within_a_few_beats() {
     eprintln!("let go after {took:?}");
     // Two rounds and an answer at most, whichever of the two asks.
     assert!(took < Duration::from_millis(1_500), "let go in time: {took:?}");
+}
+
+fn battery(level: u8) -> Status {
+    Status { battery: Some(Battery { level, charging: false, power_save: false }), free_storage: Some(40_000_000_000), ..Default::default() }
+}
+
+/// A Mac that reports the same status every minute must not wake a phone with its screen off: only a change goes over, and the pings
+/// of the heartbeat are all the phone hears meanwhile.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_same_status_said_again_sends_nothing() {
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let phone = start(a.path(), "Phone", Platform::Android).await;
+    let mac = start(b.path(), "Mac", Platform::MacOs).await;
+    pair(&phone, &mac).await;
+    let mac_id = mac.id();
+    phone.set_quiet(true).await;
+    wait_until("the Mac knows the phone is quiet", || mac.devices().iter().any(|d| d.id == phone.id() && d.status.quiet == Some(true))).await;
+
+    mac.update_status(battery(80)).await;
+    wait_until("the phone hears the first status", || {
+        phone.devices().iter().any(|d| d.id == mac_id && d.status.battery.is_some_and(|b| b.level == 80))
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    let window = Duration::from_millis(4_800);
+    let idle = received_in(&phone, mac_id, window).await;
+    let before = phone.traffic(&mac_id).unwrap().1;
+    // Ten minutes of minutes, in a hundredth of the time.
+    for _ in 0..48 {
+        mac.update_status(battery(80)).await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let said_again = phone.traffic(&mac_id).unwrap().1 - before;
+    eprintln!("packets the phone got in {window:?}: {idle} with nothing said, {said_again} with the same status said 48 times");
+    assert!(said_again <= idle + 1, "the same status was sent again: {said_again} against {idle}");
+
+    // A change does go over, and only that.
+    mac.update_status(battery(79)).await;
+    wait_until("the phone hears the change", || {
+        phone.devices().iter().any(|d| d.id == mac_id && d.status.battery.is_some_and(|b| b.level == 79))
+    })
+    .await;
+    assert_eq!(phone.devices().iter().find(|d| d.id == mac_id).unwrap().status.free_storage, Some(40_000_000_000));
+}
+
+/// Once per refresh time a call that changes nothing still sends the whole status.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn now_and_then_the_whole_status_is_sent_anyway() {
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let phone = start(a.path(), "Phone", Platform::Android).await;
+    let mut cfg = EngineConfig::new(b.path(), "Mac");
+    cfg.port = 0;
+    cfg.enable_mdns = false;
+    cfg.loopback = true;
+    cfg.platform = Platform::MacOs;
+    cfg.tuning = Tuning { status_refresh: Duration::from_millis(600), ..fast() };
+    let mac = Engine::start(
+        cfg,
+        Arc::new(FileSecretStore::new(Store::new(b.path()).unwrap())),
+        Arc::new(DesktopFiles { download_dir: b.path().join("downloads") }),
+    )
+    .await
+    .unwrap();
+    pair(&phone, &mac).await;
+    let mac_id = mac.id();
+    phone.set_quiet(true).await;
+    wait_until("the Mac knows the phone is quiet", || mac.devices().iter().any(|d| d.id == phone.id() && d.status.quiet == Some(true))).await;
+    mac.update_status(battery(80)).await;
+    wait_until("the phone hears it", || phone.devices().iter().any(|d| d.id == mac_id && d.status.battery.is_some())).await;
+    // Every status that comes in makes the phone say its devices changed, and nothing else does while it is quiet.
+    let mut events = phone.subscribe();
+    let heard = |events: &mut tokio::sync::broadcast::Receiver<tandem_core::Event>| {
+        let mut any = false;
+        while let Ok(event) = events.try_recv() {
+            any |= matches!(event, tandem_core::Event::DevicesChanged);
+        }
+        any
+    };
+    heard(&mut events);
+    mac.update_status(battery(80)).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(!heard(&mut events), "the same status was sent before the refresh time");
+    // Past the refresh time the same status goes over again, once.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    mac.update_status(battery(80)).await;
+    wait_until("the refresh arrives", || heard(&mut events)).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    mac.update_status(battery(80)).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(!heard(&mut events), "the refresh came again at once");
 }

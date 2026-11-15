@@ -48,6 +48,9 @@ pub struct Tuning {
     pub answer_within: Duration,
     /// The same toward a phone with its screen off, whose radio may first have to wake for it.
     pub answer_within_quiet: Duration,
+    /// At most this often a call to `Engine::update_status` that changes nothing still sends the whole status, so a device that missed
+    /// a change is put right. Without it a status is only sent when something in it changed.
+    pub status_refresh: Duration,
 }
 
 impl Default for Tuning {
@@ -59,6 +62,7 @@ impl Default for Tuning {
             beat_quiet: Duration::from_secs(240),
             answer_within: Duration::from_secs(5),
             answer_within_quiet: Duration::from_secs(15),
+            status_refresh: Duration::from_secs(15 * 60),
         }
     }
 }
