@@ -544,7 +544,8 @@ private struct SharedDetail: View {
                 ZStack {
                     shape.fill(kind.tone.fill)
                     if let preview {
-                        Image(nsImage: preview).resizable().scaledToFill()
+                        // A tall picture is cut to the frame by the clip, but would still take the clicks of what is above and under it.
+                        Image(nsImage: preview).resizable().scaledToFill().allowsHitTesting(false)
                     } else {
                         Image(systemName: kind.tileSymbol).font(.system(size: 34, weight: .medium)).foregroundStyle(kind.tone.ink)
                     }
@@ -552,6 +553,7 @@ private struct SharedDetail: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 112)
                 .clipShape(shape)
+                .contentShape(shape)
                 Text(item.name)
                     .font(.callout.weight(.semibold))
                     .lineLimit(3)
