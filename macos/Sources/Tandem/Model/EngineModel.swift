@@ -548,6 +548,11 @@ final class EngineModel {
         case .removedFromCircle:
             removedFromCircle = true
 
+        case let .selfRenamed(name):
+            // Another device named this Mac (R-I33): kept as its own name, or the next launch would bring the old one back.
+            UserDefaults.standard.set(name, forKey: Self.nameKey)
+            myName = name
+
         case let .clipboard(from, text, _):
             let name = device(from)?.name ?? "?"
             // Before the pasteboard changes, so the history knows it came from the device and not from the app in front.
@@ -1555,10 +1560,18 @@ final class EngineModel {
         )
         Task {
             var status = status
-            status.freeStorage = await Task.detached { DownloadFolder.freeSpace() }.value
+            let free = await Task.detached { DownloadFolder.freeSpace() }.value
+            status.freeStorage = free == DownloadFolder.unknownFreeSpace ? free : Self.roundedStorage(Int64(clamping: free))
             status.network?.ssid = await WiFiName.current()
             await engine.updateStatus(status: status)
         }
+    }
+
+    /// Exact free bytes change with every file that is written, and each change would be a status sent for nothing. A person sees whole
+    /// gigabytes, or hundreds of megabytes when it gets tight. The same steps as on Android.
+    nonisolated static func roundedStorage(_ bytes: Int64) -> UInt64 {
+        let step: Int64 = bytes < 5_000_000_000 ? 100_000_000 : 1_000_000_000
+        return UInt64(max(0, bytes / step * step))
     }
 
     /// Forgets the identity and every pairing, then starts fresh.

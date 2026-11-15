@@ -243,7 +243,7 @@ impl Inner {
         // And tell everyone else where this device can be found.
         let mut mine: Vec<String> = hello.candidates.clone();
         mine.push(remote.to_string());
-        let intro = Msg::Introduce { peers: vec![crate::proto::PeerAddrs { id, addrs: mine }] };
+        let intro = Msg::Introduce { peers: vec![crate::proto::PeerAddrs { id, addrs: mine, connected: true }] };
         for other in self.connected_ids() {
             if other != id {
                 let _ = self.send_to(&other, intro.clone()).await;
@@ -298,11 +298,39 @@ impl Inner {
         };
 
         let writer = async move {
-            while let Some(msg) = rx.recv().await {
-                if let Err(e) = proto::send(&mut send, &msg).await {
+            // What goes out, by kind, written to the log now and then: with the log of the attempts to dial it explains where the
+            // battery of a phone went. Kept here, in the one task that writes, so it costs no lock.
+            let mut tally = crate::sent_tally::SentTally::default();
+            let mut report = tokio::time::interval_at(tokio::time::Instant::now() + crate::sent_tally::REPORT_EVERY, crate::sent_tally::REPORT_EVERY);
+            report.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                let msg = tokio::select! {
+                    msg = rx.recv() => match msg {
+                        Some(msg) => msg,
+                        None => break,
+                    },
+                    _ = report.tick() => {
+                        if let Some(line) = tally.take_line() {
+                            info!("sent to {id}: {line}");
+                        }
+                        continue;
+                    }
+                };
+                let frame = match proto::encode(&msg) {
+                    Ok(frame) => frame,
+                    Err(e) => {
+                        debug!("could not write to the control stream: {e}");
+                        break;
+                    }
+                };
+                if let Err(e) = proto::write_frame(&mut send, &frame).await {
                     debug!("could not write to the control stream: {e}");
                     break;
                 }
+                tally.add(&msg, frame.len() + 4);
+            }
+            if let Some(line) = tally.take_line() {
+                info!("sent to {id}: {line}");
             }
         };
 
@@ -487,6 +515,8 @@ impl Inner {
                     if !self.circle.read().unwrap().is_member(&self.identity.public_key()) {
                         warn!("this device was removed from the circle");
                         self.emit(Event::RemovedFromCircle);
+                    } else {
+                        self.follow_own_name().await;
                     }
                 }
             }
@@ -533,6 +563,13 @@ impl Inner {
             Msg::ShareCancel { id: offer } => self.on_share_cancel(id, offer),
             Msg::ShareResume(ask) => self.clone().on_share_resume(id, ask),
             Msg::ShareResumed(answer) => self.on_share_resumed(id, answer),
+            Msg::ShareRelay(ask) => self.clone().on_share_relay(id, ask),
+            Msg::ShareRelayReply(reply) => self.on_share_relay_reply(id, reply),
+            Msg::ShareRelayUpdate(update) => self.on_share_relay_update(id, update),
+            Msg::ShareRelayCancel { id: offer } => {
+                let this = self.clone();
+                tokio::spawn(async move { this.on_share_relay_cancel(id, offer).await });
+            }
             Msg::ShareText(text) => {
                 self.emit(Event::ShareText { from: id, text: text.text, is_url: text.is_url, open: text.open });
             }
@@ -665,8 +702,11 @@ impl Inner {
                     }
                     for text in entry.addrs {
                         if let Ok(addr) = text.parse::<SocketAddr>() {
-                            self.learn_addr(&entry.id, addr, false);
+                            self.learn_introduced_addr(&entry.id, addr);
                         }
+                    }
+                    if entry.connected {
+                        self.try_now(&entry.id);
                     }
                 }
                 self.poke.notify_one();

@@ -88,17 +88,18 @@ knoppen).
 **In 0.3.22.** PR 44 (de updatekaart op de Mac altijd op twee regels) en PR 45 (het menubalkpaneel toont een verstuurd bestand kort,
 met een vinkje en zonder balk). Beide alleen gebouwd.
 
-**Open, voor wie verder gaat (stand 2026-11-15, 21:40).** PR 42 (R-V15, accu onderweg): de vijf reviewpunten zijn volgens de
-bouwsessie hersteld en gepusht, maar het botst met main en is nog niet nagelopen; let op opnieuw verbinden na dagen weg en van wifi
-naar mobiel met het scherm uit. PR 39 (P4): de fixes voor een map die twee keer werd overgedragen en voor lege mappen bij een
-geweigerd aanbod stonden alleen lokaal bij de sessie (een force push werd geweigerd); ze moeten zonder force push op GitHub komen,
-dan nalopen en samenvoegen. Daarna PR 40 (P9) met main erin gemerged: `on_share_relay_cancel` moet `self: &Arc<Self>` krijgen, de
-struct-literals moeten `folders` en `requested_by` hebben, en "relay" in de bestandsactiviteit heeft een tekst nodig. PR 41 en 43
-(Circle op Linux en Windows en op Android) zijn groen en nog niet nagelezen. PR 46 (R-I33, kern: een naam voor de hele circle) is
-nieuw en nog niet nagelezen. PR 31 (de Mac in het nieuwe ontwerp) botst met main; de sessie werkt aan de negen punten van Mark, en
-het gaat er pas in na zijn akkoord in de Dev-app. Daarna de Mac-schillen van P4, P9, Circle en R-I33, en de accu opnieuw meten. Het
-weeklimiet was op dat moment bijna op (Fable 93%, alle modellen 86%, terug op 18 november 01:00), dus nalezen kan beter in een verse
-sessie op een goedkoper model.
+**In 0.3.23.** PR 42 (R-V15, accu onderweg; nagelopen, main erin gemerged, kerntests lokaal groen en CI groen), PR 41 en 43 (de
+pagina Circle op Linux en Windows en op Android, met de regel over de standaard van Bestanden die Mark vroeg), PR 46 (R-I33, kern: een
+naam voor de hele circle; de schermen "Instellingen van dit apparaat" volgen), PR 39 (P4, mappen als mappen, kern) en PR 40 (P9, sturen
+via een ander apparaat, kern; de drie punten uit de review gedaan). Alleen gebouwd. Mark wilde eerst de punten van PR 31 erbij, maar koos
+daarna voor nu uitbrengen: PR 31 komt in de release erna. Mark meet de accu opnieuw met de sessie
+`local_1ec53a59-7b07-495f-a3e3-b35f368900dc`.
+
+**Open, voor wie verder gaat (stand 2026-11-15, nacht).** PR 31 (de Mac in het nieuwe
+ontwerp) botst met main; de sessie bouwt de punten 5 (een icoonfamilie), 6 (rond horloge), 7 (kop en speler), 8 (een woord bij de knop
+van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
+Pas samenvoegen na Marks akkoord. Mark wil ze in de release na 0.3.23. Daarna de Mac-schillen van P4, P9, Circle (ook een regel in het menu Tandem) en R-I33 ("Instellingen van
+dit apparaat" op elke apparaatpagina), en op Android en Linux en Windows de rij "Instellingen van dit apparaat" van R-I33.
 
 Gevonden bij het nakijken van die PR's, nog te doen:
 

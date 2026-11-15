@@ -28,6 +28,7 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 @Composable
 fun SettingsPageScreen(page: SettingsPageId, onBack: () -> Unit, onOpen: (Route) -> Unit) {
     when (page) {
+        SettingsPageId.Devices -> DevicesPage(onBack, onOpen)
         SettingsPageId.Look -> LookPage(onBack, onOpen)
         SettingsPageId.Sharing -> SharingPage(onBack, onOpen)
         SettingsPageId.QuickShare -> QuickSharePage(onBack, onOpen)

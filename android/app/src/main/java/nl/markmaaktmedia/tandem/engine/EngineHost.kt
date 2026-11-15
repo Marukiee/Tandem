@@ -350,6 +350,9 @@ class EngineHost(
 
             is TandemEvent.RemovedFromCircle -> _removed.value = true
 
+            // Another device named this phone (R-I33): kept as its own name, or the next start would bring the old one back.
+            is TandemEvent.SelfRenamed -> scope.launch { prefs.setDeviceName(event.name) }
+
             is TandemEvent.PointerShare -> context.graph.pointerIn.onShare(event.from, event.msg)
             is TandemEvent.Input -> context.graph.pointerIn.onInput(event.from, event.input)
 

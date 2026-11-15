@@ -1,6 +1,24 @@
 // A pretend app for looking at the interface in a browser: a phone, a Mac, files on their way, music and
 // notifications. It answers the same commands the Rust side does. Add ?mock=empty for a PC with nothing paired.
 const listeners = {};
+
+// What each device may do here (Settings › Devices), and what each lets this computer do: the Mac does not let it delete, and the old
+// phone is of a version that does not say.
+const TRUST_ALL = ["files_without_asking", "clipboard", "messages", "browse_files", "delete_files", "see_notifications", "control", "unlock", "lock",
+  "wifi_password", "calls", "restart"];
+const TRUST_LEVELS = { own: [], limited: ["delete_files", "unlock", "control", "wifi_password"], send: TRUST_ALL };
+const trustMock = { linux: [...TRUST_LEVELS.limited], tab: [...TRUST_LEVELS.send], old: ["see_notifications", "control"] };
+const trustAllows = { phone: [], mac: ["delete_files"], linux: [], tab: [] };
+function trustList() {
+  const levelOf = (denied) => Object.keys(TRUST_LEVELS).find((l) => TRUST_LEVELS[l].length === denied.length && TRUST_LEVELS[l].every((p) => denied.includes(p))) || "custom";
+  // The pretend default for all devices has deleting off; the phone follows it, the others have file choices of their own.
+  return devices.map((d) => {
+    const own = trustMock[d.id] || [];
+    const followsDefault = d.id === "phone";
+    const denied = followsDefault && !own.includes("delete_files") ? [...own, "delete_files"] : own;
+    return { id: d.id, denied, level: levelOf(denied), allowsMe: trustAllows[d.id] ?? null, defaultOff: followsDefault ? ["delete_files"] : [] };
+  });
+}
 const empty = new URLSearchParams(location.search).get("mock") === "empty";
 
 const cover = "data:image/svg+xml;utf8," + encodeURIComponent(
@@ -106,7 +124,7 @@ const state = {
     { device: "phone", deviceName: "Pixel 9", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
     { device: "phone", deviceName: "Pixel 9", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
-  settings: { shareMedia: true, closeToTray: true, copyCodes: true, batteryAlerts: true, pauseDuringCalls: true, cameraToObs: false, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2, sideSound: "quiet",
+  settings: { shareMedia: true, closeToTray: true, copyCodes: true, batteryAlerts: true, pauseDuringCalls: true, cameraToObs: false, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: new URLSearchParams(location.search).get("lang") || "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2, sideSound: "quiet",
     contactsSearch: true, searchDevices: true, searchActions: true, searchMessages: false, searchClipboard: false, searchFiles: true, searchSettings: true, sendScreenshots: true, keepAwake: false, keepAwakeLid: true },
   update: updateFor(new URLSearchParams(location.search).get("update")),
   autostart: true, downloadDir: "C:\\Users\\Mark\\Downloads\\Tandem", systemLanguage: navigator.language, build_: "",
@@ -489,6 +507,14 @@ export async function call(command, args) {
     case "set_autostart": state.autostart = args.enabled; return args.enabled;
     case "check_update": state.update = { state: "up-to-date", dismissed: state.update.dismissed }; return state.update;
     case "dismiss_update": state.update = { ...state.update, dismissed: args.version }; return null;
+    case "trust_list": return trustList();
+    case "trust_set": {
+      const denied = new Set(trustMock[args.id] || []);
+      if (args.allowed) denied.delete(args.permission); else denied.add(args.permission);
+      trustMock[args.id] = [...denied];
+      return trustList();
+    }
+    case "trust_set_level": trustMock[args.id] = [...TRUST_LEVELS[args.level]]; return trustList();
     case "set_device_settings": {
       const d = devices.find((x) => x.id === args.id);
       if (d) Object.assign(d, { clipboard: args.clipboard, autoAccept: args.autoAccept, notifications: args.notifications });
