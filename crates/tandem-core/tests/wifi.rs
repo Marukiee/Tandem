@@ -174,7 +174,8 @@ async fn a_new_bluetooth_link_carries_the_network_and_a_phone_never_announces() 
     for chunk in waiting {
         phone.engine.ble_receive("mac", &chunk).await;
     }
-    let heard = expect(&mut phone_events, "the network over Bluetooth", |e| network_from(e, mac_id)).await;
+    // Also not the "no network" of the connection coming up, which can still be on its way on a slow runner.
+    let heard = expect(&mut phone_events, "the network over Bluetooth", |e| network_from(e, mac_id).filter(|n| n.is_some())).await;
     assert_eq!(heard, Some(home()));
 
     // Whatever the phone had announced would have been sent before this question, so it is in the events once the question is.
