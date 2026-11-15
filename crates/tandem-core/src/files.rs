@@ -157,9 +157,19 @@ impl FileService {
                 own.enabled = enabled.unwrap_or(own.enabled);
                 own.delete = delete.unwrap_or(own.delete);
             } else {
-                let switches = policies.switches.entry(key).or_default();
-                switches.enabled = enabled.or(switches.enabled);
-                switches.delete = delete.or(switches.delete);
+                // Only an "off" is kept: an "on" means following the default again, so a later "off" there still reaches this device.
+                let keep = |asked: Option<bool>, was: Option<bool>| match asked {
+                    Some(false) => Some(false),
+                    Some(true) => None,
+                    None => was,
+                };
+                let was = policies.switches.get(&key).copied().unwrap_or_default();
+                let now = Switches { enabled: keep(enabled, was.enabled), delete: keep(delete, was.delete) };
+                if now == Switches::default() {
+                    policies.switches.remove(&key);
+                } else {
+                    policies.switches.insert(key, now);
+                }
             }
         })
     }
