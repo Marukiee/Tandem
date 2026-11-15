@@ -76,6 +76,8 @@ struct MainWindow: View {
                     MainWindow.remembered = selection
                     if case let .messages(id) = selection { Sidebar.lastMessagesPhone = id }
                     if selection != waitingOn.map({ .device($0) }) { waitingOn = nil }
+                    // A page was chosen: the sidebar that was opened over the page has done its work.
+                    if peek { withAnimation(.tandemSidebar) { peek = false } }
                 }
             Sidebar(selection: $selection, showPairing: $showPairing, folded: folded) {
                 withAnimation(.tandemSidebar) { peek = true }
@@ -101,6 +103,7 @@ struct MainWindow: View {
             }
         }
         .onAppear { DispatchQueue.main.async { measured = true } }
+        .modifier(EscapeKey(active: peek) { withAnimation(.tandemSidebar) { peek = false } })
         // A bar with nothing in it: the window keeps the strip along its top that the pages count on, and its rounder corners.
         .toolbar {
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
@@ -278,6 +281,35 @@ struct MainWindow: View {
                 Color.clear
             }
         }
+    }
+}
+
+/// Escape, while something is open that it should close, wherever the focus is in the window.
+private struct EscapeKey: ViewModifier {
+    let active: Bool
+    let action: () -> Void
+    @LocalState private var monitor: Any?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: active, initial: true) { _, on in
+                if on, monitor == nil {
+                    monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                        // 53 is Escape.
+                        guard event.keyCode == 53 else { return event }
+                        action()
+                        return nil
+                    }
+                } else if !on {
+                    stop()
+                }
+            }
+            .onDisappear(perform: stop)
+    }
+
+    private func stop() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
     }
 }
 
