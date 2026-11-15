@@ -235,6 +235,13 @@ class TandemService : LifecycleService() {
                     android.widget.Toast.makeText(this, getString(R.string.link_poor, name), android.widget.Toast.LENGTH_LONG).show()
                 }
             }
+            // What the other device does not allow (P6), and where it is changed there.
+            is TandemEvent.Refused -> {
+                val name = graph.host.device(event.from)?.name ?: getString(R.string.capture_mac_fallback)
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    android.widget.Toast.makeText(this, getString(R.string.circle_refused, name), android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
             is TandemEvent.SideListen -> nl.markmaaktmedia.tandem.live.SideListener.listen(this, event.from, event.id, event.quiet)
             is TandemEvent.OpenSettings -> FeatureReport.open(this, event.page, event.from)
             // Another device of the person makes a backup of all devices: it gets this phone's settings, never its identity.
