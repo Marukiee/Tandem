@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.22",
+    "date": "2026-11-15",
+    "en": {
+      "title": "Two Mac fixes",
+      "new": [],
+      "fixed": [
+        "Mac: the update card shows its whole text, with Later and Update on a row of their own",
+        "Mac: the menu bar panel no longer looks like it is still sending after a file went out"
+      ]
+    },
+    "nl": {
+      "title": "Twee Mac-fixes",
+      "new": [],
+      "fixed": [
+        "Mac: de updatekaart toont zijn hele tekst, met Later en Bijwerken op een eigen regel",
+        "Mac: het menubalkpaneel lijkt niet meer bezig met sturen nadat een bestand weg is"
+      ]
+    }
+  },
+  {
     "version": "0.3.21",
     "date": "2026-11-15",
     "en": {

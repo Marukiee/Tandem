@@ -380,3 +380,11 @@ Gebouwd en in de kern getest; het slepen zelf is niet tussen twee echte computer
 
 - [ ] Op Linux: sluit het scherm (vergrendelen) en kijk of de Mac zijn muis niet meer naar de Linux-pc laat gaan, en weer wel na het ontgrendelen (zoals voor deze wijziging).
 - [ ] Verder niets te zien; het scheelt vooral rondvragen bij logind.
+
+## 0.3.22, 2026-11-15 (PR 44 en 45)
+
+Alleen gebouwd, niet in de echte app gezien.
+
+- [ ] Als er een update klaarstaat: staat in de zijbalk "Versie ..." en "Je hebt ..." er helemaal, met Later en Bijwerken op een eigen regel eronder? Hetzelfde in het menubalkpaneel. (Je ziet dit pas bij de update na 0.3.22: de kaart wordt getekend door de versie die je draait.)
+- [ ] Stuur een bestand vanaf de Mac en open het menubalkpaneel: tijdens het sturen de balk, daarna kort "Verstuurd" met een vinkje en zonder balk, en na tien seconden is de regel weg.
+- [ ] Open het paneel een paar minuten later: er staat geen oude regel meer. Een ontvangen bestand blijft een minuut staan.
