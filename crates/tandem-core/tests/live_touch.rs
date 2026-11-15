@@ -137,6 +137,8 @@ async fn a_press_carries_its_position_over_the_stream() {
         host.inputs.lock().unwrap().iter().any(|i| matches!(i, MediaInput::Button { .. })) && count(0.1, 0.1) >= 1
     })
     .await;
+    // A wrong second copy of the position would be on its way too: it gets time to show (this cannot fail a good run).
+    tokio::time::sleep(Duration::from_millis(200)).await;
     let got = host.inputs.lock().unwrap().clone();
     assert_eq!(got.iter().filter(|i| is_at(i, 0.1, 0.1)).count(), 1, "{got:?}");
 }
