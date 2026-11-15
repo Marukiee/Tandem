@@ -251,6 +251,15 @@ final class DragCarrier {
             return
         }
         close()
+        // A drop that was not a move: the app that took the file may keep reading it where it lies (a media pool) or still be copying it,
+        // and the folder it waits in is swept after a day. Later the file goes to the downloads, where it stays.
+        if !operation.contains(.move) {
+            let paths = carried.map(\.path)
+            Task.detached(priority: .utility) {
+                try? await Task.sleep(for: .seconds(30))
+                for path in paths where FileManager.default.fileExists(atPath: path) { _ = DragLanding.rescue(path) }
+            }
+        }
         EngineModel.shared.showToast(carried.count == 1
             ? String(localized: "\(carried[0].lastPathComponent) from \(deviceName) was put down")
             : String(localized: "\(carried.count) files from \(deviceName) were put down"))
