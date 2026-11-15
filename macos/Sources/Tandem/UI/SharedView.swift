@@ -19,17 +19,25 @@ struct SharedView: View {
     @LocalState private var askTrash = false
     /// The file shown beside the list, when there is room for that.
     @LocalState private var pickedID: String?
-    /// How wide the page is, which decides the columns of the table and whether the picked file fits beside it.
-    @LocalState private var width: CGFloat = 700
+    /// What the width of the page decides: whether the picked file fits beside the list, and how many columns the table has. Only
+    /// these two are kept, so a window that is being resized redraws the page when one of them changes and not on every frame.
+    private struct Room: Equatable {
+        /// From this width on the picked file stands beside the list.
+        static let forDetail: CGFloat = 900
+        var wide: Bool
+        /// The size and the time have a column while the table has room for them; the state always has one.
+        var columns: TransferColumns
 
-    /// From this width on the picked file stands beside the list.
-    private static let roomForDetail: CGFloat = 900
-    private static let detailWidth: CGFloat = 240
-    private var wide: Bool { width >= Self.roomForDetail }
-    /// The size and the time have a column while the table has room for them; the state always has one.
-    private var columns: TransferColumns {
-        width - (wide ? Self.detailWidth + 14 : 0) >= 660 ? .all : .state
+        init(width: CGFloat) {
+            wide = width >= Self.forDetail
+            columns = width - (wide ? SharedView.detailWidth + 14 : 0) >= 660 ? .all : .state
+        }
     }
+
+    @LocalState private var room = Room(width: 700)
+    fileprivate static let detailWidth: CGFloat = 240
+    private var wide: Bool { room.wide }
+    private var columns: TransferColumns { room.columns }
 
     /// The file beside the list: the one that was picked, otherwise the newest.
     private var shown: TransferItem? {
@@ -127,7 +135,7 @@ struct SharedView: View {
                     }
                 }
             }
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            .onGeometryChange(for: Room.self) { Room(width: $0.size.width) } action: { room = $0 }
             .pagePadding()
             // Wider than the other pages: a table has columns to show, and a file beside it.
             .frame(maxWidth: 1080, alignment: .leading)
