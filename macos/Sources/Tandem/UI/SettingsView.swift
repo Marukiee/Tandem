@@ -138,7 +138,7 @@ struct SettingsView: View {
             // The subjects always fit, so there is nothing to fold away, and the round button for it only got in the way.
             .toolbar(removing: .sidebarToggle)
         } detail: {
-            SubjectPage(subject: selection, wanted: wanted, asked: asked)
+            SubjectPage(subject: selection, wanted: wanted, asked: asked) { wanted = nil }
                 .id(selection)
                 .navigationTitle(Text(selection.title))
         }
@@ -164,6 +164,8 @@ private struct SubjectPage: View {
     let subject: SettingsSubject
     let wanted: SettingsSection?
     let asked: Int
+    /// The part that was asked for is in view: it is not asked for any more, so coming back to this subject starts at its top.
+    var arrived: () -> Void = {}
 
     @LocalState private var position = ScrollPosition(idType: SettingsSection.self)
 
@@ -190,11 +192,13 @@ private struct SubjectPage: View {
         }
         .scrollPosition($position)
         .onChange(of: asked, initial: true) {
+            guard let wanted, wanted.subject == subject else { return }
             // The first part is where the page starts anyway.
-            guard let wanted, wanted.subject == subject, wanted != subject.parts.first else { return }
+            guard wanted != subject.parts.first else { return arrived() }
             // Once the forms have their height.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 position.scrollTo(id: wanted, anchor: .top)
+                arrived()
                 if DebugSupport.directory != nil { DebugSupport.write("settings part \(wanted.rawValue)\n", named: "settings-part.txt") }
             }
         }
