@@ -71,6 +71,8 @@ object HealthDemo {
         val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
         val now = java.time.LocalTime.now(zone)
         val slots = if (whole) 288 else (now.toSecondOfDay() / 300).coerceAtLeast(1)
+        // Some days run higher than others, so the heart calendar has warm and cool days to show.
+        val shift = random.nextInt(-6, 7)
         // Lower at night, higher in the day, with a walk at noon; zero where the watch was off the wrist in the morning.
         val curve = List(slots) { slot ->
             val hour = slot / 12.0
@@ -78,7 +80,7 @@ object HealthDemo {
                 hour in 7.3..7.8 -> 0
                 hour < 7 || hour > 23 -> 52 + random.nextInt(6)
                 hour in 12.5..13.2 -> 105 + random.nextInt(20)
-                else -> 66 + random.nextInt(14)
+                else -> 66 + shift + random.nextInt(14)
             }.toUInt()
         }
         val share = if (whole) 1.0 else slots / 288.0

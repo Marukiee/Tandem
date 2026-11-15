@@ -77,9 +77,12 @@ function useHeartNow(phone, live) {
 export function WatchGlance({ i, records, onOpen, goal, phone, live }) {
   const now = useHeartNow(phone, live);
   const night = (records || []).find(isNight);
-  const stepsDay = i ? [...i.week].reverse().find((d) => d.steps != null) : null;
+  const measured = i ? [...i.week].reverse().find((d) => d.steps != null) : null;
   const resting = i && i.resting;
-  if (!night && !stepsDay && !resting && now == null) return null;
+  if (!night && !measured && !resting && now == null) return null;
+  // Beside the night also at 0, so the steps never seem gone on a day without any yet.
+  const latest = i && i.week.length ? i.week[i.week.length - 1] : null;
+  const stepsDay = measured || (night && latest ? { ...latest, steps: 0 } : null);
   const score = night && i && i.latestNight && i.latestNight.id === night.id ? i.latestNight.score : null;
   const tile = (icon, title, value, caption, share, beating) => html`<button class="card glance" title=${t("tab_health")} onClick=${onOpen}>
     <div class="glance-title">${share != null ? html`<span class="glance-ring" style=${`--p:${Math.round(share * 100)}`}><span><${Icon} name=${icon} size=${12} /></span></span>` : html`<span class=${beating ? "beat" : ""}><${Icon} name=${icon} size=${15} /></span>`}${title}</div>
@@ -467,43 +470,117 @@ function WeekPager({ offset, setOffset, week }) {
   </div>`;
 }
 
+const SLEEP_GOAL = 420;
+const usualOf = (values) => {
+  const measured = values.filter((v) => v != null);
+  return measured.length ? Math.round(measured.reduce((a, b) => a + b, 0) / measured.length) : null;
+};
+/** Toward the goal, or without one toward the highest day of the month: from a faint tile for a little to full at the goal. */
+const sharesOf = (values, goal) => {
+  const highest = Math.max(0, ...values.filter((v) => v != null));
+  const top = goal > 0 ? goal : highest > 0 ? highest : null;
+  return values.map((v) => (v == null ? null : top == null ? 0.15 : 0.15 + 0.85 * Math.min(1, Math.max(0, v / top))));
+};
+/** Above the usual of the month positive, below it negative, by how far against the furthest day; within 1 bpm it is 0. */
+const heartOf = (values) => {
+  const usual = usualOf(values);
+  if (usual == null) return values.map(() => null);
+  const furthest = Math.max(0, ...values.filter((v) => v != null).map((v) => Math.abs(v - usual)));
+  return values.map((v) => {
+    if (v == null) return null;
+    const off = v - usual;
+    if (Math.abs(off) <= 1 || furthest <= 1) return 0;
+    const strength = Math.min(1, 0.2 + 0.8 * (Math.abs(off) / furthest));
+    return off > 0 ? strength : -strength;
+  });
+};
+const metGoal = (value, goal) => value != null && goal > 0 && value >= goal;
+const longDate = (date) => {
+  const text = date.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
 /**
- * A month as a calendar, a day per box: for sleep how long the night was, with a ring toward seven hours; for activity the steps, with
- * a ring toward the goal that is filled on a day it was reached; for the heart the mean heart rate of the day.
+ * A month as heat tiles, Monday first: for sleep and activity the stronger the colour the closer to the goal, for the heart warm on
+ * days above the usual of that month and cool below it. The picked day stands large above the grid; a click picks another.
  */
 function MonthCalendar({ kind, goal }) {
   const [back, setBack] = useState(0);
+  // Which way the last paging went, so the month slides in from that side; nothing slides on the first look.
+  const [from, setFrom] = useState("");
+  const page = (step) => { setFrom(step > 0 ? "older" : "newer"); setBack((b) => Math.max(0, b + step)); };
   const today = new Date();
   const month = new Date(today.getFullYear(), today.getMonth() - back, 1);
-  const length = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const range = useRange(new Date(month.getFullYear(), month.getMonth(), length, 12).getTime(), length);
-  // Monday first, as calendars here are; 1 January 2024 was a Monday.
-  const lead = (month.getDay() + 6) % 7;
-  const names = Array.from({ length: 7 }, (_, k) => new Date(2024, 0, 1 + k).toLocaleDateString(locale(), { weekday: "narrow" }));
-  const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-  const cell = (d, n) => {
-    const at = new Date(month.getFullYear(), month.getMonth(), n).getTime();
-    let share = null, value = "";
-    if (kind === "sleep" && d.sleepMinutes != null) { share = Math.min(1, d.sleepMinutes / 420); value = healthDuration(d.sleepMinutes).replace(/\s/g, ""); }
-    if (kind === "activity" && d.steps != null) { share = goal ? Math.min(1, d.steps / goal) : null; value = d.steps >= 1000 ? (d.steps / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 }) + "k" : String(d.steps); }
-    if (kind === "heart" && d.heartMean != null) value = t("health_bpm", d.heartMean);
-    return html`<div key=${n} class=${"health-day" + (at === todayMs ? " today" : "") + (at > todayMs ? " later" : "")}>
-      <span class=${"health-day-n" + (share === 1 ? " met" : share == null ? " plain" : "")} style=${share != null && share < 1 ? `--p:${Math.round(share * 100)}` : ""}><span>${n}</span></span>
-      <span class="health-day-v">${value}</span>
-    </div>`;
-  };
   return html`<${Card} title=${t("health_calendar")} more=${t("health_more_calendar_" + kind)}>
     <div class="health-pager">
       <span class="grow health-month-name">${month.toLocaleDateString(locale(), { month: "long", year: "numeric" })}</span>
-      <button class="iconbtn" title=${t("health_month_before")} aria-label=${t("health_month_before")} onClick=${() => setBack((b) => b + 1)}><${Icon} name="chevron-left" size=${16} /></button>
-      <button class="iconbtn" title=${t("health_month_after")} aria-label=${t("health_month_after")} disabled=${back === 0} onClick=${() => setBack((b) => Math.max(0, b - 1))}><${Icon} name="chevron-right" size=${16} /></button>
+      <button class="iconbtn" title=${t("health_month_before")} aria-label=${t("health_month_before")} onClick=${() => page(1)}><${Icon} name="chevron-left" size=${16} /></button>
+      <button class="iconbtn" title=${t("health_month_after")} aria-label=${t("health_month_after")} disabled=${back === 0} onClick=${() => page(-1)}><${Icon} name="chevron-right" size=${16} /></button>
     </div>
-    <div class="health-month">
+    <${MonthTiles} key=${back} kind=${kind} goal=${goal} month=${month} from=${from} />
+  <//>`;
+}
+
+/** One month; keyed on the month, so each one asks for its own days and a month on its way out never shows those of another. */
+function MonthTiles({ kind, goal, month, from }) {
+  const length = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const range = useRange(new Date(month.getFullYear(), month.getMonth(), length, 12).getTime(), length);
+  const [picked, setPicked] = useState(null);
+  // The grid comes from the month itself, and values only from a range that belongs to it.
+  const days = range && range.days.length === length && new Date(range.days[0].startMs + 12 * 3600_000).getDate() === 1
+    && new Date(range.days[0].startMs + 12 * 3600_000).getMonth() === month.getMonth() ? range.days : null;
+  const key = kind === "sleep" ? "sleepMinutes" : kind === "activity" ? "steps" : "heartMean";
+  const values = Array.from({ length }, (_, k) => (days && days[k][key] != null ? days[k][key] : null));
+  const target = kind === "sleep" ? SLEEP_GOAL : kind === "activity" ? goal : null;
+  const levels = kind === "heart" ? heartOf(values) : sharesOf(values, target);
+  const usual = usualOf(values);
+  const now = new Date();
+  const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const todayIndex = now.getFullYear() === month.getFullYear() && now.getMonth() === month.getMonth() ? now.getDate() - 1 : null;
+  const fallback = todayIndex != null && values[todayIndex] != null ? todayIndex : values.map((v) => v != null).lastIndexOf(true);
+  const shown = picked != null ? picked : fallback >= 0 ? fallback : null;
+  const lead = (month.getDay() + 6) % 7;
+  // Monday first, as calendars here are; 1 January 2024 was a Monday.
+  const names = Array.from({ length: 7 }, (_, k) => new Date(2024, 0, 1 + k).toLocaleDateString(locale(), { weekday: "narrow" }));
+  const text = (v) => (kind === "sleep" ? healthDuration(v) : kind === "activity" ? number(v) : t("health_bpm", v));
+  const note = (v) => {
+    if (v == null) return null;
+    if (kind === "heart" && usual != null) {
+      const off = v - usual;
+      return off > 1 ? t("health_calendar_above", off) : off < -1 ? t("health_calendar_below", -off) : t("health_calendar_usual_day");
+    }
+    return kind === "activity" && metGoal(v, target) ? t("health_calendar_goal_met") : null;
+  };
+  const dateOf = (k) => new Date(month.getFullYear(), month.getMonth(), k + 1);
+  const tile = (k) => {
+    const at = dateOf(k);
+    if (at.getTime() > todayMs) return html`<span key=${"d" + k} class="heat-tile later">${k + 1}</span>`;
+    const level = levels[k];
+    const strength = Math.min(1, Math.abs(level || 0));
+    const warm = kind === "heart" && level > 0;
+    const label = `${longDate(at)}, ${values[k] != null ? text(values[k]) : t("health_calendar_none")}`;
+    const classes = ["heat-tile", level == null ? "empty" : "", warm ? "warm" : "", strength >= 0.65 ? "strong" : "",
+      k === todayIndex ? "today" : "", k === shown ? "picked" : "", metGoal(values[k], target) ? "met" : ""].filter(Boolean).join(" ");
+    return html`<button key=${"d" + k} class=${classes} style=${`--s:${Math.round(strength * 100)}%`} title=${label} aria-label=${label}
+      aria-pressed=${k === shown} onClick=${() => setPicked(picked === k ? null : k)}>${k + 1}</button>`;
+  };
+  return html`<div class="heat-wrap"><div class=${"heat-month" + (from ? " from-" + from : "")}>
+    <div class="heat-detail" key=${"s" + shown}>
+      ${shown == null ? html`<div class="muted heat-empty">${t("health_calendar_empty")}</div>` : html`
+        ${values[shown] != null ? html`<${BigNumber} text=${text(values[shown])} />` : html`<div class="heat-none">${t("health_calendar_none")}</div>`}
+        <div class="small muted">${[longDate(dateOf(shown)), note(values[shown])].filter(Boolean).join(" · ")}</div>`}
+    </div>
+    <div class="heat-grid">
       ${names.map((name, k) => html`<span key=${"n" + k} class="health-month-day">${name}</span>`)}
       ${Array.from({ length: lead }, (_, k) => html`<span key=${"e" + k}></span>`)}
-      ${(range ? range.days : []).map((d, k) => cell(d, k + 1))}
+      ${Array.from({ length }, (_, k) => tile(k))}
     </div>
-  <//>`;
+    <div class="heat-legend small muted">
+      ${kind === "heart" ? html`<span>${t("health_calendar_lower")}</span><i class="heat-scale"></i><span>${t("health_calendar_higher")}</span>
+        <span class="grow"></span>${usual != null && html`<span>${t("health_calendar_usual", t("health_bpm", usual))}</span>`}`
+      : html`<span>${t("health_calendar_less")}</span>${[15, 43, 72, 100].map((s) => html`<i key=${s} class="heat-swatch" style=${`--s:${s}%`}></i>`)}<span>${t("health_calendar_more")}</span>`}
+    </div>
+  </div></div>`;
 }
 
 /** Sleep as a page of Health: last night large with the night and its quality, naps, the sleep of the week, and earlier nights. */
