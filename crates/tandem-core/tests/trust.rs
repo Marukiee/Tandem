@@ -179,3 +179,55 @@ async fn permissions_survive_a_restart_and_the_others_see_the_table() {
     assert!(!again.allowed(&phone_id, Permission::BrowseFiles));
     again.shutdown().await;
 }
+
+/// Each request with a permission of its own: it arrives by default, is refused and said back once switched off, and arrives again
+/// once switched back on.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn every_gated_request_arrives_by_default_is_refused_when_off_and_arrives_again_when_on() {
+    use tandem_core::pointer_share::PointerShareMsg;
+    use tandem_core::proto::{CallAction, CallActionKind};
+    use tandem_core::wifi::WifiMsg;
+
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let (phone_id, mac_id) = pair(&phone, &mac).await;
+    let mut mac_events = mac.engine.subscribe();
+    let mut phone_events = phone.engine.subscribe();
+
+    type Arrived = fn(&Event) -> bool;
+    let cases: Vec<(Permission, Msg, Arrived)> = vec![
+        (Permission::Lock, Msg::Lock {}, |e| matches!(e, Event::Lock { .. })),
+        (Permission::Unlock, Msg::Unlock {}, |e| matches!(e, Event::Unlock { .. })),
+        (Permission::WifiPassword, Msg::Wifi(WifiMsg::Ask { ssid: "Home".into() }), |e| matches!(e, Event::Wifi { msg: WifiMsg::Ask { .. }, .. })),
+        (Permission::Calls, Msg::Dial { number: "0612345678".into() }, |e| matches!(e, Event::Dial { .. })),
+        (Permission::Calls, Msg::CallAction(CallAction { id: "1".into(), action: CallActionKind::Hangup }), |e| matches!(e, Event::CallAction { .. })),
+        (Permission::Restart, Msg::OpenSettings { page: "restart".into() }, |e| matches!(e, Event::OpenSettings { .. })),
+        (Permission::Control, Msg::PointerShare(PointerShareMsg::Carry { text: "hi".into() }), |e| matches!(e, Event::PointerShare { .. })),
+    ];
+    let mut said_before = std::collections::HashSet::new();
+    for (permission, msg, arrived) in cases {
+        let what = format!("{msg:?}");
+        phone.engine.send_msg(&[mac_id], msg.clone()).await;
+        expect(&mut mac_events, &format!("{what} by default"), |e| arrived(e).then_some(())).await;
+
+        mac.engine.set_permission(&phone_id, permission, false).unwrap();
+        phone.engine.send_msg(&[mac_id], msg.clone()).await;
+        // A refusal of the same kind is said once in ten seconds (the second call message is refused without a word).
+        if !said_before.insert(permission) {
+            nothing(&mut mac_events, &format!("a refused {what}"), arrived).await;
+            mac.engine.set_permission(&phone_id, permission, true).unwrap();
+            continue;
+        }
+        let said = expect(&mut phone_events, &format!("the refusal of {what}"), |e| match e {
+            Event::Refused { from, permission: p, .. } if *from == mac_id => Some(*p),
+            _ => None,
+        })
+        .await;
+        assert_eq!(said, permission, "{what}");
+        nothing(&mut mac_events, &format!("a refused {what}"), arrived).await;
+
+        mac.engine.set_permission(&phone_id, permission, true).unwrap();
+        phone.engine.send_msg(&[mac_id], msg).await;
+        expect(&mut mac_events, &format!("{what} once allowed again"), |e| arrived(e).then_some(())).await;
+    }
+}

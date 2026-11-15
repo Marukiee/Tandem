@@ -373,7 +373,12 @@ impl Inner {
         (changed, gone)
     }
 
-    pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, offer: ShareOffer) {
+    pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, mut offer: ShareOffer) {
+        // A drop comes with the shared mouse and the app lands it without asking. A device that may not control this one gets the
+        // same as any other offer (P6).
+        if offer.origin == ShareOrigin::Drag && !self.allowed(&from, crate::trust::Permission::Control) {
+            offer.origin = ShareOrigin::Files;
+        }
         let key = Key::In(from, offer.id);
         // Numbers are random, so this is the same offer said twice; the one that is here already counts.
         if self.journal.read(key, |_| ()).is_some() {

@@ -318,6 +318,10 @@ impl Inner {
         if !allowed(&msg) || !self.ble_linked(peer) {
             return false;
         }
+        // The same gate as `send_to`: what another device may not see does not cross the air either.
+        if crate::trust::needed_to_send(&msg).is_some_and(|permission| !self.allowed(peer, permission)) {
+            return false;
+        }
         let Ok(frame) = self.ble_seal(peer, msg) else { return false };
         let mut hub = self.ble.lock().unwrap();
         let queue = hub.outbox.entry(*peer).or_default();
