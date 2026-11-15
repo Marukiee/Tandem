@@ -268,6 +268,7 @@ impl Engine {
         // The peers must exist before their saved addresses can be attached to them.
         inner.sync_peers();
         inner.load_addresses();
+        inner.begin_long_away_at_the_long_backoff();
         inner.clean_partials();
         info!(id = %inner.my_id, port = inner.port, "tandem engine started");
 
@@ -947,6 +948,17 @@ impl Inner {
         }
     }
 
+    /// A device that has been gone for days is tried once when this starts (it may just have come back) and after that at the long
+    /// back-off, as if it had failed all this time, and not from the quick tries of a device that was here a moment ago.
+    fn begin_long_away_at_the_long_backoff(&self) {
+        let mut peers = self.peers.lock().unwrap();
+        for (id, peer) in peers.iter_mut() {
+            if peer.session.is_none() && self.away_for_days(id, peer) {
+                peer.fail_count = peer.fail_count.max(LONG_AWAY_FAILS);
+            }
+        }
+    }
+
     pub fn persist_addresses(&self) {
         let snapshot: HashMap<String, AddrBook> = self
             .peers
@@ -1005,12 +1017,9 @@ impl Inner {
             (at, quiet_before)
         };
         let mut peers = self.peers.lock().unwrap();
-        for peer in peers.values_mut().filter(|p| p.session.is_none()) {
-            peer.next_dial = peer.next_dial.min(at);
-            peer.hurry = true;
-            if quiet_before {
-                peer.fail_count = peer.fail_count.min(QUICK_TRIES);
-            }
+        for (id, peer) in peers.iter_mut().filter(|(_, p)| p.session.is_none()) {
+            let long_away = self.away_for_days(id, peer);
+            apply_hurry(peer, at, quiet_before, long_away);
         }
         drop(peers);
         self.probe_sessions();
@@ -1161,24 +1170,40 @@ impl Inner {
         {
             let mut peers = self.peers.lock().unwrap();
             let now = Instant::now();
+            // A phone with its screen off on mobile data does not go looking for a device that has been gone for days: that
+            // device dials this one when it is back, and this one dials it when the screen goes on or the data is not metered.
+            let costly = self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed);
             for (id, peer) in peers.iter_mut() {
                 if peer.session.is_none() && !peer.dialing && now >= peer.next_dial && !peer.addrs.is_empty() {
+                    let long_away = self.away_for_days(id, peer);
+                    if long_away && costly {
+                        continue;
+                    }
                     peer.dialing = true;
                     peer.addrs.forget_old(now_ms());
                     // After a change of network every address, as for a device that never failed.
                     let fails = if std::mem::take(&mut peer.hurry) { 0 } else { peer.fail_count };
-                    due.push((*id, peer.key, peer.addrs.ordered(), fails));
+                    due.push((*id, peer.key, peer.addrs.ordered(), fails, long_away));
                 }
             }
         }
-        for (id, key, addrs, fails) in due {
+        for (id, key, addrs, fails, long_away) in due {
             let this = self.clone();
-            tokio::spawn(async move { this.dial_peer(id, key, addrs, fails).await });
+            tokio::spawn(async move { this.dial_peer(id, key, addrs, fails, long_away).await });
         }
     }
 
-    async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>, fails: u32) {
-        let sockets: Vec<SocketAddr> = addrs.iter().take(addresses_to_try(fails)).filter_map(|a| a.socket()).collect();
+    /// Whether a device has been gone for more than a day: the newest of when it was last seen (`find`, which also counts a device that
+    /// dialled in and one heard on the local network) and when a connection to one of its addresses last worked. A device that was never
+    /// seen at all is a new one, and not away for days. One heard on the local network just now is here.
+    fn away_for_days(&self, id: &DeviceId, peer: &Peer) -> bool {
+        let here = peer.lan_seen.is_some_and(|at| at.elapsed() < Duration::from_secs(90));
+        let last_seen = self.find.last_seen(id).map(|seen| seen.at_ms);
+        is_away_for_days(now_ms(), last_seen, peer.addrs.newest_ok(), here)
+    }
+
+    async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>, fails: u32, long_away: bool) {
+        let sockets: Vec<SocketAddr> = addrs.iter().take(addresses_to_try(fails, long_away)).filter_map(|a| a.socket()).collect();
         let outcome = self.dial_any(Some(key), tls::ALPN_MAIN, &sockets).await;
         match outcome {
             Ok((connection, addr)) => {
@@ -1201,7 +1226,7 @@ impl Inner {
                     peers.get_mut(&id).map(|peer| {
                         peer.dialing = false;
                         peer.fail_count = peer.fail_count.saturating_add(1);
-                        peer.next_dial = Instant::now() + backoff(peer.fail_count);
+                        peer.next_dial = Instant::now() + backoff(peer.fail_count, long_away);
                         peer.fail_count
                     })
                 };
@@ -1412,17 +1437,56 @@ pub(crate) fn hash_text(text: &str) -> u64 {
 /// A device that has been gone for a while comes back by itself: it dials everyone when it starts, wakes or changes network, a phone also
 /// when its screen goes on, and it is seen on the local network. Trying it often costs each device a radio that never rests, so after the
 /// first minutes this is only for the case that it cannot reach this device.
-fn backoff(failures: u32) -> Duration {
+fn backoff(failures: u32, long_away: bool) -> Duration {
     let millis = match failures {
         0..=8 => ((1u64 << failures.min(5)) * 1000).min(30_000),
         9..=12 => 60_000,
         13..=20 => 300_000,
+        // Away for more than a day: a laptop in a drawer. It dials this device when it is back, and when this one is seen on the local
+        // network it is tried at once, so waiting this long costs a returning device nothing.
+        _ if long_away => LONG_AWAY_CAP.as_millis() as u64,
         // Away for more than half an hour: a computer that is off, most of the time. It dials this device when it is back.
         _ => 900_000,
     };
     // A little jitter so two devices retrying together do not keep colliding.
     let jitter = rand_u64() % (millis / 5 + 1);
     Duration::from_millis(millis + jitter)
+}
+
+/// A device that has not been seen for this long is "away for days": see `is_away_for_days`.
+const AWAY_AFTER_MS: u64 = 24 * 3600 * 1000;
+/// How often such a device is tried at most.
+const LONG_AWAY_CAP: Duration = Duration::from_secs(6 * 3600);
+/// The failures that start the long back-off (see `backoff`): more than the quick tries and the 5 minute waits.
+const LONG_AWAY_FAILS: u32 = 21;
+/// Each attempt on a device that has been away for days uses at most this many of its addresses, the best ones.
+const LONG_AWAY_ADDRESSES: usize = 2;
+
+/// Whether a device has been gone for more than a day, given when it was last seen and when a connection to it last worked (Unix ms).
+/// With neither it is new and not away. `here`: it is on the local network now.
+fn is_away_for_days(now: u64, last_seen: Option<u64>, last_worked: Option<u64>, here: bool) -> bool {
+    if here {
+        return false;
+    }
+    let newest = match (last_seen, last_worked) {
+        (Some(a), Some(b)) => a.max(b),
+        (Some(a), None) | (None, Some(a)) => a,
+        (None, None) => return false,
+    };
+    now.saturating_sub(newest) > AWAY_AFTER_MS
+}
+
+/// A change of network has a device that is away tried soon, on all its addresses. Not one that has been gone for days: it keeps its
+/// long back-off, because every try is paid for in battery and that device dials this one itself when it is back.
+fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool) {
+    if long_away {
+        return;
+    }
+    peer.next_dial = peer.next_dial.min(at);
+    peer.hurry = true;
+    if quiet_before {
+        peer.fail_count = peer.fail_count.min(QUICK_TRIES);
+    }
 }
 
 /// See `Inner::hurry`.
@@ -1452,7 +1516,10 @@ fn reaches_others(ip: std::net::IpAddr) -> bool {
 
 /// Each address that does not answer costs a few packets of more than a kilobyte. A device that stays away gets the best ones, and all of them
 /// once in a while, in case it is somewhere else now.
-fn addresses_to_try(failures: u32) -> usize {
+fn addresses_to_try(failures: u32, long_away: bool) -> usize {
+    if long_away && failures >= QUICK_TRIES {
+        return LONG_AWAY_ADDRESSES;
+    }
     if failures < 6 || failures.is_multiple_of(4) { usize::MAX } else { 3 }
 }
 
@@ -1462,14 +1529,14 @@ mod tests {
 
     #[test]
     fn backoff_grows_and_is_capped() {
-        assert!(backoff(0) < Duration::from_millis(1300));
-        assert!(backoff(3) >= Duration::from_secs(8));
-        assert!(backoff(8) <= Duration::from_millis(36_100));
-        assert!(backoff(10) >= Duration::from_secs(60));
-        assert!(backoff(20) >= Duration::from_secs(300));
-        assert!(backoff(20) <= Duration::from_secs(360));
-        assert!(backoff(30) >= Duration::from_secs(900));
-        assert!(backoff(30) <= Duration::from_secs(1080));
+        assert!(backoff(0, false) < Duration::from_millis(1300));
+        assert!(backoff(3, false) >= Duration::from_secs(8));
+        assert!(backoff(8, false) <= Duration::from_millis(36_100));
+        assert!(backoff(10, false) >= Duration::from_secs(60));
+        assert!(backoff(20, false) >= Duration::from_secs(300));
+        assert!(backoff(20, false) <= Duration::from_secs(360));
+        assert!(backoff(30, false) >= Duration::from_secs(900));
+        assert!(backoff(30, false) <= Duration::from_secs(1080));
     }
 
     #[test]
@@ -1486,6 +1553,75 @@ mod tests {
         assert_eq!(hurry_at(Some(start), start + Duration::from_secs(2), true), start + Duration::from_secs(2));
     }
 
+    fn a_peer(fail_count: u32, next_dial: Instant) -> Peer {
+        Peer {
+            key: [0; 32],
+            addrs: AddrBook::default(),
+            session: None,
+            dialing: false,
+            fail_count,
+            next_dial,
+            status: Status::default(),
+            hello: None,
+            lan_seen: None,
+            hurry: false,
+        }
+    }
+
+    #[test]
+    fn a_device_is_away_for_days_after_a_day_without_a_sign_of_it() {
+        let now = 100 * AWAY_AFTER_MS;
+        let hour = 3_600_000;
+        assert!(!is_away_for_days(now, Some(now - 23 * hour), None, false));
+        assert!(is_away_for_days(now, Some(now - 25 * hour), None, false));
+        // The newest of the two counts: a connection that worked an hour ago, whatever was last seen.
+        assert!(!is_away_for_days(now, Some(now - 48 * hour), Some(now - hour), false));
+        assert!(!is_away_for_days(now, Some(now - hour), Some(now - 48 * hour), false));
+        assert!(is_away_for_days(now, None, Some(now - 48 * hour), false));
+        // A new device was never seen, and one on the local network is here.
+        assert!(!is_away_for_days(now, None, None, false));
+        assert!(!is_away_for_days(now, Some(now - 48 * hour), None, true));
+    }
+
+    #[test]
+    fn a_device_that_has_been_away_for_days_waits_six_hours_and_one_that_was_here_yesterday_waits_as_before() {
+        assert!(backoff(21, true) >= Duration::from_secs(6 * 3600));
+        assert!(backoff(21, true) <= Duration::from_secs(6 * 3600 + 6 * 3600 / 5 + 1));
+        assert!(backoff(500, true) >= Duration::from_secs(6 * 3600));
+        assert!(backoff(21, false) <= Duration::from_secs(1080));
+        // The first tries of a device that is not gone for long are the same: it may be just out of reach.
+        for failures in 0..=20 {
+            assert!(backoff(failures, true) <= backoff(failures, false) + Duration::from_secs(61), "{failures}");
+        }
+    }
+
+    #[test]
+    fn a_device_that_has_been_away_for_days_gets_its_best_two_addresses() {
+        assert_eq!(addresses_to_try(LONG_AWAY_FAILS, true), 2);
+        assert_eq!(addresses_to_try(24, true), 2);
+        assert_eq!(addresses_to_try(24, false), usize::MAX);
+        // The quick tries of a start are all of them.
+        assert_eq!(addresses_to_try(0, true), usize::MAX);
+    }
+
+    #[test]
+    fn a_change_of_network_hurries_a_device_that_was_here_yesterday_and_not_one_that_has_been_away_for_days() {
+        let now = Instant::now();
+        let later = now + Duration::from_secs(3600);
+
+        let mut recent = a_peer(30, later);
+        apply_hurry(&mut recent, now, true, false);
+        assert_eq!(recent.next_dial, now);
+        assert!(recent.hurry);
+        assert_eq!(recent.fail_count, QUICK_TRIES);
+
+        let mut gone = a_peer(LONG_AWAY_FAILS, later);
+        apply_hurry(&mut gone, now, true, true);
+        assert_eq!(gone.next_dial, later, "its back-off is not shortened");
+        assert!(!gone.hurry);
+        assert_eq!(gone.fail_count, LONG_AWAY_FAILS, "and it does not start counting from the quick tries again");
+    }
+
     #[test]
     fn a_link_local_address_is_no_change_of_network() {
         assert!(!reaches_others("fe80::1".parse().unwrap()));
@@ -1498,9 +1634,9 @@ mod tests {
 
     #[test]
     fn a_device_that_stays_away_gets_fewer_addresses_with_all_of_them_now_and_then() {
-        assert_eq!(addresses_to_try(0), usize::MAX);
-        assert_eq!(addresses_to_try(5), usize::MAX);
-        assert_eq!(addresses_to_try(6), 3);
-        assert_eq!(addresses_to_try(8), usize::MAX);
+        assert_eq!(addresses_to_try(0, false), usize::MAX);
+        assert_eq!(addresses_to_try(5, false), usize::MAX);
+        assert_eq!(addresses_to_try(6, false), 3);
+        assert_eq!(addresses_to_try(8, false), usize::MAX);
     }
 }

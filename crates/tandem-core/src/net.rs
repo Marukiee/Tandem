@@ -142,6 +142,11 @@ impl AddrBook {
         }
     }
 
+    /// When a connection over one of these last worked (Unix ms). Unlike `seen` it is never moved by what other devices say.
+    pub fn newest_ok(&self) -> Option<u64> {
+        self.addrs.iter().map(|a| a.last_ok).filter(|at| *at > 0).max()
+    }
+
     /// Every address that is kept is dialled when the device is away: an old one is a cost, for nothing.
     pub fn forget_old(&mut self, now: u64) {
         let Some(newest) = self.addrs.iter().map(|a| a.last_ok.max(a.seen)).max() else { return };
