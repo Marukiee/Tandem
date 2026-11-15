@@ -325,7 +325,7 @@ private final class CarrierView: NSView, NSDraggingSource {
     }
 
     nonisolated func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        context == .outsideApplication ? [.copy, .generic] : [.copy]
+        context == .outsideApplication ? [.copy, .move, .generic] : [.copy]
     }
 
     nonisolated func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
