@@ -127,6 +127,16 @@ impl AddrBook {
         self.trim();
     }
 
+    /// An address that another device says this one has. It is new to this device the first time, but hearing it again is not a sign that
+    /// the device is there: a device that is gone is introduced by the others for as long as they keep its address, and would never age out.
+    pub fn introduced(&mut self, addr: SocketAddr, now: u64) {
+        let text = addr.to_string();
+        if self.addrs.iter().any(|a| a.addr == text) {
+            return;
+        }
+        self.learn(addr, now);
+    }
+
     pub fn succeeded(&mut self, addr: SocketAddr, now: u64) {
         self.learn(addr, now);
         let text = addr.to_string();
@@ -264,6 +274,18 @@ pub type SharedEndpoint = Arc<quinn::Endpoint>;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_address_that_is_introduced_again_does_not_look_newer() {
+        let mut book = AddrBook::default();
+        let addr: SocketAddr = "192.168.1.5:47820".parse().unwrap();
+        book.introduced(addr, 1_000);
+        book.introduced(addr, 9_000_000);
+        assert_eq!(book.ordered()[0].seen, 1_000);
+        // Seen itself, it is newer.
+        book.learn(addr, 5_000);
+        assert_eq!(book.ordered()[0].seen, 5_000);
+    }
 
     #[test]
     fn tailscale_is_asked_for_only_when_the_device_is_out_of_reach_and_known_by_a_tailnet_address() {

@@ -972,6 +972,15 @@ impl Inner {
         }
     }
 
+    /// An address another device gave for `id`: it only becomes known, it does not count as a sign of life (see `AddrBook::introduced`).
+    pub fn learn_introduced_addr(&self, id: &DeviceId, addr: SocketAddr) {
+        let addr = SocketAddr::new(addr.ip().to_canonical(), addr.port());
+        if let Some(peer) = self.peers.lock().unwrap().get_mut(id) {
+            peer.addrs.introduced(addr, now_ms());
+            self.addrs_dirty.store(true, Ordering::Relaxed);
+        }
+    }
+
     pub fn learn_addr(&self, id: &DeviceId, addr: SocketAddr, success: bool) {
         let addr = SocketAddr::new(addr.ip().to_canonical(), addr.port());
         let now = now_ms();

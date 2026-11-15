@@ -642,7 +642,7 @@ impl Inner {
                     }
                     for text in entry.addrs {
                         if let Ok(addr) = text.parse::<SocketAddr>() {
-                            self.learn_addr(&entry.id, addr, false);
+                            self.learn_introduced_addr(&entry.id, addr);
                         }
                     }
                 }
