@@ -263,9 +263,20 @@ enum DebugSupport {
 
     static func sharedSamples() -> [TransferItem] {
         let now = Date()
-        return ["IMG_2041.jpg", "Offerte.pdf", "Notities.txt", "Clip 3.mov", "Muziek.zip"].enumerated().map { index, name in
-            TransferItem(id: "debug-\(index)", peer: "debug-phone", name: name, done: 2_000_000, total: 2_000_000, incoming: index % 2 == 0,
-                         state: .done, location: nil, error: nil, started: now, updated: now.addingTimeInterval(Double(-index * 60)))
+        // Every kind of file, both ways, and the ways a transfer can end, so the tiles, the columns and the labels all have something to show.
+        let rows: [(String, UInt64, TransferItem.State, String?, Double)] = [
+            ("Clip 3.mov", 120_000_000, .active, nil, 0),
+            ("IMG_2041.jpg", 2_400_000, .done, nil, 300),
+            ("Offerte 2026.pdf", 840_000, .failed, "connection lost", 3600),
+            ("Notities.txt", 12_000, .done, nil, 7200),
+            ("Muziek.zip", 64_000_000, .failed, "declined", 9000),
+            ("Voice memo.m4a", 1_200_000, .done, nil, 90_000),
+            ("Vakantie 2026 Portugal lange bestandsnaam.heic", 5_300_000, .done, nil, 200_000),
+        ]
+        return rows.enumerated().map { index, row in
+            TransferItem(id: "debug-\(index)", peer: "debug-phone", name: row.0, done: row.2 == .active ? row.1 / 3 : row.1, total: row.1, incoming: index % 2 == 0,
+                         state: row.2, location: nil, error: row.3, started: now.addingTimeInterval(-row.4), updated: now.addingTimeInterval(-row.4),
+                         speed: row.2 == .active ? 8_400_000 : 0)
         }
     }
 
@@ -525,8 +536,8 @@ enum DebugSupport {
         MessagesStore.shared.phone("debug-phone").fillForDebug()
         model.ready = true
         // The whole window, because the sidebar is part of it: it floats over the edge and folds when the window is narrow.
-        // `TANDEM_DEBUG_SIDEBAR=narrow`: a window narrow enough for it to fold. `TANDEM_DEBUG_PAGE` picks the page.
-        let width: CGFloat = variable("TANDEM_DEBUG_SIDEBAR") == "narrow" ? 760 : 1060
+        // `TANDEM_DEBUG_SIDEBAR=narrow`: a window narrow enough for it to fold, `=wide` one with room to spare. `TANDEM_DEBUG_PAGE` picks the page.
+        let width: CGFloat = ["narrow": 760, "wide": 1400][variable("TANDEM_DEBUG_SIDEBAR") ?? ""] ?? 1060
         let host = NSHostingView(rootView: MainWindow().environment(model).frame(minWidth: 720, maxWidth: .infinity, minHeight: 600, maxHeight: .infinity))
         host.sceneBridgingOptions = [.toolbars]
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: width, height: 660),

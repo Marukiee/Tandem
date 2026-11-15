@@ -38,10 +38,13 @@ extension Color {
 /// kind of file, the tiles at the top of Shared. The same four as on Linux and Windows.
 enum Tone {
     case indigo, rose, mint, peach, plain
+    /// Indigo as a ground of its own, for a tile large enough to carry words.
+    case lavender
 
     var fill: Color {
         switch self {
         case .indigo: Palette.indigo.opacity(0.15)
+        case .lavender: Color(light: 0xE3E2FB, dark: 0x30305E)
         case .rose: Color(light: 0xFFDDE9, dark: 0x56283B)
         case .mint: Color(light: 0xD6F0DA, dark: 0x1F4729)
         case .peach: Color(light: 0xFFE1D3, dark: 0x573020)
@@ -52,6 +55,7 @@ enum Tone {
     var ink: Color {
         switch self {
         case .indigo: Palette.indigo
+        case .lavender: Color(light: 0x2A2980, dark: 0xDCDBFF)
         case .rose: Color(light: 0x6B1F3F, dark: 0xFFD7E4)
         case .mint: Color(light: 0x0F4D1D, dark: 0xC9EDD0)
         case .peach: Color(light: 0x6A2A10, dark: 0xFFDACB)

@@ -713,6 +713,22 @@ enum TransferReason {
     }
 }
 
+/// How much of a transfer has a column of its own: nothing in a plain list, only how it stands in a narrow table, and the size, the
+/// time and how it stands in a wide one.
+enum TransferColumns { case none, state, all }
+
+extension TransferReason {
+    /// Why a transfer is not a file that is here, with the colour to say it in: it failed, or it arrived and is gone since.
+    @MainActor
+    static func of(_ item: TransferItem, peerName: String, model: EngineModel) -> (text: String, tint: Color)? {
+        if item.state == .failed {
+            return (text(item.error, incoming: item.incoming, peerName: peerName), Palette.urgent)
+        }
+        if item.state == .done, item.location != nil, !model.canOpen(item) { return (String(localized: "No longer there"), Color.secondary) }
+        return nil
+    }
+}
+
 /// How a kind of file looks in a row: the colour of its tile and the symbol on it.
 extension SharedKind {
     var tone: Tone {
@@ -732,6 +748,8 @@ extension SharedKind {
 struct ReasonLabel: View {
     let text: String
     var tint: Color = Palette.urgent
+    /// In a column of a table it keeps to the width of the column, and says the rest when the pointer rests on it.
+    var inColumn = false
 
     var body: some View {
         Text(text)
@@ -741,8 +759,9 @@ struct ReasonLabel: View {
             .padding(.horizontal, 10)
             .frame(height: 24)
             .background(tint.opacity(0.14), in: .capsule)
-            // The name of the file gives way, the reason is never cut.
-            .fixedSize()
+            // In a list the name of the file gives way and the reason is never cut.
+            .fixedSize(horizontal: !inColumn, vertical: true)
+            .help(inColumn ? Text(verbatim: text) : Text(verbatim: ""))
     }
 }
 
@@ -751,7 +770,7 @@ struct TransferRow: View {
     let item: TransferItem
     let peerName: String
     /// On the page Shared the size, the time and how it stands each have a column of their own.
-    var columns = false
+    var columns = TransferColumns.none
     /// Chosen among others: the tile says so.
     var chosen = false
     @Environment(EngineModel.self) private var model
@@ -759,7 +778,7 @@ struct TransferRow: View {
     /// The widths of the columns, shared with the head of the table.
     static let sizeWidth: CGFloat = 72
     static let whenWidth: CGFloat = 112
-    static let stateWidth: CGFloat = 170
+    static let stateWidth: CGFloat = 190
 
     var body: some View {
         HStack(spacing: 12) {
@@ -784,19 +803,18 @@ struct TransferRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if columns {
-                // A narrow window keeps the name and the state: the size and the time are the first to go.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) {
-                        column(item.total > 0 ? formatBytes(item.total) : "", width: Self.sizeWidth)
-                        column(when, width: Self.whenWidth)
-                        state.frame(width: Self.stateWidth, alignment: .leading)
-                    }
-                    state
+            switch columns {
+            case .all:
+                column(item.total > 0 ? formatBytes(item.total) : "", width: Self.sizeWidth)
+                column(when, width: Self.whenWidth)
+                state(inColumn: true).frame(width: Self.stateWidth, alignment: .leading)
+            case .state:
+                state(inColumn: false)
+            case .none:
+                if let reason {
+                    ReasonLabel(text: reason.text, tint: reason.tint)
+                        .transition(.opacity)
                 }
-            } else if let reason {
-                ReasonLabel(text: reason.text, tint: reason.tint)
-                    .transition(.opacity)
             }
         }
         .padding(.vertical, 6)
@@ -817,9 +835,9 @@ struct TransferRow: View {
 
     /// How it stands, in the last column: the reason it is not here, otherwise how far it is or which way it went.
     @ViewBuilder
-    private var state: some View {
+    private func state(inColumn: Bool) -> some View {
         if let reason {
-            ReasonLabel(text: reason.text, tint: reason.tint)
+            ReasonLabel(text: reason.text, tint: reason.tint, inColumn: inColumn)
         } else {
             Text(item.state == .active ? "\(Int(item.fraction * 100))%" : (item.incoming ? String(localized: "Received") : String(localized: "Sent")))
                 .font(.caption.monospacedDigit())
@@ -834,21 +852,14 @@ struct TransferRow: View {
         if item.state == .active {
             return String(localized: "\(formatBytes(item.done)) of \(formatBytes(item.total))  \(formatSpeed(item.speed))")
         }
-        if columns { return with }
+        if columns != .none { return with }
         let size = item.state == .done && item.total > 0 ? formatBytes(item.total) : nil
         return [with, size, when].compactMap { $0 }.joined(separator: " \u{00B7} ")
     }
 
     private var when: String { item.updated.formatted(.relative(presentation: .named)) }
 
-    /// Why it is not a file that is here: it failed, or it arrived and is gone since.
-    private var reason: (text: String, tint: Color)? {
-        if item.state == .failed {
-            return (TransferReason.text(item.error, incoming: item.incoming, peerName: peerName), Palette.urgent)
-        }
-        if missing { return (String(localized: "No longer there"), Color.secondary) }
-        return nil
-    }
+    private var reason: (text: String, tint: Color)? { TransferReason.of(item, peerName: peerName, model: model) }
 
     @LocalState private var thumbnail: NSImage?
 
@@ -894,8 +905,6 @@ struct TransferRow: View {
         thumbnail = made?.nsImage
     }
 
-    /// A file that arrived and is gone now: the row says so, so the list does not promise what is not there.
-    private var missing: Bool { item.state == .done && item.location != nil && !model.canOpen(item) }
 }
 
 /// The name of a round button, shown above it the moment the pointer is on it, not after the wait of a tooltip.
@@ -1007,7 +1016,7 @@ struct TransferEntry: View {
     /// What a click does instead of opening, for a page where rows can be chosen; nil opens.
     var onTap: (() -> Void)?
     /// As a line of the table on the page Shared.
-    var columns = false
+    var columns = TransferColumns.none
     /// The row whose file is shown beside the list.
     var picked = false
     @FocusState private var focused: Bool

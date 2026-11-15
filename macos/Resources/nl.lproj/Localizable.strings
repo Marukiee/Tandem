@@ -958,6 +958,15 @@
 "Other" = "Overig";
 "Sent and received" = "Verstuurd en ontvangen";
 "Received" = "Ontvangen";
+"Files you send and receive. Command or Shift-click to choose more." = "Bestanden die je verstuurt en ontvangt. Kies er meer met Command of Shift.";
+"Waiting for you" = "Wacht op jou";
+"Nothing is waiting" = "Er wacht niets";
+"files, %@ arrived or sent" = "bestanden, %@ verstuurd of ontvangen";
+"did not get through" = "niet aangekomen";
+"Size" = "Grootte";
+"State" = "Stand";
+"From" = "Van";
+"To" = "Naar";
 "Sent" = "Verstuurd";
 "Any time" = "Altijd";
 "Today" = "Vandaag";
