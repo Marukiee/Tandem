@@ -325,6 +325,11 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::KeepAwake { from, on } => crate::keepawake::from_afar(app, &from, on),
         TandemEvent::Unlock { from } => crate::unlock::from_afar(app, &from),
         TandemEvent::Lock { .. } => crate::unlock::lock_now(),
+        // What the other device does not allow, and where it is changed there.
+        TandemEvent::Refused { from, .. } => {
+            let name = device_name(app, &from);
+            toast(app, &crate::i18n::t1(app, "refused_title", &name), &crate::i18n::t1(app, "refused_body", &name));
+        }
         // A computer has no ringer: only a phone offers this in its status.
         TandemEvent::SoundMode { .. } => {}
         TandemEvent::Ringing { from, on } => {
