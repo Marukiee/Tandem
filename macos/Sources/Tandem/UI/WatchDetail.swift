@@ -335,7 +335,7 @@ private struct WatchHealthCard: View {
                             GlanceTile(
                                 onOpen: onOpen, symbol: "bed.double", title: "Last night", number: minutesText(Int(night.sleepMinutes)),
                                 caption: dayName(night.endMs), tint: Palette.indigo,
-                                badge: score.map { ("\(Int($0))", Self.grade(Int($0), good: 80, fair: 60)) }
+                                score: score.map { Int($0) }
                             )
                         }
                         // Beside the night also at 0, so the steps never seem gone on a day without any yet.
@@ -359,12 +359,15 @@ private struct WatchHealthCard: View {
                         } else if let resting = insights?.resting {
                             GlanceTile(
                                 onOpen: onOpen, symbol: "heart", title: "Resting heart rate", number: String(localized: "\(Int(resting.latest)) bpm"),
-                                caption: resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this"),
-                                tint: .pink,
-                                // Against what is usual: the same or lower is good, a few beats higher is worth a look.
-                                badge: resting.usual.map { usual in
+                                caption: resting.usual.map { usual in
                                     let over = Int(resting.latest) - Int(usual)
-                                    return (over > 0 ? "+\(over)" : "\(over)", over <= 2 ? Color.green : over <= 6 ? Color.orange : Palette.urgent)
+                                    return over > 0 ? String(localized: "\(over) above your usual") : over < 0 ? String(localized: "\(-over) below your usual") : String(localized: "Your usual")
+                                } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this"),
+                                tint: .pink,
+                                // Against what is usual, in words and in colour: the same or lower is good, a few beats higher is worth a look.
+                                captionTint: resting.usual.map { usual in
+                                    let over = Int(resting.latest) - Int(usual)
+                                    return over <= 2 ? Color.green : over <= 6 ? Color.orange : Palette.urgent
                                 }
                             )
                         }
@@ -393,6 +396,32 @@ extension WatchHealthCard {
     }
 }
 
+/// A score out of 100 as a ring with the number inside, and under it what the number is. Green from 80, orange from 60, red under.
+private struct SleepScoreRing: View {
+    let score: Int
+
+    var body: some View {
+        let tint = WatchHealthCard.grade(score, good: 80, fair: 60)
+        VStack(spacing: 3) {
+            ZStack {
+                Circle().stroke(tint.opacity(0.18), lineWidth: 5)
+                Circle()
+                    .trim(from: 0, to: CGFloat(min(score, 100)) / 100)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text(verbatim: "\(score)")
+                    .font(.system(size: 17, weight: .bold).monospacedDigit())
+            }
+            .frame(width: 50, height: 50)
+            Text("Sleep score")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .fixedSize()
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// One number of what the watch measured, which opens the page with all of it.
 private struct GlanceTile: View {
     let onOpen: () -> Void
@@ -404,8 +433,10 @@ private struct GlanceTile: View {
     /// than those beside it and the tile taller, and not a bar under the number, which did the same.
     /// The colour of its icon, and of the line toward a goal: the plain colour itself, as the icons of the app have it.
     var tint: Color = .secondary
-    /// A score or a comparison in its own colour, at the top right.
-    var badge: (text: String, color: Color)? = nil
+    /// A score out of 100, as a ring at the right with its number inside and its name under it, in green, orange or red.
+    var score: Int? = nil
+    /// The caption in a colour of its own, when it compares.
+    var captionTint: Color? = nil
     var share: Double? = nil
     /// A number that is live: its symbol beats.
     var beating = false
@@ -418,15 +449,6 @@ private struct GlanceTile: View {
                         .foregroundStyle(tint)
                         .symbolEffect(.pulse, options: .repeating, isActive: beating)
                     Text(title)
-                    Spacer(minLength: 4)
-                    if let badge {
-                        Text(verbatim: badge.text)
-                            .font(.caption.weight(.bold).monospacedDigit())
-                            .foregroundStyle(badge.color)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 1)
-                            .background(badge.color.opacity(0.15), in: .capsule)
-                    }
                 }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -436,11 +458,14 @@ private struct GlanceTile: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(verbatim: caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption.weight(captionTint == nil ? .regular : .semibold))
+                    .foregroundStyle(captionTint ?? Color.secondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .overlay(alignment: .trailing) {
+                if let score { SleepScoreRing(score: score) }
+            }
             .padding(14)
             // In the padding, so it takes no room of its own.
             .overlay(alignment: .bottom) {
