@@ -334,7 +334,7 @@ private struct WatchHealthCard: View {
                             let score = insights?.latestNight?.id == night.id ? insights?.latestNight?.score : nil
                             GlanceTile(
                                 onOpen: onOpen, symbol: "bed.double", title: "Last night", number: minutesText(Int(night.sleepMinutes)),
-                                caption: dayName(night.endMs), tone: .indigo,
+                                caption: dayName(night.endMs), tint: Palette.indigo,
                                 badge: score.map { ("\(Int($0))", Self.grade(Int($0), good: 80, fair: 60)) }
                             )
                         }
@@ -345,7 +345,7 @@ private struct WatchHealthCard: View {
                             let goal = Int(settings?.stepGoal ?? 10_000)
                             GlanceTile(
                                 onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(),
-                                caption: String(localized: "of \(goal.formatted())"), tone: .mint,
+                                caption: String(localized: "of \(goal.formatted())"), tint: .green,
                                 share: min(1, Double(steps) / Double(max(goal, 1)))
                             )
                         }
@@ -354,13 +354,13 @@ private struct WatchHealthCard: View {
                             GlanceTile(
                                 onOpen: onOpen, symbol: "heart.fill", title: "Heart rate now", number: String(localized: "\(now) bpm"),
                                 caption: insights?.resting.map { String(localized: "Resting \(Int($0.latest))") } ?? String(localized: "Live from your watch"),
-                                tone: .rose, beating: true
+                                tint: .pink, beating: true
                             )
                         } else if let resting = insights?.resting {
                             GlanceTile(
                                 onOpen: onOpen, symbol: "heart", title: "Resting heart rate", number: String(localized: "\(Int(resting.latest)) bpm"),
                                 caption: resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this"),
-                                tone: .rose,
+                                tint: .pink,
                                 // Against what is usual: the same or lower is good, a few beats higher is worth a look.
                                 badge: resting.usual.map { usual in
                                     let over = Int(resting.latest) - Int(usual)
@@ -402,8 +402,8 @@ private struct GlanceTile: View {
     let caption: String
     /// How far toward a goal, as a thin line along the foot of the tile. Not a ring around the icon, which made the icon larger
     /// than those beside it and the tile taller, and not a bar under the number, which did the same.
-    /// The colour of its icon, and of the line toward a goal.
-    var tone: Tone = .plain
+    /// The colour of its icon, and of the line toward a goal: the plain colour itself, as the icons of the app have it.
+    var tint: Color = .secondary
     /// A score or a comparison in its own colour, at the top right.
     var badge: (text: String, color: Color)? = nil
     var share: Double? = nil
@@ -415,7 +415,7 @@ private struct GlanceTile: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Image(systemName: symbol)
-                        .foregroundStyle(tone == .plain ? Color.secondary : tone.ink)
+                        .foregroundStyle(tint)
                         .symbolEffect(.pulse, options: .repeating, isActive: beating)
                     Text(title)
                     Spacer(minLength: 4)
@@ -448,8 +448,7 @@ private struct GlanceTile: View {
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Color.primary.opacity(0.08))
-                            // Green once the goal is reached.
-                            Capsule().fill(share >= 1 ? Color.green : (tone == .plain ? Palette.indigo : tone.ink)).frame(width: max(4, proxy.size.width * share))
+                            Capsule().fill(tint).frame(width: max(4, proxy.size.width * share))
                         }
                     }
                     .frame(height: 4)
