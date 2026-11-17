@@ -328,7 +328,8 @@ private struct WatchHealthCard: View {
                 }
                 .buttonStyle(.plain)
                 .help("Open Health")
-                if night != nil || stepsDay != nil || insights?.resting != nil || watchHere {
+                // Both tiles whenever the watch is paired, so the card is never just one thing.
+                do {
                     TimelineView(.periodic(from: .now, by: 2)) { context in
                     let now = model.watchHeartNow[phone.id].flatMap { watchHere && $0.fresh(at: context.date) ? $0.bpm : nil }
                     HStack(alignment: .top, spacing: 8) {
@@ -338,15 +339,16 @@ private struct WatchHealthCard: View {
                                 onOpen: onOpen, symbol: "bed.double", title: "Last night", number: minutesText(Int(night.sleepMinutes)),
                                 caption: score.map { String(localized: "Sleep score \(Int($0))") } ?? dayName(night.endMs)
                             )
+                        } else {
+                            GlanceTile(onOpen: onOpen, symbol: "bed.double", title: "Last night", number: String(localized: "No data"), caption: "", muted: true)
                         }
                         // Beside the night also at 0, so the steps never seem gone on a day without any yet.
-                        if let day = stepsDay ?? (night != nil ? insights?.week.last : nil) {
-                            let steps = day.steps ?? 0
-                            GlanceTile(
-                                onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: dayName(day.startMs),
-                                share: settings.map { min(1, Double(steps) / Double(max($0.stepGoal, 1))) }
-                            )
-                        }
+                        let day = stepsDay ?? insights?.week.last
+                        let steps = day?.steps ?? 0
+                        GlanceTile(
+                            onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: day.map { dayName($0.startMs) } ?? "",
+                            share: settings.map { min(1, Double(steps) / Double(max($0.stepGoal, 1))) }
+                        )
                         if let now {
                             // Live: the number now, with the heart beating, and the resting rate under it.
                             GlanceTile(
@@ -388,6 +390,8 @@ private struct GlanceTile: View {
     var share: Double? = nil
     /// A number that is live: its symbol beats.
     var beating = false
+    /// No number to show: the words are in the secondary colour.
+    var muted = false
 
     var body: some View {
         Button(action: onOpen) {
@@ -412,7 +416,8 @@ private struct GlanceTile: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 Text(verbatim: number)
-                    .font(.title2.weight(.bold))
+                    .font(muted ? .title3.weight(.semibold) : .title2.weight(.bold))
+                    .foregroundStyle(muted ? .secondary : .primary)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)

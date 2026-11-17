@@ -339,20 +339,24 @@ private fun WatchCard(
             ArrivingBattery(state.battery()) { BatteryBadge(it, connected = state.ready) }
         }
 
-        if (night != null || state.stepsToday > 0) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (night != null) {
-                    Glance(
-                        TandemIcons.Sleep, nl.markmaaktmedia.tandem.ui.screens.settings.duration(night.sleepMinutes.toInt()),
-                        stringResource(R.string.watch_glance_night), null, Modifier.weight(1f),
-                    ) { onHealth("sleep") }
-                }
-                // Also at 0: early in the day the night stood alone, and the tile for the steps seemed gone.
+        // Both tiles whenever the watch is paired, so the card is never just one thing: a night without data says so and still opens the page.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (night != null) {
                 Glance(
-                    TandemIcons.Steps, java.text.NumberFormat.getIntegerInstance().format(state.stepsToday),
-                    stringResource(R.string.health_steps_title), (state.stepsToday.toFloat() / goal.coerceAtLeast(1)).coerceIn(0f, 1f), Modifier.weight(1f),
-                ) { onHealth("activity") }
+                    TandemIcons.Sleep, nl.markmaaktmedia.tandem.ui.screens.settings.duration(night.sleepMinutes.toInt()),
+                    stringResource(R.string.watch_glance_night), null, Modifier.weight(1f),
+                ) { onHealth("sleep") }
+            } else {
+                Glance(
+                    TandemIcons.Sleep, stringResource(R.string.watch_glance_no_data),
+                    stringResource(R.string.watch_glance_night), null, Modifier.weight(1f), muted = true,
+                ) { onHealth("sleep") }
             }
+            // Also at 0: early in the day the night stood alone, and the tile for the steps seemed gone.
+            Glance(
+                TandemIcons.Steps, java.text.NumberFormat.getIntegerInstance().format(state.stepsToday),
+                stringResource(R.string.health_steps_title), (state.stepsToday.toFloat() / goal.coerceAtLeast(1)).coerceIn(0f, 1f), Modifier.weight(1f),
+            ) { onHealth("activity") }
         }
 
         // A pill like the ones on the card of a computer: the tiles above open Health, so the pill is only for doing something.
@@ -424,6 +428,8 @@ private fun Glance(
     label: String,
     share: Float?,
     modifier: Modifier = Modifier,
+    /** No number to show: the words are in the secondary colour. */
+    muted: Boolean = false,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -457,7 +463,7 @@ private fun Glance(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, color = if (muted) scheme.onSurfaceVariant else androidx.compose.ui.graphics.Color.Unspecified)
             Text(label, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, maxLines = 1)
         }
     }
