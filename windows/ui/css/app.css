@@ -667,6 +667,7 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .glance { display: flex; flex-direction: column; gap: 6px; text-align: left; font: inherit; color: inherit; cursor: default; min-width: 0; }
 .glance:hover { background: var(--hover); }
 .glance .health-big { font-size: 24px; }
+.glance.muted-tile .health-big { font-size: 17px; color: var(--text-2); }
 .glance-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); }
 /* A live heart rate: two quick swells and a rest, about once a second. */
 .glance-title .beat { display: inline-flex; animation: heartbeat 1s ease-in-out infinite; }
