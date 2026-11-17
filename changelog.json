@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.24",
+    "date": "2026-11-17",
+    "en": {
+      "title": "Sleep tile and a traffic log",
+      "new": [
+        "The watch card always shows a sleep tile next to the steps, also on a night without data",
+        "Settings > About > Traffic log: what Tandem sends per device and kind, kept for 14 days, to find what keeps a phone awake"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Slaaptegel en een verkeerslog",
+      "new": [
+        "De horlogekaart toont altijd een slaaptegel naast de stappen, ook na een nacht zonder gegevens",
+        "Instellingen > Over > Verkeerslog: wat Tandem per apparaat en soort verstuurt, 14 dagen bewaard, om te vinden wat een telefoon wakker houdt"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.23",
     "date": "2026-11-15",
     "en": {

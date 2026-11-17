@@ -418,3 +418,18 @@ een echt toestel gezien.
   na een herstart van de apps.
 - [ ] **Mappen (P4, PR 39) en sturen via een ander apparaat (P9, PR 40).** Nog niets op een toestel: de Mac zet dit pas aan in de volgende
   PR's (na PR 31). Wel: gewone bestanden en mappen (die gaan nog als zip) sturen tussen Mac en telefoon werkt zoals altijd.
+
+## 0.3.24, 2026-11-17 (PR 47 en 48)
+
+Wat veranderde: de horlogekaart toont altijd een slaaptegel naast de stappen, ook zonder gegevens van die nacht (PR 47, alle platforms), en
+de kern houdt nu een verkeerslog bij op schijf om te vinden wat de telefoon wakker houdt (PR 48, R-V15). Gebouwd en door CI getest, niet
+op een telefoon gedraaid: dat kost een echte nacht. Het log zelf kost geen batterij bedoeld: geen timer, alarm of wake lock, het schrijft
+alleen als de engine toch wakker is; of dat klopt moet de meting laten zien.
+
+- [ ] Een nacht met het horloge aan de lader: toont de kaart op het beginscherm van de telefoon nu naast de stappen een tegel "Geen gegevens" voor de slaap, en opent een tik erop de slaappagina?
+- [ ] Hetzelfde op de Mac (horlogekaart) en in de Linux- of Windows-app.
+- [ ] Na een nacht met gegevens: staat de gewone slaaptegel er weer en is niets veranderd?
+- [ ] Open Instellingen > Over > Verkeerslog op de telefoon na een uur gebruik: staan er apparaten, soorten berichten en uren in?
+- [ ] Na een nacht van de lader: `adb pull /sdcard/Android/data/nl.markmaaktmedia.tandem/files/traffic` en kijk of er regels in staan met `ctx.screen_on:false` en wat erin zit.
+- [ ] Kost de log zelf batterij? Vergelijk een nacht met en zonder (de meetsessie doet dit: geen nieuwe `*alarm*` of `*job*` wake locks voor Tandem, hetzelfde aantal kernel wake-ups).
+- [ ] Op de Mac en in de Linux- of Windows-app: opent "Verkeerslog openen" de map met de dagbestanden? (Mac, Linux en Windows geven scherm, netwerk en batterij nog niet door, alleen stil en data-kosten.)
