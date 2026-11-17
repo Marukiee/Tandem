@@ -1538,6 +1538,14 @@ final class EngineModel {
 
     // MARK: Status
 
+    /// Opens the folder with the days of the traffic log (one file per day, JSON lines) in Finder.
+    func openTrafficLog() {
+        guard let engine else { return }
+        let url = URL(fileURLWithPath: engine.trafficDir())
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(url)
+    }
+
     func pushStatus() {
         guard let engine else { return }
         // The battery of this Mac is read here, so the widget hears of it here.

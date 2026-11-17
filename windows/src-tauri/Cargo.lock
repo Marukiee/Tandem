@@ -5264,6 +5264,7 @@ dependencies = [
  "rustls",
  "serde",
  "serde_bytes",
+ "serde_json",
  "socket2",
  "spake2",
  "thiserror 2.0.21",

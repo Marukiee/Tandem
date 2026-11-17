@@ -630,7 +630,9 @@ private struct AboutSettings: View {
                     .padding(.top, 10)
                 Link("github.com/Marukiee/Tandem", destination: URL(string: "https://github.com/Marukiee/Tandem")!)
                     .padding(.top, 10)
-
+                // What Tandem sent, per device and kind, one file per day: to find out afterwards what kept a phone awake.
+                Button("Open the traffic log") { EngineModel.shared.openTrafficLog() }
+                    .padding(.top, 6)
             }
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)
