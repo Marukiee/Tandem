@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.23",
+    "date": "2026-11-15",
+    "en": {
+      "title": "Less battery on the road, and Circle",
+      "new": [
+        "A phone on mobile data with the screen off does much less work: statuses only go out when something changed, and a device that has been gone for days is tried far less",
+        "Settings > Devices (Linux, Windows and Android): choose per device what it may do, with the devices as round switches"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Minder accu onderweg, en Circle",
+      "new": [
+        "Een telefoon op mobiele data met het scherm uit doet veel minder werk: een status gaat alleen weg als er iets veranderde, en een apparaat dat dagen weg is wordt veel minder geprobeerd",
+        "Instellingen > Apparaten (Linux, Windows en Android): kies per apparaat wat het mag, met de apparaten als ronde schakelaars"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.22",
     "date": "2026-11-15",
     "en": {

@@ -158,6 +158,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
 
 /** The groups of categories, in the order of the list in [SettingsCategory]. */
 private val Groups = listOf(
+    listOf(SettingsCategory.Devices),
     listOf(SettingsCategory.Look, SettingsCategory.Sharing, SettingsCategory.Notifications),
     listOf(SettingsCategory.Health),
     listOf(SettingsCategory.Setup, SettingsCategory.Hotspot),

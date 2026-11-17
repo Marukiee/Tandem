@@ -88,19 +88,35 @@ knoppen).
 **In 0.3.22.** PR 44 (de updatekaart op de Mac altijd op twee regels) en PR 45 (het menubalkpaneel toont een verstuurd bestand kort,
 met een vinkje en zonder balk). Beide alleen gebouwd.
 
-**Open, voor wie verder gaat (stand 2026-11-15, 21:40).** PR 42 (R-V15, accu onderweg): de vijf reviewpunten zijn volgens de
-bouwsessie hersteld en gepusht, maar het botst met main en is nog niet nagelopen; let op opnieuw verbinden na dagen weg en van wifi
-naar mobiel met het scherm uit. PR 39 (P4): de fixes voor een map die twee keer werd overgedragen en voor lege mappen bij een
-geweigerd aanbod stonden alleen lokaal bij de sessie (een force push werd geweigerd); ze moeten zonder force push op GitHub komen,
-dan nalopen en samenvoegen. Daarna PR 40 (P9) met main erin gemerged: `on_share_relay_cancel` moet `self: &Arc<Self>` krijgen, de
-struct-literals moeten `folders` en `requested_by` hebben, en "relay" in de bestandsactiviteit heeft een tekst nodig. PR 41 en 43
-(Circle op Linux en Windows en op Android) zijn groen en nog niet nagelezen. PR 46 (R-I33, kern: een naam voor de hele circle) is
-nieuw en nog niet nagelezen. PR 31 (de Mac in het nieuwe ontwerp) botst met main; de sessie werkt aan de negen punten van Mark, en
-het gaat er pas in na zijn akkoord in de Dev-app. Daarna de Mac-schillen van P4, P9, Circle en R-I33, en de accu opnieuw meten. Het
-weeklimiet was op dat moment bijna op (Fable 93%, alle modellen 86%, terug op 18 november 01:00), dus nalezen kan beter in een verse
-sessie op een goedkoper model.
+**In 0.3.23.** PR 42 (R-V15, accu onderweg; nagelopen, main erin gemerged, kerntests lokaal groen en CI groen), PR 41 en 43 (de
+pagina Circle op Linux en Windows en op Android, met de regel over de standaard van Bestanden die Mark vroeg), PR 46 (R-I33, kern: een
+naam voor de hele circle; de schermen "Instellingen van dit apparaat" volgen), PR 39 (P4, mappen als mappen, kern) en PR 40 (P9, sturen
+via een ander apparaat, kern; de drie punten uit de review gedaan). Alleen gebouwd. Mark wilde eerst de punten van PR 31 erbij, maar koos
+daarna voor nu uitbrengen: PR 31 komt in de release erna. Mark meet de accu opnieuw met de sessie
+`local_1ec53a59-7b07-495f-a3e3-b35f368900dc`.
+
+**Open, voor wie verder gaat (stand 2026-11-15, nacht).** PR 31 (de Mac in het nieuwe
+ontwerp) botst met main; de sessie bouwt de punten 5 (een icoonfamilie), 6 (rond horloge), 7 (kop en speler), 8 (een woord bij de knop
+van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; bij punt 7 nog: de tegel Steps op de kaart Health is hoger dan de tegels Last night en Heart rate now door zijn grotere icoon in een ring; alle drie even hoog en hetzelfde icoon; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
+Pas samenvoegen na Marks akkoord. Mark wil ze in de release na 0.3.23. Daarna de Mac-schillen van P4, P9, Circle (ook een regel in het menu Tandem) en R-I33 ("Instellingen van
+dit apparaat" op elke apparaatpagina), en op Android en Linux en Windows de rij "Instellingen van dit apparaat" van R-I33.
 
 Gevonden bij het nakijken van die PR's, nog te doen:
+
+- **R-D22. Mac-ontwerp (PR 31): de bovenkant van de apparaatpagina eerst goed bekijken voordat het in een build komt** (Mark,
+  2026-11-16: "nu is het lelijk"). Het gaat om de kop van het apparaat naast de speler: de kaart is leeg boven en onder de inhoud
+  sinds de pillen eruit gingen, en een poging om ze terug te zetten is op zijn verzoek gestopt. Vóór PR 31 wordt samengevoegd: eerst
+  een paar voorbeelden van de kop (met pillen voor verbonden, route, ms en laden; met systeem en versie; met en zonder speler
+  ernaast, licht en donker) aan Mark laten zien en hem laten kiezen, pas dan bouwen. PR 31 gaat niet in een release voordat Mark de
+  bovenkant heeft goedgekeurd.
+
+- **R-D21. Linux en Windows: dezelfde overgang als de Mac bij het wisselen van pagina** (wens van Mark, 2026-11-16). Op de Mac (PR
+  31, commits `94c69597` en `4cfd9f34`) is het wisselen tussen apparaten en pagina's een rustige beweging: de hele pagina vloeit
+  kort over (ongeveer 200 tot 250 ms) en schuift een paar punten mee in de richting waarin je in de zijbalk klikt, er vervormt niets
+  (geen kop die van halve naar hele breedte rekt, geen accuring die van de ene waarde naar de andere draait, geen kaart die groeit
+  terwijl de inhoud nog de oude is), en het gekozen vlak in de zijbalk glijdt mee als een vlak. Vooral tussen een apparaat met en
+  een zonder speler. Met verminderde beweging alleen overvloeien. Hetzelfde in `windows/ui` (de zijbalk van PR 24, `pages.js`, de
+  overgangen die daar al zijn); Android heeft zijn eigen navigatie en hoort hier niet bij.
 
 - **R-I33. Instellingen van een apparaat op zijn eigen pagina, met de naam aanpasbaar vanaf elk apparaat** (wens van Mark,
   2026-11-15). Op de pagina van elk apparaat komt een rij "Instellingen van dit apparaat" (de Mac heeft die nu alleen op de pagina van
@@ -119,10 +135,34 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   zet een teller per soort bericht en een regel per belpoging in het logboek (`adb logcat -s Tandem`). Nagelezen: het wacht op fixes,
   omdat opnieuw verbinden in twee gevallen trager werd. Daarna opnieuw meten.
 
+  Stand 2026-11-17: gemeten met 0.3.23 op de telefoon en de Mac (16 en 17 november, onderweg op mobiele data): onveranderd, scherm
+  uit 195 tot 207 mA, CPU ongeveer 80% wakker, de radio 99% actief, 950 tot 1.600 wekmomenten per uur van het modem. Tandem in de
+  tunnel: rx 6.811 en tx 13.579 pakketten op een dag, meer dan op 15 november. De besparing van PR 42 is dus niet de oorzaak, of
+  niet de hele. In logcat vond de meetsessie geen enkele regel met tag `Tandem`; de kern logt in de release op info met die tag
+  (`K/ffi.rs` `tandem_init_logging`), maar alleen bij gebeurtenissen, en de buffer van de Oppo bewaart maar een paar minuten.
+  Volgende stap: de teller per soort bericht en per apparaat (`K/sent_tally.rs`) ook optellen sinds een tijdstip en die totalen in
+  de app laten zien (een rij onder Over of Diagnose, met kopiëren) en wegschrijven in de externe bestandenmap van de app, zodat ze
+  na een dag onderweg met `adb pull` te lezen zijn. Pas daarna verder bouwen aan de besparing.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
   soorten als `runs_something` in `T/browse.rs`); documenten openen gewoon. Gebouwd in PR 25.
+- **R-V16. De telefoon als speaker haperen: het geluid stopt steeds kort en gaat dan weer verder** (gemeld door Mark op 2026-11-16; nog
+  niet gebouwd, alleen genoteerd). Het geluid van de computer naar de telefoon (de Tandem Speaker, `docs/MUSIC_AND_SOUND.md`, de
+  jitterbuffer van ongeveer 100 ms en de vertraging met drie standen: laag, normaal, soepel) loopt niet soepel. Eerst uitzoeken of het
+  aan de stand ligt (laag laat bij een wisselende verbinding de buffer leeglopen) of aan de verbinding (wifi, Tailscale, mobiele data), en
+  of andere apparaten dat ook hebben: een Mac of computer als luisteraar, de Xperia en de Oppo, het horloge, en de richting telefoon naar
+  Mac (microfoon). Meet per apparaat hoe vaak de buffer leegloopt en hoeveel pakketten te laat komen (de logregel van de buffer bestaat
+  al of komt erbij). Voorstel voor wat Mark wil: merkt het apparaat dat de buffer steeds leegloopt terwijl de stand laag staat, dan komt
+  er een melding "Het geluid haperde, een andere stand kan beter" met een knop die direct naar de volgende stand (normaal, dan soepel)
+  gaat, en dezelfde melding in alle vier de apps. Niets automatisch omzetten: de persoon kiest. Zekerheid: een vermoeden, pas te zien
+  op een echt toestel.
+- **R-V17. De tegels van Gezondheid mooier, met kleur en inzicht, op alle apparaten** (wens van Mark, 2026-11-16). De slaapscore beter in
+  beeld (een duidelijke score met kleur, rood, oranje, groen, of een kleine meter naast de duur), bij Steps het rare cirkeltje weg en het
+  stappendoel zichtbaar met een voortgangsbalk (stappen van het doel), en de hartslag met een kleur of meter. Rustig, geen gradient,
+  dezelfde iconenfamilie als de rest. Het doel komt uit Health Connect of de horloge-app als dat er is, anders 10.000 als standaard. Op
+  de Mac gevraagd aan de sessie van PR 31 (de tegels staan daar); Android, Linux en Windows volgen in een eigen ronde (alles op elk
+  apparaat).
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de

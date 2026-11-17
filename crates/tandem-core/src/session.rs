@@ -520,6 +520,8 @@ impl Inner {
                     if !self.circle.read().unwrap().is_member(&self.identity.public_key()) {
                         warn!("this device was removed from the circle");
                         self.emit(Event::RemovedFromCircle);
+                    } else {
+                        self.follow_own_name().await;
                     }
                 }
             }
@@ -566,6 +568,13 @@ impl Inner {
             Msg::ShareCancel { id: offer } => self.on_share_cancel(id, offer),
             Msg::ShareResume(ask) => self.clone().on_share_resume(id, ask),
             Msg::ShareResumed(answer) => self.on_share_resumed(id, answer),
+            Msg::ShareRelay(ask) => self.clone().on_share_relay(id, ask),
+            Msg::ShareRelayReply(reply) => self.on_share_relay_reply(id, reply),
+            Msg::ShareRelayUpdate(update) => self.on_share_relay_update(id, update),
+            Msg::ShareRelayCancel { id: offer } => {
+                let this = self.clone();
+                tokio::spawn(async move { this.on_share_relay_cancel(id, offer).await });
+            }
             Msg::ShareText(text) => {
                 self.emit(Event::ShareText { from: id, text: text.text, is_url: text.is_url, open: text.open });
             }

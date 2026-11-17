@@ -388,3 +388,33 @@ Alleen gebouwd, niet in de echte app gezien.
 - [ ] Als er een update klaarstaat: staat in de zijbalk "Versie ..." en "Je hebt ..." er helemaal, met Later en Bijwerken op een eigen regel eronder? Hetzelfde in het menubalkpaneel. (Je ziet dit pas bij de update na 0.3.22: de kaart wordt getekend door de versie die je draait.)
 - [ ] Stuur een bestand vanaf de Mac en open het menubalkpaneel: tijdens het sturen de balk, daarna kort "Verstuurd" met een vinkje en zonder balk, en na tien seconden is de regel weg.
 - [ ] Open het paneel een paar minuten later: er staat geen oude regel meer. Een ontvangen bestand blijft een minuut staan.
+
+## 0.3.23, 2026-11-15 (PR 39, 40, 41, 42, 43 en 46)
+
+Wat veranderde: de telefoon doet op mobiele data met het scherm uit veel minder werk (R-V15), Instellingen heeft op Linux, Windows en
+Android een deel Apparaten waar je per apparaat kiest wat het mag (Circle, P6), een apparaatnaam geldt voor de hele circle (R-I33) en
+de kern kan mappen als mappen ontvangen (P4) en een apparaat een bestand laten sturen naar een derde (P9). Van de laatste drie, en
+van de naam, is nog niets te zien: de schermen op de Mac wachten op PR 31. Alleen gebouwd en getest in CI en met de kerntests, niet op
+een echt toestel gezien.
+
+- [ ] **Accu onderweg (R-V15).** Een uur op mobiele data met het scherm uit, via Tailscale, en daarna het batterijverbruik van Tandem
+  vergelijken met eerder (was ongeveer 11% in 4 uur). Dit is de belangrijkste test van deze versie.
+- [ ] Onderweg: komen meldingen en een code uit een sms nog meteen op de Mac aan?
+- [ ] Laat de telefoon overgaan vanaf de Mac: gaat hij nog meteen?
+- [ ] Een laptop die een paar dagen uit stond: opent hij weer en is hij binnen enkele seconden verbonden? En een telefoon waar Tailscale
+  een weekend uit stond: verbindt hij weer als je Tailscale aanzet?
+- [ ] Optioneel: `adb logcat -s Tandem | grep "dialling a device that is away"` en tellen hoeveel pogingen er in een uur zijn.
+- [ ] **Circle op Linux of Windows (PR 41).** Instellingen › Apparaten. Klopt de zin bovenaan met wat je ziet? Tik in "Bedient deze
+  computer" op je telefoon: het rondje wordt doorgestreept; de muis van de telefoon werkt dan niet en de telefoon krijgt de melding dat
+  het niet mag. Zet het daarna weer aan.
+- [ ] Details: kies Beperkt en kijk of de schakelaars meegaan. Apparaat toevoegen en Verwijderen openen de vensters die je al kent.
+- [ ] Een apparaat dat de standaard volgt maar waar in de standaard een schakelaar uit staat: er staat een regel "Volgt de standaard voor
+  alle apparaten in Instellingen › Delen, waar ... uit staat".
+- [ ] **Circle op Android (PR 43).** Instellingen › Apparaten (bovenaan). Klopt de zin met wat je ziet? Tik in "Bedient deze telefoon" op
+  je Mac: doorgestreept; probeer dan vanaf de Mac de telefoon te vergrendelen of te bedienen: dat moet niet gaan. Zet het weer aan.
+- [ ] Tik op een apparaat in de lijst, kies Beperkt en kijk of de schakelaars meegaan; kies weer Eigen apparaat. Donker en licht, en de
+  taal op Nederlands. Dezelfde regel over de standaard staat er, met "Instellingen › Bestandstoegang". Niet op de emulator bekeken.
+- [ ] **Naam (R-I33, PR 46).** Nog niets om aan te tikken. Wel: de naam van je Mac en telefoon is na het bijwerken nog hetzelfde, ook
+  na een herstart van de apps.
+- [ ] **Mappen (P4, PR 39) en sturen via een ander apparaat (P9, PR 40).** Nog niets op een toestel: de Mac zet dit pas aan in de volgende
+  PR's (na PR 31). Wel: gewone bestanden en mappen (die gaan nog als zip) sturen tussen Mac en telefoon werkt zoals altijd.

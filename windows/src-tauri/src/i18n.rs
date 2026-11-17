@@ -333,6 +333,10 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "files_too_deep") => "The folder {0} goes deeper than {1} levels, so the copy stopped",
         ("nl", "open_refused") => "Tandem opent alleen bestanden die het zelf ontving of opsloeg",
         (_, "open_refused") => "Tandem only opens files it received or saved itself",
+        ("nl", "refused_title") => "{0} staat dit niet toe",
+        (_, "refused_title") => "{0} does not allow this",
+        ("nl", "refused_body") => "Op {0}: Instellingen › Apparaten",
+        (_, "refused_body") => "On {0}: Settings › Devices",
         _ => "",
     }
 }

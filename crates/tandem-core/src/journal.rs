@@ -84,6 +84,9 @@ pub struct TransferRecord {
     /// which hears the progress. Incoming at C: A, as the offer says. `None` for an offer someone made here.
     #[serde(default)]
     pub requested_by: Option<DeviceId>,
+    /// Folders inside the offer that hold no file (P4), as `ShareOffer::folders`.
+    #[serde(default)]
+    pub folders: Vec<String>,
 }
 
 fn other_origin() -> ShareOrigin {
@@ -247,6 +250,7 @@ impl TransferRecord {
             peers,
             held: false,
             requested_by: None,
+            folders: Vec::new(),
         }
     }
 
@@ -264,7 +268,8 @@ impl TransferRecord {
             items,
             peers: vec![PeerProgress::new(from, Stage::Offered, count, now)],
             held,
-            requested_by: None,
+            requested_by: offer.requested_by,
+            folders: offer.folders.clone(),
         }
     }
 
@@ -295,7 +300,13 @@ impl TransferRecord {
 
     /// The offer as it went over the wire.
     pub fn share_offer(&self) -> ShareOffer {
-        ShareOffer { id: self.offer, origin: self.origin, items: self.items.iter().map(RecordItem::to_share).collect() }
+        ShareOffer {
+            id: self.offer,
+            origin: self.origin,
+            items: self.items.iter().map(RecordItem::to_share).collect(),
+            folders: self.folders.clone(),
+            requested_by: if self.incoming { None } else { self.requested_by },
+        }
     }
 
     /// What a restart finds: nothing runs any more. Whatever was underway is interrupted, and for incoming files the partial file on
@@ -338,12 +349,12 @@ impl RecordItem {
             modified: item.modified,
             source: String::new(),
             source_modified_ms: None,
-            path: String::new(),
+            path: item.path.clone(),
         }
     }
 
     pub fn to_share(&self) -> ShareItem {
-        ShareItem { name: self.name.clone(), size: self.size, mime: self.mime.clone(), modified: self.modified }
+        ShareItem { name: self.name.clone(), size: self.size, mime: self.mime.clone(), modified: self.modified, path: self.path.clone() }
     }
 }
 
@@ -766,14 +777,14 @@ mod tests {
     use super::*;
 
     fn item(name: &str, size: u64) -> RecordItem {
-        RecordItem::from_share(&ShareItem { name: name.into(), size, mime: String::new(), modified: None })
+        RecordItem::from_share(&ShareItem { name: name.into(), size, ..ShareItem::default() })
     }
 
     #[test]
     fn a_restart_turns_what_ran_into_interrupted_with_the_length_of_the_partial_file() {
         let dir = tempfile::tempdir().unwrap();
         let peer = DeviceId::from_bytes([7; 16]);
-        let offer = ShareOffer { id: 42, origin: ShareOrigin::Files, items: vec![item("a", 10).to_share(), item("b", 100).to_share(), item("c", 5).to_share()] };
+        let offer = ShareOffer { id: 42, origin: ShareOrigin::Files, items: vec![item("a", 10).to_share(), item("b", 100).to_share(), item("c", 5).to_share()], folders: vec![], requested_by: None };
         {
             let journal = Journal::load(dir.path()).unwrap();
             journal.insert(TransferRecord::incoming(peer, &offer, false));
@@ -799,7 +810,7 @@ mod tests {
     fn a_stop_that_the_engine_did_not_see_through_ends_as_stopped_after_the_start() {
         let dir = tempfile::tempdir().unwrap();
         let peer = DeviceId::from_bytes([8; 16]);
-        let offer = ShareOffer { id: 5, origin: ShareOrigin::Files, items: vec![item("a", 10).to_share()] };
+        let offer = ShareOffer { id: 5, origin: ShareOrigin::Files, items: vec![item("a", 10).to_share()], folders: vec![], requested_by: None };
         {
             let journal = Journal::load(dir.path()).unwrap();
             journal.insert(TransferRecord::incoming(peer, &offer, false));
@@ -832,7 +843,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let peer = DeviceId::from_bytes([3; 16]);
         let journal = Journal::load(dir.path()).unwrap();
-        let offer = ShareOffer { id: 9, origin: ShareOrigin::Files, items: vec![item("a", 1).to_share(), item("b", 2).to_share()] };
+        let offer = ShareOffer { id: 9, origin: ShareOrigin::Files, items: vec![item("a", 1).to_share(), item("b", 2).to_share()], folders: vec![], requested_by: None };
         journal.insert(TransferRecord::incoming(peer, &offer, false));
         let created = journal.read(Key::In(peer, 9), |r| r.created_ms).unwrap();
 
@@ -879,7 +890,7 @@ mod tests {
 
     fn many_files(count: usize) -> ShareOffer {
         let items = (0..count).map(|i| item(&format!("f{i}"), 1).to_share()).collect();
-        ShareOffer { id: 77, origin: ShareOrigin::Files, items }
+        ShareOffer { id: 77, origin: ShareOrigin::Files, items, folders: vec![], requested_by: None }
     }
 
     fn end_file(journal: &Journal, peer: DeviceId, index: u32) {
@@ -961,7 +972,7 @@ mod tests {
         {
             let journal = Journal::load(dir.path()).unwrap();
             for (id, origin) in [(1, ShareOrigin::Clipboard), (2, ShareOrigin::Files)] {
-                let offer = ShareOffer { id, origin, items: vec![item("shot.png", 10).to_share()] };
+                let offer = ShareOffer { id, origin, items: vec![item("shot.png", 10).to_share()], folders: vec![], requested_by: None };
                 journal.insert(TransferRecord::incoming(peer, &offer, false));
                 journal.change(Key::In(peer, id), |record| record.peers[0].stage = Stage::Accepted);
             }

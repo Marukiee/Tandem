@@ -787,6 +787,9 @@ pub struct TandemSendReport {
     pub offline: Vec<String>,
     /// Of `offline`, the devices it waits for in the queue (P3): it goes when they come back, for up to 7 days.
     pub queued: Vec<String>,
+    /// Only when this app lists the cap `share.folders`: the offer held folders and these devices do not take them as they are
+    /// (P4). They got nothing; send them the folders as zips.
+    pub no_folders: Vec<String>,
 }
 
 /// An incoming transfer that stopped halfway before this start and waits for the person: go on or throw away (P2).
@@ -817,6 +820,23 @@ pub struct TandemTransfer {
     pub held: bool,
     /// Incoming: stopped halfway before this start and waits for go on or throw away (P2), as in `resumable_transfers`.
     pub halfway: bool,
+    /// The device on whose request this offer was made (P9). Outgoing: this device sends it for that one. Incoming: the sender sent
+    /// it because that device asked. `None` for everything else.
+    pub requested_by: Option<String>,
+}
+
+/// The answer of a device that was asked to send its files to another one (P9, `send_between`).
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemRelayAnswer {
+    pub ok: bool,
+    /// The number of the offer: the `offer` of the `Progress` and `Finished` this device gets for it, with the receiver as the peer.
+    /// `cancel_transfer(receiver, offer, false)` stops it.
+    pub offer: u64,
+    /// The receiver was away: it waits in the queue of the device that sends.
+    pub queued: bool,
+    /// Why not: `not allowed`, `gone`, `not a file`, `not in circle`, `not connected`, `no answer`, `unsupported` or `failed`.
+    pub reason: Option<String>,
+    pub items: Vec<TandemShareItem>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -935,6 +955,7 @@ impl TandemTransfer {
                 .collect(),
             held: record.held,
             halfway,
+            requested_by: record.requested_by.map(|id| id.to_string()),
         }
     }
 }
@@ -1510,6 +1531,8 @@ pub enum TandemEvent {
     Paired { id: String },
     CircleChanged,
     RemovedFromCircle,
+    /// Another device of the circle gave this device a name (R-I33). The app keeps it where it keeps the name of this device.
+    SelfRenamed { name: String },
     Clipboard { from: String, text: String, is_url: bool },
     ShareOffered { from: String, offer: u64, origin: TandemShareOrigin, items: Vec<TandemShareItem> },
     ShareText { from: String, text: String, is_url: bool, open: bool },
@@ -1623,6 +1646,7 @@ impl From<Event> for TandemEvent {
             Event::Paired { id } => TandemEvent::Paired { id: id.to_string() },
             Event::CircleChanged => TandemEvent::CircleChanged,
             Event::RemovedFromCircle => TandemEvent::RemovedFromCircle,
+            Event::SelfRenamed { name } => TandemEvent::SelfRenamed { name },
             Event::Clipboard { from, text, is_url } => TandemEvent::Clipboard { from: from.to_string(), text, is_url },
             Event::ShareOffered { from, offer } => TandemEvent::ShareOffered {
                 from: from.to_string(),
@@ -2220,6 +2244,20 @@ impl TandemEngine {
         Ok(())
     }
 
+    /// Gives a device of the circle a name for every device in it, itself included (R-I33). Refused for a device of an older version
+    /// (see `can_rename`), which would keep its own name.
+    pub async fn rename_device(&self, id: String, name: String) -> Result<(), TandemError> {
+        let id = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.rename_device(&id, &name).await }).await.map_err(join_error)??;
+        Ok(())
+    }
+
+    /// Whether `id` can be named from this device: it is this device, or one new enough to take the name.
+    pub fn can_rename(&self, id: String) -> bool {
+        DeviceId::parse(&id).is_ok_and(|id| self.engine.can_rename(&id))
+    }
+
     pub async fn rename_self(&self, name: String) -> Result<(), TandemError> {
         let engine = self.engine.clone();
         self.runtime.spawn(async move { engine.rename_self(&name).await }).await.map_err(join_error)??;
@@ -2248,6 +2286,30 @@ impl TandemEngine {
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
             queued: ids_to_strings(report.queued),
+            no_folders: ids_to_strings(report.no_folders),
+        })
+    }
+
+    /// What is put after the name of a folder that did not come whole and is handed over anyway (P4), in the language of the app:
+    /// "Trip (incomplete)", "Trip (onvolledig)". Only matters when the app lists `share.folders` in its caps.
+    pub fn set_incomplete_label(&self, label: String) {
+        self.engine.set_incomplete_label(&label);
+    }
+
+    /// Asks `via` to send `paths` of its files (as it shows them to this device in its files, `/Share/sub/name`) to `to` (P9). Only a
+    /// device whose caps say `share.relay` is asked; one that does not answer in 15 seconds gives `no answer`. The progress comes
+    /// as `Progress` and `Finished` with `incoming: false`, `to` as the peer and the `offer` of the answer.
+    pub async fn send_between(&self, via: String, to: String, paths: Vec<String>) -> Result<TandemRelayAnswer, TandemError> {
+        let via = DeviceId::parse(&via)?;
+        let to = DeviceId::parse(&to)?;
+        let engine = self.engine.clone();
+        let answer = self.runtime.spawn(async move { engine.send_between(via, to, paths).await }).await.map_err(join_error)?;
+        Ok(TandemRelayAnswer {
+            ok: answer.ok,
+            offer: answer.offer,
+            queued: answer.queued,
+            reason: answer.reason,
+            items: answer.items.into_iter().map(|i| TandemShareItem { name: i.name, size: i.size, mime: i.mime }).collect(),
         })
     }
 
@@ -2324,6 +2386,7 @@ impl TandemEngine {
             sent_to: ids_to_strings(report.sent_to),
             offline: ids_to_strings(report.offline),
             queued: ids_to_strings(report.queued),
+            no_folders: ids_to_strings(report.no_folders),
         })
     }
 

@@ -49,6 +49,8 @@ pub enum Event {
     /// Another device removed this one. It can no longer connect until it starts over
     /// with a new identity.
     RemovedFromCircle,
+    /// Another device of the circle gave this device a name (R-I33): it is its own now. The app keeps it where it keeps the name.
+    SelfRenamed { name: String },
 
     Clipboard { from: DeviceId, text: String, is_url: bool },
     ShareOffered { from: DeviceId, offer: ShareOffer },

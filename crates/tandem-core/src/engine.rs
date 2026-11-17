@@ -104,6 +104,9 @@ pub(crate) struct Peer {
     pub long_hurried: Option<Instant>,
 }
 
+/// This device takes a name given by any device of the circle, and takes its own from it (R-I33).
+pub const NAME_CAP: &str = "name.circle";
+
 pub(crate) struct Inner {
     pub cfg: EngineConfig,
     pub identity: Arc<Identity>,
@@ -158,6 +161,10 @@ pub(crate) struct Inner {
     pub(crate) metered: AtomicBool,
     /// Files sent to a device that is away wait for it (P3), as its app says (`set_queue_offline`). Off until an app shows the queue.
     pub(crate) queue_offline: AtomicBool,
+    /// Put after the name of a folder that did not come whole and is handed over anyway (P4), in the language of the app.
+    pub(crate) incomplete_label: RwLock<String>,
+    /// Sending between two other devices (P9): what this device asked others to send.
+    pub(crate) relay: crate::relay::RelayState,
     /// This device is a phone with its screen off, as its app says (`set_quiet`).
     pub(crate) quiet: AtomicBool,
     /// This device or another one became quiet or awake: every heartbeat looks again at its pace (see `Inner::heartbeat`).
@@ -276,6 +283,8 @@ impl Engine {
             said_back: Mutex::new(None),
             metered: AtomicBool::new(false),
             queue_offline: AtomicBool::new(false),
+            incomplete_label: RwLock::new("incomplete".into()),
+            relay: Default::default(),
             quiet: AtomicBool::new(false),
             beat_changed: Notify::new(),
             last_hurry: Mutex::new(None),
@@ -298,6 +307,9 @@ impl Engine {
         inner.load_addresses();
         inner.begin_long_away_at_the_long_backoff();
         inner.clean_partials();
+        // The app may copy a folder to another disk, so not on this thread.
+        let settling = inner.clone();
+        tokio::task::spawn_blocking(move || settling.settle_folders());
         // In what the first connection is told, without waiting for a change.
         let trust = Status { trust: Some(inner.trust_table()), ..Status::default() };
         inner.my_status.lock().unwrap().merge(&trust);
@@ -345,7 +357,7 @@ impl Engine {
     }
 
     pub async fn rename_self(&self, name: &str) -> Result<()> {
-        *self.inner.my_name.write().unwrap() = name.to_string();
+        *self.inner.my_name.write().unwrap() = crate::circle::clean_device_name(name);
         let statement = {
             let mut circle = self.inner.circle.write().unwrap();
             circle.rename_self(&self.inner.identity, name)?
@@ -354,6 +366,34 @@ impl Engine {
         self.inner.gossip(vec![statement], None).await;
         self.inner.emit(Event::DevicesChanged);
         Ok(())
+    }
+
+    /// Gives a device of the circle a name for every device in it, itself included (R-I33). Being in the circle is enough, as for its own
+    /// name: a name is not something one device lets another do. A device of a version before this would keep its own name, so it is
+    /// refused: `NAME_CAP` says which can.
+    pub async fn rename_device(&self, id: &DeviceId, name: &str) -> Result<()> {
+        if *id == self.inner.my_id {
+            return self.rename_self(name).await;
+        }
+        if crate::circle::clean_device_name(name).trim().is_empty() {
+            return Err(Error::invalid("a name cannot be empty"));
+        }
+        if !self.inner.knows_names(id) {
+            return Err(Error::invalid("that device is of an older version: rename it on the device itself"));
+        }
+        let statement = {
+            let mut circle = self.inner.circle.write().unwrap();
+            circle.rename(&self.inner.identity, *id, name)?
+        };
+        self.inner.persist_circle();
+        self.inner.gossip(vec![statement], None).await;
+        self.inner.emit(Event::DevicesChanged);
+        Ok(())
+    }
+
+    /// Whether `id` can be named from here: it said `NAME_CAP` the last time it said hello.
+    pub fn can_rename(&self, id: &DeviceId) -> bool {
+        *id == self.inner.my_id || self.inner.knows_names(id)
     }
 
     /// Removes a device from the circle for good. Every other device learns of it.
@@ -575,6 +615,12 @@ impl Engine {
     }
 
     /// Tries a short code on the device at these addresses, without looking for it on the network. For tests.
+    /// Lets transfers lapse as if the clock said `now_ms`, for tests of what happens days later.
+    #[doc(hidden)]
+    pub fn expire_transfers_at(&self, now_ms: u64) {
+        self.inner.expire_transfers_at(now_ms);
+    }
+
     #[doc(hidden)]
     pub async fn pair_with_code_at(&self, code: &str, addrs: &[std::net::SocketAddr]) -> Result<DeviceId> {
         use crate::pairing::CodeFailure;
@@ -679,6 +725,26 @@ impl Engine {
     /// No to a transfer that stopped halfway: the partial files go, each file ends as `cancelled`, and the sender is told.
     pub async fn discard_transfer(&self, from: DeviceId, offer_id: u64) -> Result<()> {
         self.inner.discard_transfer(from, offer_id).await
+    }
+
+    /// What is put after the name of a folder that did not come whole when it is handed over anyway (P4): "Trip (incomplete)".
+    /// The app sets it in its own language; "incomplete" until then.
+    pub fn set_incomplete_label(&self, label: &str) {
+        let label = label.trim();
+        if !label.is_empty() {
+            *self.inner.incomplete_label.write().unwrap() = crate::folders::safe_part(label);
+        }
+    }
+
+    /// Asks `via` to send `paths` of its files to `to` (P9), see `relay.rs`.
+    pub async fn send_between(&self, via: DeviceId, to: DeviceId, paths: Vec<String>) -> crate::relay::RelayAnswer {
+        self.inner.send_between(via, to, paths).await
+    }
+
+    /// Makes this device skip requests to send for another one (P9), as an older version does. For tests of the device that asks.
+    #[doc(hidden)]
+    pub fn set_relay_silent(&self, silent: bool) {
+        self.inner.relay.silent.store(silent, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// The devices among `targets` that said they have less free space than `files` take (P5), for a warning before sending. A device
@@ -826,6 +892,7 @@ impl Inner {
     }
 
     pub fn emit(&self, event: Event) {
+        self.tell_requester(&event);
         // No subscribers is fine; the app may not be listening yet.
         let _ = self.events.send(event);
     }
@@ -837,7 +904,7 @@ impl Inner {
     /// What this device can do for the others: what the app says, always letting them look at its files, and keeping health records.
     pub fn caps(&self) -> Vec<String> {
         let mut caps = self.cfg.caps.clone();
-        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP, crate::trust::CAP] {
+        for always in ["files", crate::health::CAP, crate::session::BEAT_CAP, crate::transfer::RESUME_CAP, crate::trust::CAP, NAME_CAP] {
             if !caps.iter().any(|c| c == always) {
                 caps.push(always.into());
             }
@@ -934,7 +1001,9 @@ impl Inner {
             let hello = peer.and_then(|p| p.hello.as_ref());
             out.push(DeviceInfo {
                 id: member.id,
-                name: hello.map(|h| h.name.clone()).unwrap_or_else(|| member.name.clone()),
+                // The circle has the newest name, also one given from another device (R-I33); what the device says about itself
+                // in its hello only comes in when the circle has none.
+                name: Some(member.name.clone()).filter(|n| !n.trim().is_empty()).or_else(|| hello.map(|h| h.name.clone())).unwrap_or_default(),
                 platform: member.platform,
                 online: session.is_some(),
                 route: session.map(|s| net::route_of(s.remote.ip())),
@@ -1001,6 +1070,28 @@ impl Inner {
         }
         drop(peers);
         self.poke.notify_one();
+    }
+
+    pub(crate) fn knows_names(&self, id: &DeviceId) -> bool {
+        self.peers.lock().unwrap().get(id).and_then(|p| p.hello.as_ref()).is_some_and(|h| h.caps.iter().any(|c| c == NAME_CAP))
+    }
+
+    /// Another device gave this one a name (R-I33): it becomes its own, and it is said again as its own rename, which is the only kind
+    /// an older version takes. Nothing happens when the circle already has the name this device uses.
+    pub(crate) async fn follow_own_name(&self) {
+        let named = self.circle.read().unwrap().member(&self.my_id).map(|m| m.name.clone()).filter(|n| !n.trim().is_empty());
+        let Some(named) = named else { return };
+        if *self.my_name.read().unwrap() == named {
+            return;
+        }
+        *self.my_name.write().unwrap() = named.clone();
+        let statement = self.circle.write().unwrap().rename_self(&self.identity, &named);
+        if let Ok(statement) = statement {
+            self.persist_circle();
+            self.gossip(vec![statement], None).await;
+        }
+        info!(name = %named, "this device was renamed from another device");
+        self.emit(Event::SelfRenamed { name: named });
     }
 
     pub fn persist_circle(&self) {

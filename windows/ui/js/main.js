@@ -308,6 +308,8 @@ await connect();
 if (!native) {
   const wanted = new URLSearchParams(location.search).get("page");
   if (wanted) set({ page: wanted });
+  const section = new URLSearchParams(location.search).get("section");
+  if (section) set({ settingsWanted: { section, at: Date.now() } });
 }
 // The tour once after an update that brings a new one, or because its reminder was pressed while there was no window yet.
 if (await call("tour_pending").catch(() => false)) set({ page: "tour" });

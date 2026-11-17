@@ -11,6 +11,7 @@ import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 import { filesFolder } from "./drops.js";
 import { sendChecked } from "./space.js";
+import { CircleSettings } from "./circle.js";
 
 const failed = (e) => say(String(e && e.message ? e.message : e));
 /** Where the camera of a phone goes for OBS: the port of `tsout` in the core. */
@@ -1286,12 +1287,12 @@ function FilesHostSection({ s, patch: patchSettings }) {
 // By subject, not by the part of the app that made them: what this computer does, what the phone brings here, what is shared,
 // what is shown and steered, and what is heard.
 const SECTIONS = [
-  ["computer", "tab_computer", "device-desktop"], ["phone", "tab_phone", "device-mobile"], ["sharing", "tab_sharing", "send"], ["control", "tab_control", "pointer"],
+  ["devices", "tab_devices", "users"], ["computer", "tab_computer", "device-desktop"], ["phone", "tab_phone", "device-mobile"], ["sharing", "tab_sharing", "send"], ["control", "tab_control", "pointer"],
   ["sound", "sound_media", "volume"], ["features", "tab_features", "circle-check"], ["about", "tab_about", "info-circle"],
 ];
 // Where the sections of before went, for a place that still asks for one by its old name: the search of the desktop, a row on
 // the page of a device, the tab that was open the last time.
-const MOVED = { general: "computer", clipboard: "sharing", files: "sharing", quickshare: "sharing", remote: "control", mouse: "control", health: "phone", updates: "about" };
+const MOVED = { circle: "devices", general: "computer", clipboard: "sharing", files: "sharing", quickshare: "sharing", remote: "control", mouse: "control", health: "phone", updates: "about" };
 const sectionFor = (id) => (MOVED[id] || id);
 
 function rememberedSection() {
@@ -1323,6 +1324,7 @@ export function SettingsPage() {
           <${Icon} name=${icon} size=${17} /><span>${t(label)}</span></button>`)}
       </nav>
       <div class="settings-content" key=${section}>
+        ${section === "devices" && html`<${CircleSettings} />`}
         ${section === "computer" && html`<${GeneralSettings} s=${s} patch=${patch} part="computer" />`}
         ${section === "phone" && html`<div class="settings-stack"><${GeneralSettings} s=${s} patch=${patch} part="phone" /><div id="set-health"><${HealthSection} /></div></div>`}
         ${section === "sharing" && html`<div class="settings-stack"><${GeneralSettings} s=${s} patch=${patch} part="files" />

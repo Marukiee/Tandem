@@ -66,6 +66,14 @@ pub enum Msg {
     /// they were. Only sent to a device whose caps say `transfer::RESUME_CAP`; the answer is `ShareResumed`.
     ShareResume(ShareResume),
     ShareResumed(ShareResumed),
+    /// A asks B to send files of B to C (P9). Only sent to a device whose caps say `relay::RELAY_CAP`; answered with
+    /// `ShareRelayReply`, after which B sends `ShareRelayUpdate`s. An older device skips it.
+    ShareRelay(ShareRelay),
+    ShareRelayReply(ShareRelayReply),
+    /// From B to the A that asked: how far one file of the offer to C is, or that it ended.
+    ShareRelayUpdate(ShareRelayUpdate),
+    /// From A to B: stop the offer B made at A's request.
+    ShareRelayCancel { id: u64 },
     ShareText(ShareText),
     Notification(NotificationMsg),
     NotificationRemoved { key: String },
@@ -605,7 +613,7 @@ pub struct CaptureCancel {
     pub why: CaptureWhy,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShareItem {
     pub name: String,
     pub size: u64,
@@ -613,6 +621,10 @@ pub struct ShareItem {
     pub mime: String,
     #[serde(default)]
     pub modified: Option<u64>,
+    /// The folder inside the offer this file belongs in, parts joined by `/` (P4). Only sent to a device with the cap
+    /// `share.folders`; empty for a loose file, and then not written, so the offer is the same as before.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub path: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -620,6 +632,53 @@ pub struct ShareOffer {
     pub id: u64,
     pub origin: ShareOrigin,
     pub items: Vec<ShareItem>,
+    /// Folders inside the offer that hold no file, so they arrive too (P4). Parts joined by `/`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub folders: Vec<String>,
+    /// The device on whose request the sender made this offer (P9), so the receiver can say so. An older receiver does not read it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requested_by: Option<DeviceId>,
+}
+
+/// A asks B to send `paths` (as B shows them to A in its files, `/Share/sub/name`) to `to`. `id` becomes the number of B's offer, so
+/// A and B speak of it by the same number.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShareRelay {
+    pub id: u64,
+    pub to: DeviceId,
+    pub paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShareRelayReply {
+    pub id: u64,
+    pub ok: bool,
+    /// Why not, a fixed code (`relay::REASONS`).
+    #[serde(default)]
+    pub reason: Option<String>,
+    /// `to` was away and it waits in B's queue (P3).
+    #[serde(default)]
+    pub queued: bool,
+    /// What B offered, in order: the place of a file in an update is its place here.
+    #[serde(default)]
+    pub items: Vec<ShareItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShareRelayUpdate {
+    pub id: u64,
+    pub index: u32,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub done: u64,
+    #[serde(default)]
+    pub size: u64,
+    /// The file ended: arrived when `error` is empty, otherwise with that code (`TransferDone::error`).
+    #[serde(default)]
+    pub ended: bool,
+    #[serde(default)]
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1224,9 +1283,9 @@ mod tests {
     #[test]
     fn the_answer_to_a_capture_keeps_its_request_id_and_old_origins_still_read() {
         // Files dropped on the edge survive the trip, and an older version reads the origin as Other.
-        let dropped = ShareOffer { id: 2, origin: ShareOrigin::Drag, items: vec![] };
+        let dropped = ShareOffer { id: 2, origin: ShareOrigin::Drag, items: vec![], folders: vec![], requested_by: None };
         assert_eq!(decode::<ShareOffer>(&encode(&dropped).unwrap()).unwrap().origin, ShareOrigin::Drag);
-        let offer = ShareOffer { id: 1, origin: ShareOrigin::Capture(77), items: vec![] };
+        let offer = ShareOffer { id: 1, origin: ShareOrigin::Capture(77), items: vec![], folders: vec![], requested_by: None };
         let back: ShareOffer = decode(&encode(&offer).unwrap()).unwrap();
         assert_eq!(back.origin, ShareOrigin::Capture(77));
 
@@ -1258,7 +1317,7 @@ mod tests {
             ShareOffer { id: u64, origin: OldOrigin },
             Ping { nonce: u64 },
         }
-        let bytes = encode(&Msg::ShareOffer(ShareOffer { id: 1, origin: ShareOrigin::Capture(5), items: vec![] })).unwrap();
+        let bytes = encode(&Msg::ShareOffer(ShareOffer { id: 1, origin: ShareOrigin::Capture(5), items: vec![], folders: vec![], requested_by: None })).unwrap();
         // The old reader cannot make sense of it, and that is fine: `decode_msg` falls back to
         // `Msg::Unknown` when the bytes are well formed CBOR, so the offer is skipped and the
         // connection carries on.
