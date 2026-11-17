@@ -2,4 +2,6 @@
 <!-- Only the folder in which the core keeps pictures on their way to the clipboard (CLIPBOARD_DIR in transfer.rs). -->
 <paths>
     <files-path name="clipboard" path="tandem/clipboard/" />
+    <!-- The days of the traffic log that are copied for `adb pull` and for sharing. -->
+    <external-files-path name="traffic" path="traffic/" />
 </paths>
