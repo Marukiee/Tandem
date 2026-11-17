@@ -79,20 +79,22 @@ export function WatchGlance({ i, records, onOpen, goal, phone, live }) {
   const night = (records || []).find(isNight);
   const measured = i ? [...i.week].reverse().find((d) => d.steps != null) : null;
   const resting = i && i.resting;
-  if (!night && !measured && !resting && now == null) return null;
   // Beside the night also at 0, so the steps never seem gone on a day without any yet.
   const latest = i && i.week.length ? i.week[i.week.length - 1] : null;
-  const stepsDay = measured || (night && latest ? { ...latest, steps: 0 } : null);
+  // Both the night and the steps whenever the watch is paired, so the card is never just one thing.
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const stepsDay = measured || (latest ? { ...latest, steps: 0 } : { startMs: today.getTime(), steps: 0 });
   const score = night && i && i.latestNight && i.latestNight.id === night.id ? i.latestNight.score : null;
-  const tile = (icon, title, value, caption, share, beating) => html`<button class="card glance" title=${t("tab_health")} onClick=${onOpen}>
+  const tile = (icon, title, value, caption, share, beating, muted) => html`<button class=${"card glance" + (muted ? " muted-tile" : "")} title=${t("tab_health")} onClick=${onOpen}>
     <div class="glance-title">${share != null ? html`<span class="glance-ring" style=${`--p:${Math.round(share * 100)}`}><span><${Icon} name=${icon} size=${12} /></span></span>` : html`<span class=${beating ? "beat" : ""}><${Icon} name=${icon} size=${15} /></span>`}${title}</div>
     <${BigNumber} text=${value} />
     <div class="small muted ellipsis">${caption}</div>
   </button>`;
   return html`<div class="glances">
-    ${night && tile("moon", t("watch_last_night"), healthDuration(night.sleepMinutes),
-      score != null ? t("watch_score", score) : new Date(night.endMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }))}
-    ${stepsDay && tile("walk", t("health_steps_title"), number(stepsDay.steps), dayName(stepsDay.startMs), goal ? Math.min(1, stepsDay.steps / goal) : null)}
+    ${night ? tile("moon", t("watch_last_night"), healthDuration(night.sleepMinutes),
+      score != null ? t("watch_score", score) : new Date(night.endMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }))
+      : tile("moon", t("watch_last_night"), t("watch_no_data"), "", null, false, true)}
+    ${tile("walk", t("health_steps_title"), number(stepsDay.steps), dayName(stepsDay.startMs), goal ? Math.min(1, stepsDay.steps / goal) : null)}
     ${now != null
       ? tile("heart", t("watch_heart_now"), t("health_bpm", now), resting ? t("watch_resting_value", resting.latest) : t("watch_heart_live"), null, true)
       : resting && tile("heart", t("health_resting"), t("health_bpm", resting.latest),
