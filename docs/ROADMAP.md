@@ -135,6 +135,14 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   zet een teller per soort bericht en een regel per belpoging in het logboek (`adb logcat -s Tandem`). Nagelezen: het wacht op fixes,
   omdat opnieuw verbinden in twee gevallen trager werd. Daarna opnieuw meten.
 
+  Stand 2026-11-17: gemeten met 0.3.23 op de telefoon en de Mac (16 en 17 november, onderweg op mobiele data): onveranderd, scherm
+  uit 195 tot 207 mA, CPU ongeveer 80% wakker, de radio 99% actief, 950 tot 1.600 wekmomenten per uur van het modem. Tandem in de
+  tunnel: rx 6.811 en tx 13.579 pakketten op een dag, meer dan op 15 november. De besparing van PR 42 is dus niet de oorzaak, of
+  niet de hele. In logcat vond de meetsessie geen enkele regel met tag `Tandem`; de kern logt in de release op info met die tag
+  (`K/ffi.rs` `tandem_init_logging`), maar alleen bij gebeurtenissen, en de buffer van de Oppo bewaart maar een paar minuten.
+  Volgende stap: de teller per soort bericht en per apparaat (`K/sent_tally.rs`) ook optellen sinds een tijdstip en die totalen in
+  de app laten zien (een rij onder Over of Diagnose, met kopiëren) en wegschrijven in de externe bestandenmap van de app, zodat ze
+  na een dag onderweg met `adb pull` te lezen zijn. Pas daarna verder bouwen aan de besparing.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
