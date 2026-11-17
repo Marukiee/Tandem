@@ -63,6 +63,63 @@ pub trait TandemEventSink: Send + Sync {
     fn on_event(&self, event: TandemEvent);
 }
 
+/// What the app of this device knows that the core does not, for the traffic log (see `traffic_log`).
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemTrafficContext {
+    pub screen_on: Option<bool>,
+    /// "wifi", "mobile", "ethernet", "none" or what the platform says.
+    pub network: Option<String>,
+    pub battery: Option<u8>,
+    pub charging: Option<bool>,
+}
+
+/// Asked as a line of the traffic log is closed, on the thread of the engine's own work: read what is at hand (the screen, the active
+/// network, the battery) and return at once. Nothing may be polled, started or waited for to answer it.
+#[uniffi::export(foreign)]
+pub trait TandemTrafficContextSource: Send + Sync {
+    fn context(&self) -> TandemTrafficContext;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemTrafficKind {
+    pub kind: String,
+    pub sent_count: u64,
+    pub sent_bytes: u64,
+    pub recv_count: u64,
+    pub recv_bytes: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemTrafficDevice {
+    pub id: String,
+    pub name: String,
+    pub sent_count: u64,
+    pub sent_bytes: u64,
+    pub recv_count: u64,
+    pub recv_bytes: u64,
+    /// UDP datagrams QUIC sent and received, acknowledgements and pings included.
+    pub packets_tx: u64,
+    pub packets_rx: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemTrafficHour {
+    pub hour_start_ms: u64,
+    pub sent_count: u64,
+    pub sent_bytes: u64,
+    pub recv_count: u64,
+    pub recv_bytes: u64,
+    pub packets: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemTrafficSummary {
+    pub by_kind: Vec<TandemTrafficKind>,
+    pub by_device: Vec<TandemTrafficDevice>,
+    /// The last 24 hours, the oldest first.
+    pub by_hour: Vec<TandemTrafficHour>,
+}
+
 /// Receives the sound another device sends. Called on the connection's own task for every packet,
 /// so it must only queue the samples and return, never wait for the speaker.
 #[uniffi::export(foreign)]
@@ -1983,6 +2040,53 @@ impl TandemEngine {
     pub fn set_quiet(&self, quiet: bool) {
         let engine = self.engine.clone();
         self.runtime.spawn(async move { engine.set_quiet(quiet).await });
+    }
+
+    /// Sets (or removes) what the traffic log asks the app when it closes a line: the screen, the network and the battery.
+    pub fn set_traffic_context_source(&self, source: Option<Arc<dyn TandemTrafficContextSource>>) {
+        self.engine.set_traffic_context_source(source.map(|source| {
+            Arc::new(move || {
+                let c = source.context();
+                crate::traffic_log::TrafficContext { screen_on: c.screen_on, network: c.network, battery: c.battery, charging: c.charging, ..Default::default() }
+            }) as crate::traffic_log::ContextSource
+        }));
+    }
+
+    /// The folder with the days of the traffic log (one file per day, JSON lines).
+    pub fn traffic_dir(&self) -> String {
+        self.engine.traffic_dir().to_string_lossy().to_string()
+    }
+
+    /// A second folder the lines are copied to as they are written (the one `adb pull` reaches on Android). Empty: none.
+    pub fn set_traffic_mirror(&self, dir: String) {
+        self.engine.set_traffic_mirror(if dir.is_empty() { None } else { Some(std::path::PathBuf::from(dir)) });
+    }
+
+    /// Totals from the traffic log since `since_ms` (Unix ms), and the last 24 hours per hour.
+    pub fn traffic_summary(&self, since_ms: u64) -> TandemTrafficSummary {
+        let s = self.engine.traffic_summary(since_ms);
+        TandemTrafficSummary {
+            by_kind: s.by_kind.into_iter().map(|k| TandemTrafficKind { kind: k.kind, sent_count: k.sent_count, sent_bytes: k.sent_bytes, recv_count: k.recv_count, recv_bytes: k.recv_bytes }).collect(),
+            by_device: s
+                .by_device
+                .into_iter()
+                .map(|d| TandemTrafficDevice {
+                    id: d.id,
+                    name: d.name,
+                    sent_count: d.sent_count,
+                    sent_bytes: d.sent_bytes,
+                    recv_count: d.recv_count,
+                    recv_bytes: d.recv_bytes,
+                    packets_tx: d.packets_tx,
+                    packets_rx: d.packets_rx,
+                })
+                .collect(),
+            by_hour: s
+                .by_hour
+                .into_iter()
+                .map(|h| TandemTrafficHour { hour_start_ms: h.hour_start_ms, sent_count: h.sent_count, sent_bytes: h.sent_bytes, recv_count: h.recv_count, recv_bytes: h.recv_bytes, packets: h.packets })
+                .collect(),
+        }
     }
 
     /// Whether this device is on a network that costs (mobile data). Large files are then asked about first, also from a device that may

@@ -46,8 +46,12 @@ internal fun AboutPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         SectionHeader(stringResource(R.string.dev_section))
         SettingsGroup {
             ActionRow(
-                0, 1, TandemIcons.Info, stringResource(R.string.dev_title), stringResource(R.string.dev_sub),
+                0, 2, TandemIcons.Info, stringResource(R.string.dev_title), stringResource(R.string.dev_sub),
                 { onOpen(Route.Developer) }, modifier = Modifier.routeBounds(routeKey(Route.Developer)),
+            )
+            ActionRow(
+                1, 2, TandemIcons.Info, stringResource(R.string.traffic_title), stringResource(R.string.traffic_sub),
+                { onOpen(Route.TrafficLog) }, modifier = Modifier.routeBounds(routeKey(Route.TrafficLog)),
             )
         }
 

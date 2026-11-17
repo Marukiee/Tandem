@@ -49,6 +49,7 @@ fun routeKey(route: Route): String = when (route) {
     Route.MirrorApps -> "mirror"
     Route.Appearance -> "appearance"
     Route.Developer -> "developer"
+    Route.TrafficLog -> "traffic-log"
     Route.Hotspot -> "hotspot"
     Route.Changelog -> "changelog"
     Route.MediaApps -> "media-apps"

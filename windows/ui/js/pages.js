@@ -1728,7 +1728,7 @@ function AboutSettings() {
       <div>Tandem ${state.version}${state.build ? " (" + state.build + ")" : ""}</div>
       <div class="small muted" style="margin-top:6px">${t("experimental_note")}</div>
       <div class="small muted" style="margin-top:6px">${t("firewall")}</div>
-      <div style="margin-top:10px;display:flex;gap:8px"><button class="btn small" onClick=${() => call("open_logs").catch(failed)}>${t("open_logs")}</button></div>
+      <div style="margin-top:10px;display:flex;gap:8px"><button class="btn small" onClick=${() => call("open_logs").catch(failed)}>${t("open_logs")}</button><button class="btn small" onClick=${() => call("open_traffic").catch(failed)}>${t("open_traffic")}</button></div>
     </div>
   </div>`;
 }

@@ -278,6 +278,9 @@ class EngineHost(
                 )
                 val started = TandemEngine.start(config, AndroidVault(context), AndroidFiles(context), Sink())
                 engine = started
+                // The traffic log asks the app what it knows only as it closes a line, from work the engine does anyway: no receiver, no timer.
+                started.setTrafficContextSource(TrafficContext(context))
+                started.setTrafficMirror(context.getExternalFilesDir("traffic")?.absolutePath.orEmpty())
                 tellMetered()
                 screenChanged(context.getSystemService(android.os.PowerManager::class.java)?.isInteractive != false)
                 audioSink?.let { started.setAudioSink(it) }

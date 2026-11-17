@@ -31,6 +31,7 @@ pub mod relay;
 pub mod proto;
 pub mod session;
 mod sent_tally;
+pub mod traffic_log;
 pub mod side;
 pub mod side_check;
 pub mod sms;

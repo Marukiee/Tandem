@@ -842,6 +842,14 @@ pub fn open_logs(app: AppHandle) -> Reply<()> {
     app.opener().open_path(dir.to_string_lossy(), None::<&str>).map_err(shown)
 }
 
+/// Opens the folder with the days of the traffic log (one file per day, JSON lines).
+#[tauri::command]
+pub fn open_traffic(app: AppHandle, state: State<'_, AppState>) -> Reply<()> {
+    let dir = PathBuf::from(state.engine()?.traffic_dir());
+    std::fs::create_dir_all(&dir).map_err(shown)?;
+    app.opener().open_path(dir.to_string_lossy(), None::<&str>).map_err(shown)
+}
+
 // ---- What is new, and what the desktop was asked (the backup is in `backup.rs`) ---------------------------------------------------------
 
 const CHANGELOG: &str = include_str!("../../../changelog.json");
