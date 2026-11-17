@@ -204,6 +204,7 @@ impl Inner {
         }
 
         info!(peer = %id, name = %hello.name, dialer, "connected");
+        self.traffic_session_up(&session, &hello.name);
         self.note_seen(id, true);
         self.emit(Event::Connected { id });
         self.emit(Event::DevicesChanged);
@@ -275,7 +276,7 @@ impl Inner {
             async move {
                 loop {
                     match proto::read_frame(&mut recv, MAX_CONTROL_FRAME).await {
-                        Ok(Some(frame)) => match decode_msg(&frame) {
+                        Ok(Some(frame)) => match decode_msg(&frame).inspect(|msg| this.traffic_received(id, msg, frame.len() + 4)) {
                             Ok(Msg::Unknown) => {}
                             Ok(Msg::Bye { .. }) => break,
                             // A connection that lost to another one is still read for a moment, but how the other device is now came again on
@@ -297,6 +298,7 @@ impl Inner {
             }
         };
 
+        let sender = self.clone();
         let writer = async move {
             // What goes out, by kind, written to the log now and then: with the log of the attempts to dial it explains where the
             // battery of a phone went. Kept here, in the one task that writes, so it costs no lock.
@@ -328,6 +330,7 @@ impl Inner {
                     break;
                 }
                 tally.add(&msg, frame.len() + 4);
+                sender.traffic_sent(id, &msg, frame.len() + 4);
             }
             if let Some(line) = tally.take_line() {
                 info!("sent to {id}: {line}");
@@ -475,6 +478,8 @@ impl Inner {
         }
         if was_current {
             info!(peer = %id, "disconnected");
+            let name = self.peers.lock().unwrap().get(&id).and_then(|p| p.hello.as_ref().map(|h| h.name.clone())).unwrap_or_default();
+            self.traffic_session_down(session, &name);
             self.live_peer_down(id);
             self.emit(Event::Disconnected { id });
             self.emit(Event::DevicesChanged);

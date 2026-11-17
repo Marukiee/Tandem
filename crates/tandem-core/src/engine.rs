@@ -127,6 +127,9 @@ pub(crate) struct Inner {
     pub my_status: Mutex<Status>,
     /// When the whole status was last sent to everybody (see `Engine::update_status`).
     pub status_sent_in_full: Mutex<std::time::Instant>,
+    /// What goes over the connections, kept for days in the data folder (see `traffic_log`).
+    pub traffic: Arc<crate::traffic_log::TrafficLog>,
+    pub traffic_context_source: Mutex<Option<crate::traffic_log::ContextSource>>,
     /// Held while a status is worked out and sent, so that statuses leave in the order they were made.
     pub status_in_order: tokio::sync::Mutex<()>,
     /// What was last said about the battery of each other device (see `battery_alert`).
@@ -229,6 +232,7 @@ impl Engine {
         let focus = Mutex::new(crate::focus::FocusSync::load(&store));
         let health = Mutex::new(crate::health::Health::load(&store));
         let journal = crate::journal::Journal::load(&cfg.data_dir)?;
+        let traffic = Arc::new(crate::traffic_log::TrafficLog::new(&cfg.data_dir, now_ms()));
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(my_name),
@@ -251,6 +255,8 @@ impl Engine {
             my_status: Mutex::new(Status::default()),
             status_sent_in_full: Mutex::new(std::time::Instant::now()),
             status_in_order: tokio::sync::Mutex::new(()),
+            traffic,
+            traffic_context_source: Mutex::new(None),
             battery_said: Mutex::new(HashMap::new()),
             settings: RwLock::new(settings),
             last_remote_clip: Mutex::new(None),
@@ -595,6 +601,7 @@ impl Engine {
         if self.inner.quiet.swap(quiet, Ordering::Relaxed) == quiet {
             return;
         }
+        self.inner.traffic_context_changed(|c| c.quiet = quiet);
         let change = Status { quiet: Some(quiet), ..Status::default() };
         let _in_order = self.inner.status_in_order.lock().await;
         self.inner.my_status.lock().unwrap().merge(&change);
@@ -612,6 +619,27 @@ impl Engine {
     /// The app says whether this device is on a network that costs (mobile data, a hotspot it pays for).
     pub fn set_metered(&self, on: bool) {
         self.inner.metered.store(on, Ordering::Relaxed);
+        self.inner.traffic_context_changed(|c| c.metered = on);
+    }
+
+    /// The app tells what it knows that the core does not (screen, network, battery), when the core asks as it closes a line of the
+    /// traffic log. Called from the work the engine does anyway, so it must be quick and must not wait for anything.
+    pub fn set_traffic_context_source(&self, source: Option<crate::traffic_log::ContextSource>) {
+        *self.inner.traffic_context_source.lock().unwrap() = source;
+    }
+
+    /// Where the days of the traffic log are, and a second place the same lines are copied to.
+    pub fn traffic_dir(&self) -> std::path::PathBuf {
+        self.inner.traffic.dir.clone()
+    }
+
+    pub fn set_traffic_mirror(&self, dir: Option<std::path::PathBuf>) {
+        self.inner.traffic.set_mirror(dir);
+    }
+
+    /// Totals from the files of the traffic log: since `since_ms` per kind and per device, and per hour for the last 24 hours.
+    pub fn traffic_summary(&self, since_ms: u64) -> crate::traffic_log::TrafficSummary {
+        crate::traffic_log::summarize(&self.inner.traffic.dir, since_ms, now_ms())
     }
 
     /// Lets files sent to a device that is away wait in the queue until it is back, up to 7 days (P3). Off by default: an app turns it
@@ -1077,12 +1105,13 @@ impl Inner {
     /// reconnects, the screen going on) leaves the back-off as it was, so the radio of a phone does not keep trying a computer that is
     /// off; and a change soon after the last waits for `HURRY_GAP`. `at_once`: now, for a device that just joined.
     pub(crate) fn hurry(self: &Arc<Self>, at_once: bool) {
-        self.hurry_with(at_once, false);
+        self.hurry_with(at_once, false, if at_once { "pairing" } else { "app" });
     }
 
     /// `force`: something happened that makes a device reachable that was not (Tailscale was turned on after it was asked for): every
     /// device that is away is tried now, whatever the screen, the data and how long it has been gone.
-    pub(crate) fn hurry_with(self: &Arc<Self>, at_once: bool, force: bool) {
+    pub(crate) fn hurry_with(self: &Arc<Self>, at_once: bool, force: bool, source: &'static str) {
+        self.traffic_event("network_changed", serde_json::json!({ "source": source }));
         let now = Instant::now();
         let (at, quiet_before) = {
             let mut last = self.last_hurry.lock().unwrap();
@@ -1232,7 +1261,7 @@ impl Inner {
             }
             *last = Some(Instant::now());
         }
-        self.network_changed();
+        self.hurry_with(false, false, "addresses");
     }
 
     /// Says on the local network that this device is here again. A phone calls `network_changed` for each small change, so not every time.
@@ -1257,7 +1286,7 @@ impl Inner {
         if if_addrs::get_if_addrs().map(|all| all.iter().any(|i| net::is_tailnet(i.ip()))).unwrap_or(false) {
             // Asked again only after it has gone away again.
             *self.tailscale_asked.lock().unwrap() = None;
-            self.hurry_with(false, true);
+            self.hurry_with(false, true, "tailscale");
         }
     }
 
@@ -1305,6 +1334,21 @@ impl Inner {
         // Counted on a phone with `adb logcat -s Tandem`: every attempt wakes the radio.
         info!(peer = %id, fails, addrs = sockets.len(), "dialling a device that is away");
         let outcome = self.dial_any(Some(key), tls::ALPN_MAIN, &sockets).await;
+        let (mut lan, mut tailnet, mut other) = (0, 0, 0);
+        for a in addrs.iter().filter(|a| a.socket().is_some_and(|s| sockets.contains(&s))) {
+            match a.route {
+                net::Route::Lan => lan += 1,
+                net::Route::Tailnet => tailnet += 1,
+                net::Route::Other => other += 1,
+            }
+        }
+        self.traffic_event(
+            "dial",
+            serde_json::json!({
+                "peer": id.to_string(), "fails": fails, "addrs": sockets.len(), "routes": { "lan": lan, "tailnet": tailnet, "other": other },
+                "away_for_days": long_away, "costly": costly, "result": if outcome.is_ok() { "ok" } else { "failed" },
+            }),
+        );
         match outcome {
             Ok((connection, addr)) => {
                 self.learn_addr(&id, addr, true);
