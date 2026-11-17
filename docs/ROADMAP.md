@@ -95,6 +95,13 @@ via een ander apparaat, kern; de drie punten uit de review gedaan). Alleen gebou
 daarna voor nu uitbrengen: PR 31 komt in de release erna. Mark meet de accu opnieuw met de sessie
 `local_1ec53a59-7b07-495f-a3e3-b35f368900dc`.
 
+**In 0.3.24.** PR 47 (de horlogekaart toont altijd een slaaptegel naast de stappen, op alle platforms) en PR 48 (R-V15: een verkeerslog
+in de kern, een bestand per dag in `traffic/`, 14 dagen en hooguit 30 MB per map, zonder timer of wake lock van zichzelf; op Android
+ook in `/sdcard/Android/data/nl.markmaaktmedia.tandem/files/traffic`). Nagelopen: geen lock vast bij het wegschrijven, verzenden wacht
+niet op de schijf, geen adressen of inhoud in de regels. Alleen gebouwd en door CI getest. Open puntje: op Android loopt de grens van
+30 MB per map, dus met de kopie voor `adb pull` kan het samen 60 MB zijn. Mac, Linux en Windows geven scherm, netwerk en batterij
+nog niet door aan het log.
+
 **Open, voor wie verder gaat (stand 2026-11-15, nacht).** PR 31 (de Mac in het nieuwe
 ontwerp) botst met main; de sessie bouwt de punten 5 (een icoonfamilie), 6 (rond horloge), 7 (kop en speler), 8 (een woord bij de knop
 van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; bij punt 7 nog: de tegel Steps op de kaart Health is hoger dan de tegels Last night en Heart rate now door zijn grotere icoon in een ring; alle drie even hoog en hetzelfde icoon; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
@@ -140,6 +147,7 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   tunnel: rx 6.811 en tx 13.579 pakketten op een dag, meer dan op 15 november. De besparing van PR 42 is dus niet de oorzaak, of
   niet de hele. In logcat vond de meetsessie geen enkele regel met tag `Tandem`; de kern logt in de release op info met die tag
   (`K/ffi.rs` `tandem_init_logging`), maar alleen bij gebeurtenissen, en de buffer van de Oppo bewaart maar een paar minuten.
+  Daarom heeft 0.3.24 een verkeerslog op schijf (PR 48); de meetsessie leest daarmee na een nacht uit wat er verstuurd werd.
   Volgende stap: de teller per soort bericht en per apparaat (`K/sent_tally.rs`) ook optellen sinds een tijdstip en die totalen in
   de app laten zien (een rij onder Over of Diagnose, met kopiëren) en wegschrijven in de externe bestandenmap van de app, zodat ze
   na een dag onderweg met `adb pull` te lezen zijn. Pas daarna verder bouwen aan de besparing.
