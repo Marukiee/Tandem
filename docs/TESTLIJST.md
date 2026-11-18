@@ -564,7 +564,8 @@ emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen
 - [ ] **De telefoon oppakken.** Scherm uit, een paar minuten wachten, scherm aan: de Mac ziet de telefoon weer online en een bestand of
   het klembord komt meteen over. Er hoort geen nieuwe verbinding bij te komen als de oude nog werkt (log: geen `disconnected`).
 - [ ] **Echt van netwerk wisselen** (wifi uit, mobiele data aan, en terug): de verbinding met de Mac wordt opnieuw gelegd en de wachttijd
-  begint opnieuw, `network_changed` staat een keer per wissel in het log.
+  begint opnieuw, `network_changed` met `changed: true` staat een keer per wissel in het log. Komt er na een wissel niets en blijft
+  de verbinding hangen tot de heartbeat hem een paar minuten later laat vallen, meld het: dan ziet de kern de adressen niet veranderen.
 - [ ] **Muziek met hoes.** Speel iets met een albumhoes op de telefoon terwijl de Mac meekijkt, laat de verbinding een keer wisselen
   (vliegtuigstand een halve minuut): de hoes staat er na het terugkomen nog, en het verkeerslog toont geen tweede `MediaArt` van 12 KB.
   Sluit Tandem op de Mac en open hem weer: nu komt de hoes wel opnieuw.

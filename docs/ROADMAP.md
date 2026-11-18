@@ -191,10 +191,15 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   gebeld (tenzij de gebruiker erom vraagt), en `NetworkCost.costly` in de Android-schil kijkt naar het onderliggende transport en
   houdt de vorige waarde vast als de VPN heen en weer flapt. MediaArt wordt per apparaat en per draai van de andere app onthouden
   (`ArtHeld`, `Hello::boot_id`) en na een nieuwe verbinding niet opnieuw gestuurd, zodra de eerste verbinding minstens 10 s leefde.
-  Gemeten op een Android-emulator (Pixel 7, Android 16) met een `tandemd` als Mac, 6,5 minuten, 12 keer scherm uit en aan en twee
-  keer wifi uit en aan, oude bouw (0.3.26) tegenover nieuwe bouw, zelfde scenario: `network_changed` 27 tegen 1 (alleen koppelen),
-  Pings van de telefoon 17 tegen 0, berichten ontvangen 27 tegen 6, verbindingen en dials ongewijzigd (een verbinding, niets
-  verloren). De emulator heeft geen mobiele radio en geen Tailscale: het verbruik in mA en het sluiten op een slapende radio zijn
+  Gemeten op een Android-emulator (Pixel 7, Android 16) met een `tandemd` als Mac, 6,5 minuten, 13 keer scherm uit en aan en twee
+  keer wifi uit en aan, oude bouw (0.3.26) tegenover nieuwe bouw, zelfde scenario: Pings van de telefoon 17 tegen 0, berichten
+  ontvangen 27 tegen 6, een verbinding in beide gevallen (niets verloren, geen nieuwe dial). `network_changed` in het log 27 tegen 1
+  (alleen koppelen): dat is geen gelijk getal, want een scherm dat aan gaat meldt zich niet meer als netwerkwissel (de oude bouw
+  telde twee per scherm-aan, 13 keer 2 is 26). De wifi-wissels gaven de emulator in beide bouwen geen enkele systeemmelding, dus
+  daar is niet mee gemeten of een echte wissel nog doorkomt. Daarvoor: de test `a_move_to_another_network_asks_the_connections_and_lets_go_of_the_one_that_is_silent`
+  (kern, met nagebootste adressen: dezelfde adressen vragen niets, andere adressen vragen elke verbinding en laten de stille los),
+  en het log van de Oppo met 0.3.25 (6 keer `source: addresses` in 3,3 uur, dus het opsommen van de adressen werkt op een echte
+  telefoon). De emulator heeft geen mobiele radio en geen Tailscale: het verbruik in mA en het sluiten op een slapende radio zijn
   daarop niet na te bootsen. Dat meet de Oppo.
   Nog open: (a) de dials naar de Mac die mislukken (punt 5) zijn niet onderzocht; (b) de Status (ongeveer 265 B) die bij elk scherm
   aan of uit naar elke verbinding gaat blijft het grootste deel van het verkeer van de telefoon met het scherm aan en uit: een kleinere
