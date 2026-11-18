@@ -199,9 +199,8 @@ Gevonden bij het nakijken van die PR's, nog te doen:
 
   Niet veranderd, met de reden: de versnellingsmeter voor slaap (5 Hz in blokken van 4 minuten, een wekmoment per blok) en de stappenteller
   (5 minuten), omdat de slaapdetectie ze nodig heeft; de nachtopname zelf; de verbindingsprioriteit van Bluetooth (LOW_POWER zou de
-  vertraging van meldingen en bediening verhogen, eerst op een echt horloge proberen). Een voorstel dat een nieuwe afhankelijkheid
-  vraagt en dus wacht op Marks ja: Health Services (passive monitoring) in plaats van eigen sensoren, waar het horloge de hartslag en de
-  stappen zelf bundelt.
+  vertraging van meldingen en bediening verhogen, eerst op een echt horloge proberen). Health Services (passive monitoring) in plaats van
+  eigen sensoren, waar het horloge de hartslag en de stappen zelf bundelt, kreeg Marks ja en staat hieronder (0.3.27).
 
   Gemeten, op een Android 35 emulator (telefoonvormig, geen Wear OS-image gedownload; geen diepe slaap, geen Bluetooth, geen sensorbuffer
   in de hardware, dus tellingen en tijden, geen mA): dezelfde test voor de oude en de nieuwe build, 4 minuten aan de lader, 6 minuten
@@ -219,6 +218,42 @@ Gevonden bij het nakijken van die PR's, nog te doen:
     Het is een model van wat de telefoon deed, niet gemeten op een echte link: dat zegt de teller in het logboek na een dag.
   Gemeten op een echt horloge: niets. De meting die telt is de dag om de pols (zie `docs/TESTLIJST.md`, 0.3.25): het percentage 's avonds
   met en zonder deze build.
+
+  **Health Services (0.3.27, Mark zei ja).** Stappen en hartslag van de dag komen van `PassiveMonitoringClient`
+  (`androidx.health:health-services-client` 1.1.0, de enige nieuwe afhankelijkheid) in plaats van een eigen meting van 30 s per 5 minuten
+  en een eigen stappenteller. Met de bibliotheek komen Guava (32.0.1-android), protobuf-lite en `concurrent-futures` mee, en de `fast`-build
+  groeit met ongeveer 218 KB (5,63 naar 5,84 MB). Wat er veranderde (`PassiveHealth`, `PassiveHealthService`, `StepFeed`, `PassiveHeartRules`):
+  - **Stappen**: `DataType.STEPS_DAILY` (het totaal sinds middernacht, in losse stukken aangeleverd, niet op volgorde: gesorteerd op
+    `endDurationFromBoot`). `StepFeed` kiest de bron: Health Services zolang die levert, de eigen teller (die als schaduw meeloopt, ingesteld op
+    5 minuten bundelen) als die 2 uur zwijgt terwijl de teller wel beweegt. De dag telt nooit twee keer (`DailySteps.count`, getest met een dagwissel
+    en een verlaagd totaal).
+  - **Hartslag**: `DataType.HEART_RATE_BPM`, per slot van 5 minuten de mediaan (`PassiveHeartRules.perSlot`), alleen betrouwbare waarden
+    (accuracy laag of beter, net als de eigen meting). De eigen meting van 30 s slaat een tik over zolang er een verse waarde van het systeem
+    is (jonger dan 20 minuten), en pakt het anders zelf op. Het horloge meldt de hartslagkromme hooguit elke 15 minuten en de stappen hooguit
+    elke 5, zodat de winst van PR 49 niet verloren gaat.
+  - **Terugval**: zonder Health Services op dit horloge, zonder toestemming, of als het systeem zwijgt, werkt alles als voor deze build. Elke
+    30 minuten zonder levering registreert hij opnieuw (`reregisterIfDue`), want het systeem laat een registratie bij een herstart van zijn eigen
+    dienst los.
+  - **Toestemmingen**: stappen vragen `ACTIVITY_RECOGNITION` (er al), hartslag `BODY_SENSORS` tot en met Android 15 en `READ_HEART_RATE` vanaf Android 16,
+    in de achtergrond `BODY_SENSORS_BACKGROUND` of `READ_HEALTH_DATA_IN_BACKGROUND` (de bestaande knop op de gezondheidspagina). Niets
+    nieuws gevraagd. Ontbreekt iets, dan staat dat in het logboek (`Wanted: ... Allowed: ...`) en meet Tandem zelf.
+  - **Slaap: niet vervangen, met de reden.** Health Services biedt ook een slaapstand (`UserActivityState.USER_ACTIVITY_ASLEEP`, de emulator meldt dat
+    hij die kent: `Passive: [...], sleep states: [USER_ACTIVITY_PASSIVE, USER_ACTIVITY_EXERCISE, USER_ACTIVITY_ASLEEP]`). De versnellingsmeter staat
+    niet aan voor alleen die beslissing: `AutoSleep` en `SleepAutoDetector` rekenen ermee (25 minuten stil, wakker worden, `bedtime`-nachten en de
+    ochtend), de nachtopname schrijft hem als ruwe data, en een slaapstand van het systeem zou vertraging en een eigen drempel meebrengen
+    die ik op deze emulator niet kan beoordelen. Daarom is `AutoSleep` niet aangeraakt. Wat Mark zelf kan zien: dat de stand er op een Pixel Watch
+    ook is (zelfde logregel), en dan is het een proef voor later, naast de huidige detector, niet erin.
+  - **Live hartslag** (met `LiveHeartLimit`) blijft zoals hij was: die wil elke paar seconden een waarde, en dat geeft passive monitoring niet.
+
+  Gemeten op een Wear OS 6 emulator (API 36, `whs.USE_SYNTHETIC_PROVIDERS` voor de nepgegevens van Health Services): de registratie en de
+  capabilities in het logboek, levering elke minuut van 60 hartslagwaarden en 12 stapentotalen, de stappen van de app gelijk aan het totaal van Health
+  Services na een schone start, een eigen meting die niet start zolang de waarde van het systeem vers is (`No measurement of our own: the system's newest value
+  is 119 s old` tot `1021 s old`), en een eigen meting die wel start zonder toestemming voor hartslag, en stappen via de eigen teller zonder toestemming
+  voor beweging. Niet gezien op de emulator: de eigen meting na 20 minuten van een stil geworden systeem (de nachtopname van de emulator begon
+  halverwege en nam de tikken over; de regel is met `PassiveHeartRulesTest` getest) en het opnieuw registreren na een halfuur. Geen enkel
+  batterijcijfer: een emulator kan de winst niet meten, en `PassiveHealth` belooft hem ook niet. De winst die ik verwacht is dat het horloge
+  de hartslag en stappen toch al verzamelt voor zichzelf en wij dus geen tweede sensormeting en geen eigen teller meer wakker houden; dat zegt
+  de dag om de pols.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de

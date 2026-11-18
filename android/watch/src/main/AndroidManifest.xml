@@ -88,6 +88,12 @@
             android:exported="false"
             android:foregroundServiceType="health" />
 
+        <!-- Health Services binds to this with the heart rate and steps of the day (see PassiveHealth). Only it may bind. -->
+        <service
+            android:name=".track.PassiveHealthService"
+            android:exported="true"
+            android:permission="com.google.android.wearable.healthservices.permission.PASSIVE_DATA_BINDING" />
+
         <receiver android:name=".link.BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

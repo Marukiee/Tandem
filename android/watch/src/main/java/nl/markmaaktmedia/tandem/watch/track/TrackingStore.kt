@@ -158,6 +158,11 @@ class TrackingStore(context: Context) {
         get() = prefs.getInt("step_goal", DEFAULT_STEP_GOAL)
         set(value) = prefs.edit().putInt("step_goal", value).apply()
 
+    /** Who counted the last steps, because the running total in [DailySteps] belongs to that source: "hs", "counter" or "" for none yet. */
+    var stepSource: String
+        get() = prefs.getString("steps_source", null) ?: if (prefs.getLong("steps_total", -1) >= 0) "counter" else ""
+        set(value) = prefs.edit().putString("steps_source", value).apply()
+
     fun saveSteps(state: DailySteps) {
         prefs.edit()
             .putString("steps_day", state.day)

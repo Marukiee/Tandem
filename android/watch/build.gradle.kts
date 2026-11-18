@@ -82,4 +82,5 @@ dependencies {
     implementation(libs.wear.compose.material3)
     implementation(libs.wear.compose.foundation)
     implementation(libs.wear.ongoing)
+    implementation(libs.health.services)
 }

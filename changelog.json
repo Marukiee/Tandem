@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.27",
+    "date": "2026-11-18",
+    "en": {
+      "title": "Steps and heart rate from the watch itself",
+      "new": [
+        "Steps and all-day heart rate now come from the watch's own monitoring (Health Services), and Tandem only measures itself when that is not available"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Stappen en hartslag van het horloge zelf",
+      "new": [
+        "Stappen en hartslag van de hele dag komen nu van de eigen meting van het horloge (Health Services), en Tandem meet alleen zelf als die er niet is"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.25",
     "date": "2026-11-18",
     "en": {
