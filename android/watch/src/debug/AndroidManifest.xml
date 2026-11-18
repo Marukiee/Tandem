@@ -4,5 +4,9 @@
         <activity
             android:name=".ui.ScreenGalleryActivity"
             android:exported="true" />
+
+        <receiver
+            android:name=".debug.DebugHooks"
+            android:exported="true" />
     </application>
 </manifest>

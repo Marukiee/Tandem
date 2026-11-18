@@ -76,6 +76,7 @@ object AutoSleep : SensorEventListener {
                     handler.post {
                         if (plugged != charging) {
                             charging = plugged
+                            if (plugged) HeartTracker.cancelMeasuring()
                             detector.setCharging(plugged)
                             updateMovement()
                             updateBedtime()
@@ -253,6 +254,7 @@ object AutoSleep : SensorEventListener {
         when (event.sensor.type) {
             Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT -> {
                 worn = event.values[0] > 0.5f
+                if (!worn) HeartTracker.cancelMeasuring()
                 detector.setWorn(worn)
                 updateMovement()
             }

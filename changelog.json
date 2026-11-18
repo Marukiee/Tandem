@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.25",
+    "date": "2026-11-18",
+    "en": {
+      "title": "A watch that lasts longer",
+      "new": [],
+      "fixed": [
+        "The watch lasts longer: the phone no longer resends unchanged notifications, players or statuses, live heart rate stops by itself, and a lost link is searched for less often"
+      ]
+    },
+    "nl": {
+      "title": "Een horloge dat langer meegaat",
+      "new": [],
+      "fixed": [
+        "Het horloge gaat langer mee: de telefoon stuurt geen ongewijzigde meldingen, spelers of statussen meer opnieuw, live hartslag stopt vanzelf en een verloren verbinding wordt minder vaak gezocht"
+      ]
+    }
+  },
+  {
     "version": "0.3.24",
     "date": "2026-11-17",
     "en": {

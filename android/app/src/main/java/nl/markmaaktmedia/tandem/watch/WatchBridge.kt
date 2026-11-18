@@ -54,6 +54,7 @@ import nl.markmaaktmedia.tandem.watch.pointer.ArrivalStats
 import nl.markmaaktmedia.tandem.watch.pointer.PointerPacer
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
+import nl.markmaaktmedia.tandem.watch.protocol.SendGate
 import nl.markmaaktmedia.tandem.watch.protocol.StageRun
 import uniffi.tandem_core.TandemHealthKind
 import uniffi.tandem_core.TandemHealthRecord
@@ -184,7 +185,12 @@ class WatchBridge(
     private val jobs = mutableListOf<Job>()
 
     private val alerted = HashSet<String>()
-    private val outbound = OutboundQueue()
+    /** What the watch has, so a state that did not change is not sent: each message wakes the watch (see [SendGate]). */
+    private val gate = SendGate()
+    private val outbound = OutboundQueue(onDrop = gate::dropped)
+
+    /** Per kind of message, how many went to the watch and how many were left out as no news, since the link came up. For the log. */
+    private val tally = HashMap<String, IntArray>()
 
     /** Per connection, not for good: what was on its way when the link dropped never arrived, and an icon is small enough to send again. */
     private val iconsSent = HashSet<String>()
@@ -508,6 +514,7 @@ class WatchBridge(
             engine?.unpair()
             outbound.clear()
             iconsSent.clear()
+            gate.reset()
             alerted.clear()
             endPointer()
             _state.update { WatchState(name = it.name) }
@@ -527,6 +534,7 @@ class WatchBridge(
             engine?.unpair()
             outbound.clear()
             iconsSent.clear()
+            gate.reset()
             alerted.clear()
             endPointer()
             _state.update { WatchState(name = it.name) }
@@ -724,8 +732,18 @@ class WatchBridge(
 
     private fun enqueue(message: Message) {
         if (engine?.isReady != true) return
+        val admitted = gate.admit(message, SystemClock.elapsedRealtime())
+        tally.getOrPut(message::class.java.simpleName) { IntArray(2) }[if (admitted) 0 else 1]++
+        if (!admitted) return
         outbound.offer(message)
         pump()
+    }
+
+    /** One line when a link ends: what went to the watch and what was left out, to see what keeps it busy. */
+    private fun logTally() {
+        if (tally.isEmpty()) return
+        Log.i(TAG, "Sent to the watch / left out: " + tally.entries.sortedBy { it.key }.joinToString { "${it.key} ${it.value[0]}/${it.value[1]}" })
+        tally.clear()
     }
 
     /** One message at a time: a ringing phone can overtake whatever has not been sealed yet. */
@@ -774,7 +792,11 @@ class WatchBridge(
 
     override fun onMessage(message: Message) {
         when (message) {
-            Message.SyncRequest -> sendFullState()
+            Message.SyncRequest -> {
+                // It asks for everything, so whatever was left out as unchanged is wanted again.
+                gate.reset()
+                sendFullState()
+            }
             Message.Unpair -> {
                 alerted.clear()
                 endPointer()
@@ -920,8 +942,10 @@ class WatchBridge(
     override fun onFailure(failure: LinkFailure) {
         Log.i(TAG, "Link failure: $failure")
         if (failure == LinkFailure.AUTH_FAILED || failure == LinkFailure.NOT_PAIRED) sessionFailed()
+        logTally()
         outbound.clear()
         iconsSent.clear()
+        gate.reset()
         updater.onDisconnected()
         _state.update {
             it.copy(ready = false, code = null, pairingOpen = if (failure == LinkFailure.PAIRING_FAILED) false else it.pairingOpen)
@@ -941,8 +965,10 @@ class WatchBridge(
 
     override fun onLinkDown() {
         engine?.onTransportDown()
+        logTally()
         outbound.clear()
         iconsSent.clear()
+        gate.reset()
         // The watch cannot say it stopped over a link that is gone.
         endPointer()
         updater.onDisconnected()

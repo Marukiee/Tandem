@@ -29,7 +29,7 @@ object HeartTracker : SensorEventListener {
     /** The sensor hub measures and hands it all over at the end, so the processor sleeps while the light is on. */
     private const val MEASURE_US = 30 * 1_000_000
     private const val ENOUGH_MS = 25_000L
-    private const val GIVE_UP_MS = 120_000L
+    private const val GIVE_UP_MS = 60_000L
     private const val SLOT_MS = 5 * 60_000L
     private const val SEND_EVERY_SLOTS = 3
     private const val KEEP_DAYS = 3L
@@ -81,6 +81,11 @@ object HeartTracker : SensorEventListener {
         }
     }
 
+    /** The watch came off or went on the charger: nobody to measure, and a light that finds no skin searches until it is stopped. */
+    fun cancelMeasuring() {
+        handler.post { stopMeasuring() }
+    }
+
     /** From a recording. Saved at the next [flush]: this comes many times a minute. */
     fun add(timeMs: Long, bpm: Int) {
         handler.post { addNow(timeMs, bpm) }
@@ -124,11 +129,23 @@ object HeartTracker : SensorEventListener {
         finishing = false
         measuringSince = SystemClock.elapsedRealtime()
         val listening = manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL, MEASURE_US, handler)
-        if (!listening) measuringSince = 0
+        if (listening) {
+            // Not left to the next tick: those stop coming when the watch comes off, and then nothing would end this.
+            handler.postDelayed(giveUp, GIVE_UP_MS)
+        } else {
+            measuringSince = 0
+        }
         Log.i(TAG, "Measuring: $listening, wake-up sensor: ${sensor.isWakeUpSensor}")
     }
 
+    private val giveUp = Runnable {
+        if (measuringSince == 0L) return@Runnable
+        Log.i(TAG, "Nothing from the sensor")
+        stopMeasuring()
+    }
+
     private fun stopMeasuring() {
+        handler.removeCallbacks(giveUp)
         sensors?.unregisterListener(this)
         measuringSince = 0
     }

@@ -296,15 +296,19 @@ private struct WatchHealthCard: View {
     @Environment(EngineModel.self) private var model
     let phone: TandemDevice
     let onOpen: () -> Void
+    /// False when every window of the app is covered or minimised, so nobody can see the number.
+    @State private var appVisible = NSApplication.shared.occlusionState.contains(.visible)
 
     var body: some View {
         let insights = model.healthInsights
         let night = model.healthRecords.first { $0.isNight }
         let stepsDay = insights?.week.last { $0.steps != nil }
         let settings = phone.status.watch?.settings
-        // The heart rate now, while this card is on screen and the watch is with its phone: asked again every half minute, as the
-        // phone stops by itself without that.
+        // The heart rate now, while this card can be seen and the watch is with its phone: asked again every half minute, as the
+        // phone stops by itself without that. A window behind other windows or a minimised one asks nothing: the watch measures with
+        // its light on for as long as anybody asks, and that is the thing that empties it.
         let watchHere = phone.online && phone.status.watch?.online == true
+        let asking = watchHere && appVisible
         Card(radius: Metrics.card, padding: 6) {
             VStack(spacing: 6) {
                 Button(action: onOpen) {
@@ -368,8 +372,15 @@ private struct WatchHealthCard: View {
                 }
             }
         }
-        .task(id: watchHere) {
-            guard watchHere else { return }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeOcclusionStateNotification)) { _ in
+            appVisible = NSApplication.shared.occlusionState.contains(.visible)
+        }
+        .task(id: asking) {
+            guard asking else {
+                // Said at once, so the watch does not measure on for the last minute it would without hearing it.
+                if watchHere { model.watchHeartLive(phone.id, on: false) }
+                return
+            }
             while !Task.isCancelled {
                 model.watchHeartLive(phone.id, on: true)
                 try? await Task.sleep(for: .seconds(30))
