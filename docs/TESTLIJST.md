@@ -434,6 +434,23 @@ alleen als de engine toch wakker is; of dat klopt moet de meting laten zien.
 - [ ] Kost de log zelf batterij? Vergelijk een nacht met en zonder (de meetsessie doet dit: geen nieuwe `*alarm*` of `*job*` wake locks voor Tandem, hetzelfde aantal kernel wake-ups).
 - [ ] Op de Mac en in de Linux- of Windows-app: opent "Verkeerslog openen" de map met de dagbestanden? (Mac, Linux en Windows geven scherm, netwerk en batterij nog niet door, alleen stil en data-kosten.)
 
+## 0.3.26, 2026-11-18 (muziek bij bedtime, R-V18 en roadmap punt 5 van het horloge)
+
+Wat veranderde: bedtime mode op het horloge pauzeerde de muziek meteen. Nu begint de nachtopname (en, met "Stille slaap" aan, de stille
+stand van de telefoon) bij bedtime mode, maar muziek en computers (pauzeren en vergrendelen, als die schakelaars aan staan) pas als het horloge
+je echt ziet inslapen: 25 minuten stil, zoals de nachtdetectie al deed. Wordt je 's nachts wakker en val je weer in slaap, dan pauzeert het opnieuw.
+Een nacht die je met de hand op het horloge start, telt nog steeds als slapen vanaf het begin.
+
+- [ ] **Bedtime mode aan met muziek.** Zet 's avonds bedtime mode aan terwijl er muziek speelt (telefoon, Sonos of een computer, met "Muziek
+  pauzeren" aan): de muziek speelt gewoon door en de telefoon wordt wel stil als "Stille slaap" aan staat.
+- [ ] Blijf ongeveer 25 tot 30 minuten stil liggen: nu pauzeert de muziek, en met "Computers vergrendelen" aan gaan de computers op slot. Kijk op de
+  telefoon met `adb logcat -s TandemWatch | grep "Sleep state"`, op het horloge `adb logcat -s TandemWatch | grep Asleep`.
+- [ ] Word 's nachts wakker, zet muziek aan en val weer in slaap: na een kwartier tot een half uur stil pauzeert die muziek ook.
+- [ ] 's Ochtends bedtime mode uit: de telefoon is weer normaal, er wordt niets dubbel gepauzeerd en de ochtendvraag over muziek die doorspeelde (alleen als
+  "Muziek pauzeren" uit staat) komt hooguit één keer.
+- [ ] Een nacht met de hand starten op het horloge: de muziek pauzeert meteen, zoals vóór deze versie. Is dat niet wat je wilt, zeg het: dan wacht hij daar ook op de detector.
+- [ ] Het horloge in bedtime mode zonder ooit stil te liggen (de hele avond bezig): er wordt niets gepauzeerd en 's ochtends staat de opname er gewoon.
+
 ## 0.3.25, 2026-11-18 (PR 49, R-V18)
 
 Wat veranderde: het Pixel Watch is binnen een dag leeg, dus is wat het horloge wakker houdt aangepakt (zie R-V18 in

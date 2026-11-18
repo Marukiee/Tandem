@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.26",
+    "date": "2026-11-18",
+    "en": {
+      "title": "Music keeps playing at bedtime",
+      "new": [],
+      "fixed": [
+        "Bedtime mode on the watch no longer pauses your music at once: it pauses when you really fall asleep, and again if you wake up and fall asleep once more"
+      ]
+    },
+    "nl": {
+      "title": "Muziek blijft spelen bij bedtime",
+      "new": [],
+      "fixed": [
+        "Bedtime mode op het horloge pauzeert je muziek niet meer meteen: pas als je echt in slaap valt, en opnieuw als je wakker wordt en weer inslaapt"
+      ]
+    }
+  },
+  {
     "version": "0.3.25",
     "date": "2026-11-18",
     "en": {

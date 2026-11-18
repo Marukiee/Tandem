@@ -81,7 +81,7 @@ class TrackingService : Service(), SensorEventListener {
         when (intent?.action) {
             ACTION_START -> {
                 val requested = TrackingKind.entries.getOrNull(intent.getIntExtra(EXTRA_KIND, -1)) ?: return START_NOT_STICKY
-                begin(requested, intent.getLongExtra(EXTRA_STILL_SINCE, 0))
+                begin(requested, intent.getLongExtra(EXTRA_STILL_SINCE, 0), intent.getBooleanExtra(EXTRA_ASLEEP, true))
             }
             ACTION_STOP -> finish()
             // Restarted by the system after being killed: the file is intact but the recording stopped there.
@@ -90,7 +90,8 @@ class TrackingService : Service(), SensorEventListener {
         return START_NOT_STICKY
     }
 
-    private fun begin(requested: TrackingKind, stillSince: Long) {
+    /** [asleep] is false for a night that bedtime mode started: the person is only getting into bed, and the phone must not pause their music yet. */
+    private fun begin(requested: TrackingKind, stillSince: Long, asleep: Boolean) {
         // While a stop finishes, a new recording would be ended by the stopSelf at its end.
         if (kind != null || stopping) return
         automatic = stillSince != 0L
@@ -121,7 +122,7 @@ class TrackingService : Service(), SensorEventListener {
             if (requested == TrackingKind.SLEEP) followAlarm()
             handler.postDelayed(flushLoop, FLUSH_MS)
             Tracking.publishActive(requested, now)
-            if (requested == TrackingKind.SLEEP) WatchLink.setSleepMode(true)
+            if (requested == TrackingKind.SLEEP) WatchLink.setSleepMode(true, asleep)
         }
     }
 
@@ -279,6 +280,7 @@ class TrackingService : Service(), SensorEventListener {
         private const val ACTION_STOP = "nl.markmaaktmedia.tandem.watch.TRACK_STOP"
         private const val EXTRA_KIND = "kind"
         private const val EXTRA_STILL_SINCE = "still_since"
+        private const val EXTRA_ASLEEP = "asleep"
         private const val SKIN_TEMPERATURE_TYPE = "com.google.sensor.skin_temperature"
         private const val SKIN_TEMPERATURE_PERMISSION = "android.permission.health.READ_SKIN_TEMPERATURE"
         private const val SKIN_PERIOD_US = 30 * 1_000_000
@@ -365,13 +367,17 @@ class TrackingService : Service(), SensorEventListener {
             )
         }
 
-        /** False when Android refuses: a service like this may not always start without the person at the watch. */
-        fun startAutomatic(context: Context, stillSinceMs: Long): Boolean = canRun(context) && runCatching {
+        /**
+         * False when Android refuses: a service like this may not always start without the person at the watch. [asleep] is false when
+         * bedtime mode starts it, true when the detector does, because that has just seen them fall asleep.
+         */
+        fun startAutomatic(context: Context, stillSinceMs: Long, asleep: Boolean = true): Boolean = canRun(context) && runCatching {
             context.startForegroundService(
                 Intent(context, TrackingService::class.java)
                     .setAction(ACTION_START)
                     .putExtra(EXTRA_KIND, TrackingKind.SLEEP.ordinal)
-                    .putExtra(EXTRA_STILL_SINCE, stillSinceMs),
+                    .putExtra(EXTRA_STILL_SINCE, stillSinceMs)
+                    .putExtra(EXTRA_ASLEEP, asleep),
             )
         }.onFailure { Log.w(TAG, "Could not start the recording of a night", it) }.isSuccess
 
