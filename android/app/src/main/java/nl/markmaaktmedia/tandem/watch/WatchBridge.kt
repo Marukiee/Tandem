@@ -896,6 +896,8 @@ class WatchBridge(
         val steps = sleepSession.onState(on, asleep)
         if (steps.isEmpty()) return
         Log.i(TAG, "Sleep state: recording $on, asleep $asleep, doing $steps")
+        // Once a night, not at every fall asleep: waking up and dozing off again must not lose the morning question.
+        if (SleepSession.Step.QUIET_ON in steps) playedThrough = false
         _state.update { it.copy(sleeping = on) }
         scope.launch {
             for (step in steps) {
@@ -919,7 +921,6 @@ class WatchBridge(
     private fun musicPlaying(): Boolean = media.anyPlaying || computerPlayers.any { it.playing }
 
     private suspend fun fellAsleep() {
-        playedThrough = false
         val pause = prefs.sleepPauseMusic.first()
         val lock = prefs.sleepLockComputers.first()
         handler.post {
