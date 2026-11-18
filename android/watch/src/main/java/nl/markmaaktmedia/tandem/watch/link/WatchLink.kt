@@ -30,6 +30,7 @@ import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.pointer.ArrivalStats
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
+import nl.markmaaktmedia.tandem.watch.protocol.SleepReport
 import nl.markmaaktmedia.tandem.watch.track.GentleWake
 import nl.markmaaktmedia.tandem.watch.track.HealthOutbox
 import nl.markmaaktmedia.tandem.watch.track.HeartTracker
@@ -91,7 +92,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private var pendingScrollX = 0
     private var pendingScrollY = 0
     private val pointerSends = ArrivalStats()
-    private var sleeping = false
+    private val night = SleepReport()
     private var outbox: HealthOutbox? = null
     private var status: Message.WatchStatus? = null
     private var pingId = 0L
@@ -363,10 +364,23 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         handler.post { finder?.stop() }
     }
 
-    fun setSleepMode(on: Boolean) {
+    /**
+     * A night is recorded or not. [asleep] is false when the recording starts at bedtime mode: nobody sleeps yet, so the phone may
+     * go quiet but must leave the music alone until [fellAsleep] says otherwise.
+     */
+    fun setSleepMode(on: Boolean, asleep: Boolean = on) {
         handler.post {
-            sleeping = on
-            engine?.send(Message.SleepMode(on))
+            engine?.send(if (on) night.begin(asleep) else night.end())
+        }
+    }
+
+    /** The detector saw the wearer fall asleep ([asleep] true) or wake up in the night. Ignored while no night is recorded. */
+    fun setAsleep(asleep: Boolean) {
+        handler.post {
+            night.asleep(asleep)?.let {
+                Log.i(TAG, "Asleep: $asleep")
+                engine?.send(it)
+            }
         }
     }
 
@@ -450,7 +464,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         _ui.update { it.copy(ready = true, failure = null) }
         // Things the phone may have missed while the link was down.
         status?.let { engine?.send(it) }
-        engine?.send(Message.SleepMode(sleeping))
+        engine?.send(night.current())
         sendNextHealth()
         HeartTracker.sendToday()
         // The phone ends a session when the link drops, so a mouse screen that stayed open has to ask again.

@@ -72,7 +72,7 @@ getoond is en jonger is dan 10 minuten trilt. Zo gaat er bij een onderbreking ni
 | 0x40 | FindDevice | beide | ring |
 | 0x41 | DeviceBatteries | T naar H | id, name, level, charging per apparaat |
 | 0x42 | WatchStatus | H naar T | level, charging |
-| 0x43 | SleepMode | H naar T | on. Staat, geen opdracht: wordt na elke verbinding herhaald |
+| 0x43 | SleepMode | H naar T | on, asleep (achteraan, ontbreekt = asleep is on). Staat, geen opdracht: wordt na elke verbinding herhaald. `on` is een nacht in opname (ook vanaf bedtime mode), `asleep` is echt in slaap: alleen dat pauzeert muziek en vergrendelt computers |
 | 0x44 | Ringing | beide | on |
 | 0x49 | TryWakeBuzz | T naar H | een wektrilling, om te voelen hoe die is (ontwikkelaarspagina) |
 | 0x50 | HealthRecord | H naar T | id, workout, start, eind, slaapminuten, wakker, wakker-momenten, efficiëntie, licht?, diep?, REM?, stukken (fase, seconden), hartslag gem?, laag?, hoog?, stappen |

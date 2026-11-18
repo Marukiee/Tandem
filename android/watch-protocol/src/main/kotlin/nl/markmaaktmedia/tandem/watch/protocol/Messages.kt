@@ -226,10 +226,12 @@ sealed interface Message {
     data class HeartNow(val bpm: Int) : Message
 
     /**
-     * Watch to phone: the wearer sleeps or not. Sent again after each reconnect, so the receiver must treat it as the
-     * state it is and not as a command to change something.
+     * Watch to phone: a night is being recorded ([on]) and whether the wearer has fallen asleep in it ([asleep]). Bedtime mode starts a
+     * recording while someone is still awake in bed, so only [asleep] may pause the music. Sent again after each reconnect, so the
+     * receiver must treat it as the state it is and not as a command to change something. A watch from before [asleep] left it out and
+     * meant "asleep now", which is also what a missing field reads as.
      */
-    data class SleepMode(val on: Boolean) : Message
+    data class SleepMode(val on: Boolean, val asleep: Boolean = on) : Message
 
     /** Watch to phone: a finished night or workout. Sent again after each reconnect until [HealthAck] comes back. */
     data class HealthRecord(
@@ -424,7 +426,7 @@ object MessageCodec {
             Message.TryWakeBuzz -> w.u8(TRY_WAKE_BUZZ)
             is Message.HeartLive -> w.u8(HEART_LIVE).bool(message.on)
             is Message.HeartNow -> w.u8(HEART_NOW).u8(message.bpm.coerceIn(0, 255))
-            is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on)
+            is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on).bool(message.asleep)
             is Message.HealthRecord -> {
                 w.u8(HEALTH_RECORD).str(message.id).bool(message.workout).varint(message.startMs).varint(message.endMs)
                     .varint(message.sleepMinutes.toLong()).varint(message.awakeMinutes.toLong()).varint(message.awakenings.toLong())
@@ -503,7 +505,7 @@ object MessageCodec {
             TRY_WAKE_BUZZ -> Message.TryWakeBuzz
             HEART_LIVE -> Message.HeartLive(r.bool())
             HEART_NOW -> Message.HeartNow(r.u8())
-            SLEEP_MODE -> Message.SleepMode(r.bool())
+            SLEEP_MODE -> r.bool().let { on -> Message.SleepMode(on, if (r.remaining > 0) r.bool() else on) }
             HEALTH_RECORD -> Message.HealthRecord(
                 id = r.str(),
                 workout = r.bool(),
