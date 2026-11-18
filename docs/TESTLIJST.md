@@ -509,3 +509,35 @@ Android 16 emulator waarop de shell naam, beveiliging en wachtwoord van de hotsp
   hij verbonden is, zonder Shizuku bij de eerste keer dat de Mac zijn hotspot probeert. De hotspot van de oude telefoon blijft werken.
 - [ ] "Later" in de rij laat hem los en hij komt niet terug voor dezelfde naam. Een Mac waarop de hotspot nooit is ingesteld krijgt
   geen melding voor elke telefoon.
+
+## 0.3.27, 2026-11-18 (PR 52, R-V18)
+
+Wat veranderde: het horloge haalt stappen en hartslag van de dag nu bij Health Services (de eigen meting van het systeem) in plaats van
+zelf elke 5 minuten de hartslagsensor aan te zetten en zelf de stappen te tellen. Zonder Health Services, zonder toestemming of als het systeem
+zwijgt meet het horloge nog zelf, zoals voor deze versie. Live hartslag, slaapdetectie en de nachtopname zijn niet aangeraakt. Gebouwd en getest op een
+Wear OS 6 emulator met nepgegevens, niet op een echt horloge: dat is jouw dag. Zie R-V18 in `docs/ROADMAP.md`.
+
+- [ ] **Een dag om de pols, opnieuw.** Zelfde proef als bij 0.3.25: 's ochtends op volle lading, 's avonds het percentage noteren. Ligt het hoger dan
+  met 0.3.25? De winst is een verwachting, geen meting.
+- [ ] **De stappen kloppen.** Vergelijk het getal op de tegel van Tandem (telefoon en horloge) met het stappental in de eigen Google- of Pixel-
+  fitness-app van het horloge: gelijk, of een paar procent verschil. Een dag die twee keer zo hoog is, is een fout (zie `adb logcat -s TandemWatchSteps`:
+  de regel "From the system" zegt hoeveel totalen en stappen binnenkwamen).
+- [ ] **De hartslagkromme van de dag** (tegel op de telefoon, kaart op de Mac) ziet er uit als vorige week: vlak 's nachts, hoger overdag. Gaten van een
+  kwartier zijn niet erg, grote gaten wel.
+- [ ] Wie levert wat: `adb logcat -s TandemWatchPassive TandemWatchHeart TandemWatchSteps` op het horloge. De eerste regels na een start melden
+  `Passive: [...]` (wat dit horloge kan, ook de slaapstanden) en `Wanted: steps ..., heart ... Allowed: ...`. Staat er `steps false` of `heart false`, dan
+  zegt de regel eronder welke toestemming mist. Bewaar de `Passive:` en de `Wanted:` regel, ook als alles goed gaat: dat is het bewijs voor de slaapstand.
+- [ ] Noteer bij die twee regels welke Wear OS- en Android-versie het horloge heeft (Instellingen > Systeem > Over). Op Android 15 en ouder (Wear OS 5) loopt
+  de aanvraag langs `BODY_SENSORS`, een pad dat alleen op papier is nagekeken; staat daar `heart false` of steps ook terug op de eigen teller, meld het.
+- [ ] Telt het horloge `Measuring` (eigen meting) per uur veel minder dan `No measurement of our own` (overgeslagen)? Zo ja, doet Health Services
+  het werk. Telt hij alleen `Measuring`, dan levert Health Services niets en valt alles terug: meld welke `Wanted:` regel erbij staat.
+- [ ] Toestemming intrekken: haal bij Instellingen > Apps > Tandem de toestemming voor lichaamssensoren (of hartslag) weg. De hartslag blijft dan
+  doorlopen via de eigen meting of stopt netjes, de app crasht niet. Zet hem terug en kijk of Health Services het weer overneemt (binnen een halfuur,
+  dan registreert hij opnieuw).
+- [ ] Op Android 16 en nieuwer (Wear OS 6): de knop voor hartslag op de achtergrond op de gezondheidspagina van het horloge geeft de toestemming
+  die Health Services nodig heeft als het scherm uit is.
+- [ ] Een nacht: de slaaptegel en de hartslag in de nacht zijn als een nacht eerder. De slaapdetectie en de opname zijn niet aangepast, dus een
+  afwijking zou uit de hartslag komen, niet uit de slaap.
+- [ ] Een tijd lang geen horloge om en dan weer om: de stappen van die dag lopen verder (geen herstart naar nul, geen dubbele telling).
+- [ ] Een dagwissel om middernacht met het horloge om: de stappen beginnen bij 0 op de nieuwe dag, en de dag ervoor staat compleet in de geschiedenis.
+- [ ] Meldingen, bellen, muziek en live hartslag werken als bij 0.3.25 (zelfde lijst als daar, snel doorlopen).
