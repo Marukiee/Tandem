@@ -219,6 +219,29 @@ Gevonden bij het nakijken van die PR's, nog te doen:
     Het is een model van wat de telefoon deed, niet gemeten op een echte link: dat zegt de teller in het logboek na een dag.
   Gemeten op een echt horloge: niets. De meting die telt is de dag om de pols (zie `docs/TESTLIJST.md`, 0.3.25): het percentage 's avonds
   met en zonder deze build.
+- **R-V19. Een nieuwe telefoon, of een andere hotspot: de Mac moet het weten** (vraag van Mark, 2026-11-18: "wat gebeurt er als je een nieuwe
+  telefoon hebt? dan weet de mac niet dat je nieuwe hotspot hebt"). Nagelezen op main 52bbf7bd: ja, het ging fout. De Mac bewaarde een
+  naam (`hotspotSSID`) en een wachtwoord (`hotspot.secret`) voor alle telefoons, en `joinAndConnect` verbond daarmee. Een nieuwe telefoon,
+  of een andere naam of een ander wachtwoord, gaf na tien pogingen van vier seconden "The hotspot is not visible yet", zonder te zeggen wat
+  er te doen viel. En de telefoon zei zijn hotspotnaam nooit: `HotspotMsg::State { ssid }` bestaat, maar Android stuurde `ssid = null`, en
+  over Bluetooth (de weg als de Mac geen netwerk heeft) past er alleen een status en een aantal in. Gebouwd in 0.3.26:
+  1. **Per telefoon** (`HotspotProfiles`): naam en wachtwoord horen bij het apparaat. Wat er al stond gaat naar de eerste Android-telefoon
+     die de Mac kent (die werd altijd gevraagd), niemand vult iets opnieuw in. De Mac vraagt aan een telefoon die in bereik is en zijn
+     hotspot ingevuld heeft; de lijsten van netwerken die de Mac niet als "eigen" ziet bevatten alle hotspotnamen.
+  2. **Melding, een keer per naam** (`HotspotRules`, getest zonder app): "Hotspot van <telefoon> is nieuw" als systeemmelding en als rij in het
+     menubalkpaneel (Later of Instellen). De knop opent de pagina van die telefoon met het instelscherm en de naam al ingevuld. Twee bronnen:
+     de telefoon zegt zijn naam (nieuw bericht `HotspotMsg::Name`, en `ssid` in een `State`; alleen met Shizuku), of verbinden mislukt omdat de
+     naam niet te vinden is of het wachtwoord geweigerd wordt (werkt voor elke telefoon en over Bluetooth). Geen blijvende waarschuwing.
+  3. **Wachtwoord van de telefoon halen** (Shizuku): de shell heeft NETWORK_SETTINGS en leest `getSoftApConfiguration` zoals `ShellWifi` de
+     opgeslagen netwerken leest. Het instelscherm heeft "Wachtwoord ophalen bij <telefoon>": een `Ask` over de bestaande Wi-Fi-deelroute, de
+     telefoon antwoordt met `Share`, de Mac slaat het op bij die telefoon. Geen nieuwe rechten of afhankelijkheden. Gezien dat de shell het
+     leest: op een Android 16 emulator (naam, beveiliging en wachtwoord uit `getSoftApConfiguration` als `shell`). Niet gezien: de hele
+     route met Shizuku op een echte telefoon, en dat de Android 17 van de Xperia dezelfde aanroep nog toestaat.
+  4. **Linux en Windows**: hebben het hotspotverzoek zelf niet (zie `docs/PARITY.md`), dus er is niets om te onthouden of te melden. Het
+     komt mee als het verzoek er is; het bericht `HotspotMsg::Name` en de beslissingen in `HotspotRules` zijn er dan al. Niet gebouwd.
+  Open: een telefoon zonder Shizuku zegt zijn naam niet en kan geen wachtwoord geven (geen app mag zijn eigen hotspot lezen), dus daar
+  blijft het de fout bij het verbinden en intikken. Zit er een nieuwe telefoon naast de oude in de kring, dan kiest de Mac er een die in
+  bereik is; een apart keuzemenu voor welke telefoon de hotspot levert is er niet.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de

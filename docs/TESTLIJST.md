@@ -466,3 +466,29 @@ zichtbaar is. Gemeten op een emulator (tellingen, geen mA) en met eenheidstests,
   Is dat te krap, dan is ruimer maken een kleine aanpassing in `LiveHeartLimit`: Mark kiest.
 - [ ] Zie wat de telefoon naar het horloge liet en wegliet: `adb logcat -s TandemWatch | grep "Sent to the watch"`. Per soort bericht staat er hoeveel er
   ging en hoeveel er is weggelaten. Als verstuurd en weggelaten allebei bij nul blijven terwijl het horloge klopt, is er iets mis.
+
+## 0.3.26, 2026-11-18 (R-V19, hotspot per telefoon)
+
+Wat veranderde: de Mac onthoudt de hotspot (naam en wachtwoord) per telefoon in plaats van een keer voor allemaal, en zegt het als een
+telefoon een nieuwe of veranderde hotspot heeft: "Hotspot van <telefoon> is nieuw", als systeemmelding en als rij in het
+menubalkpaneel, met een knop die het instelscherm opent met de naam al ingevuld. Een telefoon met Shizuku zegt zijn hotspotnaam zelf en
+geeft het wachtwoord op een ja op de Mac, zodat er niets in te tikken is. Wat er al ingevuld stond gaat naar de eerste Android-telefoon.
+Gezien in de Dev-app: de rij in het paneel en het instelscherm met de naam al ingevuld (met een nagebootste telefoon), en een
+Android 16 emulator waarop de shell naam, beveiliging en wachtwoord van de hotspot leest. Niet gezien: echte telefoons.
+
+- [ ] **Niets kwijt na de update.** Open op de Mac Instellingen, Hotspot: de naam en het wachtwoord van je telefoon staan er nog en onder de
+  naam van die telefoon. "Zet de hotspot aan" op de pagina van de telefoon werkt zonder iets in te vullen.
+- [ ] **Andere hotspotnaam, met Shizuku.** Verander op de telefoon de naam van de hotspot (Instellingen, Hotspot) terwijl de Mac verbonden
+  is. Binnen ongeveer 20 seconden komt "Hotspot van <telefoon> is nieuw" met de nieuwe naam, als melding en als rij in het paneel.
+  Een tweede keer dezelfde naam geeft geen tweede melding, ook niet na Tandem opnieuw starten.
+- [ ] De knop in de rij ("Wachtwoord ophalen") of een klik op de melding opent de pagina van de telefoon met het instelscherm en de nieuwe
+  naam al ingevuld. "Wachtwoord ophalen bij <telefoon>" vult het wachtwoord in zonder dat je iets tikt. Zet "Laat mijn Mac mijn hotspot
+  gebruiken" op de telefoon uit en probeer het opnieuw: de Mac zegt dat de telefoon het wachtwoord niet doorgeeft.
+- [ ] **Zonder Shizuku** (Shizuku uit): verander de hotspotnaam en laat de Mac zonder netwerk de hotspot vragen (of druk op "Zet de hotspot
+  aan"). De telefoon zet hem aan, de Mac vindt hem niet en meldt een keer "Kon niet verbinden met de hotspot van <telefoon>" met de knop
+  naar het instelscherm. Tik de naam en het wachtwoord in: daarna lukt verbinden weer.
+- [ ] **Alleen het wachtwoord veranderd**: dezelfde melding, het instelscherm heeft de naam al, je tikt het nieuwe wachtwoord.
+- [ ] **Een nieuwe telefoon**: koppel een tweede Android-telefoon en zet daar de hotspotschakelaar aan. Met Shizuku komt de melding zodra
+  hij verbonden is, zonder Shizuku bij de eerste keer dat de Mac zijn hotspot probeert. De hotspot van de oude telefoon blijft werken.
+- [ ] "Later" in de rij laat hem los en hij komt niet terug voor dezelfde naam. Een Mac waarop de hotspot nooit is ingesteld krijgt
+  geen melding voor elke telefoon.

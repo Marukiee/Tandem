@@ -1289,6 +1289,8 @@ pub enum TandemHotspot {
     Stop,
     /// The Mac left for another network: off, unless other devices are still on the hotspot.
     Leave,
+    /// The name of the phone's own hotspot, said unasked by a phone that can read it.
+    Name { ssid: String },
 }
 
 impl From<HotspotMsg> for TandemHotspot {
@@ -1300,6 +1302,7 @@ impl From<HotspotMsg> for TandemHotspot {
             }
             HotspotMsg::Stop => TandemHotspot::Stop,
             HotspotMsg::Leave => TandemHotspot::Leave,
+            HotspotMsg::Name { ssid } => TandemHotspot::Name { ssid },
         }
     }
 }
@@ -1313,6 +1316,7 @@ impl From<TandemHotspot> for HotspotMsg {
             }
             TandemHotspot::Stop => HotspotMsg::Stop,
             TandemHotspot::Leave => HotspotMsg::Leave,
+            TandemHotspot::Name { ssid } => HotspotMsg::Name { ssid },
         }
     }
 }

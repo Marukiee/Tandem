@@ -13,6 +13,16 @@ enum HotspotWiFiError: Error, LocalizedError {
         case .noRoute: String(localized: "Joined the hotspot but got no connection")
         }
     }
+
+    /// The name or the password is not what the phone has: the network was not there to be found, or refused the password. A Mac without
+    /// Wi-Fi and a hotspot without a connection are something else.
+    var pointsAtCredentials: Bool {
+        switch self {
+        case .notFound: true
+        case let .joinFailed(reason): reason.isEmpty
+        case .noRoute: false
+        }
+    }
 }
 
 /// Joins the phone's hotspot and finds the way out of it.

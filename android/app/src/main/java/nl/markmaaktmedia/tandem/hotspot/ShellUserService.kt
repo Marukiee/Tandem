@@ -9,7 +9,7 @@ import kotlin.system.exitProcess
 
 /**
  * The part of Tandem that Shizuku runs with the shell's identity (root's becomes the shell's), in its own process: the hotspot, the app-op
- * that lets Android skip its screen recording question for Tandem, hearing every copy (see [ShellClipboard]) and the saved Wi-Fi (see [ShellWifi]).
+ * that lets Android skip its screen recording question for Tandem, hearing every copy (see [ShellClipboard]) and the saved Wi-Fi and the own hotspot (see [ShellWifi]).
  *
  * It is a bare Binder instead of an AIDL service: a few calls do not justify the AIDL toolchain, and Shizuku only asks for an
  * IBinder. Shizuku creates it through the no-argument constructor, so R8 must keep that (see proguard-rules.pro).
@@ -95,6 +95,24 @@ class ShellUserService : Binder() {
                 reply?.writeInt(result)
                 reply?.writeString(message)
             }
+            TX_HOTSPOT_NAME -> {
+                val (result, message) = runCatching { 0 to HotspotNaming.encode(wifi.hotspot()) }.getOrElse { 5 to (it.message ?: it.javaClass.simpleName) }
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
+            TX_HOTSPOT_PASSWORD -> {
+                val ssid = data.readString().orEmpty()
+                val (result, message) = runCatching {
+                    val own = wifi.hotspot()
+                    // The name is checked again: the person may have renamed the hotspot since the Mac was told, and the password of
+                    // another hotspot is not what was asked for.
+                    if (own.ssid != ssid) 6 to "not the hotspot" else 0 to own.password.orEmpty()
+                }.getOrElse { 5 to (it.message ?: it.javaClass.simpleName) }
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
             TX_CLIP_UNWATCH -> {
                 clipboard.unwatch()
                 reply?.writeNoException()
@@ -175,6 +193,8 @@ class ShellUserService : Binder() {
         const val TX_WIFI_SAVED = 8
         const val TX_WIFI_PASSWORD = 9
         const val TX_SENSITIVE_NOTIFICATIONS = 10
+        const val TX_HOTSPOT_NAME = 11
+        const val TX_HOTSPOT_PASSWORD = 12
         private const val CLIPBOARD_MESSAGE = "clipboard_show_access_notifications"
 
         /** The code Shizuku uses to ask a user service to exit. */

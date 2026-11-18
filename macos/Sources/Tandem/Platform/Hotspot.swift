@@ -3,6 +3,7 @@ import CoreWLAN
 import Foundation
 import Network
 import TandemCore
+import TandemLogic
 
 enum HotspotStatus: Equatable {
     case idle
@@ -88,7 +89,6 @@ final class HotspotCoordinator {
 
     static let enabledKey = "autoHotspot"
     static let delayKey = "hotspotDelay"
-    static let ssidKey = "hotspotSSID"
 
     var autoEnabled: Bool { UserDefaults.standard.bool(forKey: Self.enabledKey) }
 
@@ -139,7 +139,8 @@ final class HotspotCoordinator {
     /// holds: the gateway of a hotspot is the phone, at the address the connection with it runs over.
     private func syncWithCurrentNetwork() async {
         guard let model, Date() >= ignoreNetworkUntil else { return }
-        let saved = UserDefaults.standard.string(forKey: Self.ssidKey) ?? ""
+        let profiles = HotspotProfiles.shared
+        let names = profiles.allNames
         let phones = model.devices.filter { $0.platform == .android }
         let atGateway = phones.first { phone in
             phone.online && (model.engineHandle?.deviceAddress(id: phone.id)).map(gateways.contains) == true
@@ -147,8 +148,8 @@ final class HotspotCoordinator {
         if let atGateway, let address = model.engineHandle?.deviceAddress(id: atGateway.id) { hotspotGateway = address }
         // A phone on mobile data with its hotspot on, reached over the local network: the only network the two share is that hotspot.
         let sharing = phones.first { $0.online && $0.route == .lan && $0.status.hotspot == true && $0.status.network?.kind == .cellular }
-        let current = saved.isEmpty ? nil : await Task.detached { CWWiFiClient.shared().interface()?.ssid() }.value
-        let byName = !saved.isEmpty && current == saved ? phones.first : nil
+        let current = names.isEmpty ? nil : await Task.detached { CWWiFiClient.shared().interface()?.ssid() }.value
+        let byName = current.flatMap { name in phones.first { profiles.ssid(for: $0.id) == name } }
         let joined = hotspotGateway.map(gateways.contains) == true
         switch model.hotspotStatus {
         case .idle, .failed:
@@ -161,7 +162,7 @@ final class HotspotCoordinator {
             model.hotspotStatus = .connected(phone.name)
         case .connected:
             if atGateway != nil || sharing != nil || byName != nil || joined {
-                await moveToKnownNetwork(hotspot: saved)
+                await moveToKnownNetwork(hotspots: names)
                 return
             }
             // No gateway says nothing yet: `pathChanged` is there for a network that went. Another one means this Mac moved on (by hand, or
@@ -187,10 +188,10 @@ final class HotspotCoordinator {
 
     /// A network of its own is near (school, home): that one goes first, and the phone keeps its battery. Not when the person asked for the
     /// hotspot with a button: they may well know why.
-    private func moveToKnownNetwork(hotspot: String) async {
+    private func moveToKnownNetwork(hotspots: Set<String>) async {
         guard !keepHotspot, Date().timeIntervalSince(lastScan) >= Self.scanEvery, let id = activeDevice else { return }
         lastScan = Date()
-        let skip = Set(triedKnown.filter { Date().timeIntervalSince($0.value) < Self.triedKnownFor }.keys).union([hotspot])
+        let skip = Set(triedKnown.filter { Date().timeIntervalSince($0.value) < Self.triedKnownFor }.keys).union(hotspots)
         guard let name = await Task.detached(operation: { Self.joinKnown(except: skip) }).value else { return }
         NSLog("Tandem: this Mac moves from the hotspot to %@", name)
         triedKnown[name] = Date()
@@ -217,18 +218,19 @@ final class HotspotCoordinator {
         offlineTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, let self, let model = self.model, !model.isOnline, Date() >= self.heldOffUntil else { return }
-            let hotspot = UserDefaults.standard.string(forKey: Self.ssidKey)
+            let hotspots = HotspotProfiles.shared.allNames
             // Nobody at this Mac: a closed lid that wakes in the dark for a moment (Power Nap) has no network and needs none. Asking then
             // turned the hotspot on at home, in a bag (2026-11-02).
             guard Self.someoneUsedThisMac() else { return }
             // Still on a Wi-Fi of its own (home, school): that network is out for a moment, or asks for a login. The hotspot is no help.
-            if await Task.detached(operation: { Self.onOtherWiFi(than: hotspot) }).value { return }
-            if self.waitedForKnown < Self.knownTries, await Task.detached(operation: { Self.joinKnownNearby(except: hotspot) }).value {
+            if await Task.detached(operation: { Self.onOtherWiFi(than: hotspots) }).value { return }
+            if self.waitedForKnown < Self.knownTries, await Task.detached(operation: { Self.joinKnownNearby(except: hotspots) }).value {
                 self.waitedForKnown += 1
                 return self.networkChanged(online: model.isOnline)
             }
             self.waitedForKnown = 0
-            if let target = model.devices.first(where: { $0.platform == .android }) {
+            // The phone that has its hotspot filled in and is in reach, not just the first one: a new phone may sit beside the old one.
+            if let target = model.hotspotPhone {
                 self.requestNow(target.id, byPerson: false)
             }
         }
@@ -240,12 +242,12 @@ final class HotspotCoordinator {
         return CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: any) < 5 * 60
     }
 
-    /// Joined to a Wi-Fi network that is not the hotspot.
-    nonisolated static func onOtherWiFi(than hotspot: String?) -> Bool {
+    /// Joined to a Wi-Fi network that is not a hotspot of one of the phones.
+    nonisolated static func onOtherWiFi(than hotspots: Set<String>) -> Bool {
         guard let interface = CWWiFiClient.shared().interface(), interface.wlanChannel() != nil else { return false }
         // Without the right to see names, a joined network still has a channel; the hotspot is only told apart by its name.
-        guard let ssid = interface.ssid() else { return hotspot == nil }
-        return ssid != hotspot
+        guard let ssid = interface.ssid() else { return hotspots.isEmpty }
+        return !hotspots.contains(ssid)
     }
 
     /// The seconds after a start or a wake in which the phone is not asked.
@@ -256,10 +258,10 @@ final class HotspotCoordinator {
     /// Whether a network this Mac has saved (not the phone's own hotspot) is in range; if so, this Mac is asked to join it. macOS
     /// names the networks of a scan only to an app that may see the location, which Tandem may for sharing Wi-Fi; without that it
     /// finds none here and the phone is asked as before.
-    nonisolated static func joinKnownNearby(except hotspot: String?) -> Bool {
+    nonisolated static func joinKnownNearby(except hotspots: Set<String>) -> Bool {
         // Only a Mac on no Wi-Fi at all: one on a network without internet is not moved to another here.
         guard let interface = CWWiFiClient.shared().interface(), interface.powerOn(), interface.wlanChannel() == nil else { return false }
-        let known = Set(WifiShare.known()).subtracting([hotspot].compactMap { $0 })
+        let known = Set(WifiShare.known()).subtracting(hotspots)
         guard !known.isEmpty, let found = try? interface.scanForNetworks(withSSID: nil) else { return false }
         let nearby = found.filter { $0.ssid.map(known.contains) ?? false }.sorted { $0.rssiValue > $1.rssiValue }
         guard let best = nearby.first else { return false }
@@ -391,15 +393,19 @@ final class HotspotCoordinator {
 
     private func joinAndConnect(id: String, name: String, engine: TandemEngine) async {
         guard let model else { return }
-        let ssid = UserDefaults.standard.string(forKey: Self.ssidKey) ?? ""
-        guard !ssid.isEmpty, let password = HotspotCredentials.password(), !password.isEmpty else {
-            model.hotspotStatus = .failed(String(localized: "Enter the hotspot name and password in Settings first"))
+        let profiles = HotspotProfiles.shared
+        guard let profile = profiles.profile(for: id), profile.complete else {
+            // A phone this Mac has no hotspot of: said once, with the way to fill it in. Said before, it is what the status says.
+            model.hotspotStatus = noticeForFailure(id) ? .idle : .failed(String(localized: "Enter the hotspot name and password in Settings first"))
             return
         }
-        model.hotspotStatus = .joining(ssid)
+        model.hotspotStatus = .joining(profile.ssid)
         do {
-            let gateway = try await HotspotWiFi.join(ssid: ssid, password: password)
+            let gateway = try await HotspotWiFi.join(ssid: profile.ssid, password: profile.password)
             hotspotGateway = gateway
+            // It works with what is saved: a later failure is news again.
+            profiles.clearTold(id)
+            if model.hotspotNotice?.phone == id { dismissNotice() }
             // The phone is the gateway. Without this the core would wait for mDNS, which
             // does not cross a hotspot reliably.
             try? engine.addAddress(id: id, addr: "\(gateway):\(HotspotWiFi.port)")
@@ -411,7 +417,125 @@ final class HotspotCoordinator {
             )
         } catch is CancellationError {
         } catch {
-            model.hotspotStatus = .failed(error.localizedDescription)
+            // Not found, or refused: the name or the password is not what the phone has now (a new phone, a renamed hotspot). That is for
+            // the person to fix, and said once. A timeout or no route is not, and stays a plain failure with its retry.
+            if let failure = error as? HotspotWiFiError, failure.pointsAtCredentials, noticeForFailure(id) {
+                model.hotspotStatus = .idle
+            } else {
+                model.hotspotStatus = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    // MARK: A hotspot this Mac does not know
+
+    static let noticeCategory = "tandem.hotspot.notice"
+
+    /// A phone said what its hotspot is called (unasked, or with its answer). A name this Mac has no password for says so, once for each
+    /// name: a new phone, or a hotspot that was renamed. Only for a Mac that uses the hotspot: one that never set it up is not told about
+    /// every phone it meets.
+    private func learned(_ raw: String, from id: String) {
+        guard let model, let ssid = HotspotRules.usableName(raw), let phone = model.device(id), phone.platform == .android else { return }
+        let profiles = HotspotProfiles.shared
+        profiles.hear(ssid, from: id)
+        guard autoEnabled || profiles.anySaved else { return }
+        switch HotspotRules.judge(reported: ssid, stored: profiles.profile(for: id), told: profiles.told(id)) {
+        case .fine:
+            if profiles.profile(for: id)?.complete == true, profiles.ssid(for: id) == ssid, model.hotspotNotice?.phone == id { dismissNotice() }
+        case let .tell(reason):
+            raise(reason, phone: phone, ssid: ssid, marker: ssid)
+        }
+    }
+
+    /// Joining did not work in a way that points at the name or the password. True when that was said (it had not been, for this name).
+    private func noticeForFailure(_ id: String) -> Bool {
+        guard let model, let phone = model.device(id) else { return false }
+        let profiles = HotspotProfiles.shared
+        let stored = profiles.profile(for: id)
+        let reported = profiles.reported[id]
+        guard case let .tell(reason) = HotspotRules.judgeFailure(stored: stored, reported: reported, told: profiles.told(id)) else { return false }
+        raise(reason, phone: phone, ssid: reported, marker: HotspotRules.failureMarker(stored: stored, reported: reported))
+        return true
+    }
+
+    private func raise(_ reason: HotspotRules.Reason, phone: TandemDevice, ssid: String?, marker: String) {
+        guard let model else { return }
+        HotspotProfiles.shared.markTold(marker, for: phone.id)
+        let notice = HotspotNotice(phone: phone.id, phoneName: phone.name, reason: reason, ssid: ssid, canFetch: HotspotProfiles.shared.reported[phone.id] != nil)
+        model.hotspotNotice = notice
+        Notifier.shared.post(
+            id: "hotspot.notice.\(phone.id)",
+            title: notice.title,
+            body: notice.body,
+            category: Self.noticeCategory,
+            userInfo: ["phone": phone.id],
+            thread: "hotspot"
+        )
+    }
+
+    /// "Later", or it is done: the row goes, and a notification still in the list with it.
+    func dismissNotice() {
+        guard let notice = model?.hotspotNotice else { return }
+        model?.hotspotNotice = nil
+        Notifier.shared.remove(id: "hotspot.notice.\(notice.phone)")
+    }
+
+    /// The button of the row and the click on the notification: the page of that phone, with the setup open and the name filled in.
+    func openSetup(phone: String? = nil) {
+        guard let model, let id = phone ?? model.hotspotNotice?.phone, model.device(id) != nil else { return }
+        model.hotspotSetupFor = id
+        AppScenes.showMain(.device(id))
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Asks the phone for the password of its hotspot, after a yes here. It can only answer when it reads its own hotspot (Shizuku), which
+    /// is also what lets it say the name; the answer is claimed in `handleWifi` and saved, not joined.
+    func askPassword(phone id: String) {
+        guard let engine = model?.engineHandle, let ssid = HotspotProfiles.shared.reported[id] else { return }
+        let profiles = HotspotProfiles.shared
+        profiles.startAsking(id, for: ssid)
+        Task { @MainActor in
+            let sent = (try? await engine.sendWifi(target: id, wifi: .ask(ssid: ssid))) != nil
+            guard sent else {
+                profiles.stopAsking(id, refusal: String(localized: "Your phone cannot be reached right now"))
+                return
+            }
+            try? await Task.sleep(for: .seconds(20))
+            if profiles.asking[id] == ssid {
+                profiles.stopAsking(id, refusal: String(localized: "Your phone did not send the password. Type it instead."))
+            }
+        }
+    }
+
+    /// What comes back from a phone that was asked for its hotspot (see `askPassword`). True when it was that, so the Wi-Fi sharing
+    /// does not take it for a network to join.
+    func handleWifi(from id: String, message: TandemWifi) -> Bool {
+        let profiles = HotspotProfiles.shared
+        guard let asked = profiles.asking[id] else { return false }
+        switch message {
+        case let .share(network, password) where network.ssid == asked:
+            profiles.stopAsking(id)
+            profiles.save(ssid: network.ssid, password: password, for: id)
+            if model?.hotspotNotice?.phone == id { dismissNotice() }
+            let name = model?.device(id)?.name ?? String(localized: "your phone")
+            FloatingToast.show(String(localized: "Hotspot of \(name) saved"), symbol: "personalhotspot")
+            // This Mac has no connection and the hotspot was just made joinable: do what it was waiting for.
+            if let model, autoEnabled, !model.isOnline, !model.hotspotStatus.isBusy { requestNow(id, byPerson: false) }
+            return true
+        case let .refuse(ssid, why) where ssid == asked:
+            profiles.stopAsking(id, refusal: Self.refusalText(why))
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func refusalText(_ why: TandemWifiRefusal) -> String {
+        switch why {
+        case .cannotShare: String(localized: "Your phone cannot hand over its hotspot password. Sharing with this Mac may be off, or Shizuku is not running.")
+        case .notOnIt: String(localized: "Your phone says its hotspot is not called that anymore. Type the name and password.")
+        case .unreadable: String(localized: "Your phone could not read the password of its hotspot. Type it instead.")
+        default: String(localized: "Your phone did not send the password. Type it instead.")
         }
     }
 
@@ -488,7 +612,10 @@ final class HotspotCoordinator {
     func handle(from id: String, message: TandemHotspot) {
         guard model != nil else { return }
         switch message {
-        case let .state(on, _, _, _, error):
+        case let .name(ssid):
+            learned(ssid, from: id)
+        case let .state(on, ssid, _, _, error):
+            if let ssid { learned(ssid, from: id) }
             if on {
                 quicAnswer = .on
             } else {

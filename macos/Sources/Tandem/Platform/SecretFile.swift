@@ -53,25 +53,3 @@ final class FileVault: TandemVault, @unchecked Sendable {
         }
     }
 }
-
-/// The password of the phone's hotspot, entered once in Settings.
-enum HotspotCredentials {
-    private static let name = "hotspot.secret"
-
-    static func password() -> String? {
-        (try? SecretFile.read(name)).flatMap { String(data: $0, encoding: .utf8) }
-    }
-
-    /// The name and the password of the phone's network are both known, so the Mac can join it without asking.
-    static var complete: Bool {
-        UserDefaults.standard.string(forKey: "hotspotSSID")?.isEmpty == false && password()?.isEmpty == false
-    }
-
-    static func save(password: String) {
-        if password.isEmpty {
-            SecretFile.remove(name)
-        } else {
-            try? SecretFile.write(Data(password.utf8), to: name)
-        }
-    }
-}

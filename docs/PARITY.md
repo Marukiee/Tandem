@@ -47,6 +47,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Muis, toetsen en scherm onder Wayland via de portals van het bureaublad (eenmalige toestemming die wordt onthouden) | n.v.t. | n.v.t. | n.v.t. | invoer gezien (token bewaard); beeld, tweede scherm en bediening in een sessie sinds 0.1.82 en 0.1.83, nooit gezien |
 | SSH-terminal naar een computer | ja (JSch en xterm.js, nooit tegen een echte computer geprobeerd) | ja | ja | ja |
 | Hotspot van de telefoon vanaf de computer | bron | ja | nee (heeft geen Bluetooth-code) | nee (Bluetooth is er sinds 0.1.82, het verzoek niet) |
+| Hotspot per telefoon onthouden, en een melding als een telefoon een nieuwe of veranderde hotspot heeft (naam of wachtwoord) | bron: zegt zijn eigen hotspotnaam (Shizuku) en geeft het wachtwoord op een ja van de computer | ja (`HotspotProfiles`, melding plus rij in het paneel, wachtwoord ophalen bij de telefoon) | nee, er is hier niets te onthouden of te melden zolang het hotspotverzoek zelf er niet is | idem als Windows |
 | Zeggen dat een computer vergrendeld is als iemand zijn scherm vraagt | bron (nvt) | ja | ja (`OpenInputDesktop`; een UAC-vraag telt ook als vergrendeld) | ja (logind `LockedHint`) |
 | Een ander apparaat vergrendelen | ja, beide kanten (ontvangen via de toegankelijkheidsdienst) | ja, beide kanten (ontvangen via `SACLockScreenImmediate`) | ja, beide kanten (`LockWorkStation`) | ja, beide kanten (`loginctl lock-session`) |
 | Geluidsstand van een telefoon wisselen: geluid, trillen, niet storen | ja, beide kanten | ja, knop | ja, knop | ja, knop |
@@ -101,8 +102,10 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
   gespreksgeluid (`VOICE_CALL` is voor systeemapps, `AudioPlaybackCapture` slaat telefonie over). Daarom heeft het belkaartje geen knop om het geluid te verplaatsen: een
   knop die niets doet wordt nooit getoond. Linux (BlueZ met PipeWire) is de plek waar het misschien wel kan, dat is nog niet nagekeken.
 - **Windows**: een scherm voor een ander apparaat maken (een stuurprogramma voor een virtueel beeldscherm, eenmalig met beheerdersrechten), Bluetooth
-  tussen apparaten (WinRT), het hotspotverzoek aan de telefoon. En alles nalopen op een echte Windows-pc: dat is nooit gedaan.
-- **Linux**: het hotspotverzoek aan de telefoon (de Bluetooth-kant is er), de gedeelde muis als hoofd onder X11 (`XInput2` met grabs), en
+  tussen apparaten (WinRT), het hotspotverzoek aan de telefoon (en daarmee de hotspot per telefoon en de melding bij een nieuwe: ze hebben
+  geen naam en wachtwoord van een telefoon om te onthouden en geen verbinding om te melden dat die mislukt; die komen mee als het verzoek er is, met
+  de beslissingen van `HotspotRules` als voorbeeld en het bericht `HotspotMsg::Name` dat de kern al levert). En alles nalopen op een echte Windows-pc: dat is nooit gedaan.
+- **Linux**: het hotspotverzoek aan de telefoon (de Bluetooth-kant is er; de hotspot per telefoon en de melding bij een nieuwe komen daarmee mee, zie Windows), de gedeelde muis als hoofd onder X11 (`XInput2` met grabs), en
   Bluetooth, tweede scherm, bediening onder Wayland en de melding bij slechte verbinding nalopen op de echte laptop.
 - **Overal**: Windows en Linux moeten dezelfde functies als de Mac kunnen aanbieden, niet alleen tonen: geluid van een computer naar een andere
   computer en Invoegen vanaf telefoon als bron voor een andere computer.

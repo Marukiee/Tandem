@@ -18,6 +18,7 @@ import nl.markmaaktmedia.tandem.graph
 import uniffi.tandem_core.TandemEvent
 import uniffi.tandem_core.TandemHotspot
 import uniffi.tandem_core.TandemPlatform
+import uniffi.tandem_core.TandemWifiNetwork
 import uniffi.tandem_core.tandemHotspotAuthMessage
 import java.security.SecureRandom
 
@@ -126,6 +127,10 @@ class HotspotModule private constructor(private val context: Context) {
                 if (it == ShizukuState.Ready) nl.markmaaktmedia.tandem.messages.CodeGrant.sync(context)
             }
         }
+        // A Mac that comes in reach, Shizuku that comes up, or the switch that goes on: the name is said again where it is not known.
+        jobs += scope.launch {
+            combine(shizuku.state, graph.host.devices, graph.prefs.hotspotForMac) { _, _, _ -> }.collectLatest { announceName() }
+        }
         jobs += scope.launch {
             while (true) {
                 delay(TICK_MS)
@@ -133,6 +138,8 @@ class HotspotModule private constructor(private val context: Context) {
                 reconcile()
                 server?.refreshAdvertisement()
                 controller.refresh()
+                // A hotspot renamed in the system settings is noticed here: it sends no event an app can hear.
+                announceName()
             }
         }
         current = this
@@ -174,7 +181,8 @@ class HotspotModule private constructor(private val context: Context) {
             }
             TandemHotspot.Stop -> controller.request(on = false)
             TandemHotspot.Leave -> controller.leave()
-            is TandemHotspot.State -> Unit
+            // Both are for the Mac to read: a phone does not act on the name of another phone.
+            is TandemHotspot.State, is TandemHotspot.Name -> Unit
         }
     }
 
@@ -192,9 +200,14 @@ class HotspotModule private constructor(private val context: Context) {
     }
 
     private fun reply(target: String, snapshot: HotspotSnapshot) {
+        scope.launch { replyNow(target, snapshot) }
+    }
+
+    private suspend fun replyNow(target: String, snapshot: HotspotSnapshot) {
+        // Said with the answer too, for a Mac that asks for the hotspot while this phone has not told it the name yet.
         val message = TandemHotspot.State(
             on = snapshot.on,
-            ssid = null,
+            ssid = if (snapshot.on) ownNetwork()?.ssid else null,
             clients = (snapshot.clients ?: 0).coerceIn(0, 255).toUByte(),
             dataUsed = null,
             error = when (snapshot.phase) {
@@ -204,7 +217,50 @@ class HotspotModule private constructor(private val context: Context) {
                 else -> null
             },
         )
-        scope.launch { runCatching { graph.host.engine?.sendHotspot(target, message) } }
+        runCatching { graph.host.engine?.sendHotspot(target, message) }
+    }
+
+    // ---- The name of the hotspot -----------------------------------------------
+
+    /** The name and security of this phone's own hotspot. Null without Shizuku: no app may read it (see [ShellWifi.hotspot]). */
+    suspend fun ownNetwork(): TandemWifiNetwork? {
+        val read = shizuku.ownHotspot()
+        return if (read.ok) HotspotNaming.parse(read.message) else null
+    }
+
+    /** Whether this phone shares its hotspot with a Mac at all: the switch in the settings. */
+    fun sharesWithMac(): Boolean = enabled
+
+    /** The password of the own hotspot named [ssid], or null when it cannot be read or is no longer called that. */
+    suspend fun ownPassword(ssid: String): String? {
+        val read = shizuku.ownHotspotPassword(ssid)
+        return if (read.ok) read.message else null
+    }
+
+    /** The Macs that heard what this hotspot is called, and the name. */
+    private val toldName = HashMap<String, String>()
+
+    /**
+     * Tells every Mac that is connected what this phone's hotspot is called, once and again when the name changes. A Mac that does not
+     * know the name yet (a new phone, a hotspot that was renamed) says so while it still has a network, and not only when it stands
+     * in front of a hotspot it cannot join.
+     */
+    private suspend fun announceName() {
+        val reachable = graph.host.devices.value
+            .filter { it.online && it.platform == TandemPlatform.MAC_OS && "hotspot" in it.caps }
+            .map { it.id }.toSet()
+        val name = if (enabled && reachable.isNotEmpty()) ownNetwork()?.ssid else null
+        val targets = synchronized(toldName) {
+            val kept = HotspotNaming.stillTold(toldName, reachable)
+            toldName.clear()
+            toldName.putAll(kept)
+            HotspotNaming.peersToTell(name, reachable, toldName)
+        }
+        for (id in targets) {
+            if (name != null && runCatching { graph.host.engine?.sendHotspot(id, TandemHotspot.Name(name)) }.isSuccess) {
+                synchronized(toldName) { toldName[id] = name }
+            }
+        }
     }
 
     // ---- Over Bluetooth --------------------------------------------------------

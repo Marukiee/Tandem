@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.26",
+    "date": "2026-11-18",
+    "en": {
+      "title": "A new phone, a new hotspot",
+      "new": [
+        "The Mac remembers the hotspot of each phone, and says when a phone has a new or renamed hotspot, with a button that opens its setup with the name filled in (a phone with Shizuku also hands over the password)"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Een nieuwe telefoon, een nieuwe hotspot",
+      "new": [
+        "De Mac onthoudt de hotspot van elke telefoon en zegt het als een telefoon een nieuwe of andere hotspot heeft, met een knop die het instellen opent met de naam al ingevuld (een telefoon met Shizuku geeft ook het wachtwoord door)"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.25",
     "date": "2026-11-18",
     "en": {
