@@ -4,6 +4,7 @@ import CoreBluetooth
 import CoreLocation
 import CoreWLAN
 import SwiftUI
+import TandemCore
 
 /// Asking for Bluetooth: the system dialog appears the first time a manager is created.
 enum BluetoothPrompt {
@@ -90,24 +91,44 @@ enum CurrentWiFi {
 /// once so its name and password can be read from this Mac, and allow Bluetooth.
 struct HotspotSetupSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("hotspotSSID") private var ssid = ""
     @AppStorage(HotspotCoordinator.enabledKey) private var auto = false
-    @LocalState private var step = 0
+    @LocalState private var profiles = HotspotProfiles.shared
+    @LocalState private var step: Int
     @LocalState private var current: String?
-    @LocalState private var password = HotspotCredentials.password() ?? ""
     @LocalState private var reading = false
     @LocalState private var readFailed = false
     @LocalState private var bluetooth = CBManager.authorization
     @LocalState private var location = LocationAccess.status
     @LocalState private var typeIt = false
 
+    /// The phone whose hotspot this is: each phone has its own name and password.
+    let phone: TandemDevice
+    /// The name the phone said its hotspot has, when it did (a new phone, a renamed hotspot): then there is nothing to join first.
+    let prefill: String?
     private let steps = 4
+
+    init(phone: TandemDevice, prefill: String? = nil) {
+        self.phone = phone
+        self.prefill = prefill
+        _step = State(initialValue: prefill == nil ? 0 : 1)
+    }
+
+    private var ssid: Binding<String> {
+        Binding(get: { profiles.ssid(for: phone.id) }, set: { profiles.save(ssid: $0, for: phone.id) })
+    }
+
+    private var password: Binding<String> {
+        Binding(get: { profiles.password(for: phone.id) }, set: { profiles.save(password: $0, for: phone.id) })
+    }
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Set up the hotspot").font(.title2.weight(.bold))
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Set up the hotspot").font(.title2.weight(.bold))
+                    Text(phone.name).font(.callout).foregroundStyle(.secondary)
+                }
                 Spacer()
                 Text("Step \(step + 1) of \(steps)").font(.callout).foregroundStyle(.secondary)
             }
@@ -141,19 +162,24 @@ struct HotspotSetupSheet: View {
             }
         }
         .padding(28)
-        .frame(width: 500, height: 380)
+        .frame(width: 500, height: 420)
         .onReceive(timer) { _ in
             bluetooth = CBManager.authorization
             location = LocationAccess.status
             if step == 0 { Task.detached { let name = CurrentWiFi.ssid(); await MainActor.run { current = name } } }
         }
-        .onAppear { Task.detached { let name = CurrentWiFi.ssid(); await MainActor.run { current = name } } }
+        .onAppear {
+            Task.detached { let name = CurrentWiFi.ssid(); await MainActor.run { current = name } }
+            // The phone said what its hotspot is called now: that is the name, whatever this Mac had. The password stays: a hotspot that
+            // was only renamed keeps it, and one that was not gets a new one typed or fetched.
+            if let prefill, prefill != profiles.ssid(for: phone.id) { profiles.save(ssid: prefill, for: phone.id) }
+        }
     }
 
     private var canContinue: Bool {
         switch step {
         case 0: current != nil || typeIt
-        case 1: !ssid.isEmpty && !password.isEmpty
+        case 1: profiles.complete(for: phone.id)
         case 2: bluetooth == .allowedAlways
         default: true
         }
@@ -203,21 +229,34 @@ struct HotspotSetupSheet: View {
     private var credentialsStep: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Use this network").font(.headline)
-            Text("Tandem remembers the name and password of the hotspot, privately on this Mac, so it can join again by itself.")
+            Text("Tandem remembers the name and password of this phone's hotspot, privately on this Mac, so it can join again by itself.")
                 .foregroundStyle(.secondary)
+            // Only a phone that reads its own hotspot (Shizuku) says its name, and that same phone can hand the password over.
+            if profiles.reported[phone.id] != nil {
+                Button {
+                    EngineModel.shared.hotspot.askPassword(phone: phone.id)
+                } label: {
+                    if profiles.asking[phone.id] != nil { HStack(spacing: 8) { PillSpinner(size: 16); Text("Asking \(phone.name)…") } }
+                    else { Label("Get the password from \(phone.name)", systemImage: "iphone.and.arrow.forward") }
+                }
+                .buttonStyle(.borderedProminent).tint(Palette.indigo)
+                .disabled(profiles.asking[phone.id] != nil)
+                if let why = profiles.refusal[phone.id] {
+                    Text(why).font(.callout).foregroundStyle(.secondary)
+                }
+            }
             Button {
                 useCurrentNetwork()
             } label: {
                 if reading { HStack(spacing: 8) { PillSpinner(size: 16); Text("Reading the password…") } }
-                else { Label("Use \(current ?? ssid)", systemImage: "wifi") }
+                else { Label("Use \(current ?? ssid.wrappedValue)", systemImage: "wifi") }
             }
-            .disabled(reading || (current ?? ssid).isEmpty)
+            .disabled(reading || (current ?? ssid.wrappedValue).isEmpty)
             if readFailed {
                 Text("macOS did not hand over the password. Type it below.").font(.callout).foregroundStyle(.secondary)
             }
-            TextField("Network name", text: $ssid)
-            SecureField("Password", text: $password)
-                .onChange(of: password) { _, value in HotspotCredentials.save(password: value) }
+            TextField("Network name", text: ssid)
+            SecureField("Password", text: password)
         }
     }
 
@@ -254,8 +293,8 @@ struct HotspotSetupSheet: View {
     }
 
     private func useCurrentNetwork() {
-        guard let name = current ?? (ssid.isEmpty ? nil : ssid) else { return }
-        ssid = name
+        guard let name = current ?? (ssid.wrappedValue.isEmpty ? nil : ssid.wrappedValue) else { return }
+        ssid.wrappedValue = name
         reading = true
         readFailed = false
         Task.detached {
@@ -263,8 +302,7 @@ struct HotspotSetupSheet: View {
             await MainActor.run {
                 reading = false
                 if let found {
-                    password = found
-                    HotspotCredentials.save(password: found)
+                    password.wrappedValue = found
                 } else {
                     readFailed = true
                 }
