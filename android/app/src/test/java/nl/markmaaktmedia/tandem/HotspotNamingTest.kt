@@ -3,6 +3,7 @@ package nl.markmaaktmedia.tandem
 import nl.markmaaktmedia.tandem.hotspot.HotspotNaming
 import nl.markmaaktmedia.tandem.hotspot.ShellWifi
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -51,5 +52,19 @@ class HotspotNamingTest {
     @Test fun nothingIsSaidWhenTheNameIsUnknown() {
         assertEquals(emptyList<String>(), HotspotNaming.peersToTell(null, setOf("a"), emptyMap()))
         assertEquals(emptyList<String>(), HotspotNaming.peersToTell("", setOf("a"), emptyMap()))
+    }
+
+    @Test fun aReadOfTheOwnHotspotStandsForFiveMinutesUnlessTheSituationChanged() {
+        val key = Triple(true, setOf("mac"), "ready")
+        assertTrue(HotspotNaming.readStands(key, 1_000, key, 1_000 + HotspotNaming.REREAD_MS - 1))
+        // After five minutes a renamed hotspot is read again.
+        assertFalse(HotspotNaming.readStands(key, 1_000, key, 1_000 + HotspotNaming.REREAD_MS))
+        // A Mac that comes in reach, the switch or Shizuku changing: read at once.
+        assertFalse(HotspotNaming.readStands(key, 1_000, Triple(true, setOf("mac", "mac2"), "ready"), 2_000))
+        assertFalse(HotspotNaming.readStands(key, 1_000, Triple(false, setOf("mac"), "ready"), 2_000))
+        assertFalse(HotspotNaming.readStands(key, 1_000, Triple(true, setOf("mac"), "denied"), 2_000))
+        // Never read before, or a clock that went back.
+        assertFalse(HotspotNaming.readStands(null, 0, key, 2_000))
+        assertFalse(HotspotNaming.readStands(key, 5_000, key, 2_000))
     }
 }

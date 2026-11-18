@@ -39,4 +39,14 @@ object HotspotNaming {
         if (name.isNullOrEmpty()) emptyList() else reachable.filter { told[it] != name }.sorted()
 
     fun stillTold(told: Map<String, String>, reachable: Set<String>): Map<String, String> = told.filterKeys { it in reachable }
+
+    /** How long a read of the own hotspot stands: it is a call into the shell through Shizuku, too much for every tick with the screen off. */
+    const val REREAD_MS = 5 * 60_000L
+
+    /**
+     * Whether the read made at [readAt] under [readKey] can be used again at [now] ([key] is what the read depended on: the switch,
+     * the Macs in reach and the state of Shizuku). A clock that went back counts as stale.
+     */
+    fun readStands(readKey: Any?, readAt: Long, key: Any, now: Long, maxAgeMs: Long = REREAD_MS): Boolean =
+        readKey == key && now - readAt in 0 until maxAgeMs
 }

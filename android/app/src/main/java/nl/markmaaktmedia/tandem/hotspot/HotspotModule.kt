@@ -240,6 +240,26 @@ class HotspotModule private constructor(private val context: Context) {
     /** The Macs that heard what this hotspot is called, and the name. */
     private val toldName = HashMap<String, String>()
 
+    private class NameRead(val key: Triple<Boolean, Set<String>, ShizukuState>, val at: Long, val ssid: String?)
+
+    private val nameLock = Any()
+    private var nameRead: NameRead? = null
+
+    /**
+     * The name of the own hotspot for [announceName]. The read goes through Shizuku into the shell and this runs every tick and at every
+     * change of the devices, also with the screen off, so a read stands for five minutes unless what it depended on changed (the switch,
+     * the Macs in reach, Shizuku). A hotspot renamed in between is noticed within those five minutes.
+     */
+    private suspend fun ownNameNow(reachable: Set<String>): String? {
+        val key = Triple(enabled, reachable, shizuku.state.value)
+        val now = android.os.SystemClock.elapsedRealtime()
+        val last = synchronized(nameLock) { nameRead }
+        if (last != null && HotspotNaming.readStands(last.key, last.at, key, now)) return last.ssid
+        val ssid = ownNetwork()?.ssid
+        synchronized(nameLock) { nameRead = NameRead(key, now, ssid) }
+        return ssid
+    }
+
     /**
      * Tells every Mac that is connected what this phone's hotspot is called, once and again when the name changes. A Mac that does not
      * know the name yet (a new phone, a hotspot that was renamed) says so while it still has a network, and not only when it stands
@@ -249,7 +269,7 @@ class HotspotModule private constructor(private val context: Context) {
         val reachable = graph.host.devices.value
             .filter { it.online && it.platform == TandemPlatform.MAC_OS && "hotspot" in it.caps }
             .map { it.id }.toSet()
-        val name = if (enabled && reachable.isNotEmpty()) ownNetwork()?.ssid else null
+        val name = if (enabled && reachable.isNotEmpty()) ownNameNow(reachable) else null
         val targets = synchronized(toldName) {
             val kept = HotspotNaming.stillTold(toldName, reachable)
             toldName.clear()
