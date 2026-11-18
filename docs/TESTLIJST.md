@@ -434,7 +434,7 @@ alleen als de engine toch wakker is; of dat klopt moet de meting laten zien.
 - [ ] Kost de log zelf batterij? Vergelijk een nacht met en zonder (de meetsessie doet dit: geen nieuwe `*alarm*` of `*job*` wake locks voor Tandem, hetzelfde aantal kernel wake-ups).
 - [ ] Op de Mac en in de Linux- of Windows-app: opent "Verkeerslog openen" de map met de dagbestanden? (Mac, Linux en Windows geven scherm, netwerk en batterij nog niet door, alleen stil en data-kosten.)
 
-## 0.3.25, 2026-11-18 (PR PRNR, R-V18)
+## 0.3.25, 2026-11-18 (PR 49, R-V18)
 
 Wat veranderde: het Pixel Watch is binnen een dag leeg, dus is wat het horloge wakker houdt aangepakt (zie R-V18 in
 `docs/ROADMAP.md`). De telefoon stuurt het horloge geen meldingen, spelers, apparaatlijsten en batterijen meer die niets nieuws
