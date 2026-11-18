@@ -45,11 +45,26 @@ listen("watch-heart", ({ id, bpm }) => {
   heartListeners.forEach((tell) => tell());
 });
 
-/** The heart rate of the watch of [phone] now, asked of it every half minute while [live]. Null when there is none. */
+/**
+ * Whether the window can be seen: not minimised or hidden. The watch measures with its light on for as long as anybody asks, and that
+ * is what empties it, so a page that nobody looks at must not ask.
+ */
+function useSeen() {
+  const [seen, setSeen] = useState(document.visibilityState === "visible");
+  useEffect(() => {
+    const change = () => setSeen(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", change);
+    return () => document.removeEventListener("visibilitychange", change);
+  }, []);
+  return seen;
+}
+
+/** The heart rate of the watch of [phone] now, asked of it every half minute while [live] and seen. Null when there is none. */
 function useHeartNow(phone, live) {
   const [, redraw] = useState(0);
+  const seen = useSeen();
   useEffect(() => {
-    if (!phone || !live) return undefined;
+    if (!phone || !live || !seen) return undefined;
     const tell = () => redraw((n) => n + 1);
     heartListeners.add(tell);
     const ask = () => call("watch_heart_live", { id: phone, on: true }).catch(() => {});
@@ -64,8 +79,8 @@ function useHeartNow(phone, live) {
       heartNow.delete(phone);
       call("watch_heart_live", { id: phone, on: false }).catch(() => {});
     };
-  }, [phone, live]);
-  const entry = phone && live ? heartNow.get(phone) : null;
+  }, [phone, live, seen]);
+  const entry = phone && live && seen ? heartNow.get(phone) : null;
   return entry && Date.now() - entry.at < 8000 ? entry.bpm : null;
 }
 

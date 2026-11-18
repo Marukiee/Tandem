@@ -433,3 +433,30 @@ alleen als de engine toch wakker is; of dat klopt moet de meting laten zien.
 - [ ] Na een nacht van de lader: `adb pull /sdcard/Android/data/nl.markmaaktmedia.tandem/files/traffic` en kijk of er regels in staan met `ctx.screen_on:false` en wat erin zit.
 - [ ] Kost de log zelf batterij? Vergelijk een nacht met en zonder (de meetsessie doet dit: geen nieuwe `*alarm*` of `*job*` wake locks voor Tandem, hetzelfde aantal kernel wake-ups).
 - [ ] Op de Mac en in de Linux- of Windows-app: opent "Verkeerslog openen" de map met de dagbestanden? (Mac, Linux en Windows geven scherm, netwerk en batterij nog niet door, alleen stil en data-kosten.)
+
+## 0.3.25, 2026-11-18 (PR PRNR, R-V18)
+
+Wat veranderde: het Pixel Watch is binnen een dag leeg, dus is wat het horloge wakker houdt aangepakt (zie R-V18 in
+`docs/ROADMAP.md`). De telefoon stuurt het horloge geen meldingen, spelers, apparaatlijsten en batterijen meer die niets nieuws
+zeggen, en geen verwijdering van iets wat het horloge nooit kreeg. Live hartslag meet hooguit 15 minuten achter elkaar, schrijft de
+sensor per 2 seconden weg en stopt bij uitzetten. Een gewone hartslagmeting stopt na een minuut als hij niets vindt, en meteen
+bij horloge af of aan de lader.
+Een verbinding die steeds wegvalt zoekt minder vaak snel. De Mac en de Windows-app vragen alleen live hartslag zolang hun venster
+zichtbaar is. Gemeten op een emulator (tellingen, geen mA) en met eenheidstests, niet op een echt horloge: dat is jouw dag.
+
+- [ ] **Een dag om de pols.** Doe het horloge 's ochtends op volle lading om en noteer het percentage 's avonds. Eerder was het leeg
+  binnen een dag. Vergelijk met een dag zonder Tandem op het horloge als je kunt.
+- [ ] Meldingen: een app-melding komt aan en trilt, antwoorden werkt, weghalen op de telefoon haalt hem weg op het horloge en omgekeerd.
+  Dezelfde melding die de app opnieuw plaatst (een chat die verandert) komt wel aan zodra de tekst anders is.
+- [ ] Een download met voortgangsbalk: de balk op het horloge loopt in stappen van 10 procent mee en staat aan het eind op klaar.
+- [ ] Bellen: scherm gaat aan, trillen, opnemen, ophangen, weigeren, zoals altijd.
+- [ ] Muziek: afspelen, pauzeren, volgend nummer, de tijdbalk springt mee als je in het nummer spoelt, en de titel staat goed na een pauze van een uur.
+- [ ] Slaap: een nacht met het horloge om, 's ochtends staat de nacht op de slaaptegel. De nachtopname zelf is niet aangepast, alleen
+  het stoppen van een hartslagmeting bij de lader en bij horloge af. Klopt de slaaptijd en de hartslag met een nacht eerder?
+- [ ] Stappen en hartslag overdag: de tegels op de telefoon lopen bij als vanouds.
+- [ ] Live hartslag op de Mac: open de horlogekaart, het getal beweegt. Zet het venster achter een ander venster of minimaliseer het: na
+  ongeveer een halve minuut meet het horloge niet meer (`adb logcat -s TandemWatchLiveHeart` op het horloge meldt "Live stopped"). Venster terug: het getal komt terug.
+- [ ] Hetzelfde in de Windows-app (Tauri): venster minimaliseren stopt het vragen.
+- [ ] Een verbinding die wegvalt (telefoon buiten bereik en terug, of Bluetooth uit en aan): het horloge vindt de telefoon binnen een halve minuut weer.
+- [ ] Zie wat de telefoon naar het horloge liet en wegliet: `adb logcat -s TandemWatch | grep "Sent to the watch"`. Per soort bericht staat er hoeveel er
+  ging en hoeveel er is weggelaten. Als verstuurd en weggelaten allebei bij nul blijven terwijl het horloge klopt, is er iets mis.

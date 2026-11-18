@@ -171,6 +171,47 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   dezelfde iconenfamilie als de rest. Het doel komt uit Health Connect of de horloge-app als dat er is, anders 10.000 als standaard. Op
   de Mac gevraagd aan de sessie van PR 31 (de tegels staan daar); Android, Linux en Windows volgen in een eigen ronde (alles op elk
   apparaat).
+- **R-V18. Het horloge is binnen een dag leeg** (gemeld door Mark, 2026-11-18). Opdracht: uitzoeken wat het wakker houdt en zuiniger
+  maken zonder dat meldingen, bellen, muziek, slaap, stappen of hartslag minder goed werken. Gebouwd in PR PRNR (0.3.25). Per bron, in
+  volgorde van wat het vermoedelijk kost (de kosten zijn uit de code en de sensorlogs afgeleid, niet in mA op een echt horloge gemeten):
+  1. **Live hartslag** (`LiveHeart`): de hartslagsensor met de led staat doorlopend aan zolang iemand vraagt, elke sensorwaarde wekt de
+     processor (`batchingPeriod` 0), en een Mac, Windows- of Linux-venster dat open blijft staan vraagt elke 30 s opnieuw, ook als het
+     achter andere vensters zit. Dat kon de hele dag duren. Nu: de sensor schrijft per 2 s weg, de meting stopt na 15 minuten met daarna
+     30 minuten rust (`LiveHeartLimit`), stopt bij uitzetten en als de link wegvalt, en de Mac en de Windows-app (ook Linux)
+     vragen alleen terwijl hun venster zichtbaar is.
+  2. **De telefoon stuurt het horloge dingen die niets nieuws zeggen** (`SendGate` in `WatchBridge`): een vernieuwde apparatenlijst elke
+     minuut, een batterijbericht elke halve minuut, dezelfde spelerslijst bij elke callback, een melding die een app opnieuw plaatst (of
+     met een voortgangsbalk elke seconde bijwerkt), en het weghalen van iets wat het horloge nooit kreeg. Elk bericht wekt de radio en de
+     processor van het horloge, en elke melding kan ook nog trillen. Nu gaat een bericht alleen als het horloge er iets van weet te maken:
+     zelfde toestand niet nog eens, een afspelend nummer dat op tijd is niet, een melding alleen bij andere woorden of na 2 minuten, een
+     voortgangsbalk per 10 procent. Wat de wachtrij laat vallen mag opnieuw. De teller in het logboek (`adb logcat -s TandemWatch`, regel
+     "Sent to the watch / left out") laat per soort zien wat er ging en wat er bleef.
+  3. **Een hartslagmeting die niet eindigt** (`HeartTracker`): elke 5 minuten een meting van 30 s. Vond hij niets (horloge af, aan de
+     lader), dan stond de opgeefgrens van 2 minuten alleen op papier: hij werd bij de volgende versnellingstik gecontroleerd, en die
+     komen niet meer als het horloge af is, waarna de led bleef zoeken. Nu een eigen timer van 60 s, en meteen stoppen als het horloge
+     afgaat of aan de lader komt.
+  4. **Een verbinding die steeds wegvalt** (`WatchBleClient`): elke keer opnieuw een scan van 60 s op volle sterkte en een terugval naar
+     het begin na 30 s stabiel. Nu begint de snelle scan niet opnieuw binnen 10 minuten en telt een verbinding pas als stabiel na 2 minuten
+     (`ScanPolicy`).
+  Niet veranderd, met de reden: de versnellingsmeter voor slaap (5 Hz in blokken van 4 minuten, een wekmoment per blok) en de stappenteller
+  (5 minuten), omdat de slaapdetectie ze nodig heeft; de nachtopname zelf; de verbindingsprioriteit van Bluetooth (LOW_POWER zou de
+  vertraging van meldingen en bediening verhogen, eerst op een echt horloge proberen). Een voorstel dat een nieuwe afhankelijkheid
+  vraagt en dus wacht op Marks ja: Health Services (passive monitoring) in plaats van eigen sensoren, waar het horloge de hartslag en de
+  stappen zelf bundelt.
+
+  Gemeten, op een Android 35 emulator (telefoonvormig, geen Wear OS-image gedownload; geen diepe slaap, geen Bluetooth, geen sensorbuffer
+  in de hardware, dus tellingen en tijden, geen mA): dezelfde test voor de oude en de nieuwe build, 4 minuten aan de lader, 6 minuten
+  om de pols, 17 minuten een asker die elke 30 s blijft vragen (zoals een Mac-venster dat open blijft):
+  - Live hartslag, registratie bij de sensorservice: oud `batchingPeriod` 0 us, nieuw 2.000.000 us (2 s).
+  - Live hartslag, duur: oud 17 minuten en ononderbroken tot ik hem zelf stopte, nieuw gestopt na 15 minuten 02 s door de grens en daarna
+    niet meer gestart ondanks de vragen. Over een dag met een open venster: een derde van de tijd (`LiveHeartLimitTest`) in plaats van de hele dag.
+  - Hartslagmetingen van 5 minuten, wekalarm, wake locks, jobs: gelijk (6 metingen van rond de 26 s, `*walarm*:tandem:auto-sleep` een keer,
+    geen jobs, geen eigen wake lock). Er is dus niets erbij gekomen.
+  - Berichten naar het horloge (`SendGateTest`, een rekenvoorbeeld van een uur met een apparatenlijst, een batterijbericht en een
+    spelerslijst per minuut, een voortgangsbalk elke seconde 5 minuten lang en een herhaalde chatmelding): 544 aangeboden, 14 verstuurd.
+    Het is een model van wat de telefoon deed, niet gemeten op een echte link: dat zegt de teller in het logboek na een dag.
+  Gemeten op een echt horloge: niets. De meting die telt is de dag om de pols (zie `docs/TESTLIJST.md`, 0.3.25): het percentage 's avonds
+  met en zonder deze build.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
