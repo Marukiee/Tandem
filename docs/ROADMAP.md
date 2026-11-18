@@ -236,7 +236,10 @@ Gevonden bij het nakijken van die PR's, nog te doen:
     dienst los.
   - **Toestemmingen**: stappen vragen `ACTIVITY_RECOGNITION` (er al), hartslag `BODY_SENSORS` tot en met Android 15 en `READ_HEART_RATE` vanaf Android 16,
     in de achtergrond `BODY_SENSORS_BACKGROUND` of `READ_HEALTH_DATA_IN_BACKGROUND` (de bestaande knop op de gezondheidspagina). Niets
-    nieuws gevraagd. Ontbreekt iets, dan staat dat in het logboek (`Wanted: ... Allowed: ...`) en meet Tandem zelf.
+    nieuws gevraagd: de samengevoegde manifesten van de build ervoor en deze hebben dezelfde 17 `uses-permission`. De bibliotheek voegt wel een
+    `<queries>`-regel toe voor het systeempakket `com.google.android.wearable.healthservices` en een `VersionApiService`. Op Android 15 en
+    ouder (dat pad is op de emulator, API 36, niet gelopen) staan stappen en hartslag in een registratie: weigert het systeem die om de
+    hartslagtoestemming, dan valt ook de stappenbron terug op de eigen teller. Slechter dan voor deze build wordt het niet. Ontbreekt iets, dan staat dat in het logboek (`Wanted: ... Allowed: ...`) en meet Tandem zelf.
   - **Slaap: niet vervangen, met de reden.** Health Services biedt ook een slaapstand (`UserActivityState.USER_ACTIVITY_ASLEEP`, de emulator meldt dat
     hij die kent: `Passive: [...], sleep states: [USER_ACTIVITY_PASSIVE, USER_ACTIVITY_EXERCISE, USER_ACTIVITY_ASLEEP]`). De versnellingsmeter staat
     niet aan voor alleen die beslissing: `AutoSleep` en `SleepAutoDetector` rekenen ermee (25 minuten stil, wakker worden, `bedtime`-nachten en de

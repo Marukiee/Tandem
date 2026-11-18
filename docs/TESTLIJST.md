@@ -467,7 +467,7 @@ zichtbaar is. Gemeten op een emulator (tellingen, geen mA) en met eenheidstests,
 - [ ] Zie wat de telefoon naar het horloge liet en wegliet: `adb logcat -s TandemWatch | grep "Sent to the watch"`. Per soort bericht staat er hoeveel er
   ging en hoeveel er is weggelaten. Als verstuurd en weggelaten allebei bij nul blijven terwijl het horloge klopt, is er iets mis.
 
-## 0.3.27, 2026-11-18 (Health Services, R-V18)
+## 0.3.27, 2026-11-18 (PR 52, R-V18)
 
 Wat veranderde: het horloge haalt stappen en hartslag van de dag nu bij Health Services (de eigen meting van het systeem) in plaats van
 zelf elke 5 minuten de hartslagsensor aan te zetten en zelf de stappen te tellen. Zonder Health Services, zonder toestemming of als het systeem
@@ -484,6 +484,8 @@ Wear OS 6 emulator met nepgegevens, niet op een echt horloge: dat is jouw dag. Z
 - [ ] Wie levert wat: `adb logcat -s TandemWatchPassive TandemWatchHeart TandemWatchSteps` op het horloge. De eerste regels na een start melden
   `Passive: [...]` (wat dit horloge kan, ook de slaapstanden) en `Wanted: steps ..., heart ... Allowed: ...`. Staat er `steps false` of `heart false`, dan
   zegt de regel eronder welke toestemming mist. Bewaar de `Passive:` en de `Wanted:` regel, ook als alles goed gaat: dat is het bewijs voor de slaapstand.
+- [ ] Noteer bij die twee regels welke Wear OS- en Android-versie het horloge heeft (Instellingen > Systeem > Over). Op Android 15 en ouder (Wear OS 5) loopt
+  de aanvraag langs `BODY_SENSORS`, een pad dat alleen op papier is nagekeken; staat daar `heart false` of steps ook terug op de eigen teller, meld het.
 - [ ] Telt het horloge `Measuring` (eigen meting) per uur veel minder dan `No measurement of our own` (overgeslagen)? Zo ja, doet Health Services
   het werk. Telt hij alleen `Measuring`, dan levert Health Services niets en valt alles terug: meld welke `Wanted:` regel erbij staat.
 - [ ] Toestemming intrekken: haal bij Instellingen > Apps > Tandem de toestemming voor lichaamssensoren (of hartslag) weg. De hartslag blijft dan
