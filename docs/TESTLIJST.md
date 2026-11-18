@@ -434,7 +434,7 @@ alleen als de engine toch wakker is; of dat klopt moet de meting laten zien.
 - [ ] Kost de log zelf batterij? Vergelijk een nacht met en zonder (de meetsessie doet dit: geen nieuwe `*alarm*` of `*job*` wake locks voor Tandem, hetzelfde aantal kernel wake-ups).
 - [ ] Op de Mac en in de Linux- of Windows-app: opent "Verkeerslog openen" de map met de dagbestanden? (Mac, Linux en Windows geven scherm, netwerk en batterij nog niet door, alleen stil en data-kosten.)
 
-## 0.3.26, 2026-11-18 (muziek bij bedtime, R-V18 en roadmap punt 5 van het horloge)
+## 0.3.26, 2026-11-18 (PR 50, horloge punt 5)
 
 Wat veranderde: bedtime mode op het horloge pauzeerde de muziek meteen. Nu begint de nachtopname (en, met "Stille slaap" aan, de stille
 stand van de telefoon) bij bedtime mode, maar muziek en computers (pauzeren en vergrendelen, als die schakelaars aan staan) pas als het horloge
