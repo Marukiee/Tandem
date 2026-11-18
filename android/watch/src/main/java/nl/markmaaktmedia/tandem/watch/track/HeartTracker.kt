@@ -29,7 +29,7 @@ object HeartTracker : SensorEventListener {
     /** The sensor hub measures and hands it all over at the end, so the processor sleeps while the light is on. */
     private const val MEASURE_US = 30 * 1_000_000
     private const val ENOUGH_MS = 25_000L
-    private const val GIVE_UP_MS = 60_000L
+    private const val GIVE_UP_MS = 120_000L
     private const val SLOT_MS = 5 * 60_000L
     private const val SEND_EVERY_SLOTS = 3
     private const val KEEP_DAYS = 3L
