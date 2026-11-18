@@ -693,17 +693,35 @@ class EngineHost(
 
     /** The screen went on or off: with it off the others check on this phone seldom, so it is not woken every half minute. */
     fun screenChanged(on: Boolean) {
+        // The data first: what the core does when the screen goes on depends on it.
+        refreshMetered()
         engine?.setQuiet(!on)
     }
 
-    /** On mobile data the core asks about large files first, also from a device that may send without asking (see TandemService). */
-    private fun tellMetered() {
+    @Volatile private var costly = false
+
+    /**
+     * What the core waits on: on mobile data it asks about large files first and does not go looking for a device that has been gone
+     * for days. Read again at every callback of the network and when the screen changes, and said to the core only when it differs
+     * (a VPN that reconnects shows a moment of a network without mobile data under it, which must not count as free).
+     */
+    fun refreshMetered() {
         val connectivity = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return
-        val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork)
-        // A VPN (Tailscale) may call itself free while it runs over mobile data: the mobile data underneath is what counts.
-        val metered = connectivity.isActiveNetworkMetered ||
-            capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true
-        engine?.setMetered(metered)
+        val capabilities = runCatching { connectivity.getNetworkCapabilities(connectivity.activeNetwork) }.getOrNull()
+        val now = NetworkCost.costly(NetworkCost.of(capabilities), costly)
+        if (now != costly || !toldMetered) {
+            costly = now
+            toldMetered = true
+            engine?.setMetered(now)
+        }
+    }
+
+    @Volatile private var toldMetered = false
+
+    private fun tellMetered() {
+        // A new engine does not know yet.
+        toldMetered = false
+        refreshMetered()
     }
 
     fun pushStatus(status: TandemStatus) {
@@ -712,7 +730,7 @@ class EngineHost(
     }
 
     fun onNetworkChanged() {
-        tellMetered()
+        refreshMetered()
         engine?.networkChanged()
         networkMoved.tryEmit(Unit)
     }

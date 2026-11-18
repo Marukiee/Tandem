@@ -168,7 +168,40 @@ Gevonden bij het nakijken van die PR's, nog te doen:
      op het transport baseren (mobiel), niet alleen op metered.
   5. Dials naar de Mac: 55 mislukt en 13 gelukt, naar de Xperia 56 mislukt en 3 gelukt: kijken of parallelle routepogingen als mislukt tellen.
   6. Bij opnieuw verbinden niets sturen dat niet veranderde (Introduce, MediaArt).
-  Nog niet gemeten: een nacht van de lader. Open, wacht op een bouwsessie (R-V15 deel 2); niet door mij gebouwd.
+  Nog niet gemeten: een nacht van de lader.
+
+  Stand 2026-11-18, deel 2 (gebouwd, 0.3.28; wacht op een nieuwe meting op de Oppo). Wat de oorzaken bleken, uit het log en de code:
+  1. 91 van de 108 `network_changed` kwamen binnen 1,5 s na een scherm-aan: `StatusReporter` riep bij `ACTION_SCREEN_ON` en
+     `USER_PRESENT` `onNetworkChanged()` aan. Elke melding liet `hurry_with` lopen, en dat doet `probe_sessions()`: elke werkende
+     verbinding kreeg een Ping en werd na 3 s zonder Pong gesloten ("path lost", log "closed here"). Op een slapende mobiele radio
+     haalt een Pong dat vaak niet: 12 van de 23 verbindingsverliezen kwamen 1,4 tot 3,0 s na een `network_changed`. Elke nieuwe
+     verbinding stuurde daarna alles opnieuw (punt 1 en 6).
+  2. Het 4 s-pingpad van de Mac: `PointerShare.reconnectAway` riep bij elke tik van 3 s `networkChanged()` aan zolang de aanwijzer
+     aan de rand stond, dus telkens `probe_sessions()`. De adressenlijst wisselde niet (`notice_new_addresses` is niet de oorzaak).
+  3. `costly` was `quiet && metered`: `quiet` sprong bij elk scherm-aan terug naar false, en `metered` werd kort false als de
+     Tailscale-VPN opnieuw verbond (de capabilities van het actieve netwerk hadden dan geen CELLULAR). Lang weg zijnde apparaten werden
+     alleen op `quiet && metered` tegengehouden.
+  Wat er nu anders is. De kern kijkt zelf naar de adressen (`reach.rs`, `AddressWatch`): alleen een andere set die twee kijkjes van 5 s
+  gelijk blijft telt als netwerkwissel, of meteen als de app het meldt en de set echt anders is. Een melding zonder andere adressen doet
+  niets: geen Ping, geen backoff terug, geen verbinding dicht. Een scherm dat aan gaat probeert alleen apparaten die weg zijn (een
+  `try_away` met eigen maximumtempo van 60 s, op de Mac-aanwijzer 5 s) en bellen niet. `probe` houdt zich aan de wachttijden van het
+  hartslagplan (5 of 15 s, een herhaling), slaat een verbinding over die de afgelopen 3 s nog iets zei en vraagt dezelfde verbinding
+  hooguit elke 20 s. Slaap herkent de kern met `woke_from_sleep()` (Mac `didWake`, Windows deksel) en op computers met de wandklok
+  tegenover de monotone klok; op Android en iOS niet, daar zegt de klok niets. Lang weg zijnde apparaten worden op mobiele data niet
+  gebeld (tenzij de gebruiker erom vraagt), en `NetworkCost.costly` in de Android-schil kijkt naar het onderliggende transport en
+  houdt de vorige waarde vast als de VPN heen en weer flapt. MediaArt wordt per apparaat en per draai van de andere app onthouden
+  (`ArtHeld`, `Hello::boot_id`) en na een nieuwe verbinding niet opnieuw gestuurd, zodra de eerste verbinding minstens 10 s leefde.
+  Gemeten op een Android-emulator (Pixel 7, Android 16) met een `tandemd` als Mac, 6,5 minuten, 12 keer scherm uit en aan en twee
+  keer wifi uit en aan, oude bouw (0.3.26) tegenover nieuwe bouw, zelfde scenario: `network_changed` 27 tegen 1 (alleen koppelen),
+  Pings van de telefoon 17 tegen 0, berichten ontvangen 27 tegen 6, verbindingen en dials ongewijzigd (een verbinding, niets
+  verloren). De emulator heeft geen mobiele radio en geen Tailscale: het verbruik in mA en het sluiten op een slapende radio zijn
+  daarop niet na te bootsen. Dat meet de Oppo.
+  Nog open: (a) de dials naar de Mac die mislukken (punt 5) zijn niet onderzocht; (b) de Status (ongeveer 265 B) die bij elk scherm
+  aan of uit naar elke verbinding gaat blijft het grootste deel van het verkeer van de telefoon met het scherm aan en uit: een kleinere
+  melding alleen voor `quiet` kan; (c) de catch-up berichten bij het verbinden (Status, Focus, HealthHave, BleKey, Wifi, Introduce)
+  worden nog steeds opnieuw gestuurd, alleen MediaArt (twee keer 12 KB) niet; (d) op de directe route `other` kan een NAT-tabel de
+  verbinding in de stille stand (240 s tussen twee heartbeats) vergeten: staat het log nog vol "closed here" met afstanden van rond
+  de 240 s, dan is de heartbeat in de stille stand te ruim voor die route.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde

@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.28",
+    "date": "2026-11-18",
+    "en": {
+      "title": "A calmer phone on the road",
+      "new": [],
+      "fixed": [
+        "On mobile data the phone no longer drops its connection to the computer every few minutes, and no longer calls a computer that is off: less radio, less battery"
+      ]
+    },
+    "nl": {
+      "title": "Een rustiger telefoon onderweg",
+      "new": [],
+      "fixed": [
+        "Op mobiele data laat de telefoon de verbinding met de computer niet meer om de paar minuten vallen en belt hij geen computer meer die uit staat: minder radio, minder accu"
+      ]
+    }
+  },
+  {
     "version": "0.3.27",
     "date": "2026-11-18",
     "en": {

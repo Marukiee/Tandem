@@ -541,3 +541,32 @@ Wear OS 6 emulator met nepgegevens, niet op een echt horloge: dat is jouw dag. Z
 - [ ] Een tijd lang geen horloge om en dan weer om: de stappen van die dag lopen verder (geen herstart naar nul, geen dubbele telling).
 - [ ] Een dagwissel om middernacht met het horloge om: de stappen beginnen bij 0 op de nieuwe dag, en de dag ervoor staat compleet in de geschiedenis.
 - [ ] Meldingen, bellen, muziek en live hartslag werken als bij 0.3.25 (zelfde lijst als daar, snel doorlopen).
+
+## 0.3.28, 2026-11-18 (R-V15 deel 2, accu onderweg)
+
+Wat veranderde: de telefoon laat op mobiele data zijn werkende verbinding met de Mac met rust. Een scherm dat aan gaat of een VPN die
+opnieuw verbindt telt niet meer als nieuw netwerk: alleen een andere set adressen die even blijft staat telt, of de computer die uit
+slaap komt. Een verbinding krijgt bij zo'n melding geen Ping meer met een kapstok van 3 seconden (daar sneuvelden werkende
+verbindingen op een slapende radio), en elke nieuwe verbinding stuurt de albumhoezen niet opnieuw die de Mac al heeft. De Mac belt
+de telefoon niet elke paar seconden meer als de aanwijzer aan de rand staat. Een apparaat dat dagen weg is wordt op mobiele data niet
+meer gebeld, ook als de VPN zegt dat het netwerk niet betaald is (`costly` leest nu het onderliggende transport). Gemeten op een
+emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen Tailscale), en met kern- en eenheidstests.
+
+- [ ] **Drie uur op mobiele data met het scherm vaak aan en uit.** Haal daarna het verkeerslog van de Oppo op (`adb pull
+  /sdcard/Android/data/nl.markmaaktmedia.tandem/files/traffic`) en vergelijk met 0.3.25: `network_changed` van 108 in 3 uur naar
+  hooguit een paar (alleen echte wisselingen), "closed here" van ongeveer 20 per uur naar bijna nul, Pings per 5 minuten met het
+  scherm uit van 150 tot 270 pakketten naar een stuk minder. Daalt het stroomverbruik met het scherm uit onder de 254 mA?
+- [ ] **De aanwijzer aan de rand van het scherm.** Zet de Mac naast de telefoon (aanwijzer delen), laat de aanwijzer een minuut aan de
+  rand staan en kijk in het verkeerslog van de Mac: geen 63 tot 77 Pings per 5 minuten meer. En de aanwijzer gaat nog steeds over naar de
+  telefoon als je hem naar de rand duwt, ook als de telefoon net uit zijn slaap komt.
+- [ ] **De Mac uit de slaap.** Klap de Mac dicht, een paar minuten later weer open: de telefoon verbindt binnen een halve minuut weer
+  (het log toont dan `woke_from_sleep`). Hetzelfde met de deksel van een Windows-laptop.
+- [ ] **De telefoon oppakken.** Scherm uit, een paar minuten wachten, scherm aan: de Mac ziet de telefoon weer online en een bestand of
+  het klembord komt meteen over. Er hoort geen nieuwe verbinding bij te komen als de oude nog werkt (log: geen `disconnected`).
+- [ ] **Echt van netwerk wisselen** (wifi uit, mobiele data aan, en terug): de verbinding met de Mac wordt opnieuw gelegd en de wachttijd
+  begint opnieuw, `network_changed` staat een keer per wissel in het log.
+- [ ] **Muziek met hoes.** Speel iets met een albumhoes op de telefoon terwijl de Mac meekijkt, laat de verbinding een keer wisselen
+  (vliegtuigstand een halve minuut): de hoes staat er na het terugkomen nog, en het verkeerslog toont geen tweede `MediaArt` van 12 KB.
+  Sluit Tandem op de Mac en open hem weer: nu komt de hoes wel opnieuw.
+- [ ] **Een computer die dagen uit staat** (de Linux-laptop) wordt op mobiele data niet meer elke 5 tot 10 minuten gebeld. Zet de telefoon
+  op wifi: hij probeert hem weer zoals vroeger.
