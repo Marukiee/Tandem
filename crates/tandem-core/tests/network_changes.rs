@@ -125,3 +125,29 @@ async fn a_device_that_went_silent_is_let_go_after_it_woke_from_sleep_and_not_af
     phone.woke_from_sleep();
     wait_until("the silent one was let go after the wake", || !online(&phone, mac_id)).await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_move_to_another_network_asks_the_connections_and_lets_go_of_the_one_that_is_silent() {
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let phone = start(a.path(), "Phone", Platform::Android).await;
+    let (mac, freeze) = device_that_can_freeze(b.path().to_path_buf(), "Mac");
+    pair(&phone, &mac).await;
+    let mac_id = mac.id();
+    let wifi: Vec<std::net::IpAddr> = vec!["192.168.1.5".parse().unwrap()];
+    phone.pretend_addresses(Some(wifi.clone()));
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    phone.network_changed();
+
+    freeze.send(()).unwrap();
+    // Long enough for the last word of the frozen one to be old.
+    tokio::time::sleep(Duration::from_millis(4_000)).await;
+    // The same network said again, as a system does many times: nothing is asked.
+    phone.network_changed();
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    assert!(online(&phone, mac_id), "a network that stayed the same closed a connection");
+
+    // Mobile data instead of Wi-Fi: the connection that was made on the old network is asked, and nothing answers.
+    phone.pretend_addresses(Some(vec!["10.200.0.9".parse().unwrap()]));
+    phone.network_changed();
+    wait_until("the silent one was let go after a move to another network", || !online(&phone, mac_id)).await;
+}

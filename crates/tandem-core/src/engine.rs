@@ -162,6 +162,8 @@ pub(crate) struct Inner {
     /// The app said the network changed but the addresses looked the same: the next few looks do not wait for a second one, since the
     /// addresses of an Android phone may follow its callback a moment late.
     recheck_addresses: std::sync::atomic::AtomicU8,
+    /// Addresses to see instead of the real ones. Only tests set it: a loopback network never changes by itself.
+    address_override: Mutex<Option<Vec<std::net::IpAddr>>>,
     /// The last time the devices that are away were tried because a screen went on or a pointer pushed towards one (see `try_away`).
     last_away_try: Mutex<Option<Instant>>,
     /// The covers each device is known to have (see `reach::ArtHeld`).
@@ -292,6 +294,7 @@ impl Engine {
             addresses: Mutex::new(Default::default()),
             clocks: Mutex::new(crate::reach::Clocks::new()),
             recheck_addresses: std::sync::atomic::AtomicU8::new(0),
+            address_override: Mutex::new(None),
             last_away_try: Mutex::new(None),
             art_held: Mutex::new(HashMap::new()),
             said_back: Mutex::new(None),
@@ -364,12 +367,19 @@ impl Engine {
         self.inner.session_of(id).map(|session| session.remote.ip().to_canonical().to_string())
     }
 
-    /// Tell the engine the network changed (Wi-Fi to cellular, VPN up or down), so it
-    /// reconnects right away instead of waiting for the next retry.
     /// The app thinks the network may have changed (a signal, a VPN, a screen that went on). Only a different set of addresses of this
     /// device counts: the others are not tried again, no connection is asked whether it still works, and no wait starts over.
     pub fn network_changed(&self) {
         self.inner.network_changed();
+    }
+
+    /// For tests only: this device sees these addresses from now on (`None`: its real ones), so a test can move it to another network.
+    #[doc(hidden)]
+    pub fn pretend_addresses(&self, addresses: Option<Vec<std::net::IpAddr>>) {
+        *self.inner.address_override.lock().unwrap() = addresses.map(|mut list| {
+            list.sort();
+            list
+        });
     }
 
     /// The device woke from sleep (a lid opened, the system resumed): its connections may be dead although its addresses are the same.
@@ -1363,11 +1373,18 @@ impl Inner {
 
     /// The addresses of this device now, compared with what was known (see `reach::AddressWatch`).
     fn look_at_addresses(&self, at_once: bool) -> crate::reach::Look {
-        let Ok(interfaces) = if_addrs::get_if_addrs() else { return crate::reach::Look::Same };
-        // A link-local address comes and goes with every attempt of a Wi-Fi to connect, and reaches no other device.
-        let mut now: Vec<std::net::IpAddr> = interfaces.iter().map(|i| i.ip()).filter(|ip| reaches_others(*ip)).collect();
-        now.sort();
-        now.dedup();
+        let pretended = self.address_override.lock().unwrap().clone();
+        let now = match pretended {
+            Some(list) => list,
+            None => {
+                let Ok(interfaces) = if_addrs::get_if_addrs() else { return crate::reach::Look::Same };
+                // A link-local address comes and goes with every attempt of a Wi-Fi to connect, and reaches no other device.
+                let mut now: Vec<std::net::IpAddr> = interfaces.iter().map(|i| i.ip()).filter(|ip| reaches_others(*ip)).collect();
+                now.sort();
+                now.dedup();
+                now
+            }
+        };
         let look = self.addresses.lock().unwrap().look(now, at_once);
         if matches!(look, crate::reach::Look::Waiting | crate::reach::Look::Changed(_))
             && let Some(discovery) = self.discovery.lock().unwrap().as_mut()
