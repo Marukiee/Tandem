@@ -17,6 +17,7 @@ import android.os.HandlerThread
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
+import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.sleep.AutoSleepDecision
 import nl.markmaaktmedia.tandem.watch.sleep.NapDetector
 import nl.markmaaktmedia.tandem.watch.sleep.SleepAutoDetector
@@ -209,7 +210,8 @@ object AutoSleep : SensorEventListener {
                 Log.i(TAG, "Bedtime is over")
             }
             on && allowed && !charging && !bedtimeDismissed && Tracking.ui.value.active == null -> {
-                recordingBedtime = TrackingService.startAutomatic(app, System.currentTimeMillis())
+                // Bedtime mode only says they are going to bed: the phone hears of sleep when the detector sees it.
+                recordingBedtime = TrackingService.startAutomatic(app, System.currentTimeMillis(), asleep = false)
                 recordingAutomatic = recordingBedtime
                 Log.i(TAG, "Bedtime started a night: $recordingBedtime")
             }
@@ -278,6 +280,8 @@ object AutoSleep : SensorEventListener {
                 // A recording someone started themselves is theirs to stop. It does keep what this would have done, to judge it by later.
                 if (Tracking.ui.value.active != null) {
                     TrackingService.note("auto_start")
+                    // A night that bedtime mode started is where this is the first sign of sleep; for any other it changes nothing.
+                    WatchLink.setAsleep(true)
                     return
                 }
                 recordingAutomatic = TrackingService.startAutomatic(app, decision.stillSinceMs)
@@ -285,7 +289,11 @@ object AutoSleep : SensorEventListener {
             }
             AutoSleepDecision.Stop -> {
                 TrackingService.note("auto_stop")
-                if (recordingBedtime) return
+                if (recordingBedtime) {
+                    // Awake in the night: the night goes on, and so does the next fall asleep that pauses what they put on meanwhile.
+                    WatchLink.setAsleep(false)
+                    return
+                }
                 if (recordingAutomatic) TrackingService.stop(app)
                 recordingAutomatic = false
                 Log.i(TAG, "The night ended")

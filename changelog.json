@@ -3,18 +3,22 @@
     "version": "0.3.26",
     "date": "2026-11-18",
     "en": {
-      "title": "A new phone, a new hotspot",
+      "title": "A new phone, a new hotspot, and music at bedtime",
       "new": [
         "The Mac remembers the hotspot of each phone, and says when a phone has a new or renamed hotspot, with a button that opens its setup with the name filled in (a phone with Shizuku also hands over the password)"
       ],
-      "fixed": []
+      "fixed": [
+        "Bedtime mode on the watch no longer pauses your music at once: it pauses when you really fall asleep, and again if you wake up and fall asleep once more"
+      ]
     },
     "nl": {
-      "title": "Een nieuwe telefoon, een nieuwe hotspot",
+      "title": "Een nieuwe telefoon, een nieuwe hotspot, en muziek bij bedtime",
       "new": [
         "De Mac onthoudt de hotspot van elke telefoon en zegt het als een telefoon een nieuwe of andere hotspot heeft, met een knop die het instellen opent met de naam al ingevuld (een telefoon met Shizuku geeft ook het wachtwoord door)"
       ],
-      "fixed": []
+      "fixed": [
+        "Bedtime mode op het horloge pauzeert je muziek niet meer meteen: pas als je echt in slaap valt, en opnieuw als je wakker wordt en weer inslaapt"
+      ]
     }
   },
   {
