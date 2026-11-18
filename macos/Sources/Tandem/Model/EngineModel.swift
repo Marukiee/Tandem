@@ -301,7 +301,7 @@ final class EngineModel {
         network.start()
         // The network often looks the same after a wake, and the others have long given up on this Mac: it tries them now.
         _ = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.engine?.networkChanged() }
+            MainActor.assumeIsolated { self?.engine?.wokeFromSleep() }
         }
 
         hotspot.attach(model: self)

@@ -2034,10 +2034,24 @@ impl TandemEngine {
         self.engine.devices().into_iter().map(Into::into).collect()
     }
 
-    /// Call when Wi-Fi, mobile data or the VPN changed.
+    /// Call when Wi-Fi, mobile data or the VPN may have changed, as often as the system says so: the core looks at the addresses of this
+    /// device itself and only acts on a different set. Not for a screen that went on (`set_quiet` does that) or a device that woke.
     pub fn network_changed(&self) {
         let _guard = self.runtime.enter();
         self.engine.network_changed();
+    }
+
+    /// Call when the computer woke from sleep: its connections may be dead although its addresses are the same.
+    pub fn woke_from_sleep(&self) {
+        let _guard = self.runtime.enter();
+        self.engine.woke_from_sleep();
+    }
+
+    /// The devices that are not connected get one try now, and the connections that work are left alone: the pointer pushed towards a
+    /// device that is away. Cheap to call often; at most one try every few seconds happens.
+    pub fn try_away_now(&self) {
+        let _guard = self.runtime.enter();
+        self.engine.try_away_now();
     }
 
     /// A phone says whether its screen is off: the others then check on it every few minutes instead of every half minute.
@@ -2485,9 +2499,22 @@ impl TandemEngine {
         self.send(targets, crate::proto::Msg::MediaPlayers { players: players.into_iter().map(Into::into).collect() }).await
     }
 
-    /// A cover for the players' `art` key. Sent once per cover.
+    /// A cover for the players' `art` key. Sent once per cover, and not again on a new connection to a device that is still the same
+    /// running app and was sent it before: those are in the answer as if they had just got it.
     pub async fn send_media_art(&self, targets: Vec<String>, key: u64, jpeg: Vec<u8>) -> Result<Vec<String>, TandemError> {
-        self.send(targets, crate::proto::Msg::MediaArt { key, jpeg: serde_bytes::ByteBuf::from(jpeg) }).await
+        let ids = parse_ids(&targets)?;
+        let missing = self.engine.art_missing_on(&ids, key);
+        let have: Vec<String> = ids.iter().filter(|id| !missing.contains(id)).map(ToString::to_string).collect();
+        if missing.is_empty() {
+            return Ok(have);
+        }
+        let mut reached = self
+            .send(ids_to_strings(missing.clone()), crate::proto::Msg::MediaArt { key, jpeg: serde_bytes::ByteBuf::from(jpeg) })
+            .await?;
+        let reached_ids = parse_ids(&reached)?;
+        self.engine.art_was_sent_to(&reached_ids, key);
+        reached.extend(have);
+        Ok(reached)
     }
 
     /// Asks `target` to do something with one of its players.

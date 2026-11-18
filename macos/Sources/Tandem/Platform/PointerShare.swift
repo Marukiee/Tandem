@@ -442,7 +442,9 @@ final class PointerShare {
         else { return }
         reconnectedAt = Date()
         PointerLog.write("pushes towards a device that is away: trying it again")
-        model.tandem?.networkChanged()
+        // Not `networkChanged`: that asks every connection that works whether it still does, and this runs every few seconds
+        // while the pointer sits at the edge (63 to 77 pings in 5 minutes, R-V15).
+        model.tandem?.tryAwayNow()
     }
 
     private func goOver(to device: String, edge: String, along: CGFloat) {

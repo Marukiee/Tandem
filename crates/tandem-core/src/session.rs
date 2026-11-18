@@ -3,7 +3,7 @@
 
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use quinn::{RecvStream, SendStream};
@@ -34,6 +34,10 @@ pub(crate) struct Session {
     pub remote: SocketAddr,
     pub serial: u64,
     pub pong: Notify,
+    /// When something last came in on this connection (`now_ms`): a connection that was heard a moment ago works, and is not asked.
+    pub heard_ms: AtomicU64,
+    /// When this connection was last asked whether it still works (`probe`), 0 if never.
+    pub probed_ms: AtomicU64,
 }
 
 /// Stream priority of the control stream. Frames of live video are below it, file transfers below them.
@@ -154,6 +158,8 @@ impl Inner {
             remote,
             serial: self.session_serial.fetch_add(1, Ordering::Relaxed),
             pong: Notify::new(),
+            heard_ms: AtomicU64::new(crate::ids::now_ms()),
+            probed_ms: AtomicU64::new(0),
         });
 
         let kept = {
@@ -179,6 +185,7 @@ impl Inner {
                 peer.session = Some(session.clone());
                 peer.hello = Some(hello.clone());
                 peer.fail_count = 0;
+                self.art_held.lock().unwrap().entry(id).or_default().connected(hello.boot_id);
             }
             kept
         };
@@ -199,7 +206,8 @@ impl Inner {
             // The connection that stays may be a dead one, of an app that was killed or updated
             // a moment ago. Ask it, so it goes within seconds and the next attempt gets in,
             // instead of after the idle timeout.
-            probe(existing);
+            let plan = self.beat_plan(&existing);
+            probe(existing, plan.answer_within, plan.retries);
             return Ok(());
         }
 
@@ -273,16 +281,20 @@ impl Inner {
         let reader = {
             let this = self.clone();
             let serial = session.serial;
+            let heard = session.clone();
             async move {
                 loop {
                     match proto::read_frame(&mut recv, MAX_CONTROL_FRAME).await {
                         Ok(Some(frame)) => match decode_msg(&frame).inspect(|msg| this.traffic_received(id, msg, frame.len() + 4)) {
-                            Ok(Msg::Unknown) => {}
+                            Ok(Msg::Unknown) => heard.heard_ms.store(crate::ids::now_ms(), Ordering::Relaxed),
                             Ok(Msg::Bye { .. }) => break,
                             // A connection that lost to another one is still read for a moment, but how the other device is now came again on
                             // the one that stays: read late, the old state would overwrite the new.
                             Ok(msg) if is_state(&msg) && !this.is_current(id, serial) => {}
-                            Ok(msg) => this.handle_msg(id, msg).await,
+                            Ok(msg) => {
+                                heard.heard_ms.store(crate::ids::now_ms(), Ordering::Relaxed);
+                                this.handle_msg(id, msg).await
+                            }
                             Err(e) => {
                                 warn!(peer = %id, "bad frame: {e}");
                                 break;
@@ -477,6 +489,9 @@ impl Inner {
                 }
         }
         if was_current {
+            if let Some(held) = self.art_held.lock().unwrap().get_mut(&id) {
+                held.disconnected(Instant::now());
+            }
             info!(peer = %id, "disconnected");
             let name = self.peers.lock().unwrap().get(&id).and_then(|p| p.hello.as_ref().map(|h| h.name.clone())).unwrap_or_default();
             self.traffic_session_down(session, &name);
@@ -736,9 +751,8 @@ impl Inner {
         }
     }
 
-    /// After a network change, checks that each connection still works and closes the
-    /// ones that do not, so they are replaced within seconds instead of after the idle
-    /// timeout.
+    /// After a move to another network, checks that each connection still works and closes the ones that do not, so they are replaced
+    /// within seconds instead of after the idle timeout. A connection that was heard a moment ago, or asked a moment ago, is left alone.
     pub(crate) fn probe_sessions(self: &Arc<Self>) {
         let sessions: Vec<Arc<Session>> = self
             .peers
@@ -748,7 +762,8 @@ impl Inner {
             .filter_map(|p| p.session.clone())
             .collect();
         for session in sessions {
-            probe(session);
+            let plan = self.beat_plan(&session);
+            probe(session, plan.answer_within, plan.retries);
         }
     }
 }
@@ -773,19 +788,41 @@ pub(crate) fn beat_plan(me: bool, them: bool, beats: bool, dialer: bool, tuning:
     BeatPlan { every, answer_within, asks, retries: u32::from(them) }
 }
 
-/// Asks a connection whether the other end still answers, and closes it if not.
-fn probe(session: Arc<Session>) {
+/// A connection that was heard this recently works, and is not asked.
+const PROBE_SKIP_IF_HEARD_MS: u64 = 3_000;
+/// A connection is asked at most this often.
+const PROBE_MIN_GAP_MS: u64 = 20_000;
+
+/// Asks a connection whether the other end still answers, and closes it if not. It is given as long as the heartbeat gives it
+/// (`answer_within`, and another try toward a phone that sleeps): a radio that has to wake first takes a few seconds, and closing a
+/// connection that works costs a new one with everything on it sent again (R-V15, 3 seconds closed one in two of them).
+pub(crate) fn probe(session: Arc<Session>, answer_within: Duration, retries: u32) {
+    let now = crate::ids::now_ms();
+    if now.saturating_sub(session.heard_ms.load(Ordering::Relaxed)) < PROBE_SKIP_IF_HEARD_MS {
+        return;
+    }
+    let before = session.probed_ms.swap(now, Ordering::Relaxed);
+    if now.saturating_sub(before) < PROBE_MIN_GAP_MS {
+        session.probed_ms.store(before, Ordering::Relaxed);
+        return;
+    }
     tokio::spawn(async move {
-        let waiter = session.pong.notified();
-        tokio::pin!(waiter);
-        waiter.as_mut().enable();
-        if session.tx.send(Msg::Ping { nonce: crate::engine::rand_u64() }).await.is_err() {
-            return;
+        for _ in 0..=retries {
+            let waiter = session.pong.notified();
+            tokio::pin!(waiter);
+            waiter.as_mut().enable();
+            let asked = crate::ids::now_ms();
+            if session.tx.send(Msg::Ping { nonce: crate::engine::rand_u64() }).await.is_err() {
+                return;
+            }
+            let answered = tokio::time::timeout(answer_within, waiter).await.is_ok();
+            // Anything that came in since the question says the path works, whatever it was.
+            if answered || session.heard_ms.load(Ordering::Relaxed) >= asked {
+                return;
+            }
         }
-        if tokio::time::timeout(Duration::from_secs(3), waiter).await.is_err() {
-            debug!(peer = %session.peer, "connection did not answer");
-            session.conn.close(4u32.into(), b"path lost");
-        }
+        debug!(peer = %session.peer, "connection did not answer");
+        session.conn.close(4u32.into(), b"path lost");
     });
 }
 
