@@ -172,7 +172,7 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   de Mac gevraagd aan de sessie van PR 31 (de tegels staan daar); Android, Linux en Windows volgen in een eigen ronde (alles op elk
   apparaat).
 - **R-V18. Het horloge is binnen een dag leeg** (gemeld door Mark, 2026-11-18). Opdracht: uitzoeken wat het wakker houdt en zuiniger
-  maken zonder dat meldingen, bellen, muziek, slaap, stappen of hartslag minder goed werken. Gebouwd in PR PRNR (0.3.25). Per bron, in
+  maken zonder dat meldingen, bellen, muziek, slaap, stappen of hartslag minder goed werken. Gebouwd in PR 49 (0.3.25). Per bron, in
   volgorde van wat het vermoedelijk kost (de kosten zijn uit de code en de sensorlogs afgeleid, niet in mA op een echt horloge gemeten):
   1. **Live hartslag** (`LiveHeart`): de hartslagsensor met de led staat doorlopend aan zolang iemand vraagt, elke sensorwaarde wekt de
      processor (`batchingPeriod` 0), en een Mac, Windows- of Linux-venster dat open blijft staan vraagt elke 30 s opnieuw, ook als het
