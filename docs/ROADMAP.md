@@ -188,11 +188,15 @@ Gevonden bij het nakijken van die PR's, nog te doen:
      "Sent to the watch / left out") laat per soort zien wat er ging en wat er bleef.
   3. **Een hartslagmeting die niet eindigt** (`HeartTracker`): elke 5 minuten een meting van 30 s. Vond hij niets (horloge af, aan de
      lader), dan stond de opgeefgrens van 2 minuten alleen op papier: hij werd bij de volgende versnellingstik gecontroleerd, en die
-     komen niet meer als het horloge af is, waarna de led bleef zoeken. Nu een eigen timer van 60 s, en meteen stoppen als het horloge
+     komen niet meer als het horloge af is, waarna de led bleef zoeken. Nu een eigen timer van 2 minuten (de sensor levert zijn blok na ongeveer 30 s, dus dat is ruim), en meteen stoppen als het horloge
      afgaat of aan de lader komt.
   4. **Een verbinding die steeds wegvalt** (`WatchBleClient`): elke keer opnieuw een scan van 60 s op volle sterkte en een terugval naar
      het begin na 30 s stabiel. Nu begint de snelle scan niet opnieuw binnen 10 minuten en telt een verbinding pas als stabiel na 2 minuten
      (`ScanPolicy`).
+  Een keuze voor Mark: de grens van 15 minuten laat ook iemand die echt naar een zichtbaar Mac-venster kijkt na 15 minuten zonder getal
+  zitten (30 minuten rust, de tegel valt terug op de gewone hartslag). Nu de computers niet meer vragen terwijl hun venster verborgen is,
+  kan de grens ruimer (bijvoorbeeld 30 minuten aan, 15 uit) als dat prettiger is; de waarden staan in `LiveHeartLimit`.
+
   Niet veranderd, met de reden: de versnellingsmeter voor slaap (5 Hz in blokken van 4 minuten, een wekmoment per blok) en de stappenteller
   (5 minuten), omdat de slaapdetectie ze nodig heeft; de nachtopname zelf; de verbindingsprioriteit van Bluetooth (LOW_POWER zou de
   vertraging van meldingen en bediening verhogen, eerst op een echt horloge proberen). Een voorstel dat een nieuwe afhankelijkheid
@@ -205,8 +209,11 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   - Live hartslag, registratie bij de sensorservice: oud `batchingPeriod` 0 us, nieuw 2.000.000 us (2 s).
   - Live hartslag, duur: oud 17 minuten en ononderbroken tot ik hem zelf stopte, nieuw gestopt na 15 minuten 02 s door de grens en daarna
     niet meer gestart ondanks de vragen. Over een dag met een open venster: een derde van de tijd (`LiveHeartLimitTest`) in plaats van de hele dag.
-  - Hartslagmetingen van 5 minuten, wekalarm, wake locks, jobs: gelijk (6 metingen van rond de 26 s, `*walarm*:tandem:auto-sleep` een keer,
-    geen jobs, geen eigen wake lock). Er is dus niets erbij gekomen.
+  - Hartslagmetingen van 5 minuten, wekalarm, jobs en wake locks: gelijk (6 metingen van rond de 26 s, `*walarm*:tandem:auto-sleep` een
+    keer, geen jobs, in beide runs geen wake lock van de horloge-app zelf; alleen het bericht van het systeem bij de voorgrondmelding).
+    Er is dus niets erbij gekomen.
+  - De sensortijd in `dumpsys batterystats` is voor beide builds gelijk (ongeveer 41 minuten): de emulator laat het verschil in
+    batching en de 15 minuten daar niet in zien, dus daar steunt niets op.
   - Berichten naar het horloge (`SendGateTest`, een rekenvoorbeeld van een uur met een apparatenlijst, een batterijbericht en een
     spelerslijst per minuut, een voortgangsbalk elke seconde 5 minuten lang en een herhaalde chatmelding): 544 aangeboden, 14 verstuurd.
     Het is een model van wat de telefoon deed, niet gemeten op een echte link: dat zegt de teller in het logboek na een dag.

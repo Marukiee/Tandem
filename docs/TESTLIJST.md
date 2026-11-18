@@ -439,7 +439,7 @@ alleen als de engine toch wakker is; of dat klopt moet de meting laten zien.
 Wat veranderde: het Pixel Watch is binnen een dag leeg, dus is wat het horloge wakker houdt aangepakt (zie R-V18 in
 `docs/ROADMAP.md`). De telefoon stuurt het horloge geen meldingen, spelers, apparaatlijsten en batterijen meer die niets nieuws
 zeggen, en geen verwijdering van iets wat het horloge nooit kreeg. Live hartslag meet hooguit 15 minuten achter elkaar, schrijft de
-sensor per 2 seconden weg en stopt bij uitzetten. Een gewone hartslagmeting stopt na een minuut als hij niets vindt, en meteen
+sensor per 2 seconden weg en stopt bij uitzetten. Een gewone hartslagmeting stopt na 2 minuten als hij niets vindt, en meteen
 bij horloge af of aan de lader.
 Een verbinding die steeds wegvalt zoekt minder vaak snel. De Mac en de Windows-app vragen alleen live hartslag zolang hun venster
 zichtbaar is. Gemeten op een emulator (tellingen, geen mA) en met eenheidstests, niet op een echt horloge: dat is jouw dag.
@@ -457,6 +457,12 @@ zichtbaar is. Gemeten op een emulator (tellingen, geen mA) en met eenheidstests,
 - [ ] Live hartslag op de Mac: open de horlogekaart, het getal beweegt. Zet het venster achter een ander venster of minimaliseer het: na
   ongeveer een halve minuut meet het horloge niet meer (`adb logcat -s TandemWatchLiveHeart` op het horloge meldt "Live stopped"). Venster terug: het getal komt terug.
 - [ ] Hetzelfde in de Windows-app (Tauri): venster minimaliseren stopt het vragen.
-- [ ] Een verbinding die wegvalt (telefoon buiten bereik en terug, of Bluetooth uit en aan): het horloge vindt de telefoon binnen een halve minuut weer.
+- [ ] Een verbinding die wegvalt (telefoon buiten bereik en terug, of Bluetooth uit en aan): de eerste keer vindt het horloge de telefoon binnen
+  een halve minuut weer. Valt de verbinding binnen 10 minuten nog eens weg, dan zoekt het horloge die tweede keer rustiger (gebalanceerd in
+  plaats van een minuut op volle sterkte) en kan het terugvinden enkele tientallen seconden langer duren. Dat is de bedoeling; duurt het
+  langer dan een minuut of twee, meld het.
+- [ ] **De grens van 15 minuten.** Kijk 20 minuten achter elkaar naar de hartslag op een zichtbaar Mac- of Windows-venster: na 15 minuten
+  verdwijnt het live getal en de tegel valt terug op de gewone hartslag, 30 minuten lang. Het venster sluiten en weer openen begint opnieuw.
+  Is dat te krap, dan is ruimer maken een kleine aanpassing in `LiveHeartLimit`: Mark kiest.
 - [ ] Zie wat de telefoon naar het horloge liet en wegliet: `adb logcat -s TandemWatch | grep "Sent to the watch"`. Per soort bericht staat er hoeveel er
   ging en hoeveel er is weggelaten. Als verstuurd en weggelaten allebei bij nul blijven terwijl het horloge klopt, is er iets mis.
