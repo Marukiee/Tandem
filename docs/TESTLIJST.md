@@ -434,6 +434,23 @@ alleen als de engine toch wakker is; of dat klopt moet de meting laten zien.
 - [ ] Kost de log zelf batterij? Vergelijk een nacht met en zonder (de meetsessie doet dit: geen nieuwe `*alarm*` of `*job*` wake locks voor Tandem, hetzelfde aantal kernel wake-ups).
 - [ ] Op de Mac en in de Linux- of Windows-app: opent "Verkeerslog openen" de map met de dagbestanden? (Mac, Linux en Windows geven scherm, netwerk en batterij nog niet door, alleen stil en data-kosten.)
 
+## 0.3.26, 2026-11-18 (PR 50, horloge punt 5)
+
+Wat veranderde: bedtime mode op het horloge pauzeerde de muziek meteen. Nu begint de nachtopname (en, met "Stille slaap" aan, de stille
+stand van de telefoon) bij bedtime mode, maar muziek en computers (pauzeren en vergrendelen, als die schakelaars aan staan) pas als het horloge
+je echt ziet inslapen: 25 minuten stil, zoals de nachtdetectie al deed. Wordt je 's nachts wakker en val je weer in slaap, dan pauzeert het opnieuw.
+Een nacht die je met de hand op het horloge start, telt nog steeds als slapen vanaf het begin.
+
+- [ ] **Bedtime mode aan met muziek.** Zet 's avonds bedtime mode aan terwijl er muziek speelt (telefoon, Sonos of een computer, met "Muziek
+  pauzeren" aan): de muziek speelt gewoon door en de telefoon wordt wel stil als "Stille slaap" aan staat.
+- [ ] Blijf ongeveer 25 tot 30 minuten stil liggen: nu pauzeert de muziek, en met "Computers vergrendelen" aan gaan de computers op slot. Kijk op de
+  telefoon met `adb logcat -s TandemWatch | grep "Sleep state"`, op het horloge `adb logcat -s TandemWatch | grep Asleep`.
+- [ ] Word 's nachts wakker, zet muziek aan en val weer in slaap: na een kwartier tot een half uur stil pauzeert die muziek ook.
+- [ ] 's Ochtends bedtime mode uit: de telefoon is weer normaal, er wordt niets dubbel gepauzeerd en de ochtendvraag over muziek die doorspeelde (alleen als
+  "Muziek pauzeren" uit staat) komt hooguit één keer.
+- [ ] Een nacht met de hand starten op het horloge: de muziek pauzeert meteen, zoals vóór deze versie. Is dat niet wat je wilt, zeg het: dan wacht hij daar ook op de detector.
+- [ ] Het horloge in bedtime mode zonder ooit stil te liggen (de hele avond bezig): er wordt niets gepauzeerd en 's ochtends staat de opname er gewoon.
+
 ## 0.3.25, 2026-11-18 (PR 49, R-V18)
 
 Wat veranderde: het Pixel Watch is binnen een dag leeg, dus is wat het horloge wakker houdt aangepakt (zie R-V18 in
@@ -466,6 +483,32 @@ zichtbaar is. Gemeten op een emulator (tellingen, geen mA) en met eenheidstests,
   Is dat te krap, dan is ruimer maken een kleine aanpassing in `LiveHeartLimit`: Mark kiest.
 - [ ] Zie wat de telefoon naar het horloge liet en wegliet: `adb logcat -s TandemWatch | grep "Sent to the watch"`. Per soort bericht staat er hoeveel er
   ging en hoeveel er is weggelaten. Als verstuurd en weggelaten allebei bij nul blijven terwijl het horloge klopt, is er iets mis.
+
+## 0.3.26, 2026-11-18 (R-V19, hotspot per telefoon)
+
+Wat veranderde: de Mac onthoudt de hotspot (naam en wachtwoord) per telefoon in plaats van een keer voor allemaal, en zegt het als een
+telefoon een nieuwe of veranderde hotspot heeft: "Hotspot van <telefoon> is nieuw", als systeemmelding en als rij in het
+menubalkpaneel, met een knop die het instelscherm opent met de naam al ingevuld. Een telefoon met Shizuku zegt zijn hotspotnaam zelf en
+geeft het wachtwoord op een ja op de Mac, zodat er niets in te tikken is. Wat er al ingevuld stond gaat naar de eerste Android-telefoon.
+Gezien in de Dev-app: de rij in het paneel en het instelscherm met de naam al ingevuld (met een nagebootste telefoon), en een
+Android 16 emulator waarop de shell naam, beveiliging en wachtwoord van de hotspot leest. Niet gezien: echte telefoons.
+
+- [ ] **Niets kwijt na de update.** Open op de Mac Instellingen, Hotspot: de naam en het wachtwoord van je telefoon staan er nog en onder de
+  naam van die telefoon. "Zet de hotspot aan" op de pagina van de telefoon werkt zonder iets in te vullen.
+- [ ] **Andere hotspotnaam, met Shizuku.** Verander op de telefoon de naam van de hotspot (Instellingen, Hotspot) terwijl de Mac verbonden
+  is. Binnen ongeveer 20 seconden komt "Hotspot van <telefoon> is nieuw" met de nieuwe naam, als melding en als rij in het paneel.
+  Een tweede keer dezelfde naam geeft geen tweede melding, ook niet na Tandem opnieuw starten.
+- [ ] De knop in de rij ("Wachtwoord ophalen") of een klik op de melding opent de pagina van de telefoon met het instelscherm en de nieuwe
+  naam al ingevuld. "Wachtwoord ophalen bij <telefoon>" vult het wachtwoord in zonder dat je iets tikt. Zet "Laat mijn Mac mijn hotspot
+  gebruiken" op de telefoon uit en probeer het opnieuw: de Mac zegt dat de telefoon het wachtwoord niet doorgeeft.
+- [ ] **Zonder Shizuku** (Shizuku uit): verander de hotspotnaam en laat de Mac zonder netwerk de hotspot vragen (of druk op "Zet de hotspot
+  aan"). De telefoon zet hem aan, de Mac vindt hem niet en meldt een keer "Kon niet verbinden met de hotspot van <telefoon>" met de knop
+  naar het instelscherm. Tik de naam en het wachtwoord in: daarna lukt verbinden weer.
+- [ ] **Alleen het wachtwoord veranderd**: dezelfde melding, het instelscherm heeft de naam al, je tikt het nieuwe wachtwoord.
+- [ ] **Een nieuwe telefoon**: koppel een tweede Android-telefoon en zet daar de hotspotschakelaar aan. Met Shizuku komt de melding zodra
+  hij verbonden is, zonder Shizuku bij de eerste keer dat de Mac zijn hotspot probeert. De hotspot van de oude telefoon blijft werken.
+- [ ] "Later" in de rij laat hem los en hij komt niet terug voor dezelfde naam. Een Mac waarop de hotspot nooit is ingesteld krijgt
+  geen melding voor elke telefoon.
 
 ## 0.3.27, 2026-11-18 (PR 52, R-V18)
 

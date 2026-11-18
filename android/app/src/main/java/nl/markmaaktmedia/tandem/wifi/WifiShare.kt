@@ -61,7 +61,8 @@ class WifiShare private constructor(private val context: Context) {
     private val wifi = context.getSystemService(WifiManager::class.java)
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
     private val notifications = context.getSystemService(NotificationManager::class.java)
-    private val shizuku by lazy { HotspotModule.get(context).shizuku }
+    private val hotspot by lazy { HotspotModule.get(context) }
+    private val shizuku by lazy { hotspot.shizuku }
 
     private val _networks = MutableStateFlow<Map<String, TandemWifiNetwork>>(emptyMap())
     /** The network each computer said it is on. */
@@ -274,6 +275,11 @@ class WifiShare private constructor(private val context: Context) {
      * needs Shizuku. Null when it went, otherwise why not.
      */
     suspend fun handOver(to: String, ssid: String?): TandemWifiRefusal? {
+        // A Mac asks for the hotspot of this phone itself, which is not a network it is on: the name it was told (see HotspotNaming).
+        if (ssid != null && here?.ssid != ssid) {
+            val own = hotspot.ownNetwork()
+            if (own != null && own.ssid == ssid) return handOverHotspot(to, own)
+        }
         val network = here
         val name = ssid ?: network?.ssid.orEmpty()
         val why = when {
@@ -285,18 +291,43 @@ class WifiShare private constructor(private val context: Context) {
                 if (!read.ok) {
                     TandemWifiRefusal.UNREADABLE
                 } else {
-                    val sent = runCatching { graph.host.engine?.sendWifi(to, TandemWifi.Share(network, read.message)) != null }.getOrDefault(false)
-                    if (sent) {
-                        val who = graph.host.device(to)?.name ?: context.getString(R.string.wifi_computer_fallback)
-                        withContext(Dispatchers.Main) { Toast.makeText(context, context.getString(R.string.wifi_sent, who), Toast.LENGTH_SHORT).show() }
-                        return null
-                    }
+                    if (send(to, network, read.message)) return null
                     TandemWifiRefusal.OTHER
                 }
             }
         }
         if (ssid != null && name.isNotEmpty()) runCatching { graph.host.engine?.sendWifi(to, TandemWifi.Refuse(name, why)) }
         return why
+    }
+
+    /**
+     * The password of this phone's own hotspot, for a Mac that said yes to using it (the switch in the settings, which also lets the Mac
+     * ask for the hotspot, has to be on). Null when it went, otherwise why not.
+     */
+    private suspend fun handOverHotspot(to: String, own: TandemWifiNetwork): TandemWifiRefusal? {
+        val why = when {
+            !hotspot.sharesWithMac() || !WifiOfferPolicy.joinable(own) -> TandemWifiRefusal.CANNOT_SHARE
+            else -> {
+                val password = hotspot.ownPassword(own.ssid)
+                when {
+                    password == null -> TandemWifiRefusal.UNREADABLE
+                    send(to, own, password) -> return null
+                    else -> TandemWifiRefusal.OTHER
+                }
+            }
+        }
+        runCatching { graph.host.engine?.sendWifi(to, TandemWifi.Refuse(own.ssid, why)) }
+        return why
+    }
+
+    /** Sends the password and says so on the screen. False when it did not go. */
+    private suspend fun send(to: String, network: TandemWifiNetwork, password: String): Boolean {
+        val sent = runCatching { graph.host.engine?.sendWifi(to, TandemWifi.Share(network, password)) != null }.getOrDefault(false)
+        if (sent) {
+            val who = graph.host.device(to)?.name ?: context.getString(R.string.wifi_computer_fallback)
+            withContext(Dispatchers.Main) { Toast.makeText(context, context.getString(R.string.wifi_sent, who), Toast.LENGTH_SHORT).show() }
+        }
+        return sent
     }
 
     /** "Not now": this network is not offered again until the computer has been on another one. */

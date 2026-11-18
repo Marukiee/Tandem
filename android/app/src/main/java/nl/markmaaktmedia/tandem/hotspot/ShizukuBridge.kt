@@ -163,6 +163,12 @@ class ShizukuBridge(private val context: Context) {
     /** The password of a saved network, as the message of the result (empty for an open one). Never logged. */
     suspend fun wifiPassword(ssid: String): ShellResult = call(ShellUserService.TX_WIFI_PASSWORD) { it.writeString(ssid) }
 
+    /** The name and kind of this phone's own hotspot, as [HotspotNaming.encode] wrote it: no app can read it, the shell can. */
+    suspend fun ownHotspot(): ShellResult = call(ShellUserService.TX_HOTSPOT_NAME)
+
+    /** The password of this phone's own hotspot, if it is still called [ssid] (empty for an open one). Never logged. */
+    suspend fun ownHotspotPassword(ssid: String): ShellResult = call(ShellUserService.TX_HOTSPOT_PASSWORD) { it.writeString(ssid) }
+
     /** Android's switch Show clipboard access: [show] true or false sets it, null only asks. The message of the answer is "1" or "0". */
     suspend fun clipboardMessage(show: Boolean?): ShellResult =
         call(ShellUserService.TX_CLIP_MESSAGE) { it.writeInt(when (show) { true -> 1; false -> 0; null -> -1 }) }

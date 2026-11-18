@@ -55,6 +55,7 @@ import nl.markmaaktmedia.tandem.watch.pointer.PointerPacer
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
 import nl.markmaaktmedia.tandem.watch.protocol.SendGate
+import nl.markmaaktmedia.tandem.watch.protocol.SleepSession
 import nl.markmaaktmedia.tandem.watch.protocol.StageRun
 import uniffi.tandem_core.TandemHealthKind
 import uniffi.tandem_core.TandemHealthRecord
@@ -851,7 +852,7 @@ class WatchBridge(
                 forwardHeart(message.bpm)
             }
             is Message.HeartAllDay -> scope.launch { prefs.setHeartAllDay(message.on) }
-            is Message.SleepMode -> onSleepMode(message.on)
+            is Message.SleepMode -> onSleepMode(message.on, message.asleep)
             is Message.HealthRecord -> onHealthRecord(message)
             is Message.AppVersion -> updater.onVersion(message)
             is Message.UpdateWant -> updater.onWant(message)
@@ -888,24 +889,38 @@ class WatchBridge(
         }
     }
 
-    private fun onSleepMode(on: Boolean) {
-        if (on && _state.value.sleeping) return
+    /** Recording a night starts at bedtime mode, falling asleep is what the watch says later: only that pauses the music. */
+    private val sleepSession = SleepSession()
+
+    private fun onSleepMode(on: Boolean, asleep: Boolean) {
+        val steps = sleepSession.onState(on, asleep)
+        if (steps.isEmpty()) return
+        Log.i(TAG, "Sleep state: recording $on, asleep $asleep, doing $steps")
+        // Once a night, not at every fall asleep: waking up and dozing off again must not lose the morning question.
+        if (SleepSession.Step.QUIET_ON in steps) playedThrough = false
         _state.update { it.copy(sleeping = on) }
         scope.launch {
-            val wanted = prefs.watchSleepQuiet.first()
-            handler.post { if (!on || wanted) quiet.turn(on) }
-            if (on) fellAsleep() else wokeUp()
+            for (step in steps) {
+                when (step) {
+                    SleepSession.Step.QUIET_ON -> {
+                        val wanted = prefs.watchSleepQuiet.first()
+                        handler.post { if (wanted) quiet.turn(true) }
+                    }
+                    SleepSession.Step.QUIET_OFF -> handler.post { quiet.turn(false) }
+                    SleepSession.Step.FELL_ASLEEP -> fellAsleep()
+                    SleepSession.Step.WOKE_UP -> wokeUp()
+                }
+            }
         }
     }
 
     /** Whether music still played half an hour after falling asleep, with pausing it switched off: then the morning asks. */
     private var playedThrough = false
-    private val checkMusic = Runnable { if (_state.value.sleeping && musicPlaying()) playedThrough = true }
+    private val checkMusic = Runnable { if (sleepSession.asleep && musicPlaying()) playedThrough = true }
 
     private fun musicPlaying(): Boolean = media.anyPlaying || computerPlayers.any { it.playing }
 
     private suspend fun fellAsleep() {
-        playedThrough = false
         val pause = prefs.sleepPauseMusic.first()
         val lock = prefs.sleepLockComputers.first()
         handler.post {

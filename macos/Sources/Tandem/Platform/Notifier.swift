@@ -184,6 +184,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 FocusShare.shared.addOrSignIn()
             case SetupTour.notificationCategory:
                 TourWindow.shared.show()
+            case HotspotCoordinator.noticeCategory:
+                if action == UNNotificationDefaultActionIdentifier { EngineModel.shared.hotspot.openSetup(phone: info["phone"]) }
             default:
                 guard let device = info["device"], let key = info["key"] else { return }
                 if action == Self.copyCodeAction {

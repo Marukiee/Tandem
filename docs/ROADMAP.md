@@ -151,6 +151,24 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   Volgende stap: de teller per soort bericht en per apparaat (`K/sent_tally.rs`) ook optellen sinds een tijdstip en die totalen in
   de app laten zien (een rij onder Over of Diagnose, met kopiëren) en wegschrijven in de externe bestandenmap van de app, zodat ze
   na een dag onderweg met `adb pull` te lezen zijn. Pas daarna verder bouwen aan de besparing.
+
+  Stand 2026-11-18 (meetsessie, 0.3.25 met het verkeerslog, 1,5 uur scherm uit onderweg op mobiel): het log kost niets (geen alarm- of
+  job-wake locks van Tandem). Verbruik 254 mA, modem 430 tot 700 wekmomenten per uur (was 1100 tot 1600), maar de radio slaapt nog
+  niet: 150 tot 270 QUIC-pakketten per 5 minuten met het scherm uit. Wat het log laat zien, in volgorde van vermoedelijk belang:
+  1. De Mac-verbinding wisselt onderweg zo'n 20 keer in een uur ("closed here", afwisselend route other en tailnet; soms twee
+     verbindingen in dezelfde seconde, dialer false en true). Elke nieuwe verbinding stuurt alles opnieuw (Introduce, BleKey, Focus,
+     HealthHave, MediaPlayers, MediaArt twee keer, Status: samen ongeveer 15 KB).
+  2. `network_changed` 108 keer in 3 uur, tot 16 per kwartier. Vermoeden: elke melding laat een werkende verbinding sluiten of opnieuw
+     kiezen en zet de backoff terug. Voorstel: debouncen, alleen reageren als het onderliggende transport of de adressen echt
+     veranderen, een werkende verbinding eerst een Ping geven of laten migreren in plaats van sluiten.
+  3. De Mac pingt soms elke 4 s (63 tot 77 ontvangen Pings per 5 minuten, thuis 0 tot 4), en de telefoon antwoordt elke keer. Uitzoeken
+     waarom (na migratie of verlies?).
+  4. De Linux-laptop (weg voor dagen) is 22 keer gebeld, elke 5 tot 10 minuten, ook op mobiel met het scherm uit, want `costly` was
+     false: `ctx.metered` is false omdat het standaardnetwerk de Tailscale-VPN is. `ctx.network="mobile"` klopt wel. Voorstel: `costly`
+     op het transport baseren (mobiel), niet alleen op metered.
+  5. Dials naar de Mac: 55 mislukt en 13 gelukt, naar de Xperia 56 mislukt en 3 gelukt: kijken of parallelle routepogingen als mislukt tellen.
+  6. Bij opnieuw verbinden niets sturen dat niet veranderde (Introduce, MediaArt).
+  Nog niet gemeten: een nacht van de lader. Open, wacht op een bouwsessie (R-V15 deel 2); niet door mij gebouwd.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
@@ -257,6 +275,29 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   batterijcijfer: een emulator kan de winst niet meten, en `PassiveHealth` belooft hem ook niet. De winst die ik verwacht is dat het horloge
   de hartslag en stappen toch al verzamelt voor zichzelf en wij dus geen tweede sensormeting en geen eigen teller meer wakker houden; dat zegt
   de dag om de pols.
+- **R-V19. Een nieuwe telefoon, of een andere hotspot: de Mac moet het weten** (vraag van Mark, 2026-11-18: "wat gebeurt er als je een nieuwe
+  telefoon hebt? dan weet de mac niet dat je nieuwe hotspot hebt"). Nagelezen op main 52bbf7bd: ja, het ging fout. De Mac bewaarde een
+  naam (`hotspotSSID`) en een wachtwoord (`hotspot.secret`) voor alle telefoons, en `joinAndConnect` verbond daarmee. Een nieuwe telefoon,
+  of een andere naam of een ander wachtwoord, gaf na tien pogingen van vier seconden "The hotspot is not visible yet", zonder te zeggen wat
+  er te doen viel. En de telefoon zei zijn hotspotnaam nooit: `HotspotMsg::State { ssid }` bestaat, maar Android stuurde `ssid = null`, en
+  over Bluetooth (de weg als de Mac geen netwerk heeft) past er alleen een status en een aantal in. Gebouwd in 0.3.26:
+  1. **Per telefoon** (`HotspotProfiles`): naam en wachtwoord horen bij het apparaat. Wat er al stond gaat naar de eerste Android-telefoon
+     die de Mac kent (die werd altijd gevraagd), niemand vult iets opnieuw in. De Mac vraagt aan een telefoon die in bereik is en zijn
+     hotspot ingevuld heeft; de lijsten van netwerken die de Mac niet als "eigen" ziet bevatten alle hotspotnamen.
+  2. **Melding, een keer per naam** (`HotspotRules`, getest zonder app): "Hotspot van <telefoon> is nieuw" als systeemmelding en als rij in het
+     menubalkpaneel (Later of Instellen). De knop opent de pagina van die telefoon met het instelscherm en de naam al ingevuld. Twee bronnen:
+     de telefoon zegt zijn naam (nieuw bericht `HotspotMsg::Name`, en `ssid` in een `State`; alleen met Shizuku), of verbinden mislukt omdat de
+     naam niet te vinden is of het wachtwoord geweigerd wordt (werkt voor elke telefoon en over Bluetooth). Geen blijvende waarschuwing.
+  3. **Wachtwoord van de telefoon halen** (Shizuku): de shell heeft NETWORK_SETTINGS en leest `getSoftApConfiguration` zoals `ShellWifi` de
+     opgeslagen netwerken leest. Het instelscherm heeft "Wachtwoord ophalen bij <telefoon>": een `Ask` over de bestaande Wi-Fi-deelroute, de
+     telefoon antwoordt met `Share`, de Mac slaat het op bij die telefoon. Geen nieuwe rechten of afhankelijkheden. Gezien dat de shell het
+     leest: op een Android 16 emulator (naam, beveiliging en wachtwoord uit `getSoftApConfiguration` als `shell`). Niet gezien: de hele
+     route met Shizuku op een echte telefoon, en dat de Android 17 van de Xperia dezelfde aanroep nog toestaat.
+  4. **Linux en Windows**: hebben het hotspotverzoek zelf niet (zie `docs/PARITY.md`), dus er is niets om te onthouden of te melden. Het
+     komt mee als het verzoek er is; het bericht `HotspotMsg::Name` en de beslissingen in `HotspotRules` zijn er dan al. Niet gebouwd.
+  Open: een telefoon zonder Shizuku zegt zijn naam niet en kan geen wachtwoord geven (geen app mag zijn eigen hotspot lezen), dus daar
+  blijft het de fout bij het verbinden en intikken. Zit er een nieuwe telefoon naast de oude in de kring, dan kiest de Mac er een die in
+  bereik is; een apart keuzemenu voor welke telefoon de hotspot levert is er niet.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
@@ -898,6 +939,7 @@ op je pols, presenteren met de kroon, spraaknotitie.
 - **5. Muziek stopt als je slaapt**
   - Wat: slaap je in, dan pauzeert alles wat speelt: op de telefoon, op verbonden computers en via de telefoon ook Sonos, als dat daar als mediasessie loopt.
   - Wanneer: tijdens een slaapopname, na 25 minuten stil (de drempel van `SleepAutoDetector`), dus niet meteen als je bedtime mode met de hand aanzet.
+  - **Hersteld (0.3.26):** bedtime mode pauzeerde de muziek meteen, want `SleepMode(on)` gold als in slaap vallen. Nu heeft `SleepMode` een tweede veld `asleep`: de opname en de stille stand beginnen bij bedtime mode, de pauze en het vergrendelen pas als de detector (25 minuten stil, `AutoSleep`) het horloge laat melden dat je slaapt. Wordt je 's nachts wakker (de detector ziet 8 van 12 minuten beweging) en val je opnieuw in slaap, dan pauzeert het opnieuw. Een nacht die je met de hand start telt als slapen vanaf het begin, zoals eerst. Een oud horloge zonder het veld blijft "slaapt meteen" betekenen, een oude telefoon leest alleen het eerste veld: beide combinaties werken als voorheen. De volgorde staat in `SleepSessionTest`.
   - Bericht: nieuw `Asleep` (id van de nacht) van horloge naar telefoon. `SleepMode` kan dit niet dragen: die wordt na elke verbinding herhaald. Het id zorgt dat het één keer per nacht gebeurt. Was de link weg, dan telt het bericht alleen als het jonger is dan 10 minuten.
   - Telefoon: `WatchMedia` pauzeert de eigen spelers, `sendMediaCommand` die op computers, alleen wat echt speelt.
   - Schakelaars op de telefoon, naast "Stille slaap": "Muziek pauzeren" (standaard uit) en apart "Computers vergrendelen" (standaard uit), want iemand anders kan dan achter de computer zitten. **Gebouwd (0.3.2):** op de pagina van het horloge op de telefoon; de telefoon pauzeert zijn eigen spelers en die van de computers, en vergrendelt de computers die online zijn.

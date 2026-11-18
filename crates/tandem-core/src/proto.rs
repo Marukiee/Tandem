@@ -900,6 +900,11 @@ pub enum HotspotMsg {
     /// The Mac went on to another network: the phone turns the hotspot off, unless other devices are still on it. An older phone
     /// skips it, as it skips anything it does not know.
     Leave,
+    /// What the phone's own hotspot is called, said unasked to a Mac that is connected, so a new phone or a renamed hotspot is
+    /// noticed while the Mac still has a network. Only a phone that can read its own hotspot says it (Shizuku). A separate message
+    /// and not a `State`: a `State` is an answer, and one that arrives while the Mac waits for the answer to its request would be
+    /// taken for it. An older Mac skips it.
+    Name { ssid: String },
 }
 
 /// A Focus was turned on or off by the person on the device `origin`.
@@ -1336,6 +1341,26 @@ mod tests {
         // A change about something else leaves it alone.
         mine.merge(&Status { dnd: Some(true), ..Default::default() });
         assert_eq!(mine.muted, Some(false));
+    }
+
+    #[test]
+    fn the_name_of_a_hotspot_survives_the_trip_and_an_old_app_skips_it() {
+        let name = Msg::Hotspot(HotspotMsg::Name { ssid: "Pixel van Mark".into() });
+        match decode_msg(&encode(&name).unwrap()).unwrap() {
+            Msg::Hotspot(HotspotMsg::Name { ssid }) => assert_eq!(ssid, "Pixel van Mark"),
+            other => panic!("wrong message: {other:?}"),
+        }
+        // An app from before this message has no such variant: the same bytes with a name it does not know are skipped, not fatal.
+        let future = ciborium::Value::Map(vec![(
+            ciborium::Value::Text("Hotspot".into()),
+            ciborium::Value::Map(vec![(
+                ciborium::Value::Text("Teleport".into()),
+                ciborium::Value::Map(vec![(ciborium::Value::Text("ssid".into()), ciborium::Value::Text("x".into()))]),
+            )]),
+        )]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&future, &mut bytes).unwrap();
+        assert!(matches!(decode_msg(&bytes).unwrap(), Msg::Unknown));
     }
 
     #[test]

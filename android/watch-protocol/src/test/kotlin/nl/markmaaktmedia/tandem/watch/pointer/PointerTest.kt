@@ -319,6 +319,7 @@ class PointerMessagesTest {
         roundTrip(Message.DeviceBatteries(listOf(DeviceBattery("id", "Mac", 87, charging = true))))
         roundTrip(Message.WatchStatus(61, charging = false))
         roundTrip(Message.SleepMode(true))
+        roundTrip(Message.SleepMode(true, asleep = false))
         roundTrip(Message.TryWakeBuzz)
         roundTrip(Message.PointerSession("abc"))
         roundTrip(Message.PointerSession(null))

@@ -20,6 +20,8 @@ struct MenuBarPanel: View {
                 devices
             }
 
+            if let notice = model.hotspotNotice { HotspotNoticeRow(notice: notice) }
+
             MenuNowPlaying()
 
             MenuTiles()
@@ -34,6 +36,7 @@ struct MenuBarPanel: View {
         .animation(.tandem, value: model.devices.map(\.id))
         .animation(.tandem, value: model.devices.map(\.online))
         .animation(.tandem, value: model.hotspotStatus)
+        .animation(.tandem, value: model.hotspotNotice)
         .animation(.tandem, value: model.isTransferring)
         .animation(.tandem, value: model.remoteMedia.mapValues(\.players))
     }
@@ -183,6 +186,42 @@ struct MenuBarPanel: View {
                 NotificationCenter.default.post(name: .tandemShowPairing, object: nil)
             }
         }
+    }
+}
+
+/// A phone whose hotspot this Mac cannot join yet (a new phone, a renamed hotspot): said once, with the button that opens the setup with
+/// the name filled in. "Later" lets it go. It is gone as soon as the hotspot is filled in; it is not a warning that stays.
+private struct HotspotNoticeRow: View {
+    @Environment(EngineModel.self) private var model
+    let notice: HotspotNotice
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "personalhotspot")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Palette.indigo)
+                    .frame(width: 24, height: 24)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(notice.title).font(.callout.weight(.semibold)).lineLimit(2)
+                    Text(notice.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                Button("Later") { model.hotspot.dismissNotice() }
+                    .buttonStyle(.tandemGlass)
+                    .controlSize(.small)
+                Button(notice.canFetch ? "Get password" : "Set up") { model.hotspot.openSetup() }
+                    .buttonStyle(.tandemGlassProminent)
+                    .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(Palette.indigo.opacity(0.10), in: .rect(cornerRadius: 18, style: .continuous))
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 }
 
@@ -381,7 +420,7 @@ private struct MenuDeviceRow: View {
                         onHover: { hover($0, joined ? "Stop the hotspot" : "Turn on hotspot") }
                     ) {
                         if joined { model.hotspot.stop(device.id) }
-                        else if HotspotCredentials.complete { model.hotspot.requestNow(device.id) }
+                        else if HotspotProfiles.shared.complete(for: device.id) { model.hotspot.requestNow(device.id) }
                         else {
                             model.showToast(String(localized: "Set up the hotspot first, on the page of your phone"))
                             AppScenes.showMain(.device(device.id))
