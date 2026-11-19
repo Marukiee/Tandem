@@ -212,6 +212,17 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   het scherm uit 162 mA over 22 minuten (254 mA op 0.3.25 met verbonden Mac; 131 tot 158 mA zonder verbinding): te kort voor een harde
   conclusie, mobiele radio 94% actief. Nog te meten: een lange rit onderweg. Het open punt Status bij elk scherm aan/uit is bevestigd (3
   Status, 1,8 KB, bij scherm uit om 14:52).
+  Avondmeting 0.3.28 (2026-11-19, 18:01 tot 22:37, mobiel, scherm uit, Mac via de tailnet verbonden, 2 disconnects): 221 mA over 3,2 uur,
+  CPU 96% wakker, radio 93% actief (muziek en Snapchat/WhatsApp vertroebelen het). Mark wil eerst betere metingen, nog niets bouwen. Uit het
+  telefoonlog (27 buckets met scherm uit op mobiel) een verdachte: in 15 van de 27 staan precies rond 9 QUIC `ping`-frames die de telefoon
+  stuurt (tx), met 40 tot 50 udp-pakketten en bijna geen berichten van de app (bijvoorbeeld 18:53: twee Pong, 9 ping, 44 pakketten). Dat zijn
+  waarschijnlijk quinns eigen MTU-probes: `MtuDiscoveryConfig` staat op de standaard (`upper_bound` 1452, `interval` 600 s, 3 herhalingen per
+  verloren probe) en `tls::transport` zet er niets aan. Een tailnet heeft MTU 1280 (UDP-lading 1232 over IPv6), dus elke probe boven de 1232
+  gaat verloren, wordt drie keer herhaald, en dat geeft per ronde van 10 minuten ongeveer 8 tot 12 pakketten van ruim 1200 B plus de
+  tijdouts die daarop volgen. Eén pakket per paar seconden houdt een LTE-radio wakker. Mogelijke kleine oplossing (niet gebouwd): `upper_bound`
+  1232, of de ontdekking uit toen de route een tailnet is of de telefoon stil is; kost op wifi een paar procent snelheid bij grote bestanden.
+  Te controleren: of de pings met de 600 s-klok samenvallen (twee opeenvolgende buckets per ronde) en of ze verdwijnen met `upper_bound` 1232.
+  Daarnaast stuurt de telefoon met het scherm uit gemiddeld 4 `Status` per 5 minuten (open punt b).
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
