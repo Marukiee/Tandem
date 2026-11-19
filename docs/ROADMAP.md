@@ -207,6 +207,11 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   worden nog steeds opnieuw gestuurd, alleen MediaArt (twee keer 12 KB) niet; (d) op de directe route `other` kan een NAT-tabel de
   verbinding in de stille stand (240 s tussen twee heartbeats) vergeten: staat het log nog vol "closed here" met afstanden van rond
   de 240 s, dan is de heartbeat in de stille stand te ruim voor die route.
+  Meting van 0.3.28 (Oppo, 2026-11-19, 14:41 tot 15:10, mobiel, wifi uit, Mac wakker, ProtonVPN op de Mac uit, zie R-V20): een verbinding,
+  geen disconnects, 0 lost, rtt 33 tot 46 ms. Scherm uit per 5 minuten: 1 Ping/Pong, 2 tot 3 Status en 21 tot 48 udp-pakketten. Stroom met
+  het scherm uit 162 mA over 22 minuten (254 mA op 0.3.25 met verbonden Mac; 131 tot 158 mA zonder verbinding): te kort voor een harde
+  conclusie, mobiele radio 94% actief. Nog te meten: een lange rit onderweg. Het open punt Status bij elk scherm aan/uit is bevestigd (3
+  Status, 1,8 KB, bij scherm uit om 14:52).
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
