@@ -223,6 +223,14 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   1232, of de ontdekking uit toen de route een tailnet is of de telefoon stil is; kost op wifi een paar procent snelheid bij grote bestanden.
   Te controleren: of de pings met de 600 s-klok samenvallen (twee opeenvolgende buckets per ronde) en of ze verdwijnen met `upper_bound` 1232.
   Daarnaast stuurt de telefoon met het scherm uit gemiddeld 4 `Status` per 5 minuten (open punt b).
+  Nagemeten door de Oppo-sessie: de 8 of 9 pings komen op een vaste klok van ongeveer 10 minuten, ook op wifi met MTU 1500 en ook na een
+  nieuwe verbinding zonder dat het ritme verschuift. Dat past bij quinns 600 s-klok, maar een ronde is 30 tot 40 pakketten (11 KB) die
+  dicht op elkaar zitten: een radiosessie per 10 minuten, dus het verklaart niet dat radio (93%) en CPU (96%) bijna altijd wakker zijn.
+  Grotere verdachte, uit batterystats 18:05 tot 23:54: Tailscale zelf (31.954 pakketten verzonden op mobiel, radio 1 u 05 min, 46 sessies)
+  tegen Tandem (4.699 verzonden, radio 5,5 min). Tailscale stuurt waarschijnlijk disco-heartbeats en netcheck zolang een peer in de laatste
+  tientallen seconden verkeer had (nog te verifiëren), dus elk Tandem-pakket (ack, Pong, Status) kan het wakker houden. De winst zit dan in
+  langere stiltes van Tandem op de tailnet: minder ack-uitlokkend verkeer, Status bundelen, MTU-ontdekking eenmalig. Meetplan voor Mark, onderweg,
+  elk een uur met het scherm uit en zonder muziek: 1. Tandem actief, 2. Tandem gestopt met Tailscale aan, 3. Tailscale uit. Eerst meten, dan bouwen.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
