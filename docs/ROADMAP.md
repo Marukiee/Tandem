@@ -336,6 +336,15 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   Open: een telefoon zonder Shizuku zegt zijn naam niet en kan geen wachtwoord geven (geen app mag zijn eigen hotspot lezen), dus daar
   blijft het de fout bij het verbinden en intikken. Zit er een nieuwe telefoon naast de oude in de kring, dan kiest de Mac er een die in
   bereik is; een apart keuzemenu voor welke telefoon de hotspot levert is er niet.
+- **R-V20. Een andere VPN met kill switch blokkeert de tailnet-route, en de app zegt er niets over** (gemeten 2026-11-19, Oppo-sessie, 0.3.28:
+  geen regressie). ProtonVPN draaide op de Mac naast Tailscale (allebei Connected, Proton met de default route op utun6). Een UDP-pakket van
+  de telefoon kwam op de Mac aan, maar de Mac kon niet antwoorden (`Network is unreachable`), `tailscale ping` werkte wel (dat loopt via
+  tailscaled zelf). Elke Tandem-dial over de tailnet mislukte in beide richtingen tot Proton uit ging; daarna verbond de Mac in een dial,
+  route tailnet. Wens: zie je dat een tailnet-adres al vaker mislukte terwijl de ander wel bereikbaar is via een andere weg, of dat een
+  tweede VPN actief is, zeg dan bij het apparaat in een zin wat er speelt ("Een andere VPN kan Tailscale blokkeren"), alleen als je erop
+  klikt of het apparaat opent, geen blijvende waarschuwing. Nog niet ontworpen. Bijvangst: de Mac logde die verbinding als route tailnet
+  (dialer), de telefoon als route `other` (dialer=false): dezelfde verbinding krijgt aan de ontvangende kant een ander label. Nog niet
+  uitgezocht waarom (welk adres de telefoon als afzender ziet); het raakt alleen het log en de routekeuze op de telefoon.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
