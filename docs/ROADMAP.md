@@ -231,6 +231,12 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   tientallen seconden verkeer had (nog te verifiëren), dus elk Tandem-pakket (ack, Pong, Status) kan het wakker houden. De winst zit dan in
   langere stiltes van Tandem op de tailnet: minder ack-uitlokkend verkeer, Status bundelen, MTU-ontdekking eenmalig. Meetplan voor Mark, onderweg,
   elk een uur met het scherm uit en zonder muziek: 1. Tandem actief, 2. Tandem gestopt met Tailscale aan, 3. Tailscale uit. Eerst meten, dan bouwen.
+  Uitkomst van de nachtmeting (Oppo, 2026-11-20, mobiel, wifi uit, scherm uit, ProtonVPN uit, drie blokken van twee uur): Tandem en Tailscale
+  zijn NIET de grote kostenpost. Alles aan 138 mA (Mac de hele tijd verbonden via de tailnet, 0 disconnects), Tandem gestopt 123 mA, ook
+  Tailscale uit 131 mA; op wifi 69 mA. De Tandem-verbinding kost 's nachts dus ongeveer 15 mA, Tailscale zit in de ruis. De vloer op mobiel
+  (rond 125 mA, CPU bijna altijd wakker, modem aan het ontvangen) komt van iets anders, hoofdverdachte Syncthing-Fork (draaide op batterij ondanks
+  de run condition): geen Tandem-zaak, de Oppo-sessie zoekt het uit met Mark. De 221 mA van de avond kwam dus grotendeels niet door Tandem. R-V15
+  deel 2 (0.3.28) is daarmee gelukt voor wat Tandem zelf kon; de MTU-ontdekking en het bundelen van `Status` blijven kleine verbeteringen.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
