@@ -237,6 +237,10 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   (rond 125 mA, CPU bijna altijd wakker, modem aan het ontvangen) komt van iets anders, hoofdverdachte Syncthing-Fork (draaide op batterij ondanks
   de run condition): geen Tandem-zaak, de Oppo-sessie zoekt het uit met Mark. De 221 mA van de avond kwam dus grotendeels niet door Tandem. R-V15
   deel 2 (0.3.28) is daarmee gelukt voor wat Tandem zelf kon; de MTU-ontdekking en het bundelen van `Status` blijven kleine verbeteringen.
+  Dagtest 2026-11-20 (10:56 tot 13:56, na de Syncthing-fix, mobiel, Mark gebruikte de telefoon tussendoor, dus ruisig): alles aan 201 mA, Tandem
+  gestopt met Tailscale aan 210 mA (Tailscale ongeveer 190 pakketten per minuut zonder Tandem-verkeer), Tailscale ook uit 126 mA met CPU 25%.
+  Tandems eigen kosten zijn klein (nachts ongeveer 15 mA, overdag niet meetbaar); Tailscale houdt overdag de CPU wakker, maar die winst zag de
+  nacht niet. De Oppo-sessie stelt Mark een tweede schone nachtmeting voor. Niets te bouwen voor Tandem tot die er is.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
