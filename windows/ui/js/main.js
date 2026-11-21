@@ -162,7 +162,6 @@ function Nav() {
       { on: state.page === "messages", dim: !phone.online, go: () => set({ selected: phone.id, page: "messages" }) })}
     ${pageRow("clipboard", "clipboard", t("clipboard"))}
     ${pageRow("notifications", "bell", t("notifications"), unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`)}
-    ${pageRow("settings", "settings", t("settings"))}
     <div class="spacer"></div>
     ${/* Above the foot and not under it: here they take their room from the empty middle, and no row moves when one comes or goes. */ null}
     <div class="banners" onClick=${() => folded && setPeek(true)}>
@@ -170,6 +169,8 @@ function Nav() {
       <${DisplayBanner} />
       <${UpdateBanner} />
     </div>
+    ${/* Settings is not content: it sits at the foot with Add a device, apart from the pages above. */ null}
+    ${pageRow("settings", "settings", t("settings"))}
     <div class="row pagerow addrow" title=${folded ? t("add_device") : null} onClick=${() => set({ dialog: { kind: "pair" } })}>
       <span class="navicon"><span class="plusdisc"><${Icon} name="plus" size=${14} /></span></span><span class="words grow ellipsis">${t("add_device")}</span></div>
   </nav>`;
