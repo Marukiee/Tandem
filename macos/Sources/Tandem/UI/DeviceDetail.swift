@@ -941,53 +941,58 @@ private struct SideRow: View {
     }
 }
 
-/// Left or right of this Mac, as the desk seen from the front: this Mac in the middle and the device on either side of it, as a
-/// choice of two. The side that holds is filled in the accent, and the fill slides over with a spring when the other is picked.
+/// Left or right of this Mac, as the desk seen from the front, built like the button row of the player: three blocks with a small
+/// gap, the outer ends round. This Mac is the block in the middle, filled and fixed, as play is in the player; the device is a choice
+/// on either side of it. The side that holds is filled in the accent.
 private struct SideChoice: View {
     let device: TandemDevice
     let left: Bool
     let pick: (String) -> Void
-    @Namespace private var fill
 
     /// This Mac as what it is: one with a battery is a laptop.
     private static let thisMac = PowerReader.battery() != nil ? "laptopcomputer" : "display"
+    private static let height: CGFloat = 32
+    private static let inner: CGFloat = 7
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             option("left", on: left)
-            // This Mac is not a choice: always in the full colour of the text, so it does not read as a third button.
+            // This Mac is not a choice: always filled and in the colour of the text, so it does not read as a third button.
             Image(systemName: Self.thisMac)
                 .font(.system(size: 15, weight: .medium))
-                .symbolRenderingMode(.monochrome)
                 .foregroundStyle(.primary)
-                .padding(.horizontal, 2)
+                .frame(width: 46, height: Self.height)
+                .background(Color.primary.opacity(0.14), in: RoundedRectangle(cornerRadius: Self.inner, style: .continuous))
                 .accessibilityLabel(Text("This Mac"))
             option("right", on: !left)
         }
-        .padding(3)
-        .background(Color.primary.opacity(0.06), in: Capsule())
-        .animation(.tandemSpringy, value: left)
+        .animation(.tandemFade, value: left)
     }
 
     private func option(_ name: String, on: Bool) -> some View {
+        let isLeft = name == "left"
+        let round = Self.height / 2
+        let shape = UnevenRoundedRectangle(
+            topLeadingRadius: isLeft ? round : Self.inner, bottomLeadingRadius: isLeft ? round : Self.inner,
+            bottomTrailingRadius: isLeft ? Self.inner : round, topTrailingRadius: isLeft ? Self.inner : round,
+            style: .continuous
+        )
         let glyph = DeviceGlyph(platform: device.platform, online: true, size: 17, onSelection: on, plain: true, deviceID: device.id)
-        let word = Text(name == "left" ? "Left" : "Right")
+        let word = Text(isLeft ? "Left" : "Right")
             .font(.callout.weight(on ? .semibold : .medium))
             .foregroundStyle(on ? Color.white : Color.secondary)
         return Button { if !on { pick(name) } } label: {
-            // The device on the side of the word that it stands on, so the picture reads as the desk.
+            // The device on the side of the word that it stands on, so the row reads as the desk.
             HStack(spacing: 5) {
-                if name == "left" { glyph; word } else { word; glyph }
+                if isLeft { glyph; word } else { word; glyph }
             }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 6)
-            .background {
-                if on { Capsule().fill(Palette.indigo).matchedGeometryEffect(id: "fill", in: fill) }
-            }
-            .contentShape(Capsule())
+            .padding(.horizontal, 12)
+            .frame(height: Self.height)
+            .background(on ? AnyShapeStyle(Palette.indigo) : AnyShapeStyle(Color.primary.opacity(0.06)), in: shape)
+            .contentShape(shape)
         }
         .buttonStyle(.bouncy)
-        .accessibilityLabel(Text(name == "left" ? "Put it left" : "Put it right"))
+        .accessibilityLabel(Text(isLeft ? "Put it left" : "Put it right"))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
