@@ -603,3 +603,11 @@ En Instellingen staat in de zijbalk direct boven Apparaat toevoegen, onder de me
 - [ ] **Brede zijbalk.** Onderaan staan Instellingen en Apparaat toevoegen in dezelfde stijl; Gedeeld, Berichten, Klembord en Meldingen staan
   erboven. Instellingen opent nog en is gemarkeerd als hij open is.
 - [ ] **Smalle zijbalk** (venster smal maken): alleen icoon, met de tooltip "Instellingen" en "Apparaat toevoegen". Een update- of scherm-banner schuift Instellingen niet weg.
+
+## 0.3.33, 2026-11-21 (speler op een eigen kaart)
+
+- [ ] **Android, pagina van een computer die muziek speelt.** De speler (hoes, titel, balk, knoppen) staat op een eigen kaart direct
+  onder de kaart met naam, versie, pillen en accuring, met dezelfde ruimte als tussen de andere kaarten. Stop de muziek op een
+  telefoon of tablet die alleen een speler toont als er iets speelt: de spelerkaart schuift weg en laat geen lege ruimte achter; start
+  hem weer: hij komt terug met de animatie. Een bereikbare Mac of Windows-pc houdt zijn speler ook als er niets speelt.
+- Linux en Windows hadden al twee kaarten (kop en speler naast elkaar); daar is niets veranderd.
