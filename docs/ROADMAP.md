@@ -241,6 +241,11 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   gestopt met Tailscale aan 210 mA (Tailscale ongeveer 190 pakketten per minuut zonder Tandem-verkeer), Tailscale ook uit 126 mA met CPU 25%.
   Tandems eigen kosten zijn klein (nachts ongeveer 15 mA, overdag niet meetbaar); Tailscale houdt overdag de CPU wakker, maar die winst zag de
   nacht niet. De Oppo-sessie stelt Mark een tweede schone nachtmeting voor. Niets te bouwen voor Tandem tot die er is.
+  Schone nachtmeting 2026-11-21 (02:47 tot 04:46, mobiel, niet aangeraakt, Tailscale aan, Tandem gestopt, Mac sliep, Syncthing uit): 80 mA, CPU
+  24% wakker, radio 88% actief, Tailscale ongeveer 4.000 pakketten per uur (wifi: 69 mA). Overdag met een wakkere Mac en gebruik verstuurde
+  Tailscale ongeveer 11.400 per uur. Het hoge verbruik van eerder (125 tot 221 mA) kwam vooral door Syncthing op Force start, plus app-activiteit
+  na gebruik; Tailscale is geen grote kostenpost. De kosten van Tandem met een wakkere Mac zonder Syncthing zijn nog niet schoon gemeten
+  (schatting ongeveer 15 mA bovenop de rust). Het MTU-punt en `Status` bundelen blijven kleine verbeteringen, alleen als Mark wil.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
