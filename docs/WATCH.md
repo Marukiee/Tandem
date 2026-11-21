@@ -34,6 +34,25 @@ Dit zijn de regels die uit de review en de tests kwamen. Laat ze staan bij het o
 - Bluetooth uit en aan: de GATT-server wordt opnieuw geopend, de oude overleeft dat niet.
 - Berichten worden pas versleuteld als ze de wachtrij verlaten, en `Call` haalt alles in.
 
+## Accu
+Wat de link en de app kosten, en hoe je het ziet (R-V18, tweede ronde, 0.3.31). Alles hieronder is een regel in `watch-protocol` met tests;
+`WatchBleClient` voert hem uit.
+- **Zoeken naar een telefoon die weg is** (`ScanPolicy`): de eerste minuut vol, dan gewoon, dan zuinig. Na een half uur zonder telefoon
+  (thuisgelaten, uit, app gestopt) kijkt het horloge 30 s en rust daarna 2 minuten, een vijfde van de tijd. Het kijkt meteen weer als het
+  scherm aangaat (hooguit een keer per minuut). Daarmee is een telefoon die terugkomt er na hooguit ongeveer 3 minuten weer, en meestal
+  direct omdat iemand het horloge dan bekijkt.
+- **Prioriteit van een rustige verbinding** (`LinkPriorityRules`): met het scherm uit en niets te doen vraagt het horloge de verbinding om
+  `LOW_POWER` (100 tot 125 ms tussen pakketten in plaats van 30 tot 50 ms). Gebalanceerd zodra het scherm aangaat, 15 s na de laatste
+  drukte, bij een stroom van 4 stukken binnen 2 s (een overdracht, een hoes, een update), de eerste 30 s van een verbinding, en snelst bij
+  de muis. Een bericht met het scherm uit komt daardoor hooguit ongeveer een tiende seconde later aan. Valt de verbinding drie keer in een
+  uur weg terwijl hij rust, dan blijft hij 12 uur gebalanceerd.
+- **Het logboek** (`PowerLog`, `PowerTally`): per uur een regel in `power-YYYY-MM-DD.jsonl` in de map die `adb pull` bereikt
+  (`/sdcard/Android/data/nl.markmaaktmedia.tandem.watch/files/power`, 14 dagen) en in `adb logcat -s TandemWatchPower`. Wat Tandem deed:
+  wekmomenten per bron (`n`), tijden in seconden (`s`: verbinding, scannen, zuinige verbinding, versnellingsmeter, eigen hartslagmeting,
+  live hartslag, opname, scherm, lader, om de pols) en berichten per soort (`in`, `out`), met de accu aan begin en eind van het uur
+  (procent en microampere-uur). Zonder timer, wekker of wake lock: een uur wordt dichtgedaan door het eerste dat daarna gebeurt, en dat
+  had het horloge al wakker gemaakt. Op het horloge zelf: Instellingen, Accu-logboek.
+
 ## Koppelen
 Het horloge is een accessoire van deze ene telefoon, geen circle-lid. Het krijgt dus geen toegang tot bestanden, invoer of
 andere apparaten.

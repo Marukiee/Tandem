@@ -41,6 +41,10 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import nl.markmaaktmedia.tandem.watch.power.PowerLog
+import nl.markmaaktmedia.tandem.watch.protocol.Tick
+import nl.markmaaktmedia.tandem.watch.protocol.Span
+import nl.markmaaktmedia.tandem.watch.protocol.DeliveryCounter
 
 /**
  * Records raw sensor data to a file and analyses it when stopped. Raw on purpose: when the sleep analysis gets
@@ -58,6 +62,7 @@ class TrackingService : Service(), SensorEventListener {
     private var clockOffsetMs = 0L
     private var automatic = false
     private var stopping = false
+    private val accelDeliveries = DeliveryCounter()
 
     private val flushLoop = object : Runnable {
         override fun run() {
@@ -118,6 +123,7 @@ class TrackingService : Service(), SensorEventListener {
             log.write(RawRecord.Mark(now, requested.name))
             if (stillSince != 0L) log.write(RawRecord.Mark(stillSince, SleepAutoDetector.STILL_SINCE))
             register(requested)
+            PowerLog.open(Span.RECORDING)
             shortBatches = false
             if (requested == TrackingKind.SLEEP) followAlarm()
             handler.postDelayed(flushLoop, FLUSH_MS)
@@ -155,6 +161,7 @@ class TrackingService : Service(), SensorEventListener {
         val time = clockOffsetMs + event.timestamp / 1_000_000
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
+                if (accelDeliveries.onValue(SystemClock.elapsedRealtime())) PowerLog.count(Tick.ACCEL_BATCH)
                 log.write(RawRecord.Accel(time, toUnits(event.values[0]), toUnits(event.values[1]), toUnits(event.values[2])))
                 considerWaking(time)
             }
@@ -221,6 +228,7 @@ class TrackingService : Service(), SensorEventListener {
             file?.let { analyzeRecording(this, it, finishing, automatic) }
             TrackingStore(this).unfinished = null
             if (finishing == TrackingKind.SLEEP) WatchLink.setSleepMode(false)
+            PowerLog.close(Span.RECORDING)
             Tracking.publishActive(null, 0)
             stopping = false
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -253,6 +261,7 @@ class TrackingService : Service(), SensorEventListener {
 
     override fun onDestroy() {
         sensors.unregisterListener(this)
+        PowerLog.close(Span.RECORDING)
         // The night is over, so whoever slept it is awake.
         if (GentleWake.running) GentleWake.awake()
         runCatching { output?.close() }
