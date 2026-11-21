@@ -20,6 +20,9 @@ import android.util.Log
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import nl.markmaaktmedia.tandem.watch.power.PowerLog
+import nl.markmaaktmedia.tandem.watch.protocol.Tick
+import nl.markmaaktmedia.tandem.watch.protocol.DeliveryCounter
 
 /**
  * Steps all day. Health Services counts them for everyone and tells the total of the day in batches ([onDaily]); the step counter of the
@@ -41,6 +44,7 @@ class StepTracker private constructor(private val context: Context) : SensorEven
         },
     )
     private var listening = false
+    private val counterDeliveries = DeliveryCounter()
     private var lastReportMs = 0L
     private var reportPosted = false
 
@@ -76,6 +80,7 @@ class StepTracker private constructor(private val context: Context) : SensorEven
     /** Totals of the day from Health Services, in the order they were taken. */
     fun onDaily(totals: List<DailyTotal>) {
         handler.post {
+            PowerLog.count(Tick.PASSIVE_STEPS)
             // Many come together, within the same minute: in the order they were taken, or a lower total after a higher one reads as a restart.
             for (point in totals.sortedBy { it.bootMs }) {
                 count(feed.onDaily(point.total, SystemClock.elapsedRealtime()), point.day, point.bootMinute, point.hour)
@@ -85,6 +90,7 @@ class StepTracker private constructor(private val context: Context) : SensorEven
     }
 
     override fun onSensorChanged(event: SensorEvent) {
+        if (counterDeliveries.onValue(SystemClock.elapsedRealtime())) PowerLog.count(Tick.STEP_BATCH)
         val fed = feed.onCounter(event.values[0].toLong(), SystemClock.elapsedRealtime()) ?: return
         // The counter counts because the system does not: it may have lost the registration, or the permission may be given again.
         PassiveHealth.reregisterIfDue(context)

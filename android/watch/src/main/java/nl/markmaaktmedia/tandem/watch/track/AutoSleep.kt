@@ -22,6 +22,10 @@ import nl.markmaaktmedia.tandem.watch.sleep.AutoSleepDecision
 import nl.markmaaktmedia.tandem.watch.sleep.NapDetector
 import nl.markmaaktmedia.tandem.watch.sleep.SleepAutoDetector
 import java.util.Calendar
+import nl.markmaaktmedia.tandem.watch.power.PowerLog
+import nl.markmaaktmedia.tandem.watch.protocol.Tick
+import nl.markmaaktmedia.tandem.watch.protocol.Span
+import nl.markmaaktmedia.tandem.watch.protocol.DeliveryCounter
 
 /**
  * Starts and stops the recording of a night by itself. Listens to a slow stream of movement that the sensor hub collects while the
@@ -62,9 +66,12 @@ object AutoSleep : SensorEventListener {
         override fun onChange(selfChange: Boolean) = updateBedtime()
     }
 
+    private val accelDeliveries = DeliveryCounter()
+
     private var alarmSet = false
     private val windowAlarm = AlarmManager.OnAlarmListener {
         alarmSet = false
+        PowerLog.count(Tick.ALARM)
         update()
     }
 
@@ -239,6 +246,7 @@ object AutoSleep : SensorEventListener {
         sensors?.unregisterListener(this)
         listening = false
         moving = false
+        PowerLog.set(Span.ACCEL, false)
         Log.i(TAG, "Not listening")
     }
 
@@ -249,6 +257,7 @@ object AutoSleep : SensorEventListener {
         val wanted = listening && (recordingAutomatic || (worn && !charging))
         if (wanted == moving) return
         moving = wanted
+        PowerLog.set(Span.ACCEL, wanted)
         if (wanted) manager.registerListener(this, accel, PERIOD_US, BATCH_US, handler) else manager.unregisterListener(this, accel)
     }
 
@@ -256,12 +265,14 @@ object AutoSleep : SensorEventListener {
         when (event.sensor.type) {
             Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT -> {
                 worn = event.values[0] > 0.5f
+                PowerLog.set(Span.WORN, worn)
                 if (!worn) HeartTracker.cancelMeasuring()
                 detector.setWorn(worn)
                 updateMovement()
             }
             Sensor.TYPE_ACCELEROMETER -> {
                 val nowMs = SystemClock.elapsedRealtime()
+                if (accelDeliveries.onValue(nowMs)) PowerLog.count(Tick.ACCEL_BATCH)
                 if (nowMs - lastTickMs > MINUTE_MS) {
                     lastTickMs = nowMs
                     HeartTracker.tick()

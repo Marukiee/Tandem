@@ -73,6 +73,12 @@
             android:excludeFromRecents="true" />
 
         <activity
+            android:name=".ui.PowerLogActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true" />
+
+        <activity
             android:name=".ui.PointerActivity"
             android:exported="false"
             android:launchMode="singleTop"

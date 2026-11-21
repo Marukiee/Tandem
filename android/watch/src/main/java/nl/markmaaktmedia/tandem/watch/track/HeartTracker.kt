@@ -19,6 +19,9 @@ import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import nl.markmaaktmedia.tandem.watch.power.PowerLog
+import nl.markmaaktmedia.tandem.watch.protocol.Tick
+import nl.markmaaktmedia.tandem.watch.protocol.Span
 
 /**
  * Heart rate all day. The watch measures it for everyone and hands it over in batches ([onPassive]); the light of the sensor is what
@@ -107,6 +110,7 @@ object HeartTracker : SensorEventListener {
     fun onPassive(samples: List<PassiveHeart>, receivedMs: Long) {
         handler.post {
             if (context == null) return@post
+            PowerLog.count(Tick.PASSIVE_HEART)
             val values = PassiveHeartRules.perSlot(samples)
             for (value in values) {
                 addNow(value.timeMs, value.bpm)
@@ -171,6 +175,8 @@ object HeartTracker : SensorEventListener {
         measuringSince = SystemClock.elapsedRealtime()
         val listening = manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL, MEASURE_US, handler)
         if (listening) {
+            PowerLog.open(Span.HEART_OWN)
+            PowerLog.count(Tick.HEART_OWN)
             // Not left to the next tick: those stop coming when the watch comes off, and then nothing would end this.
             handler.postDelayed(giveUp, GIVE_UP_MS)
         } else {
@@ -189,6 +195,7 @@ object HeartTracker : SensorEventListener {
         handler.removeCallbacks(giveUp)
         sensors?.unregisterListener(this)
         measuringSince = 0
+        PowerLog.close(Span.HEART_OWN)
     }
 
     private val finish = Runnable {

@@ -11,6 +11,8 @@ import android.os.SystemClock
 import android.util.Log
 import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.protocol.LiveHeartLimit
+import nl.markmaaktmedia.tandem.watch.power.PowerLog
+import nl.markmaaktmedia.tandem.watch.protocol.Span
 
 /**
  * The heart rate now, for a phone that shows it: the sensor on all the time while the phone asks, and a value to the phone every couple
@@ -79,6 +81,7 @@ object LiveHeart : SensorEventListener {
         sensors = manager
         lastSent = 0L
         listening = manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL, BATCH_US, handler)
+        if (listening) PowerLog.open(Span.HEART_LIVE)
         Log.i(TAG, "Live: $listening")
     }
 
@@ -86,6 +89,7 @@ object LiveHeart : SensorEventListener {
         if (!listening) return
         sensors?.unregisterListener(this)
         listening = false
+        PowerLog.close(Span.HEART_LIVE)
         sendPosted = false
         Log.i(TAG, "Live stopped")
         WatchLink.sendHeartNow(0)
