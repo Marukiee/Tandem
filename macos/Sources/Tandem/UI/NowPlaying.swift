@@ -4,7 +4,7 @@ import TandemCore
 /// What a device plays, with the buttons to control it, on a card of its own beside the head of its page, or under it where the
 /// page is narrow. Also when this Mac shows the same track (Spotify on a computer shows the track of the account wherever it
 /// plays). The card is the plain card of the page, and what is in it is one row: the cover, what plays, and the three controls.
-/// With more than one player the apps are named at its top right, small, and the one in front is in the accent.
+/// With more than one player the apps are named at its top left, above the cover, small, and the one in front is in the accent.
 struct PlayersCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
@@ -20,7 +20,7 @@ struct PlayersCard: View {
         Group {
             if let current {
                 Card(radius: Metrics.card, padding: 20) {
-                    VStack(alignment: .trailing, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 8) {
                         if players.count > 1 {
                             PlayerApps(players: players, current: current.id) { id in withAnimation(.tandem) { chosen = id } }
                                 .transition(.opacity)
