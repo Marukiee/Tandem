@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import nl.markmaaktmedia.tandem.watch.notify.CallAlerts
 import nl.markmaaktmedia.tandem.watch.notify.FindAlerts
 import nl.markmaaktmedia.tandem.watch.notify.PhoneNotifications
+import nl.markmaaktmedia.tandem.watch.power.PowerLog
 import nl.markmaaktmedia.tandem.watch.protocol.CallActionKind
 import nl.markmaaktmedia.tandem.watch.protocol.CallMsg
 import nl.markmaaktmedia.tandem.watch.protocol.DeviceBattery
@@ -26,6 +27,7 @@ import nl.markmaaktmedia.tandem.watch.protocol.LinkListener
 import nl.markmaaktmedia.tandem.watch.protocol.MediaCommandKind
 import nl.markmaaktmedia.tandem.watch.protocol.MediaPlayer
 import nl.markmaaktmedia.tandem.watch.protocol.Message
+import nl.markmaaktmedia.tandem.watch.protocol.MessageCodec
 import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.pointer.ArrivalStats
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
@@ -80,6 +82,10 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     val ui: StateFlow<WatchUi> = _ui.asStateFlow()
 
     private var running = false
+
+    /** What the screen did last, so a client that is made after the report starts out right. Null until [PowerLog] has said. */
+    @Volatile
+    private var screenOn: Boolean? = null
     private var engine: LinkEngine? = null
     private var client: WatchBleClient? = null
     private var notifications: PhoneNotifications? = null
@@ -113,9 +119,9 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     }
     private val pingLoop = object : Runnable {
         override fun run() {
-            val link = engine ?: return
+            if (engine == null) return
             // A silent link can look fine for a long time. Only an answer proves the phone is still there.
-            if (link.send(Message.Ping(++pingId))) handler.postDelayed(pongTimeout, PONG_TIMEOUT_MS)
+            if (sendMessage(Message.Ping(++pingId))) handler.postDelayed(pongTimeout, PONG_TIMEOUT_MS)
             handler.postDelayed(this, PING_MS)
         }
     }
@@ -145,12 +151,13 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             val link = LinkEngine(Role.WATCH, SecureLinkKeyStore(app), this)
             engine = link
             client = WatchBleClient(app, handler, this)
+            screenOn?.let { client?.setScreen(it) }
             notifications = PhoneNotifications(app)
             calls = CallAlerts(app)
             mediaSession = PhoneMediaSession(app, ::sendMediaCommand)
             finder = FindAlerts(app, handler) { ringing ->
                 _ui.update { it.copy(ringing = ringing) }
-                engine?.send(Message.Ringing(ringing))
+                sendMessage(Message.Ringing(ringing))
             }
             val adapterOn = app.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled ?: false
             _ui.update { it.copy(paired = link.hasLinkKey, bluetoothOff = !adapterOn) }
@@ -193,7 +200,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     }
 
     fun sendNotificationAction(key: String, button: String, reply: String?, dismiss: Boolean) {
-        handler.post { engine?.send(Message.NotificationAction(key, button, reply, dismiss)) }
+        handler.post { sendMessage(Message.NotificationAction(key, button, reply, dismiss)) }
     }
 
     /** False when the phone cannot be reached, so the button can say so instead of doing nothing. */
@@ -203,18 +210,18 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         if (!state.ready || call == null) return false
         handler.post {
             if (kind == CallActionKind.SILENCE) calls?.stopRinging()
-            engine?.send(Message.CallAction(call.id, kind))
+            sendMessage(Message.CallAction(call.id, kind))
         }
         return true
     }
 
     fun seekMedia(playerId: String, positionMs: Long) {
-        handler.post { engine?.send(Message.MediaSeek(playerId, positionMs)) }
+        handler.post { sendMessage(Message.MediaSeek(playerId, positionMs)) }
     }
 
     fun sendMediaCommand(playerId: String, kind: MediaCommandKind) {
         handler.post {
-            engine?.send(Message.MediaCommand(playerId, kind))
+            sendMessage(Message.MediaCommand(playerId, kind))
             if (kind == MediaCommandKind.PLAY_PAUSE) showPress(playerId)
         }
     }
@@ -264,7 +271,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     fun setMouseEnabled(on: Boolean) {
         handler.post {
             _ui.update { it.copy(pointerEnabled = on) }
-            engine?.send(Message.MouseEnabled(on))
+            sendMessage(Message.MouseEnabled(on))
         }
     }
 
@@ -275,13 +282,13 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             pointerSends.reset()
             clearPointerMovement()
             client?.setFast(true)
-            engine?.send(Message.PointerSession(targetId))
+            sendMessage(Message.PointerSession(targetId))
         }
     }
 
     /** Tells the phone the mouse screen opened for [targetId] or closed, so the computers can show it and offer to stop it. */
     fun reportMouse(open: Boolean, targetId: String?, table: Boolean) {
-        handler.post { engine?.send(Message.MouseState(open, targetId?.ifEmpty { null }, table)) }
+        handler.post { sendMessage(Message.MouseState(open, targetId?.ifEmpty { null }, table)) }
     }
 
     fun stopPointer() {
@@ -290,7 +297,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             if (pointerTarget != null) Log.i(TAG, "Pointer sent: ${pointerSends.summary()}")
             pointerTarget = null
             client?.setFast(false)
-            engine?.send(Message.PointerSession(null))
+            sendMessage(Message.PointerSession(null))
         }
     }
 
@@ -314,7 +321,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         handler.post {
             // The click has to land where the pointer is by then.
             flushPointer(force = true)
-            if (pointerTarget != null) engine?.send(Message.PointerClick(button, count))
+            if (pointerTarget != null) sendMessage(Message.PointerClick(button, count))
         }
     }
 
@@ -322,26 +329,25 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     fun holdPointer(button: Int, down: Boolean) {
         handler.post {
             flushPointer(force = true)
-            if (pointerTarget != null) engine?.send(Message.PointerButton(button, down))
+            if (pointerTarget != null) sendMessage(Message.PointerButton(button, down))
         }
     }
 
     fun sendKey(code: Int, mods: Int = 0) {
-        handler.post { if (pointerTarget != null) engine?.send(Message.PointerKey(code, mods)) }
+        handler.post { if (pointerTarget != null) sendMessage(Message.PointerKey(code, mods)) }
     }
 
     private fun flushPointer(force: Boolean) {
-        val link = engine ?: return
-        if (pointerTarget == null) return
+        if (engine == null || pointerTarget == null) return
         if (!force && client?.isIdle != true) return
         if (pendingX != 0 || pendingY != 0) {
             pointerSends.note(SystemClock.uptimeMillis(), kotlin.math.abs(pendingX) + kotlin.math.abs(pendingY))
-            link.send(Message.PointerMove(pendingX, pendingY))
+            sendMessage(Message.PointerMove(pendingX, pendingY))
             pendingX = 0
             pendingY = 0
         }
         if (pendingScrollX != 0 || pendingScrollY != 0) {
-            link.send(Message.PointerScroll(pendingScrollX, pendingScrollY))
+            sendMessage(Message.PointerScroll(pendingScrollX, pendingScrollY))
             pendingScrollX = 0
             pendingScrollY = 0
         }
@@ -349,7 +355,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
 
     /** The button follows what the phone reports, so it also goes back when someone stops the phone by hand. */
     fun findPhone(ring: Boolean) {
-        handler.post { engine?.send(Message.FindDevice(ring)) }
+        handler.post { sendMessage(Message.FindDevice(ring)) }
     }
 
     private fun clearPointerMovement() {
@@ -370,7 +376,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
      */
     fun setSleepMode(on: Boolean, asleep: Boolean = on) {
         handler.post {
-            engine?.send(if (on) night.begin(asleep) else night.end())
+            sendMessage(if (on) night.begin(asleep) else night.end())
         }
     }
 
@@ -379,7 +385,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         handler.post {
             night.asleep(asleep)?.let {
                 Log.i(TAG, "Asleep: $asleep")
-                engine?.send(it)
+                sendMessage(it)
             }
         }
     }
@@ -395,7 +401,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     }
 
     private fun sendNextHealth() {
-        outbox?.oldest()?.let { engine?.send(it) }
+        outbox?.oldest()?.let { sendMessage(it) }
     }
 
     fun reportBattery(level: Int, charging: Boolean) {
@@ -406,16 +412,16 @@ object WatchLink : LinkListener, WatchBleClient.Events {
 
     /** At most once per batch of the step sensor, so a few times an hour. */
     fun reportHeart(curve: List<Int>) {
-        handler.post { engine?.send(Message.HeartToday(curve)) }
+        handler.post { sendMessage(Message.HeartToday(curve)) }
     }
 
     fun sendHeartAllDay(on: Boolean) {
-        handler.post { engine?.send(Message.HeartAllDay(on)) }
+        handler.post { sendMessage(Message.HeartAllDay(on)) }
     }
 
     /** See [nl.markmaaktmedia.tandem.watch.track.LiveHeart]. */
     fun sendHeartNow(bpm: Int) {
-        handler.post { engine?.send(Message.HeartNow(bpm)) }
+        handler.post { sendMessage(Message.HeartNow(bpm)) }
     }
 
     fun reportSteps(steps: Long, activeMinutes: Int, byHour: List<Int> = emptyList()) {
@@ -427,7 +433,14 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private fun reportStatus(next: Message.WatchStatus) {
         if (next == status) return
         status = next
-        engine?.send(next)
+        sendMessage(next)
+    }
+
+    /** Every message of the watch goes out here, so the power log can say how many and which. */
+    private fun sendMessage(message: Message): Boolean {
+        val sent = engine?.send(message) == true
+        if (sent) PowerLog.message(inbound = false, kind = MessageCodec.kind(message))
+        return sent
     }
 
     private fun updateClient() {
@@ -463,19 +476,25 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         handler.postDelayed(pingLoop, PING_MS)
         _ui.update { it.copy(ready = true, failure = null) }
         // Things the phone may have missed while the link was down.
-        status?.let { engine?.send(it) }
-        engine?.send(night.current())
+        status?.let { sendMessage(it) }
+        sendMessage(night.current())
         sendNextHealth()
         HeartTracker.sendToday()
         // The phone ends a session when the link drops, so a mouse screen that stayed open has to ask again.
-        pointerTarget?.let { engine?.send(Message.PointerSession(it)) }
+        pointerTarget?.let { sendMessage(Message.PointerSession(it)) }
         // The version of this app, for a phone that may bring it up to its own.
         appContext?.let { SelfUpdate.onReady(it) }
     }
 
+    /** The screen went on or off: the link is balanced while someone is looking, and a watch that gave up on its phone looks again. */
+    fun onScreen(on: Boolean) {
+        screenOn = on
+        handler.post { client?.setScreen(on) }
+    }
+
     /** For the update of this app ([SelfUpdate]), from any thread. */
     fun sendUpdate(message: Message) {
-        handler.post { engine?.send(message) }
+        handler.post { sendMessage(message) }
     }
 
     /** Runs [work] on the thread of the link, where the update keeps its state. */
@@ -484,6 +503,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     }
 
     override fun onMessage(message: Message) {
+        PowerLog.message(inbound = true, kind = MessageCodec.kind(message))
         when (message) {
             is Message.NotificationSnapshot -> notifications?.reconcile(message.keys)
             is Message.Notification -> notifications?.post(message.notification)
@@ -603,7 +623,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
 
     override fun onServicesRefreshed() {
         handler.removeCallbacks(pongTimeout)
-        if (engine?.send(Message.Ping(++pingId)) == true) {
+        if (sendMessage(Message.Ping(++pingId)) == true) {
             handler.postDelayed(pongTimeout, REFRESH_PONG_MS)
         } else {
             client?.reconnect()

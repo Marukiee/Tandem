@@ -604,7 +604,47 @@ En Instellingen staat in de zijbalk direct boven Apparaat toevoegen, onder de me
   erboven. Instellingen opent nog en is gemarkeerd als hij open is.
 - [ ] **Smalle zijbalk** (venster smal maken): alleen icoon, met de tooltip "Instellingen" en "Apparaat toevoegen". Een update- of scherm-banner schuift Instellingen niet weg.
 
-## 0.3.33, 2026-11-21 (speler op een eigen kaart)
+## 0.3.32, 2026-11-21 (accu-logboek op het horloge, tweede ronde R-V18)
+
+Wat veranderde: het horloge schrijft per klokuur een korte regel over wat Tandem deed (wekmomenten, sensor-, verbindings-, scan- en
+schermtijd, Bluetooth-brokken en berichten per soort) en wat de accu verloor, met een pagina Accu-logboek onder Instellingen op het
+horloge. Een telefoon die over een halfuur weg is wordt een vijfde van de tijd gezocht, en de verbinding van een horloge in rust vraagt
+om een zuinigere Bluetooth-stand. Op een Wear OS 6 emulator bekeken (logregel, bestand, pagina, scherm aan en uit); Bluetooth en de
+accu zijn daar niet echt, dus de winst zelf is niet gemeten.
+
+- [ ] **Een dag om de pols.** Doe het horloge 's ochtends om, gebruik het gewoon, en open 's avonds Instellingen, Accu-logboek. Per uur staat
+  er een regel met het verlies in mAh (of procent) en de wekmomenten, de verbindings-, scan- en schermtijd. Zoek het uur waar het
+  verlies uitspringt en kijk wat daar hoog staat. Vergelijk het percentage 's avonds met 0.3.31.
+- [ ] **Meldingen, bellen, muziek en de aanwijzer voelen niet trager.** Met het scherm uit: stuur een melding en neem een gesprek aan. Het
+  scherm aan, bediening van de muziek en de aanwijzer (de Mac of telefoon bedienen vanaf het horloge) reageren zoals voorheen. Een
+  melding hooguit een tel later bij een horloge dat lang stil lag mag, meer niet.
+- [ ] **Slaap, stappen, hartslag.** De nacht wordt nog herkend, een dutje ook, stappen en hartslag lopen door (de tegels op de telefoon
+  kloppen met het horloge).
+- [ ] **Telefoon lang weg.** Laat de telefoon een uur uit of ver weg. In het logboek staat de scantijd per uur dan rond een vijfde.
+  Dat de telefoon na meer dan een halfuur weg pas na hooguit ongeveer 2,5 minuten gevonden wordt (30 s kijken per 2 minuten rust) is
+  zo bedoeld en geen fout; het horloge kijkt meteen als je het scherm aanzet, en zonder een halfuur weg zit het er binnen ongeveer 3 minuten weer aan.
+- [ ] **Zuinige verbinding.** `adb logcat -s TandemWatch` (draadloos) toont "Link priority: LOW_POWER" na een halve minuut rust en
+  "Link priority: BALANCED" bij een stoot berichten of scherm aan. Valt de verbinding drie keer in een uur weg terwijl hij op zuinig
+  stond, dan komt er 12 uur lang geen "LOW_POWER" meer in het logboek en telt de pagina geen zuinige minuten meer.
+- [ ] **Het bestand.** `adb pull /sdcard/Android/data/nl.markmaaktmedia.tandem.watch/files/power` geeft een bestand per dag met een
+  regel per uur (en `adb logcat -s TandemWatchPower` dezelfde regel). Bestanden ouder dan 14 dagen verdwijnen.
+- [ ] **Teksten.** De pagina staat in het Nederlands (Accu-logboek, wekmomenten, scherm, link, scan) en in het Engels (Battery log, wake
+  moments), en past op het ronde scherm.
+
+## 0.3.32, 2026-11-21 (gezondheidstegels, tweede deel)
+
+- [ ] **Telefoon, pagina van het horloge.** Tik op de tegel met de hartslag (BPM): je komt meteen op Hart, niet op het Gezondheidsoverzicht.
+  Idem Slaap voor de nacht en Activiteit voor de stappen. Terug brengt je naar de pagina van het horloge. De kop "Gezondheid" bovenaan
+  de kaart opent nog wel het overzicht. De tegels op de kaart van het startscherm gingen al naar hun eigen pagina.
+- [ ] **Windows en Linux, pagina van het horloge.** Dezelfde drie tegels openen hun eigen deel (Slaap, Activiteit, Hart); de pijl terug
+  gaat naar het horloge, en de kop Gezondheid opent nog het overzicht.
+- [ ] **Hart: nu.** Met het horloge bij de telefoon: open Gezondheid, Hart. Bovenaan staat je hartslag nu met "Now" (NL "Nu") en een
+  kloppend hartje; zonder live waarde (horloge weg) staat er het laatste getal zoals vroeger. Op Windows/Linux hetzelfde als de
+  telefoon bij de computer is, op de Hart-pagina van het horloge.
+- [ ] **Hart op het overzicht.** De kaart Hart op de Gezondheidspagina heeft 0, 6, 12, 18 onder de lijn en een dunne lijn op je
+  gebruikelijke rusthartslag, zoals Slaap de dagen onder de balkjes heeft. Idem op Windows/Linux.
+
+## 0.3.32, 2026-11-21 (speler op een eigen kaart, Android)
 
 - [ ] **Android, pagina van een computer die muziek speelt.** De speler (hoes, titel, balk, knoppen) staat op een eigen kaart direct
   onder de kaart met naam, versie, pillen en accuring, met dezelfde ruimte als tussen de andere kaarten. Stop de muziek op een
