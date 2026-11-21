@@ -151,6 +151,16 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
             }
         }
 
+        if (nl.markmaaktmedia.tandem.BuildConfig.DEBUG) {
+            SectionHeader("Demo computer")
+            SettingsGroup {
+                ActionRow(
+                    0, 1, TandemIcons.Music, "Computer that plays music", "A made-up Mac on the Devices page, with a player",
+                    { graph.host.showDemoDevice() },
+                )
+            }
+        }
+
         SectionHeader(stringResource(R.string.dev_hotspot))
         SettingsGroup {
             val context = LocalContext.current

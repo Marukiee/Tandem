@@ -643,3 +643,11 @@ accu zijn daar niet echt, dus de winst zelf is niet gemeten.
   telefoon bij de computer is, op de Hart-pagina van het horloge.
 - [ ] **Hart op het overzicht.** De kaart Hart op de Gezondheidspagina heeft 0, 6, 12, 18 onder de lijn en een dunne lijn op je
   gebruikelijke rusthartslag, zoals Slaap de dagen onder de balkjes heeft. Idem op Windows/Linux.
+
+## 0.3.32, 2026-11-21 (speler op een eigen kaart, Android)
+
+- [ ] **Android, pagina van een computer die muziek speelt.** De speler (hoes, titel, balk, knoppen) staat op een eigen kaart direct
+  onder de kaart met naam, versie, pillen en accuring, met dezelfde ruimte als tussen de andere kaarten. Stop de muziek op een
+  telefoon of tablet die alleen een speler toont als er iets speelt: de spelerkaart schuift weg en laat geen lege ruimte achter; start
+  hem weer: hij komt terug met de animatie. Een bereikbare Mac of Windows-pc houdt zijn speler ook als er niets speelt.
+- Linux en Windows hadden al twee kaarten (kop en speler naast elkaar); daar is niets veranderd.

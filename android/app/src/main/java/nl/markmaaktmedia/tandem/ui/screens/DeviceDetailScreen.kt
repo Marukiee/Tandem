@@ -108,7 +108,9 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
         }
 
-        // Header. The sides are padded inside, because the player at the bottom lets its seek bar reach further out.
+        // The header card and, when there is one, the card of the player under it. No spacing of their own between the two: the player
+        // brings its gap inside, so a closed player leaves no empty gap behind.
+        Column(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(vertical = 20.dp)) {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -180,8 +182,9 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                     if (device.status.hotspot == true) StatusChip(TandemIcons.Hotspot, stringResource(R.string.status_hotspot_on), tint = MaterialTheme.colorScheme.primary)
                 }
             }
-            // What the device is playing, with the buttons for it: the card grows when it starts and shrinks when it stops.
-            nl.markmaaktmedia.tandem.ui.components.NowPlayingSection(device)
+        }
+        // What the device is playing, with the buttons for it, as a card of its own: it grows when it starts and shrinks when it stops.
+        nl.markmaaktmedia.tandem.ui.components.NowPlayingSection(device)
         }
 
         // Without a network: the clipboard still goes over Bluetooth, and a sleeping device on a cable may be woken.

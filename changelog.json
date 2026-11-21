@@ -11,7 +11,8 @@
       "fixed": [
         "A phone that has been gone for a long time is looked for a fifth of the time instead of all the time",
         "The Bluetooth link of a resting watch takes less power and speeds up again for messages or when the screen is on",
-        "On the page of the watch, the tiles for the night, the steps and the heart rate open their own page instead of the Health overview"
+        "On the page of the watch, the tiles for the night, the steps and the heart rate open their own page instead of the Health overview",
+        "On the page of a device the player is a card of its own under the device card, instead of inside it"
       ]
     },
     "nl": {
@@ -23,7 +24,8 @@
       "fixed": [
         "Een telefoon die lang weg is wordt een vijfde van de tijd gezocht in plaats van de hele tijd",
         "De Bluetooth-verbinding van een horloge in rust kost minder stroom en gaat weer sneller bij berichten of als het scherm aan gaat",
-        "Op de pagina van het horloge openen de tegels voor de nacht, de stappen en de hartslag hun eigen pagina in plaats van het Gezondheidsoverzicht"
+        "Op de pagina van het horloge openen de tegels voor de nacht, de stappen en de hartslag hun eigen pagina in plaats van het Gezondheidsoverzicht",
+        "Op de pagina van een apparaat staat de speler op een eigen kaart onder de apparaatkaart, niet meer erin"
       ]
     }
   },

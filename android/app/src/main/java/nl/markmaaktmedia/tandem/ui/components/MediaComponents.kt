@@ -95,7 +95,7 @@ import uniffi.tandem_core.tandemMediaVisible
 private class Playing(val players: List<TandemMediaPlayer>, val entry: RemotePlayers)
 
 /**
- * What the other device is playing, with the buttons to control it, at the bottom of the header card of its page.
+ * What the other device is playing, with the buttons to control it, as a card of its own under the header card of its page.
  * Players that play what this phone already plays are left out, so a phone that only remote controls the Mac's
  * Spotify does not show it twice.
  *
@@ -131,19 +131,24 @@ fun NowPlayingSection(device: TandemDevice) {
 
     AnimatedVisibility(
         visibleState = open,
-        // From the top: the card grows downward from under the chips, the way it reads, and shrinks back up to them.
+        // From the top: the card grows downward from under the header card, the way it reads, and shrinks back up to it.
         enter = expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top) + fadeIn(TandemMotion.fadeSpec()) +
             slideInVertically(TandemMotion.spatial()) { -it / 6 },
         exit = shrinkVertically(TandemMotion.sizeSpring(), shrinkTowards = Alignment.Top) + fadeOut(TandemMotion.fadeSpec()) +
             slideOutVertically(TandemMotion.spatial()) { -it / 6 },
     ) {
-        // The gap to the chips is inside, so it opens and closes with the player instead of snapping. The sides are 4dp
-        // because the rows bring 16dp of their own, which lines them up with the 20dp of the card.
-        Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (content == null) {
-                PlayerCard(device.id, null, null, null, muted)
-            } else {
-                PlayerStack(device.id, content.players, content.entry, covers, muted)
+        // The gap to the header card (the 10dp between cards on this page) is inside, so it opens and closes with the player instead
+        // of snapping. The sides are 4dp because the rows bring 16dp of their own, which lines them up with the 20dp of a card.
+        Box(Modifier.padding(top = 10.dp)) {
+            Column(
+                Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(start = 4.dp, end = 4.dp, top = 16.dp, bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (content == null) {
+                    PlayerCard(device.id, null, null, null, muted)
+                } else {
+                    PlayerStack(device.id, content.players, content.entry, covers, muted)
+                }
             }
         }
     }
