@@ -585,3 +585,12 @@ emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen
   ze er zijn, Berichten, Slaap en trainingen en Nudges staan in een groep, met afgeronde buitenkant en kleine hoeken ertussen. Bekijk
   een Mac (alles), een Linux-pc, een andere telefoon (geen Nudges) en een tablet zonder simkaart (geen Berichten): de vormen kloppen steeds.
 - Windows en Linux hadden dit pad al goed (de klembordcode onthoudt wat ze zelf zetten); daar valt niets nieuws te testen.
+
+## 0.3.31, 2026-11-21 (Instellingen onderaan de zijbalk, Linux en Windows)
+
+Wat veranderde: Instellingen staat in de zijbalk van de Linux- en Windows-app direct boven Apparaat toevoegen, onder de meldingsbanners.
+Alleen in een browser met `mock.js` bekeken.
+
+- [ ] **Brede zijbalk.** Onderaan staan Instellingen en Apparaat toevoegen in dezelfde stijl; Gedeeld, Berichten, Klembord en Meldingen staan
+  erboven. Instellingen opent nog en is gemarkeerd als hij open is.
+- [ ] **Smalle zijbalk** (venster smal maken): alleen icoon, met de tooltip "Instellingen" en "Apparaat toevoegen". Een update- of scherm-banner schuift Instellingen niet weg.

@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.31",
+    "date": "2026-11-21",
+    "en": {
+      "title": "Settings at the foot of the sidebar",
+      "new": [
+        "On Linux and Windows, Settings moved down next to Add a device, so the top of the sidebar is only about content"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Instellingen onderaan de zijbalk",
+      "new": [
+        "Op Linux en Windows staat Instellingen nu onderaan bij Apparaat toevoegen, zodat de bovenkant van de zijbalk alleen over inhoud gaat"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.29",
     "date": "2026-11-21",
     "en": {
