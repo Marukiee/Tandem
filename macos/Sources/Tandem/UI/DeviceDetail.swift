@@ -148,18 +148,23 @@ struct DeviceDetail: View {
         }
     }
 
-    /// That it is there, small: a tick and the word, and how quick it answers after it.
-    private var stateLine: some View {
-        HStack(spacing: 4) {
+    /// That it is there, at the top right of the head: a tick or a dashed round and the word, on a faint pill. How quick it
+    /// answers is in its help, as it matters only when something is slow.
+    private var statePill: some View {
+        HStack(spacing: 5) {
             Image(systemName: reach.reachable ? "checkmark.circle.fill" : "circle.dashed")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(reach.reachable ? Color.green : Color.secondary)
             Text(reach.text)
-            if device.online, let rtt = device.rttMs { Text(verbatim: "\u{00B7} \(rtt) ms") }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(Color.primary.opacity(0.06), in: .capsule)
+        .fixedSize()
+        .help(device.online ? device.rttMs.map { String(localized: "Answers in \($0) ms") } ?? "" : "")
     }
 
     /// The head of the page: the device, its name, what it runs on and that it is there, and under them tiles with what there is
@@ -199,18 +204,21 @@ struct DeviceDetail: View {
                 .help("Change the icon")
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(device.name)
-                        .font(.title3.weight(.semibold))
-                        .lineLimit(1)
-                        // A long name is a little smaller before it is cut short.
-                        .minimumScaleFactor(0.8)
+                    // The pill on the line of the name, so the line under it has the whole width for the system and the version.
+                    HStack(spacing: 8) {
+                        Text(device.name)
+                            .font(.title3.weight(.semibold))
+                            .lineLimit(1)
+                            // A long name is a little smaller before it is cut short.
+                            .minimumScaleFactor(0.8)
+                        Spacer(minLength: 0)
+                        statePill
+                    }
                     Text(verbatim: systemLine)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                    stateLine
                 }
-                Spacer(minLength: 0)
         }
     }
 
@@ -622,8 +630,8 @@ private func batteryTint(_ battery: TandemBattery, connected: Bool) -> Color {
     return battery.level <= 15 ? Palette.urgent : Palette.indigo
 }
 
-/// One fact in the head of a device, as a tonal tile: what it is small at the top with its icon in its colour, the value large
-/// under it. The tiles share the width of the head and grow with its height, with what they say in the middle.
+/// One fact in the head of a device, as a tonal tile: what it is small at the top and the value large under it, both starting at
+/// the same edge, with the icon in its colour at the top right where it does not push the words in.
 private struct HeadTile: View {
     let symbol: String
     let tint: Color
@@ -631,20 +639,21 @@ private struct HeadTile: View {
     let label: Text
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 5) {
-                Image(systemName: symbol)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(tint)
+        HStack(alignment: .top, spacing: 6) {
+            VStack(alignment: .leading, spacing: 3) {
                 label
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                value
+                    .font(.headline.monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            value
-                .font(.headline.monospacedDigit())
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            Spacer(minLength: 0)
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(tint)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -974,7 +983,7 @@ private struct SideChoice: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.bouncy)
-        .instantName(name == "left" ? "Put it left" : "Put it right")
+        .accessibilityLabel(Text(name == "left" ? "Put it left" : "Put it right"))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 }

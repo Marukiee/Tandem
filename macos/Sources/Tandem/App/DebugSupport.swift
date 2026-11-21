@@ -580,7 +580,7 @@ enum DebugSupport {
         guard variable("TANDEM_DEBUG_SIDEBAR") != nil else { return nil }
         let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
         func made(_ id: String, _ name: String, _ platform: TandemPlatform, online: Bool, caps: [String]) -> TandemDevice {
-            TandemDevice(id: id, name: name, platform: platform, online: online, route: nil, rttMs: online ? 12 : nil, status: status, appVersion: nil, caps: caps,
+            TandemDevice(id: id, name: name, platform: platform, online: online, route: nil, rttMs: online ? 12 : nil, status: status, appVersion: "0.3.27", caps: caps,
                          vouchedByRemoved: false, clipboardEnabled: true, autoAccept: false, notificationsEnabled: true, ble: false, features: [])
         }
         // A model of its own, so the made up devices never mix with the ones of the engine.
