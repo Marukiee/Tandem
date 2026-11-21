@@ -360,7 +360,7 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   de hartslag en stappen toch al verzamelt voor zichzelf en wij dus geen tweede sensormeting en geen eigen teller meer wakker houden; dat zegt
   de dag om de pols.
 
-  **Tweede ronde (0.3.31, Mark: "volgens mij nog niet zo zuinig").** Eerst een teller, zodat een dag om de pols zegt waar het blijft, en twee
+  **Tweede ronde (0.3.32, Mark: "volgens mij nog niet zo zuinig").** Eerst een teller, zodat een dag om de pols zegt waar het blijft, en twee
   wijzigingen waarvan de winst uit de werking van Bluetooth volgt (de radio wordt minder vaak wakker), niet uit een meting.
   - **Het accu-logboek** (`PowerLog`, pagina Accu-logboek in de instellingen van het horloge): per klokuur de wekmomenten van Tandem zelf
     (sensorleveringen, Health Services, berichten van de telefoon, alarm, scherm aan), de tijd van de versnellingsmeter, de eigen hartslagmeting,

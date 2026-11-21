@@ -82,6 +82,10 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     val ui: StateFlow<WatchUi> = _ui.asStateFlow()
 
     private var running = false
+
+    /** What the screen did last, so a client that is made after the report starts out right. Null until [PowerLog] has said. */
+    @Volatile
+    private var screenOn: Boolean? = null
     private var engine: LinkEngine? = null
     private var client: WatchBleClient? = null
     private var notifications: PhoneNotifications? = null
@@ -147,6 +151,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             val link = LinkEngine(Role.WATCH, SecureLinkKeyStore(app), this)
             engine = link
             client = WatchBleClient(app, handler, this)
+            screenOn?.let { client?.setScreen(it) }
             notifications = PhoneNotifications(app)
             calls = CallAlerts(app)
             mediaSession = PhoneMediaSession(app, ::sendMediaCommand)
@@ -483,6 +488,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
 
     /** The screen went on or off: the link is balanced while someone is looking, and a watch that gave up on its phone looks again. */
     fun onScreen(on: Boolean) {
+        screenOn = on
         handler.post { client?.setScreen(on) }
     }
 

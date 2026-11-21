@@ -35,7 +35,7 @@ Dit zijn de regels die uit de review en de tests kwamen. Laat ze staan bij het o
 - Berichten worden pas versleuteld als ze de wachtrij verlaten, en `Call` haalt alles in.
 
 ## Accu
-Wat de link en de app kosten, en hoe je het ziet (R-V18, tweede ronde, 0.3.31). Alles hieronder is een regel in `watch-protocol` met tests;
+Wat de link en de app kosten, en hoe je het ziet (R-V18, tweede ronde, 0.3.32). Alles hieronder is een regel in `watch-protocol` met tests;
 `WatchBleClient` voert hem uit.
 - **Zoeken naar een telefoon die weg is** (`ScanPolicy`): de eerste minuut vol, dan gewoon, dan zuinig. Na een half uur zonder telefoon
   (thuisgelaten, uit, app gestopt) kijkt het horloge 30 s en rust daarna 2 minuten, een vijfde van de tijd. Het kijkt meteen weer als het
