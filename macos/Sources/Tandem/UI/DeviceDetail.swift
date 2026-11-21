@@ -970,28 +970,46 @@ private struct SideChoice: View {
     }
 
     private func option(_ name: String, on: Bool) -> some View {
-        let isLeft = name == "left"
-        let round = Self.height / 2
+        SideOption(device: device, isLeft: name == "left", on: on, height: Self.height, inner: Self.inner) { pick(name) }
+    }
+}
+
+/// One side of the side choice. The side that does not hold lights up under the pointer, as the other buttons of the app do.
+private struct SideOption: View {
+    let device: TandemDevice
+    let isLeft: Bool
+    let on: Bool
+    let height: CGFloat
+    let inner: CGFloat
+    let pick: () -> Void
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        let round = height / 2
         let shape = UnevenRoundedRectangle(
-            topLeadingRadius: isLeft ? round : Self.inner, bottomLeadingRadius: isLeft ? round : Self.inner,
-            bottomTrailingRadius: isLeft ? Self.inner : round, topTrailingRadius: isLeft ? Self.inner : round,
+            topLeadingRadius: isLeft ? round : inner, bottomLeadingRadius: isLeft ? round : inner,
+            bottomTrailingRadius: isLeft ? inner : round, topTrailingRadius: isLeft ? inner : round,
             style: .continuous
         )
+        let lit = hovering && hoverEnabled && !on
         let glyph = DeviceGlyph(platform: device.platform, online: true, size: 17, onSelection: on, plain: true, deviceID: device.id)
         let word = Text(isLeft ? "Left" : "Right")
             .font(.callout.weight(on ? .semibold : .medium))
-            .foregroundStyle(on ? Color.white : Color.secondary)
-        return Button { if !on { pick(name) } } label: {
+            .foregroundStyle(on ? Color.white : (lit ? Color.primary : Color.secondary))
+        Button { if !on { pick() } } label: {
             // The device on the side of the word that it stands on, so the row reads as the desk.
             HStack(spacing: 5) {
                 if isLeft { glyph; word } else { word; glyph }
             }
             .padding(.horizontal, 12)
-            .frame(height: Self.height)
-            .background(on ? AnyShapeStyle(Palette.indigo) : AnyShapeStyle(Color.primary.opacity(0.06)), in: shape)
+            .frame(height: height)
+            .background(on ? AnyShapeStyle(Palette.indigo) : AnyShapeStyle(Color.primary.opacity(lit ? 0.12 : 0.06)), in: shape)
             .contentShape(shape)
         }
         .buttonStyle(.bouncy)
+        .onHover { hovering = $0 }
+        .animation(.hover(hovering), value: hovering)
         .accessibilityLabel(Text(isLeft ? "Put it left" : "Put it right"))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
