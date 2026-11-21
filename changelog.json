@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.34",
+    "date": "2026-11-21",
+    "en": {
+      "title": "The same update card as the other apps on Android",
+      "new": [
+        "The update card on Android is the shared one from the other apps: it shows what is new, downloads with progress and installs without leaving the app"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Op Android dezelfde updatekaart als de andere apps",
+      "new": [
+        "De updatekaart op Android is de gedeelde kaart van de andere apps: hij toont wat er nieuw is, downloadt met voortgang en installeert zonder de app te verlaten"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.32",
     "date": "2026-11-21",
     "en": {

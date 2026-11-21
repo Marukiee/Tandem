@@ -13,14 +13,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.EngineHost
-import nl.markmaaktmedia.tandem.update.UpdateRepository
 
 /** The few things that live as long as the process. */
 class Graph(app: Application) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val prefs = TandemPrefs(app)
     val host = EngineHost(app, prefs, scope)
-    val updater = UpdateRepository(app, prefs)
     val media = nl.markmaaktmedia.tandem.media.MediaMirror(app, prefs, host, scope)
     val audio = nl.markmaaktmedia.tandem.audio.RemoteAudioPlayer(app, prefs, host, scope).also { host.audioSink = it }
     val live = nl.markmaaktmedia.tandem.live.LiveShare(app, host, scope)
@@ -104,6 +102,14 @@ class TandemApp : Application() {
         super.onCreate()
         // The process of RestartActivity only opens Tandem again: no second engine, no listeners.
         if (getProcessName() != packageName) return
+        // The one updater of the process: the installer's receiver (which Android may wake without the app) and the card use it too.
+        nl.markmaaktmedia.markupdate.MarkUpdate.init(
+            this,
+            nl.markmaaktmedia.markupdate.MarkUpdateConfig(
+                owner = "Marukiee", repo = "Tandem", apkAsset = "Tandem.apk",
+                currentVersion = BuildConfig.VERSION_NAME, appName = "Tandem", notificationIcon = R.drawable.ic_stat_tandem,
+            ),
+        )
         graph = Graph(this)
     }
 }

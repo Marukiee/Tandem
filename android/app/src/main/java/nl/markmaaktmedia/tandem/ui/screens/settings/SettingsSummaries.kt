@@ -21,7 +21,7 @@ import nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus
 import nl.markmaaktmedia.tandem.ui.screens.seedLabel
 import nl.markmaaktmedia.tandem.ui.theme.LocalAppearance
 import nl.markmaaktmedia.tandem.ui.theme.ThemeMode
-import nl.markmaaktmedia.tandem.update.UpdateState
+import nl.markmaaktmedia.markupdate.UpdateState
 
 /**
  * The line under each category on the overview, read live from where the settings are kept. Every line says
@@ -84,7 +84,7 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
     val policy = remember(resumes, engine) { engine?.fileDefaultPolicy() }
 
     // Updates.
-    val updateState by graph.updater.state.collectAsState()
+    val updateState by nl.markmaaktmedia.markupdate.MarkUpdate.get().state.collectAsState()
     val version = BuildConfig.VERSION_NAME
 
     return mapOf(
