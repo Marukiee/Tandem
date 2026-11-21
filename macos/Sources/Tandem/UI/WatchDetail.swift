@@ -32,10 +32,11 @@ struct WatchDetail: View {
                 sleepChoices
                 settingsRow
             }
-            .pagePadding()
+            .devicePagePadding()
             .frame(maxWidth: 760)
             .frame(maxWidth: .infinity)
         }
+        .ignoresSafeArea(.container, edges: .top)
         .animation(.tandem, value: reachable)
         .animation(.tandemFade, value: watch?.sleeping)
         .animation(.tandemFade, value: settings == nil)

@@ -27,11 +27,12 @@ struct DeviceDetail: View {
                 }
                 content
             }
-            .pagePadding()
+            .devicePagePadding()
             // As wide as Shared may be: in a wide window the head and the player each have room for all they say.
             .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
+        .ignoresSafeArea(.container, edges: .top)
         .animation(.tandem, value: device.online)
         // The battery comes a moment after the connection, in a status of its own: the space it takes is made smoothly too.
         .animation(.tandem, value: device.status.battery != nil)
@@ -69,31 +70,61 @@ struct DeviceDetail: View {
         return "\(system) \u{00B7} Tandem \(version)"
     }
 
-    /// The pills of the head that have something to say, in the order they are dropped where the head is narrow: the delay
-    /// first, then the route, then charging (the ring has its bolt). Whether it is there always stays. One line, never two, so
-    /// the head keeps its three rows beside the three rows of the player.
-    private var pills: some View {
-        let charging = device.online && device.status.battery?.charging == true
-        let route: HeadPill? = !device.online ? nil
-            : usingItsHotspot ? HeadPill(symbol: "personalhotspot", text: Text("Via hotspot"))
-            : device.route.map { HeadPill(symbol: $0.symbol, text: Text($0.label)) }
-        let delay: HeadPill? = device.online ? device.rttMs.map { HeadPill(symbol: "speedometer", text: Text("\($0) ms")) } : nil
-        let state = HeadPill(dot: reach.reachable ? .green : Color.secondary.opacity(0.5), text: Text(reach.text))
-        let bolt = HeadPill(symbol: "bolt.fill", symbolTint: .green, text: Text("Charging"))
-        return ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) { state; route; delay; if charging { bolt } }
-            HStack(spacing: 6) { state; route; if charging { bolt } }
-            HStack(spacing: 6) { state; if charging { bolt } }
-            state
+    /// The tiles under the name: the battery, how it is connected and how quick it answers, each where it is known.
+    @ViewBuilder
+    private var tiles: some View {
+        if let battery = device.status.battery {
+            HeadTile(
+                symbol: Self.batterySymbol(battery),
+                tint: batteryTint(battery, connected: device.online),
+                value: Text(verbatim: "\(battery.level)%"),
+                label: battery.charging && device.online ? Text("Charging") : Text("Battery")
+            )
+        }
+        if device.online {
+            let route: (symbol: String, label: Text)? = usingItsHotspot ? ("personalhotspot", Text("Via hotspot"))
+                : device.route.map { ($0.symbol, Text($0.label)) }
+            HeadTile(
+                symbol: route?.symbol ?? "checkmark",
+                tint: .green,
+                value: route?.label ?? Text(reach.text),
+                label: Text("Connection")
+            )
+            if let rtt = device.rttMs {
+                HeadTile(symbol: "speedometer", tint: Palette.indigo, value: Text(verbatim: "\(rtt) ms"), label: Text("Delay"))
+            }
+        } else {
+            HeadTile(symbol: "wifi.slash", tint: .secondary, value: Text(reach.text), label: Text("Connection"))
         }
     }
 
-    /// The head of the page on the plain card of the page, as tall as what is in it: the device as its row of the sidebar shows
-    /// it, larger; its name; one quiet line in place of a row of pills; and the battery small at the right. Colour only in what
-    /// is small: the glyph, the dot, the ring.
+    private static func batterySymbol(_ battery: TandemBattery) -> String {
+        if battery.charging { return "battery.100percent.bolt" }
+        switch battery.level {
+        case 88...: return "battery.100percent"
+        case 63...: return "battery.75percent"
+        case 38...: return "battery.50percent"
+        case 13...: return "battery.25percent"
+        default: return "battery.0percent"
+        }
+    }
+
+    /// The head of the page: the device, its name and what it runs on, and under them tiles with what there is to know at a
+    /// glance. Tiles and no bar: a bar beside the player read as a second player. Beside a taller player the tiles grow, so the
+    /// card never has empty room above or under what it says.
     private var header: some View {
         Card(radius: Metrics.card, padding: 20) {
-            HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 14) {
+                headRow
+                HStack(spacing: 8) { tiles }
+                    .frame(maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+
+    private var headRow: some View {
+        HStack(spacing: 12) {
                 // The system's menu, like every other choice from a list in the app.
                 Menu {
                     ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
@@ -104,7 +135,7 @@ struct DeviceDetail: View {
                     Divider()
                     Button("Use the default icon") { model.setIcon(nil, for: device.id) }
                 } label: {
-                    DeviceGlyph(platform: device.platform, online: device.online, size: 72, deviceID: device.id)
+                    DeviceGlyph(platform: device.platform, online: device.online, size: 48, deviceID: device.id)
                 }
                 .menuStyle(.button)
                 .buttonStyle(.plain)
@@ -112,34 +143,18 @@ struct DeviceDetail: View {
                 .fixedSize()
                 .help("Change the icon")
 
-                // Three rows, as the player beside it has. Alone the head is as tall as they are; beside the player the room
-                // between them grows, so its first and last row stand level with the first and last row of the player.
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(device.name)
-                        .font(.title2.weight(.semibold))
+                        .font(.title3.weight(.semibold))
                         .lineLimit(1)
                         // A long name is a little smaller before it is cut short.
                         .minimumScaleFactor(0.8)
-                    Spacer(minLength: 2)
                     Text(verbatim: systemLine)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                    Spacer(minLength: 8)
-                    pills
                 }
-                .frame(maxHeight: .infinity)
-                // The words come first: they get the room there is before any of it is left empty.
-                .layoutPriority(1)
-                Spacer(minLength: 8)
-
-                if let battery = device.status.battery {
-                    BatteryMark(battery: battery, connected: device.online)
-                        .transition(.opacity)
-                }
-            }
-            // Beside the player the card is as tall as the player, with its content in the middle.
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                Spacer(minLength: 0)
         }
     }
 
@@ -539,35 +554,41 @@ private struct HeadPill: View {
     }
 }
 
-/// The battery in the head of a device: a ring with its number inside, green while it charges (the pill beside the name says so
-/// too). The number inside and not beside it: beside the player the head has no room to spare. It is whole the moment the page
-/// is there: nothing fills up or counts on the way in.
-private struct BatteryMark: View {
-    let battery: TandemBattery
-    let connected: Bool
+/// The colour of a battery in the head: the same as the ring around the device in the sidebar.
+private func batteryTint(_ battery: TandemBattery, connected: Bool) -> Color {
+    if !connected { return .gray }
+    if battery.charging { return .green }
+    return battery.level <= 15 ? Palette.urgent : Palette.indigo
+}
 
-    private var tint: Color {
-        if !connected { return .gray }
-        if battery.charging { return .green }
-        return battery.level <= 15 ? Palette.urgent : Palette.indigo
-    }
+/// One fact in the head of a device, as a tonal tile: what it is small at the top with its icon in its colour, the value large
+/// under it. The tiles share the width of the head and grow with its height, with what they say in the middle.
+private struct HeadTile: View {
+    let symbol: String
+    let tint: Color
+    let value: Text
+    let label: Text
 
     var body: some View {
-        ZStack {
-            Circle().stroke(Color.primary.opacity(0.1), lineWidth: 5)
-            Circle()
-                // Anything below full leaves an opening, so 97 percent is not a closed ring with a flaw.
-                .trim(from: 0, to: battery.level >= 100 ? 1 : CGFloat(battery.level) / 100 * 0.945)
-                .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            Text(verbatim: "\(battery.level)%")
-                .font(.system(size: 12.5, weight: .semibold).monospacedDigit())
-                .foregroundStyle(connected ? Color.primary : Color.secondary)
-                .contentTransition(.numericText(value: Double(battery.level)))
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(tint)
+                label
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            value
+                .font(.headline.monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
-        .frame(width: 54, height: 54)
-        .animation(.tandem, value: battery.level)
-        .animation(.tandem, value: battery.charging)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
@@ -788,9 +809,9 @@ private struct SideRow: View {
         // Nothing chosen yet is right, as a second screen and the shared mouse take it.
         let left = side == "left"
         SettingRow(
-            symbol: left ? "rectangle.lefthalf.inset.filled.arrow.left" : "rectangle.righthalf.inset.filled.arrow.right",
-            title: left ? "\(device.name) stands left of this Mac" : "\(device.name) stands right of this Mac",
-            subtitle: "A second screen goes there, and the mouse crosses there"
+            symbol: "rectangle.split.2x1",
+            title: "Where \(device.name) stands",
+            subtitle: "A second screen goes on that side, and the mouse crosses there"
         ) {
             HStack(spacing: 12) {
                 if device.caps.contains("side.listen") {
@@ -806,10 +827,7 @@ private struct SideRow: View {
                     .buttonStyle(.tandemGlass)
                     .disabled(!device.online || finding)
                 }
-                SidePicture(
-                    symbol: DeviceSymbol.shown(model.deviceIcons[device.id] ?? device.platform.symbol),
-                    left: left
-                ) { picked in
+                SideChoice(device: device, left: left) { picked in
                     side = picked
                     DeviceSides.set(picked, for: device.id)
                 }
@@ -819,56 +837,52 @@ private struct SideRow: View {
     }
 }
 
-/// This Mac with a place left and right of it, and the device in one of them. A press on the other place moves it there, and it
-/// slides over with a spring.
-private struct SidePicture: View {
-    /// The device as it is drawn everywhere else.
-    let symbol: String
+/// Left or right of this Mac, as two pictures of the desk to pick from: the device beside this Mac on that side, and the word under
+/// the picture. The one that holds is filled in the accent, and the fill slides over to the other with a spring when it is picked.
+private struct SideChoice: View {
+    let device: TandemDevice
     let left: Bool
     let pick: (String) -> Void
+    @Namespace private var fill
 
-    private static let slot = CGSize(width: 28, height: 34)
-    private static let mac: CGFloat = 36
-    private static let gap: CGFloat = 4
     /// This Mac as what it is: one with a battery is a laptop.
-    private static let thisMac = PowerReader.battery() != nil ? "laptopcomputer" : "desktopcomputer"
+    private static let thisMac = PowerReader.battery() != nil ? "laptopcomputer" : "display"
 
     var body: some View {
-        ZStack {
-            HStack(spacing: Self.gap) {
-                place("left", taken: left)
-                Image(systemName: Self.thisMac)
-                    .font(.system(size: 21, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
-                    .frame(width: Self.mac, height: Self.slot.height)
-                place("right", taken: !left)
-            }
-            Image(systemName: symbol)
-                .font(.system(size: 18, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(Palette.indigo)
-                .frame(width: Self.slot.width, height: Self.slot.height)
-                .offset(x: (left ? -1 : 1) * (Self.mac / 2 + Self.gap + Self.slot.width / 2))
-                .allowsHitTesting(false)
-                .animation(.tandemSpringy, value: left)
+        HStack(spacing: 2) {
+            option("left", on: left)
+            option("right", on: !left)
         }
-        .accessibilityElement(children: .contain)
+        .padding(3)
+        .background(Color.primary.opacity(0.06), in: Capsule())
+        .animation(.tandemSpringy, value: left)
     }
 
-    private func place(_ name: String, taken: Bool) -> some View {
-        Button { if !taken { pick(name) } } label: {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.25), style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
-                .opacity(taken ? 0 : 1)
-                .frame(width: Self.slot.width, height: Self.slot.height)
-                .hoverHighlight(radius: 8)
-                .animation(.tandemFade, value: taken)
+    private func option(_ name: String, on: Bool) -> some View {
+        let device = DeviceGlyph(platform: self.device.platform, online: true, size: 17, onSelection: on, plain: true, deviceID: self.device.id)
+        let mac = Image(systemName: Self.thisMac)
+            .font(.system(size: 14, weight: .medium))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(on ? Color.white : Color.secondary)
+        return Button { if !on { pick(name) } } label: {
+            HStack(spacing: 6) {
+                HStack(spacing: 3) {
+                    if name == "left" { device; mac } else { mac; device }
+                }
+                Text(name == "left" ? "Left" : "Right")
+                    .font(.callout.weight(on ? .semibold : .medium))
+                    .foregroundStyle(on ? Color.white : Color.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background {
+                if on { Capsule().fill(Palette.indigo).matchedGeometryEffect(id: "fill", in: fill) }
+            }
+            .contentShape(Capsule())
         }
         .buttonStyle(.bouncy)
-        // Named before it is switched off: the place the device stands in has no name to show.
         .instantName(name == "left" ? "Put it left" : "Put it right")
-        .disabled(taken)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 

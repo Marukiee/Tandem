@@ -456,11 +456,13 @@ struct RoundIconMenu<Content: View>: View {
 extension TandemPlatform {
     var symbol: String {
         switch self {
-        case .android: "iphone"
+        // A phone with a camera pill and not one with a home button, and a plain screen on a stand for a desktop: the
+        // `desktopcomputer` and `pc` symbols drew a face on the screen that looked unhappy at that size.
+        case .android: "iphone.gen3"
         case .macOs: "laptopcomputer"
-        case .linux: "desktopcomputer"
-        case .windows: "pc"
-        case .ios: "iphone"
+        case .linux: "display"
+        case .windows: "display"
+        case .ios: "iphone.gen3"
         case .other: "display"
         }
     }
@@ -559,7 +561,8 @@ struct DeviceGlyph: View {
     private var onlineColor: Color { greenWhenOnline ? .green : Palette.indigo }
 
     private var symbol: String {
-        DeviceSymbol.shown(drawn ?? deviceID.flatMap { model.deviceIcons[$0] } ?? platform.symbol)
+        if let drawn { return DeviceSymbol.shown(drawn) }
+        return DeviceSymbol.of(deviceID.flatMap { model.device($0) }, platform: platform, picked: deviceID.flatMap { model.deviceIcons[$0] })
     }
 
     var body: some View {
@@ -568,11 +571,17 @@ struct DeviceGlyph: View {
             if !plain {
                 Circle().fill(onSelection ? Color.white.opacity(0.24) : (online ? onlineColor.opacity(0.14) : Color.primary.opacity(0.07)))
             }
-            Image(systemName: symbol)
-                .font(.system(size: size * (plain ? 0.86 : (size > 60 ? 0.5 : 0.42)), weight: plain ? .regular : .semibold))
-                .symbolRenderingMode(DeviceSymbol.rendering(symbol))
-                .foregroundStyle(onSelection ? Color.white : (online ? onlineColor : Color.secondary))
-                .contentTransition(.symbolEffect(.replace))
+            let tint = onSelection ? Color.white : (online ? onlineColor : Color.secondary)
+            let points = size * (plain ? 0.86 : (size > 60 ? 0.5 : 0.42))
+            if symbol == DeviceSymbol.plainPhone {
+                PlainPhoneGlyph(points: points, bold: !plain, tint: tint)
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: points, weight: plain ? .regular : .semibold))
+                    .symbolRenderingMode(DeviceSymbol.rendering(symbol))
+                    .foregroundStyle(tint)
+                    .contentTransition(.symbolEffect(.replace))
+            }
             if ring {
                 Circle()
                     .stroke(Color.primary.opacity(0.08), lineWidth: ringWidth)
@@ -596,12 +605,54 @@ enum DeviceSymbol {
     /// Tandem's watch is a Wear OS watch, such as the Pixel Watch, and those are round.
     static let watch = "watch.analog"
 
-    /// What an icon that was picked or kept is drawn as: the square watch of an earlier choice is the round one.
-    static func shown(_ symbol: String) -> String { symbol == "applewatch" ? watch : symbol }
+    /// A phone without any cut out in its screen, such as a Sony Xperia with its bezels: drawn by Tandem, as no symbol is one.
+    static let plainPhone = "tandem.phone.plain"
+
+    /// What an icon that was picked or kept is drawn as: the square watch of an earlier choice is the round one, and the phone and
+    /// the desktop of an earlier choice are the ones drawn now.
+    static func shown(_ symbol: String) -> String {
+        switch symbol {
+        case "applewatch": watch
+        case "iphone": "iphone.gen3"
+        case "desktopcomputer", "pc": "display"
+        default: symbol
+        }
+    }
+
+    /// The symbol for a device: the icon picked for it, otherwise the one of its system, and for an Xperia the plain phone.
+    static func of(_ device: TandemDevice?, platform: TandemPlatform, picked: String?) -> String {
+        if let picked { return shown(picked) }
+        if platform == .android, device?.name.localizedCaseInsensitiveContains("xperia") == true { return plainPhone }
+        return platform.symbol
+    }
 
     /// The outline of a device is the strong part of its symbol and its screen the soft part. In the watch the case and the
     /// strap are the soft part, which made it paler than the rest, so the watch is drawn in one strength.
     static func rendering(_ symbol: String) -> SymbolRenderingMode { symbol == watch ? .monochrome : .hierarchical }
+}
+
+/// A phone with no cut out in its screen, drawn to stand beside the symbols at the same font size: the outline in the full colour,
+/// the screen soft, as a hierarchical symbol has it, with the deeper bezels above and under the screen that such a phone has.
+struct PlainPhoneGlyph: View {
+    /// The font size the symbols around it are drawn at.
+    let points: CGFloat
+    var bold = true
+    let tint: Color
+
+    var body: some View {
+        let height = points * 1.18
+        let width = points * 0.66
+        let line = points * (bold ? 0.105 : 0.075)
+        ZStack {
+            RoundedRectangle(cornerRadius: width * 0.22, style: .continuous)
+                .strokeBorder(tint, lineWidth: line)
+            RoundedRectangle(cornerRadius: width * 0.06, style: .continuous)
+                .fill(tint.opacity(0.32))
+                .padding(.horizontal, line * 1.8)
+                .padding(.vertical, height * 0.15)
+        }
+        .frame(width: width, height: height)
+    }
 }
 
 /// The watch as a round glyph, drawn the way a device is (`DeviceGlyph`): in the accent while it is there, grey while it is not.
@@ -626,10 +677,10 @@ enum DeviceIconChoice: CaseIterable {
 
     var symbol: String {
         switch self {
-        case .phone: "iphone"
+        case .phone: "iphone.gen3"
         case .tablet: "ipad"
         case .laptop: "laptopcomputer"
-        case .desktop: "desktopcomputer"
+        case .desktop: "display"
         case .watch: DeviceSymbol.watch
         case .tv: "tv"
         }

@@ -108,6 +108,12 @@ extension View {
     func pagePadding() -> some View {
         padding(.horizontal, 26).padding(.bottom, 26).padding(.top, 4)
     }
+
+    /// The page of a device starts in the strip along the top of the window, level with the top of the floating sidebar: the strip
+    /// carries nothing there, and left empty it pushed the head of the page down. Goes with `.ignoresSafeArea(.container, edges: .top)`.
+    func devicePagePadding() -> some View {
+        padding(.horizontal, 26).padding(.bottom, 26).padding(.top, Sidebar.margin)
+    }
 }
 
 // MARK: Surfaces
