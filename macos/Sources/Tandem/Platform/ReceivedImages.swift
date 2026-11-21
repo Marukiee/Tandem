@@ -22,6 +22,8 @@ enum ReceivedImages {
         let board = NSPasteboard.general
         board.clearContents()
         board.writeObjects([image])
+        // Put here because a device sent it: the clipboard watcher must not send it back as a new copy.
+        EngineModel.shared.clipboardWritten()
         if pasteEnabled { pasteSoon() }
         return true
     }

@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -434,6 +435,16 @@ private fun SettingsPage(ui: WatchUi, settled: Boolean, canPair: Boolean, askAcc
                     modifier = rimRow(spec),
                     transformation = SurfaceTransformation(spec),
                     label = { Text(stringResource(R.string.auto_sleep)) },
+                )
+            }
+            item(key = "power_log") {
+                FilledTonalButton(
+                    onClick = { PowerLogActivity.open(context) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    icon = { Icon(painterResource(R.drawable.sym_monitoring), null) },
+                    label = { Text(stringResource(R.string.power_open)) },
+                    secondaryLabel = { Text(stringResource(R.string.power_open_sub), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 )
             }
             item(key = "pairing") { PairingButton(ui, settled, canPair, rimRow(spec), SurfaceTransformation(spec)) }

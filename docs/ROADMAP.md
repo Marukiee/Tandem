@@ -102,6 +102,13 @@ niet op de schijf, geen adressen of inhoud in de regels. Alleen gebouwd en door 
 30 MB per map, dus met de kopie voor `adb pull` kan het samen 60 MB zijn. Mac, Linux en Windows geven scherm, netwerk en batterij
 nog niet door aan het log.
 
+**In 0.3.25 tot en met 0.3.29.** 0.3.25: PR 49 (horloge: SendGate, het scherm als bron voor de live hartslag, 15 minuten aan en 30 uit).
+0.3.26: PR 50 (hotspot per telefoon, bedtijdmuziek) en PR 51 (R-V19, een nieuwe telefoon of hotspot meldt zich bij de Mac). 0.3.27: PR 52
+(passieve hartslag en stappen op het horloge). 0.3.28: PR 53 (R-V15 deel 2: een adres telt pas na twee gelijke blikken, een scherm aan
+telt niet als netwerkwissel, covers niet opnieuw, `mobile` en `costly` los). 0.3.29: PR 54 (alle voorkeuren van een apparaat in een groep op
+Android; een ontvangen foto, Quick Share-tekst en tekst van de telefoon komen niet meer als klembord terug). PR 31 (Mac-ontwerp) zit in geen
+van allen, tot Mark de bovenkant van de apparaatpagina kiest (R-D22).
+
 **Open, voor wie verder gaat (stand 2026-11-15, nacht).** PR 31 (de Mac in het nieuwe
 ontwerp) botst met main; de sessie bouwt de punten 5 (een icoonfamilie), 6 (rond horloge), 7 (kop en speler), 8 (een woord bij de knop
 van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; bij punt 7 nog: de tegel Steps op de kaart Health is hoger dan de tegels Last night en Heart rate now door zijn grotere icoon in een ring; alle drie even hoog en hetzelfde icoon; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
@@ -352,6 +359,34 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   batterijcijfer: een emulator kan de winst niet meten, en `PassiveHealth` belooft hem ook niet. De winst die ik verwacht is dat het horloge
   de hartslag en stappen toch al verzamelt voor zichzelf en wij dus geen tweede sensormeting en geen eigen teller meer wakker houden; dat zegt
   de dag om de pols.
+
+  **Tweede ronde (0.3.32, Mark: "volgens mij nog niet zo zuinig").** Eerst een teller, zodat een dag om de pols zegt waar het blijft, en twee
+  wijzigingen waarvan de winst uit de werking van Bluetooth volgt (de radio wordt minder vaak wakker), niet uit een meting.
+  - **Het accu-logboek** (`PowerLog`, pagina Accu-logboek in de instellingen van het horloge): per klokuur de wekmomenten van Tandem zelf
+    (sensorleveringen, Health Services, berichten van de telefoon, alarm, scherm aan), de tijd van de versnellingsmeter, de eigen hartslagmeting,
+    de verbinding, het scannen en het scherm, de Bluetooth-brokken en het aantal berichten per soort, naast wat de accu verloor (procent en
+    `BATTERY_PROPERTY_CHARGE_COUNTER` in mAh). Het kost niets: alles wordt in het geheugen opgeteld, zonder timer of wake lock, een uur sluit
+    bij het eerste wat er daarna gebeurt, en er gaat een korte regel per uur (ruim onder een kilobyte) naar een bestand per dag, 14 dagen
+    bewaard. Lezen kan op het horloge zelf of met `adb pull` van `/sdcard/Android/data/nl.markmaaktmedia.tandem.watch/files/power`
+    (ook als `adb logcat -s TandemWatchPower`).
+  - **Een telefoon die lang weg is** (`ScanPolicy.restMs`): na een halfuur zoeken wordt het 30 s zoeken per 150 s (een vijfde van de tijd) en
+    bij scherm aan meteen even zoeken. Het horloge kan zonder koppeling niet via `autoConnect` wachten (het adres van de telefoon verandert
+    en er is geen bonding), dus het scannen is wat er blijft; een telefoon die een nacht of dag weg is, is daar vermoedelijk de duurste vorm van (geschat, niet gemeten).
+  - **De verbinding in rust** (`LinkPriorityRules`): staat het horloge stil (scherm uit, geen verkeer, 30 s na het verbinden)
+    dan vraagt het om `CONNECTION_PRIORITY_LOW_POWER` (een verbindingsmoment per ongeveer 100 tot 125 ms in plaats van 30 tot 50 ms). Een
+    stoot berichten (4 brokken binnen 2 s) of het scherm aan zet hem terug op de gewone stand (30 tot 50 ms), en de snelle stand blijft voor
+    wat die al had (de aanwijzer). Valt de verbinding drie keer in een uur weg terwijl hij op zuinig stond, dan blijft hij 12 uur op gewoon. Een melding komt dus hooguit een verbindingsmoment later bij
+    een horloge in rust, en het scherm aan merkt niets.
+  - **Gezocht en niet veranderd, met de reden.** De versnellingsmeter (5 Hz, blok van 4 minuten, een wekmoment per blok) blijft ook overdag:
+    de detectie van dutjes en de start en het einde van de nacht rekenen ermee (`MAX_GAP_MS` 12 minuten tussen waarden), en een lagere
+    frequentie of grotere blokken zouden een dutje missen. De nachtopname loopt alleen als de gebruiker hem aanzet. Tiles, complications en
+    een eigen always-on scherm bestaan in de horloge-app niet, dus daar vernieuwt niets te vaak. De eigen hartslagmeting en stappenteller
+    staan sinds 0.3.27 alleen nog als vangnet naast Health Services.
+  - **Gemeten (Wear OS 6 emulator, API 36)**: de teller schrijft na een uurwissel een regel (216 bytes met een uurtje van 9 wekmomenten), de
+    pagina leest hem terug en laat er de lopende periode naast zien, scherm aan en uit telt als wekmoment en schermtijd, en niets crasht. Niet gemeten:
+    de emulator heeft geen Bluetooth, dus het zoeken in rust en de prioriteit zijn alleen met eenheidstests bewezen (`ScanRestTest`, `LinkPriorityTest`);
+    de accu van de emulator is nep (aan de lader, vaste teller); geen enkele mA. Wat de twee wijzigingen opleveren zegt pas de dag om
+    de pols: kijk in het logboek naar de wekmomenten per uur en naar "verbinding zuinig" en vergelijk het percentage 's avonds met 0.3.30.
 - **R-V19. Een nieuwe telefoon, of een andere hotspot: de Mac moet het weten** (vraag van Mark, 2026-11-18: "wat gebeurt er als je een nieuwe
   telefoon hebt? dan weet de mac niet dat je nieuwe hotspot hebt"). Nagelezen op main 52bbf7bd: ja, het ging fout. De Mac bewaarde een
   naam (`hotspotSSID`) en een wachtwoord (`hotspot.secret`) voor alle telefoons, en `joinAndConnect` verbond daarmee. Een nieuwe telefoon,

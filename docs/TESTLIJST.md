@@ -571,3 +571,62 @@ emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen
   Sluit Tandem op de Mac en open hem weer: nu komt de hoes wel opnieuw.
 - [ ] **Een computer die dagen uit staat** (de Linux-laptop) wordt op mobiele data niet meer elke 5 tot 10 minuten gebeld. Zet de telefoon
   op wifi: hij probeert hem weer zoals vroeger.
+
+## 0.3.29, 2026-11-21 (klembord dat terugkwam, voorkeuren in een groep)
+
+- [ ] **Screenshot naar de Mac.** Maak een screenshot op de telefoon en deel hem via Tandem naar de Mac met "foto op het klembord" aan.
+  De foto staat op het klembord van de Mac, en de telefoon krijgt hem niet opnieuw als klembord binnen (geen tweede melding, geen
+  nieuwe foto in de klembordmap). Een eigen copy op de Mac daarna gaat wel gewoon naar de telefoon.
+- [ ] **Tekst via Quick Share of "invoegen vanaf telefoon".** Stuur tekst met Quick Share naar de Mac of voeg een foto van de telefoon
+  in: niets daarvan komt terug naar de telefoon.
+- [ ] **Telefoon met Shizuku-klembord.** Tekst die van de Mac over de aanwijzer of via Quick Share op de telefoon op het klembord komt,
+  gaat niet terug naar de Mac.
+- [ ] **Voorkeuren van een apparaat (telefoon, Instellingen voor dit apparaat).** Klembord, Meldingen, Bestanden automatisch en, als
+  ze er zijn, Berichten, Slaap en trainingen en Nudges staan in een groep, met afgeronde buitenkant en kleine hoeken ertussen. Bekijk
+  een Mac (alles), een Linux-pc, een andere telefoon (geen Nudges) en een tablet zonder simkaart (geen Berichten): de vormen kloppen steeds.
+- Windows en Linux hadden dit pad al goed (de klembordcode onthoudt wat ze zelf zetten); daar valt niets nieuws te testen.
+
+## 0.3.31, 2026-11-21 (kant kiezen en Instellingen onderaan, Linux en Windows)
+
+Wat veranderde: op de pagina van een apparaat in de Linux- en Windows-app staat een rij "Where <naam> stands" met een pill Links of
+Rechts van deze computer. Kiezen doet hetzelfde als het doosje van het apparaat links of rechts in de schermindeling zetten
+(`arrange_side` roept `arrange::put` aan). Alleen in een browser met `mock.js` bekeken en met `check-linux.sh`, niet op echte toestellen.
+
+- [ ] **Kant kiezen.** Open de pagina van een telefoon en van een computer: de rij staat bovenaan Instellingen. Kies Links: in Instellingen
+  onder Muis springt het doosje van het apparaat naar links, en omgekeerd. Sleep het doosje daar naar rechts: de pill volgt.
+- [ ] **Zonder keuze** staat Rechts gevuld, en een tik op Rechts zet het apparaat er echt neer (het doosje verschijnt rechts).
+- [ ] **Zoek met geluid** (alleen bij een Mac of een telefoon met de nieuwste app): de knop staat naast de pill, en de uitkomst zet de pill om.
+- [ ] **Teksten.** Op Windows staat "deze pc" in de ondertitel, op Linux "deze computer", in Engels en Nederlands.
+
+En Instellingen staat in de zijbalk direct boven Apparaat toevoegen, onder de meldingsbanners (alleen in een browser met `mock.js` bekeken):
+
+- [ ] **Brede zijbalk.** Onderaan staan Instellingen en Apparaat toevoegen in dezelfde stijl; Gedeeld, Berichten, Klembord en Meldingen staan
+  erboven. Instellingen opent nog en is gemarkeerd als hij open is.
+- [ ] **Smalle zijbalk** (venster smal maken): alleen icoon, met de tooltip "Instellingen" en "Apparaat toevoegen". Een update- of scherm-banner schuift Instellingen niet weg.
+
+## 0.3.32, 2026-11-21 (accu-logboek op het horloge, tweede ronde R-V18)
+
+Wat veranderde: het horloge schrijft per klokuur een korte regel over wat Tandem deed (wekmomenten, sensor-, verbindings-, scan- en
+schermtijd, Bluetooth-brokken en berichten per soort) en wat de accu verloor, met een pagina Accu-logboek onder Instellingen op het
+horloge. Een telefoon die over een halfuur weg is wordt een vijfde van de tijd gezocht, en de verbinding van een horloge in rust vraagt
+om een zuinigere Bluetooth-stand. Op een Wear OS 6 emulator bekeken (logregel, bestand, pagina, scherm aan en uit); Bluetooth en de
+accu zijn daar niet echt, dus de winst zelf is niet gemeten.
+
+- [ ] **Een dag om de pols.** Doe het horloge 's ochtends om, gebruik het gewoon, en open 's avonds Instellingen, Accu-logboek. Per uur staat
+  er een regel met het verlies in mAh (of procent) en de wekmomenten, de verbindings-, scan- en schermtijd. Zoek het uur waar het
+  verlies uitspringt en kijk wat daar hoog staat. Vergelijk het percentage 's avonds met 0.3.31.
+- [ ] **Meldingen, bellen, muziek en de aanwijzer voelen niet trager.** Met het scherm uit: stuur een melding en neem een gesprek aan. Het
+  scherm aan, bediening van de muziek en de aanwijzer (de Mac of telefoon bedienen vanaf het horloge) reageren zoals voorheen. Een
+  melding hooguit een tel later bij een horloge dat lang stil lag mag, meer niet.
+- [ ] **Slaap, stappen, hartslag.** De nacht wordt nog herkend, een dutje ook, stappen en hartslag lopen door (de tegels op de telefoon
+  kloppen met het horloge).
+- [ ] **Telefoon lang weg.** Laat de telefoon een uur uit of ver weg. In het logboek staat de scantijd per uur dan rond een vijfde.
+  Dat de telefoon na meer dan een halfuur weg pas na hooguit ongeveer 2,5 minuten gevonden wordt (30 s kijken per 2 minuten rust) is
+  zo bedoeld en geen fout; het horloge kijkt meteen als je het scherm aanzet, en zonder een halfuur weg zit het er binnen ongeveer 3 minuten weer aan.
+- [ ] **Zuinige verbinding.** `adb logcat -s TandemWatch` (draadloos) toont "Link priority: LOW_POWER" na een halve minuut rust en
+  "Link priority: BALANCED" bij een stoot berichten of scherm aan. Valt de verbinding drie keer in een uur weg terwijl hij op zuinig
+  stond, dan komt er 12 uur lang geen "LOW_POWER" meer in het logboek en telt de pagina geen zuinige minuten meer.
+- [ ] **Het bestand.** `adb pull /sdcard/Android/data/nl.markmaaktmedia.tandem.watch/files/power` geeft een bestand per dag met een
+  regel per uur (en `adb logcat -s TandemWatchPower` dezelfde regel). Bestanden ouder dan 14 dagen verdwijnen.
+- [ ] **Teksten.** De pagina staat in het Nederlands (Accu-logboek, wekmomenten, scherm, link, scan) en in het Engels (Battery log, wake
+  moments), en past op het ronde scherm.
