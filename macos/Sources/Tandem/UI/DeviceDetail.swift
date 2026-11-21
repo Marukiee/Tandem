@@ -233,6 +233,7 @@ struct DeviceDetail: View {
             if device.platform == .android { HotspotCard(device: device) }
             // What is set comes before what was sent: the list grows, and the settings should not move further down the more is sent.
             settings
+            deviceSettingsCard
             recentTransfers
             removal
         }
@@ -470,17 +471,23 @@ struct DeviceDetail: View {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     SideRow(device: device)
                 }
-                Divider().opacity(0.4).padding(.horizontal, 14)
-                // Everything else that is set for this device, and its name, on a page of its own: what is used often stays here.
-                Button { DeviceSettingsShown.shared.id = device.id } label: {
-                    SettingRow(symbol: "gearshape", title: "Settings for this device", subtitle: "Its name, and what it may do on this Mac") {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .buttonStyle(.plain)
             }
+        }
+    }
+
+    /// Everything else that is set for this device, and its name, on a page of its own: a card of its own, as the hotspot has, so
+    /// it does not read as one more switch of the card above.
+    private var deviceSettingsCard: some View {
+        Card(radius: Metrics.card, padding: 6) {
+            Button { DeviceSettingsShown.shared.id = device.id } label: {
+                SettingRow(symbol: "gearshape", title: "Settings for this device", subtitle: "Its name, where it stands, and what it may do on this Mac") {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
     }
 

@@ -1726,3 +1726,9 @@
 "Left or right of this Mac on your desk. The mouse crosses over to it on that side, and a second screen goes there." = "Links of rechts van deze Mac op je bureau. De muis steekt aan die kant naar het apparaat over, en een tweede scherm komt daar.";
 "This Mac" = "Deze Mac";
 "Answers in %lld ms" = "Antwoordt in %lld ms";
+"Its name, where it stands, and what it may do on this Mac" = "De naam, waar het staat, en wat het op deze Mac mag";
+"Find the side by sound" = "De kant op geluid vinden";
+"This Mac plays a short sound left and right, and %@ listens." = "Deze Mac speelt links en rechts een kort geluid, en %@ luistert.";
+"Where it stands" = "Waar het staat";
+"Left or right is chosen on its page. Checking by itself and the sound count for every device." = "Links of rechts kies je op de pagina van het apparaat. Vanzelf controleren en het geluid gelden voor elk apparaat.";
+"Its mouse and keyboard cross over on the side chosen on its page." = "De muis en het toetsenbord steken over aan de kant die op de pagina is gekozen.";

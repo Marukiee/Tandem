@@ -12,6 +12,9 @@ struct DeviceSettingsSheet: View {
     @Bindable private var share = PointerShare.shared
     @State private var trusted = AXIsProcessTrusted()
     @State private var name = ""
+    @State private var finding = false
+    @AppStorage(SideWatch.enabledKey) private var checkByItself = true
+    @AppStorage(SideFinder.soundKey) private var sideSound = "quiet"
     @State private var denied: Set<TandemPermission> = []
 
     /// What a device may do on a Mac, in the order it is asked. Messages and calls are what a phone gives, not a Mac, and files
@@ -59,6 +62,42 @@ struct DeviceSettingsSheet: View {
                     }
                 }
 
+                if device.isComputer || device.platform == .android {
+                    Section {
+                        if device.caps.contains("side.listen") {
+                            LabeledContent {
+                                Button(finding ? "Listening…" : "Find by sound") {
+                                    finding = true
+                                    Task {
+                                        let found = await SideFinder.find(device)
+                                        finding = false
+                                        model.showToast(SideFinder.message(found, name: device.name))
+                                    }
+                                }
+                                .disabled(!device.online || finding)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Find the side by sound")
+                                    Text("This Mac plays a short sound left and right, and \(device.name) listens.").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        DescribedToggle(
+                            "Check the side by itself",
+                            subtitle: "When a second screen or the shared mouse starts, and every few minutes. With a sound too high to hear.",
+                            isOn: $checkByItself
+                        )
+                        Picker("Sound for finding the side", selection: $sideSound) {
+                            Text("Quiet (recommended)").tag("quiet")
+                            Text("Audible").tag("audible")
+                        }
+                    } header: {
+                        Text("Where it stands")
+                    } footer: {
+                        Text("Left or right is chosen on its page. Checking by itself and the sound count for every device.")
+                    }
+                }
+
                 if device.isComputer {
                     Section {
                         DescribedToggle(
@@ -76,7 +115,7 @@ struct DeviceSettingsSheet: View {
                     } header: {
                         Text("Mouse and keyboard")
                     } footer: {
-                        Text("Where it stands is on its page.")
+                        Text("Its mouse and keyboard cross over on the side chosen on its page.")
                     }
                 }
 
