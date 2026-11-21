@@ -176,8 +176,9 @@ class MarkUpdater internal constructor(
         _state.value = UpdateState.Available(
             ReleaseInfo(
                 tag = PREVIEW_TAG, versionName = "9.9.9", title = "Preview",
-                body = "## What's new (English)\n\n- Gallery with a quick button for the originals\n- Smaller photos at half the pixels\n\n" +
-                    "## Wat is nieuw (Nederlands)\n\n- Galerij met een snelle knop voor de originelen\n- Kleinere foto's op de helft van de pixels",
+                // Neutrale voorbeeldregels: dit komt in elke app op een schermafbeelding.
+                body = "## What's new (English)\n\n- A faster start and smoother animations\n- Small fixes and a few improvements\n\n" +
+                    "## Wat is nieuw (Nederlands)\n\n- Sneller starten en soepelere animaties\n- Kleine reparaties en verbeteringen",
                 apkUrl = null, apkSizeBytes = 22_000_000, sha256Url = null, htmlUrl = "", publishedAt = "",
             ),
         )

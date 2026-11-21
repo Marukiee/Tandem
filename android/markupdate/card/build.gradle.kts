@@ -5,9 +5,11 @@
 // nieuwere uit de app wint.
 plugins {
     id("com.android.library")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
 }
+
+// AGP 8 heeft de Kotlin-plugin nodig; AGP 9 heeft Kotlin ingebouwd en weigert hem. De Compose-plugin is er voor allebei.
+if (androidComponents.pluginVersion.major < 9) apply(plugin = "org.jetbrains.kotlin.android")
+apply(plugin = "org.jetbrains.kotlin.plugin.compose")
 
 android {
     namespace = "nl.markmaaktmedia.markupdate.ui"
@@ -33,7 +35,8 @@ android {
     }
 }
 
-kotlin {
+// Op taakniveau, zodat dit voor AGP 8 en AGP 9 hetzelfde werkt (de `kotlin {}`-extensie bestaat niet als de plugin hierboven voorwaardelijk komt).
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         freeCompilerArgs.addAll(

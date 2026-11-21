@@ -124,11 +124,14 @@ Het script weigert te draaien vanuit een kopie (een map met `BRON`).
 
 ## Eisen aan de app
 
-- Android Gradle Plugin 8.x met de Kotlin-plugin (`org.jetbrains.kotlin.android`) op de classpath van de root; de kaart ook `org.jetbrains.kotlin.plugin.compose`.
+- Android Gradle Plugin 8.x **of** 9.x. De buildbestanden kijken zelf welke: onder AGP 8 passen ze `org.jetbrains.kotlin.android` toe (die moet op de
+  classpath van de root staan), onder AGP 9 niet (Kotlin is daar ingebouwd en de plugin wordt geweigerd). De kaart past in beide gevallen
+  `org.jetbrains.kotlin.plugin.compose` toe: die moet op de classpath van de root staan, dus in de root `alias(...) apply false` of
+  `id("org.jetbrains.kotlin.plugin.compose") version "..." apply false`, ook als hij uit een catalogus komt.
   De buildbestanden van de module zijn zelfstandig: geen `libs.`-verwijzingen, geen `repositories {}`, plugins zonder versie.
 - `minSdk` van de app 24 of hoger, `compileSdk` 36 of hoger. De module gebruikt `compileSdk = 36`, `minSdk = 24`, Java 17.
-- **AGP 9 (GuitarTuner)** heeft Kotlin ingebouwd en weigert (of hoeft niet) de plugin `org.jetbrains.kotlin.android`: de buildbestanden van de module
-  zijn voor AGP 8 en niet getest met AGP 9. Daar moet eerst in Keeper een variant bij.
+- Getest met AGP 8.13.2 / Kotlin 2.2.21 (Keeper) en met AGP 9.3.1 / Gradle 9.5.1 / Kotlin 2.4.10 in een los scratchproject (kern: 27 tests, kaart en
+  app bouwen). Dat scratchproject heeft de versies van GuitarTuner en PixelPlayer (AGP 9.3.1, Kotlin 2.4.10); in die apps zelf is het nog niet gebouwd.
 - **MarkMySteps (Capacitor, Java, Groovy-Gradle)** heeft geen Kotlin-plugin op de classpath: voeg in de root `build.gradle` bij `buildscript.dependencies`
   `classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.21'` toe, dan kan `:markupdate:core` bouwen (hij komt met zijn eigen Kotlin-stdlib).
 

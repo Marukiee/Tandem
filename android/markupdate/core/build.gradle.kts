@@ -5,8 +5,10 @@
 // classpath van de root, dan moet dat daar eerst; zie de README.
 plugins {
     id("com.android.library")
-    id("org.jetbrains.kotlin.android")
 }
+
+// AGP 8 heeft de Kotlin-plugin nodig; AGP 9 heeft Kotlin ingebouwd en weigert hem. De Kotlin-versie en de JVM-versie volgen de app.
+if (androidComponents.pluginVersion.major < 9) apply(plugin = "org.jetbrains.kotlin.android")
 
 android {
     namespace = "nl.markmaaktmedia.markupdate"
@@ -30,10 +32,9 @@ android {
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-    }
+// Op taakniveau, zodat dit voor AGP 8 en AGP 9 hetzelfde werkt (de `kotlin {}`-extensie bestaat niet als de plugin hierboven voorwaardelijk komt).
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
+    compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
 }
 
 dependencies {
