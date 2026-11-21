@@ -297,6 +297,7 @@ pub fn run() {
             commands::show_main,
             commands::resize_panel,
             commands::open_logs,
+            commands::open_traffic,
             backup::settings_export,
             backup::settings_import,
             backup::settings_restore,

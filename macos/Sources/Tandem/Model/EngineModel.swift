@@ -73,6 +73,10 @@ final class EngineModel {
     var removedFromCircle = false
     var isOnline = true
     var hotspotStatus: HotspotStatus = .idle
+    /// A phone whose hotspot this Mac cannot join yet (new, renamed): the row in the panel. See `HotspotNotice`.
+    var hotspotNotice: HotspotNotice?
+    /// The phone whose page opens its hotspot setup when it is shown (the button of the row, the click on the notification).
+    var hotspotSetupFor: String?
     /// A short message shown as a toast at the bottom of the window.
     var toast: String?
     /// What your phones have shown as notifications, newest first.
@@ -135,8 +139,13 @@ final class EngineModel {
             .flatMap { device in visibleMedia(for: device.id).map { (device: device, player: $0) } }
         return all.first { $0.player.playing } ?? all.first
     }
-    /// The phone the hotspot is asked of: the first Android device.
-    var hotspotPhone: TandemDevice? { devices.first(where: { $0.platform == .android }) }
+    /// The phone the hotspot is asked of: one that is in reach and has its hotspot filled in, else one of the two, else the first.
+    var hotspotPhone: TandemDevice? {
+        let phones = devices.filter { $0.platform == .android }
+        let profiles = HotspotProfiles.shared
+        let chosen = HotspotRules.choosePhone(phones.map { .init(id: $0.id, reachable: reach(of: $0).reachable, complete: profiles.complete(for: $0.id)) })
+        return phones.first { $0.id == chosen }
+    }
     /// The colour of each cover, for the wash behind its player.
     var mediaTint: [UInt64: NSColor] = [:]
     /// The phones whose Bluetooth beacon is in range right now. Not a link: it says the phone is there to ask for its
@@ -292,7 +301,7 @@ final class EngineModel {
         network.start()
         // The network often looks the same after a wake, and the others have long given up on this Mac: it tries them now.
         _ = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.engine?.networkChanged() }
+            MainActor.assumeIsolated { self?.engine?.wokeFromSleep() }
         }
 
         hotspot.attach(model: self)
@@ -461,6 +470,8 @@ final class EngineModel {
         // Every open or hidden view that shows a device is redone when this is set, also when nothing changed.
         let fresh = engine.devices()
         if fresh != devices { devices = fresh }
+        // What was filled in for the hotspot before there was one for each phone goes to the first phone, as soon as there is one.
+        if let first = fresh.first(where: { $0.platform == .android }) { HotspotProfiles.shared.adoptLegacy(by: first.id) }
         PointerShare.shared.circleChanged(Set(fresh.map(\.id)))
         // A phone that was there and just turned on taking this Mac's mouse (its switch or its tile) has its side measured now. One that
         // only came back is checked as a device that connects.
@@ -1401,8 +1412,31 @@ final class EngineModel {
     func remove(_ id: String) {
         Task {
             try? await engine?.removeDevice(id: id)
+            HotspotProfiles.shared.forget(id)
+            if hotspotNotice?.phone == id { hotspot.dismissNotice() }
             refreshDevices()
         }
+    }
+
+    /// Whether a device can be named from this Mac: one new enough to take a name for the whole circle (R-I33).
+    func canRename(_ id: String) -> Bool { engine?.canRename(id: id) ?? false }
+
+    /// Gives a device a name for every device of the circle, this Mac included.
+    func renameDevice(_ id: String, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if let i = devices.firstIndex(where: { $0.id == id }) { devices[i].name = trimmed }
+        Task {
+            try? await engine?.renameDevice(id: id, name: trimmed)
+            refreshDevices()
+        }
+    }
+
+    /// What a device may not do on this Mac (P6). Everything else it may.
+    func deniedPermissions(_ id: String) -> [TandemPermission] { (try? engine?.deniedPermissions(id: id)) ?? [] }
+
+    func setPermission(_ permission: TandemPermission, allowed: Bool, for id: String) {
+        try? engine?.setPermission(id: id, permission: permission, allowed: allowed)
     }
 
     /// Shows a name in the sidebar while it is still being typed, without telling the
@@ -1542,6 +1576,14 @@ final class EngineModel {
     }
 
     // MARK: Status
+
+    /// Opens the folder with the days of the traffic log (one file per day, JSON lines) in Finder.
+    func openTrafficLog() {
+        guard let engine else { return }
+        let url = URL(fileURLWithPath: engine.trafficDir())
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(url)
+    }
 
     func pushStatus() {
         guard let engine else { return }

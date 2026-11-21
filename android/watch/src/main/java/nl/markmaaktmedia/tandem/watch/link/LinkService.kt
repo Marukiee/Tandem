@@ -17,6 +17,7 @@ import android.os.IBinder
 import nl.markmaaktmedia.tandem.watch.R
 import nl.markmaaktmedia.tandem.watch.track.AutoSleep
 import nl.markmaaktmedia.tandem.watch.track.HeartTracker
+import nl.markmaaktmedia.tandem.watch.track.PassiveHealth
 import nl.markmaaktmedia.tandem.watch.track.StepTracker
 import nl.markmaaktmedia.tandem.watch.ui.MainActivity
 
@@ -61,8 +62,9 @@ class LinkService : Service() {
             return START_NOT_STICKY
         }
         WatchLink.start(this)
-        if (steps == null) steps = StepTracker(this).also { it.start() }
+        if (steps == null) steps = StepTracker.shared(this).also { it.start() }
         HeartTracker.start(this)
+        PassiveHealth.start(this)
         AutoSleep.start(this)
         if (!watchingBattery) {
             watchingBattery = true

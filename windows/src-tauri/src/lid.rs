@@ -156,7 +156,8 @@ pub fn start(app: AppHandle) {
                 // The others have long given up on a computer that slept. It tries them now.
                 if woke_up {
                     if let Ok(engine) = app.state::<AppState>().engine() {
-                        engine.network_changed();
+                        // Not `network_changed`: the addresses are the same after a sleep, and only a wake asks the connections.
+                        engine.woke_from_sleep();
                     }
                 }
                 let (closed, locked) = (tandem_winsys::lid_closed(), tandem_winsys::screen_locked());

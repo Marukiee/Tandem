@@ -294,15 +294,19 @@ private struct WatchHealthCard: View {
     @Environment(EngineModel.self) private var model
     let phone: TandemDevice
     let onOpen: () -> Void
+    /// False when every window of the app is covered or minimised, so nobody can see the number.
+    @State private var appVisible = NSApplication.shared.occlusionState.contains(.visible)
 
     var body: some View {
         let insights = model.healthInsights
         let night = model.healthRecords.first { $0.isNight }
         let stepsDay = insights?.week.last { $0.steps != nil }
         let settings = phone.status.watch?.settings
-        // The heart rate now, while this card is on screen and the watch is with its phone: asked again every half minute, as the
-        // phone stops by itself without that.
+        // The heart rate now, while this card can be seen and the watch is with its phone: asked again every half minute, as the
+        // phone stops by itself without that. A window behind other windows or a minimised one asks nothing: the watch measures with
+        // its light on for as long as anybody asks, and that is the thing that empties it.
         let watchHere = phone.online && phone.status.watch?.online == true
+        let asking = watchHere && appVisible
         Card(radius: Metrics.card, padding: 6) {
             VStack(spacing: 6) {
                 Button(action: onOpen) {
@@ -326,7 +330,8 @@ private struct WatchHealthCard: View {
                 }
                 .buttonStyle(.plain)
                 .help("Open Health")
-                if night != nil || stepsDay != nil || insights?.resting != nil || watchHere {
+                // Both tiles whenever the watch is paired, so the card is never just one thing.
+                do {
                     TimelineView(.periodic(from: .now, by: 2)) { context in
                     let now = model.watchHeartNow[phone.id].flatMap { watchHere && $0.fresh(at: context.date) ? $0.bpm : nil }
                     // Equally tall, whatever each of them says.
@@ -338,18 +343,19 @@ private struct WatchHealthCard: View {
                                 caption: dayName(night.endMs), tint: Palette.indigo,
                                 score: score.map { Int($0) }
                             )
+                        } else {
+                            GlanceTile(onOpen: onOpen, symbol: "bed.double", title: "Last night", number: String(localized: "No data"), caption: "", muted: true)
                         }
                         // Beside the night also at 0, so the steps never seem gone on a day without any yet.
-                        if let day = stepsDay ?? (night != nil ? insights?.week.last : nil) {
-                            let steps = day.steps ?? 0
-                            // The goal set for the watch; 10,000 until the watch has said what it is.
-                            let goal = Int(settings?.stepGoal ?? 10_000)
-                            GlanceTile(
-                                onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(),
-                                caption: String(localized: "of \(goal.formatted())"), tint: .green,
-                                share: min(1, Double(steps) / Double(max(goal, 1)))
-                            )
-                        }
+                        let day = stepsDay ?? insights?.week.last
+                        let steps = day?.steps ?? 0
+                        // The goal set for the watch; 10,000 until the watch has said what it is.
+                        let goal = Int(settings?.stepGoal ?? 10_000)
+                        GlanceTile(
+                            onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(),
+                            caption: String(localized: "of \(goal.formatted())"), tint: .green,
+                            share: min(1, Double(steps) / Double(max(goal, 1)))
+                        )
                         if let now {
                             // Live: the number now, with the heart beating, and the resting rate under it.
                             GlanceTile(
@@ -379,8 +385,15 @@ private struct WatchHealthCard: View {
                 }
             }
         }
-        .task(id: watchHere) {
-            guard watchHere else { return }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeOcclusionStateNotification)) { _ in
+            appVisible = NSApplication.shared.occlusionState.contains(.visible)
+        }
+        .task(id: asking) {
+            guard asking else {
+                // Said at once, so the watch does not measure on for the last minute it would without hearing it.
+                if watchHere { model.watchHeartLive(phone.id, on: false) }
+                return
+            }
             while !Task.isCancelled {
                 model.watchHeartLive(phone.id, on: true)
                 try? await Task.sleep(for: .seconds(30))
@@ -441,6 +454,8 @@ private struct GlanceTile: View {
     var share: Double? = nil
     /// A number that is live: its symbol beats.
     var beating = false
+    /// No number to show: the words are in the secondary colour.
+    var muted = false
 
     var body: some View {
         Button(action: onOpen) {
@@ -454,7 +469,8 @@ private struct GlanceTile: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 Text(verbatim: number)
-                    .font(.title2.weight(.bold))
+                    .font(muted ? .title3.weight(.semibold) : .title2.weight(.bold))
+                    .foregroundStyle(muted ? .secondary : .primary)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)

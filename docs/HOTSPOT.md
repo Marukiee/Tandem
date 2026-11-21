@@ -14,7 +14,7 @@ gebruiken" aan en geef Bluetooth toe onder Rechten. Alleen dan adverteert de tel
 **Mac.** Vul in Instellingen, Hotspot de naam en het wachtwoord van de hotspot van je
 telefoon in (eenmalig, het wachtwoord staat in een privebestand op de Mac) en zet "Gebruik
 de hotspot van mijn telefoon" aan. Bluetooth-toestemming vraagt de Mac bij het eerste
-verzoek.
+verzoek. Naam en wachtwoord gelden voor die ene telefoon (zie "Een nieuwe telefoon" hieronder).
 
 **Zelf aanzetten door de telefoon (Shizuku, optioneel).** Een gewone app mag de hotspot
 niet starten. Met Shizuku kan Tandem het wel, want Shizuku draait met de rechten van de
@@ -30,6 +30,36 @@ shell en de shell heeft `TETHER_PRIVILEGED`.
 Shizuku moet na elke herstart van de telefoon opnieuw gestart worden. Zonder Shizuku
 (of als het niet draait) krijg je een melding "Je Mac wil je hotspot, tik om hem aan te
 zetten" die het hotspotscherm van Android opent. Je Mac wacht dan tot drie minuten.
+
+## Een nieuwe telefoon, of een hotspot met een andere naam of een ander wachtwoord
+
+De Mac onthoudt naam en wachtwoord per telefoon (`HotspotProfiles`: de namen in de voorkeuren, de wachtwoorden in het privebestand
+`hotspot-phones.secret`). Wat er voor deze versie was ingevuld (een naam en een wachtwoord voor alle telefoons) gaat naar de eerste
+Android-telefoon die de Mac kent, zodra hij er is: niemand hoeft iets opnieuw in te vullen. Vraagt de Mac om een hotspot, dan kiest
+hij een telefoon die in bereik is en zijn hotspot ingevuld heeft, en pas daarna de eerste.
+
+Een hotspot die de Mac niet kent, merkt de Mac op twee manieren:
+
+1. **De telefoon zegt zijn naam** (`HotspotMsg::Name`, en `ssid` in een `State`), aan elke verbonden Mac, een keer en opnieuw als de
+   naam verandert, zolang "Laat mijn Mac mijn hotspot gebruiken" aan staat. Dat kan alleen met Shizuku: geen app mag de naam of het
+   wachtwoord van de eigen hotspot lezen (`getSoftApConfiguration` is een systeem-API), de shell wel (hij heeft NETWORK_SETTINGS).
+   Het gaat over QUIC, dus terwijl de Mac nog een netwerk heeft en je nog tijd hebt. Een eigen bericht en geen `State`, omdat een
+   `State` een antwoord is en een Mac die op zijn antwoord wacht dat anders voor het antwoord zou aanzien.
+2. **Verbinden mislukt**: de naam is niet te vinden of het wachtwoord wordt geweigerd (`HotspotWiFiError.pointsAtCredentials`).
+   Dat werkt voor elke telefoon, ook zonder Shizuku en ook over Bluetooth. Een time-out of "geen route" telt niet.
+
+In beide gevallen komt er een melding "Hotspot van <telefoon> is nieuw" (systeemmelding en een rij in het menubalkpaneel) met een knop
+die de pagina van die telefoon opent met het instelscherm en de naam al ingevuld. Wat de beslissing neemt staat in
+`HotspotRules` (testbaar zonder app): een keer per naam, onthouden over een herstart; een nieuw ingevuld wachtwoord of een
+verbinding die daarna wel lukt wist dat, zodat een volgende fout weer nieuws is. Een Mac die de hotspot nooit instelde krijgt de
+melding niet voor elke telefoon die hij ontmoet. "Later" laat de rij los. Er is geen blijvende waarschuwing: wat niet kan, zegt
+de status bij gebruik.
+
+**Wachtwoord van de telefoon halen.** Zegt de telefoon zijn naam, dan kan hij ook het wachtwoord geven, zonder tikwerk. Het instelscherm
+heeft dan "Wachtwoord ophalen bij <telefoon>": een ja op de Mac, dan gaat een `Ask { ssid }` over de bestaande Wi-Fi-deelroute
+(`wifi.rs`) naar de telefoon, die het wachtwoord uit zijn eigen hotspot leest en als `Share` terugstuurt. De Mac slaat het op bij die
+telefoon en verbindt er niet mee (`HotspotCoordinator.handleWifi` pakt dat antwoord voordat `WifiShare` het ziet). De telefoon
+antwoordt alleen als "Laat mijn Mac mijn hotspot gebruiken" aan staat; een oudere telefoon antwoordt `Refuse` en je tikt het wachtwoord.
 
 ## Regels op de telefoon
 
@@ -105,5 +135,7 @@ op een ander netwerk.
 
 - Geen root en geen Shizuku nodig voor de handmatige route.
 - `startLocalOnlyHotspot` is geen optie: die deelt geen internet.
+- Zonder Shizuku kan een telefoon zijn eigen hotspotnaam en wachtwoord niet lezen en dus niet zeggen of geven. De Mac merkt dan
+  pas bij het verbinden dat het mislukt, en je tikt de naam en het wachtwoord in.
 - `cmd wifi start-softap` start alleen het toegangspunt zonder DHCP en NAT, dus geen
   internet. Tandem gebruikt `TetheringManager.startTethering`.

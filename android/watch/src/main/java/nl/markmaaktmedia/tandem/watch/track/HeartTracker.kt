@@ -12,6 +12,8 @@ import android.util.Log
 import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.sleep.DayHeart
 import nl.markmaaktmedia.tandem.watch.sleep.HeartSample
+import nl.markmaaktmedia.tandem.watch.sleep.PassiveHeart
+import nl.markmaaktmedia.tandem.watch.sleep.PassiveHeartRules
 import nl.markmaaktmedia.tandem.watch.sleep.burstHeartRate
 import java.io.File
 import java.time.Instant
@@ -19,9 +21,10 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /**
- * Heart rate all day: half a minute in every five, because the light of the sensor is what costs the battery. It wakes with the wrist
- * movement [AutoSleep] gets anyway, so there is no alarm of its own and a watch off the wrist measures nothing. A recording measures
- * all the time and adds what it finds.
+ * Heart rate all day. The watch measures it for everyone and hands it over in batches ([onPassive]); the light of the sensor is what
+ * costs the battery, so our own measurement of half a minute in every five is only for the slots where nothing good came from there:
+ * no Health Services, no permission, or a feed that says nothing. It wakes with the wrist movement [AutoSleep] gets anyway, so there is
+ * no alarm of its own and a watch off the wrist measures nothing. A recording measures all the time and adds what it finds.
  */
 object HeartTracker : SensorEventListener {
     private const val TAG = "TandemWatchHeart"
@@ -31,7 +34,7 @@ object HeartTracker : SensorEventListener {
     private const val ENOUGH_MS = 25_000L
     private const val GIVE_UP_MS = 120_000L
     private const val SLOT_MS = 5 * 60_000L
-    private const val SEND_EVERY_SLOTS = 3
+    private const val SEND_EVERY_MS = 15 * 60_000L
     private const val KEEP_DAYS = 3L
 
     private val thread = HandlerThread("tandem-heart").apply { start() }
@@ -44,7 +47,10 @@ object HeartTracker : SensorEventListener {
     private var measuringSince = 0L
     private var finishing = false
     private var lastSlot = -1L
-    private var slotsSinceSend = 0
+    private var lastReportMs = 0L
+
+    /** When the newest good value from the system was taken, on the clock of the day. */
+    private var lastGoodMs = 0L
     private val samples = ArrayList<HeartSample>()
 
     fun start(from: Context) {
@@ -53,6 +59,7 @@ object HeartTracker : SensorEventListener {
             if (context != null) return@post
             context = app
             sensors = app.getSystemService(SensorManager::class.java)
+            lastReportMs = SystemClock.elapsedRealtime()
             load(LocalDate.now().toString())
             publish()
         }
@@ -74,10 +81,48 @@ object HeartTracker : SensorEventListener {
                 stopMeasuring()
             }
             if (measuringSince != 0L || !TrackingStore(app).heartAllDay || Tracking.ui.value.active != null) return@post
-            val slot = System.currentTimeMillis() / SLOT_MS
+            val now = System.currentTimeMillis()
+            val slot = now / SLOT_MS
             if (slot == lastSlot) return@post
             lastSlot = slot
+            if (!PassiveHeartRules.needsOwnMeasurement(lastGoodMs, now)) {
+                Log.i(TAG, "No measurement of our own: the system's newest value is ${(now - lastGoodMs) / 1000} s old")
+                return@post
+            }
+            // Silent: the system may have lost the registration, and what is measured here is a stopgap.
+            PassiveHealth.reregisterIfDue(app)
             measure()
+        }
+    }
+
+    /** The watch came off or went on the charger: nobody to measure, and a light that finds no skin searches until it is stopped. */
+    fun cancelMeasuring() {
+        handler.post { stopMeasuring() }
+    }
+
+    /**
+     * A delivery from the passive monitoring of the watch, [receivedMs] on the clock of the day. One value per slot goes into the day
+     * and to the nap detector: a delivery can hold many, and what is made of them is made of one per slot.
+     */
+    fun onPassive(samples: List<PassiveHeart>, receivedMs: Long) {
+        handler.post {
+            if (context == null) return@post
+            val values = PassiveHeartRules.perSlot(samples)
+            for (value in values) {
+                addNow(value.timeMs, value.bpm)
+                AutoSleep.onHeart(value.timeMs, value.bpm)
+            }
+            val newest = values.maxOfOrNull { it.timeMs }
+            Log.i(
+                TAG,
+                "From the system: ${samples.size} samples, ${values.size} slots usable, newest " +
+                    (newest?.let { "${(receivedMs - it) / 1000} s old at delivery" } ?: "none"),
+            )
+            if (newest == null) return@post
+            lastGoodMs = maxOf(lastGoodMs, newest)
+            save()
+            publish()
+            sendAfterSlot()
         }
     }
 
@@ -101,6 +146,7 @@ object HeartTracker : SensorEventListener {
         Tracking.publishHeartAllDay(on)
         if (tellPhone) WatchLink.sendHeartAllDay(on)
         handler.post { if (!on) stopMeasuring() }
+        PassiveHealth.refresh(app)
         AutoSleep.refresh()
     }
 
@@ -124,11 +170,23 @@ object HeartTracker : SensorEventListener {
         finishing = false
         measuringSince = SystemClock.elapsedRealtime()
         val listening = manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL, MEASURE_US, handler)
-        if (!listening) measuringSince = 0
+        if (listening) {
+            // Not left to the next tick: those stop coming when the watch comes off, and then nothing would end this.
+            handler.postDelayed(giveUp, GIVE_UP_MS)
+        } else {
+            measuringSince = 0
+        }
         Log.i(TAG, "Measuring: $listening, wake-up sensor: ${sensor.isWakeUpSensor}")
     }
 
+    private val giveUp = Runnable {
+        if (measuringSince == 0L) return@Runnable
+        Log.i(TAG, "Nothing from the sensor")
+        stopMeasuring()
+    }
+
     private fun stopMeasuring() {
+        handler.removeCallbacks(giveUp)
         sensors?.unregisterListener(this)
         measuringSince = 0
     }
@@ -170,9 +228,11 @@ object HeartTracker : SensorEventListener {
         dirty = true
     }
 
+    /** Every quarter of an hour at most, whoever measured: deliveries from the system can come more often than our own slots did. */
     private fun sendAfterSlot() {
-        if (++slotsSinceSend < SEND_EVERY_SLOTS) return
-        slotsSinceSend = 0
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastReportMs < SEND_EVERY_MS) return
+        lastReportMs = now
         day?.let { WatchLink.reportHeart(it.curve()) }
     }
 

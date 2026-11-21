@@ -418,3 +418,156 @@ een echt toestel gezien.
   na een herstart van de apps.
 - [ ] **Mappen (P4, PR 39) en sturen via een ander apparaat (P9, PR 40).** Nog niets op een toestel: de Mac zet dit pas aan in de volgende
   PR's (na PR 31). Wel: gewone bestanden en mappen (die gaan nog als zip) sturen tussen Mac en telefoon werkt zoals altijd.
+
+## 0.3.24, 2026-11-17 (PR 47 en 48)
+
+Wat veranderde: de horlogekaart toont altijd een slaaptegel naast de stappen, ook zonder gegevens van die nacht (PR 47, alle platforms), en
+de kern houdt nu een verkeerslog bij op schijf om te vinden wat de telefoon wakker houdt (PR 48, R-V15). Gebouwd en door CI getest, niet
+op een telefoon gedraaid: dat kost een echte nacht. Het log zelf kost geen batterij bedoeld: geen timer, alarm of wake lock, het schrijft
+alleen als de engine toch wakker is; of dat klopt moet de meting laten zien.
+
+- [ ] Een nacht met het horloge aan de lader: toont de kaart op het beginscherm van de telefoon nu naast de stappen een tegel "Geen gegevens" voor de slaap, en opent een tik erop de slaappagina?
+- [ ] Hetzelfde op de Mac (horlogekaart) en in de Linux- of Windows-app.
+- [ ] Na een nacht met gegevens: staat de gewone slaaptegel er weer en is niets veranderd?
+- [ ] Open Instellingen > Over > Verkeerslog op de telefoon na een uur gebruik: staan er apparaten, soorten berichten en uren in?
+- [ ] Na een nacht van de lader: `adb pull /sdcard/Android/data/nl.markmaaktmedia.tandem/files/traffic` en kijk of er regels in staan met `ctx.screen_on:false` en wat erin zit.
+- [ ] Kost de log zelf batterij? Vergelijk een nacht met en zonder (de meetsessie doet dit: geen nieuwe `*alarm*` of `*job*` wake locks voor Tandem, hetzelfde aantal kernel wake-ups).
+- [ ] Op de Mac en in de Linux- of Windows-app: opent "Verkeerslog openen" de map met de dagbestanden? (Mac, Linux en Windows geven scherm, netwerk en batterij nog niet door, alleen stil en data-kosten.)
+
+## 0.3.26, 2026-11-18 (PR 50, horloge punt 5)
+
+Wat veranderde: bedtime mode op het horloge pauzeerde de muziek meteen. Nu begint de nachtopname (en, met "Stille slaap" aan, de stille
+stand van de telefoon) bij bedtime mode, maar muziek en computers (pauzeren en vergrendelen, als die schakelaars aan staan) pas als het horloge
+je echt ziet inslapen: 25 minuten stil, zoals de nachtdetectie al deed. Wordt je 's nachts wakker en val je weer in slaap, dan pauzeert het opnieuw.
+Een nacht die je met de hand op het horloge start, telt nog steeds als slapen vanaf het begin.
+
+- [ ] **Bedtime mode aan met muziek.** Zet 's avonds bedtime mode aan terwijl er muziek speelt (telefoon, Sonos of een computer, met "Muziek
+  pauzeren" aan): de muziek speelt gewoon door en de telefoon wordt wel stil als "Stille slaap" aan staat.
+- [ ] Blijf ongeveer 25 tot 30 minuten stil liggen: nu pauzeert de muziek, en met "Computers vergrendelen" aan gaan de computers op slot. Kijk op de
+  telefoon met `adb logcat -s TandemWatch | grep "Sleep state"`, op het horloge `adb logcat -s TandemWatch | grep Asleep`.
+- [ ] Word 's nachts wakker, zet muziek aan en val weer in slaap: na een kwartier tot een half uur stil pauzeert die muziek ook.
+- [ ] 's Ochtends bedtime mode uit: de telefoon is weer normaal, er wordt niets dubbel gepauzeerd en de ochtendvraag over muziek die doorspeelde (alleen als
+  "Muziek pauzeren" uit staat) komt hooguit één keer.
+- [ ] Een nacht met de hand starten op het horloge: de muziek pauzeert meteen, zoals vóór deze versie. Is dat niet wat je wilt, zeg het: dan wacht hij daar ook op de detector.
+- [ ] Het horloge in bedtime mode zonder ooit stil te liggen (de hele avond bezig): er wordt niets gepauzeerd en 's ochtends staat de opname er gewoon.
+
+## 0.3.25, 2026-11-18 (PR 49, R-V18)
+
+Wat veranderde: het Pixel Watch is binnen een dag leeg, dus is wat het horloge wakker houdt aangepakt (zie R-V18 in
+`docs/ROADMAP.md`). De telefoon stuurt het horloge geen meldingen, spelers, apparaatlijsten en batterijen meer die niets nieuws
+zeggen, en geen verwijdering van iets wat het horloge nooit kreeg. Live hartslag meet hooguit 15 minuten achter elkaar, schrijft de
+sensor per 2 seconden weg en stopt bij uitzetten. Een gewone hartslagmeting stopt na 2 minuten als hij niets vindt, en meteen
+bij horloge af of aan de lader.
+Een verbinding die steeds wegvalt zoekt minder vaak snel. De Mac en de Windows-app vragen alleen live hartslag zolang hun venster
+zichtbaar is. Gemeten op een emulator (tellingen, geen mA) en met eenheidstests, niet op een echt horloge: dat is jouw dag.
+
+- [ ] **Een dag om de pols.** Doe het horloge 's ochtends op volle lading om en noteer het percentage 's avonds. Eerder was het leeg
+  binnen een dag. Vergelijk met een dag zonder Tandem op het horloge als je kunt.
+- [ ] Meldingen: een app-melding komt aan en trilt, antwoorden werkt, weghalen op de telefoon haalt hem weg op het horloge en omgekeerd.
+  Dezelfde melding die de app opnieuw plaatst (een chat die verandert) komt wel aan zodra de tekst anders is.
+- [ ] Een download met voortgangsbalk: de balk op het horloge loopt in stappen van 10 procent mee en staat aan het eind op klaar.
+- [ ] Bellen: scherm gaat aan, trillen, opnemen, ophangen, weigeren, zoals altijd.
+- [ ] Muziek: afspelen, pauzeren, volgend nummer, de tijdbalk springt mee als je in het nummer spoelt, en de titel staat goed na een pauze van een uur.
+- [ ] Slaap: een nacht met het horloge om, 's ochtends staat de nacht op de slaaptegel. De nachtopname zelf is niet aangepast, alleen
+  het stoppen van een hartslagmeting bij de lader en bij horloge af. Klopt de slaaptijd en de hartslag met een nacht eerder?
+- [ ] Stappen en hartslag overdag: de tegels op de telefoon lopen bij als vanouds.
+- [ ] Live hartslag op de Mac: open de horlogekaart, het getal beweegt. Zet het venster achter een ander venster of minimaliseer het: na
+  ongeveer een halve minuut meet het horloge niet meer (`adb logcat -s TandemWatchLiveHeart` op het horloge meldt "Live stopped"). Venster terug: het getal komt terug.
+- [ ] Hetzelfde in de Windows-app (Tauri): venster minimaliseren stopt het vragen.
+- [ ] Een verbinding die wegvalt (telefoon buiten bereik en terug, of Bluetooth uit en aan): de eerste keer vindt het horloge de telefoon binnen
+  een halve minuut weer. Valt de verbinding binnen 10 minuten nog eens weg, dan zoekt het horloge die tweede keer rustiger (gebalanceerd in
+  plaats van een minuut op volle sterkte) en kan het terugvinden enkele tientallen seconden langer duren. Dat is de bedoeling; duurt het
+  langer dan een minuut of twee, meld het.
+- [ ] **De grens van 15 minuten.** Kijk 20 minuten achter elkaar naar de hartslag op een zichtbaar Mac- of Windows-venster: na 15 minuten
+  verdwijnt het live getal en de tegel valt terug op de gewone hartslag, 30 minuten lang. Het venster sluiten en weer openen begint opnieuw.
+  Is dat te krap, dan is ruimer maken een kleine aanpassing in `LiveHeartLimit`: Mark kiest.
+- [ ] Zie wat de telefoon naar het horloge liet en wegliet: `adb logcat -s TandemWatch | grep "Sent to the watch"`. Per soort bericht staat er hoeveel er
+  ging en hoeveel er is weggelaten. Als verstuurd en weggelaten allebei bij nul blijven terwijl het horloge klopt, is er iets mis.
+
+## 0.3.26, 2026-11-18 (R-V19, hotspot per telefoon)
+
+Wat veranderde: de Mac onthoudt de hotspot (naam en wachtwoord) per telefoon in plaats van een keer voor allemaal, en zegt het als een
+telefoon een nieuwe of veranderde hotspot heeft: "Hotspot van <telefoon> is nieuw", als systeemmelding en als rij in het
+menubalkpaneel, met een knop die het instelscherm opent met de naam al ingevuld. Een telefoon met Shizuku zegt zijn hotspotnaam zelf en
+geeft het wachtwoord op een ja op de Mac, zodat er niets in te tikken is. Wat er al ingevuld stond gaat naar de eerste Android-telefoon.
+Gezien in de Dev-app: de rij in het paneel en het instelscherm met de naam al ingevuld (met een nagebootste telefoon), en een
+Android 16 emulator waarop de shell naam, beveiliging en wachtwoord van de hotspot leest. Niet gezien: echte telefoons.
+
+- [ ] **Niets kwijt na de update.** Open op de Mac Instellingen, Hotspot: de naam en het wachtwoord van je telefoon staan er nog en onder de
+  naam van die telefoon. "Zet de hotspot aan" op de pagina van de telefoon werkt zonder iets in te vullen.
+- [ ] **Andere hotspotnaam, met Shizuku.** Verander op de telefoon de naam van de hotspot (Instellingen, Hotspot) terwijl de Mac verbonden
+  is. Binnen ongeveer 20 seconden komt "Hotspot van <telefoon> is nieuw" met de nieuwe naam, als melding en als rij in het paneel.
+  Een tweede keer dezelfde naam geeft geen tweede melding, ook niet na Tandem opnieuw starten.
+- [ ] De knop in de rij ("Wachtwoord ophalen") of een klik op de melding opent de pagina van de telefoon met het instelscherm en de nieuwe
+  naam al ingevuld. "Wachtwoord ophalen bij <telefoon>" vult het wachtwoord in zonder dat je iets tikt. Zet "Laat mijn Mac mijn hotspot
+  gebruiken" op de telefoon uit en probeer het opnieuw: de Mac zegt dat de telefoon het wachtwoord niet doorgeeft.
+- [ ] **Zonder Shizuku** (Shizuku uit): verander de hotspotnaam en laat de Mac zonder netwerk de hotspot vragen (of druk op "Zet de hotspot
+  aan"). De telefoon zet hem aan, de Mac vindt hem niet en meldt een keer "Kon niet verbinden met de hotspot van <telefoon>" met de knop
+  naar het instelscherm. Tik de naam en het wachtwoord in: daarna lukt verbinden weer.
+- [ ] **Alleen het wachtwoord veranderd**: dezelfde melding, het instelscherm heeft de naam al, je tikt het nieuwe wachtwoord.
+- [ ] **Een nieuwe telefoon**: koppel een tweede Android-telefoon en zet daar de hotspotschakelaar aan. Met Shizuku komt de melding zodra
+  hij verbonden is, zonder Shizuku bij de eerste keer dat de Mac zijn hotspot probeert. De hotspot van de oude telefoon blijft werken.
+- [ ] "Later" in de rij laat hem los en hij komt niet terug voor dezelfde naam. Een Mac waarop de hotspot nooit is ingesteld krijgt
+  geen melding voor elke telefoon.
+
+## 0.3.27, 2026-11-18 (PR 52, R-V18)
+
+Wat veranderde: het horloge haalt stappen en hartslag van de dag nu bij Health Services (de eigen meting van het systeem) in plaats van
+zelf elke 5 minuten de hartslagsensor aan te zetten en zelf de stappen te tellen. Zonder Health Services, zonder toestemming of als het systeem
+zwijgt meet het horloge nog zelf, zoals voor deze versie. Live hartslag, slaapdetectie en de nachtopname zijn niet aangeraakt. Gebouwd en getest op een
+Wear OS 6 emulator met nepgegevens, niet op een echt horloge: dat is jouw dag. Zie R-V18 in `docs/ROADMAP.md`.
+
+- [ ] **Een dag om de pols, opnieuw.** Zelfde proef als bij 0.3.25: 's ochtends op volle lading, 's avonds het percentage noteren. Ligt het hoger dan
+  met 0.3.25? De winst is een verwachting, geen meting.
+- [ ] **De stappen kloppen.** Vergelijk het getal op de tegel van Tandem (telefoon en horloge) met het stappental in de eigen Google- of Pixel-
+  fitness-app van het horloge: gelijk, of een paar procent verschil. Een dag die twee keer zo hoog is, is een fout (zie `adb logcat -s TandemWatchSteps`:
+  de regel "From the system" zegt hoeveel totalen en stappen binnenkwamen).
+- [ ] **De hartslagkromme van de dag** (tegel op de telefoon, kaart op de Mac) ziet er uit als vorige week: vlak 's nachts, hoger overdag. Gaten van een
+  kwartier zijn niet erg, grote gaten wel.
+- [ ] Wie levert wat: `adb logcat -s TandemWatchPassive TandemWatchHeart TandemWatchSteps` op het horloge. De eerste regels na een start melden
+  `Passive: [...]` (wat dit horloge kan, ook de slaapstanden) en `Wanted: steps ..., heart ... Allowed: ...`. Staat er `steps false` of `heart false`, dan
+  zegt de regel eronder welke toestemming mist. Bewaar de `Passive:` en de `Wanted:` regel, ook als alles goed gaat: dat is het bewijs voor de slaapstand.
+- [ ] Noteer bij die twee regels welke Wear OS- en Android-versie het horloge heeft (Instellingen > Systeem > Over). Op Android 15 en ouder (Wear OS 5) loopt
+  de aanvraag langs `BODY_SENSORS`, een pad dat alleen op papier is nagekeken; staat daar `heart false` of steps ook terug op de eigen teller, meld het.
+- [ ] Telt het horloge `Measuring` (eigen meting) per uur veel minder dan `No measurement of our own` (overgeslagen)? Zo ja, doet Health Services
+  het werk. Telt hij alleen `Measuring`, dan levert Health Services niets en valt alles terug: meld welke `Wanted:` regel erbij staat.
+- [ ] Toestemming intrekken: haal bij Instellingen > Apps > Tandem de toestemming voor lichaamssensoren (of hartslag) weg. De hartslag blijft dan
+  doorlopen via de eigen meting of stopt netjes, de app crasht niet. Zet hem terug en kijk of Health Services het weer overneemt (binnen een halfuur,
+  dan registreert hij opnieuw).
+- [ ] Op Android 16 en nieuwer (Wear OS 6): de knop voor hartslag op de achtergrond op de gezondheidspagina van het horloge geeft de toestemming
+  die Health Services nodig heeft als het scherm uit is.
+- [ ] Een nacht: de slaaptegel en de hartslag in de nacht zijn als een nacht eerder. De slaapdetectie en de opname zijn niet aangepast, dus een
+  afwijking zou uit de hartslag komen, niet uit de slaap.
+- [ ] Een tijd lang geen horloge om en dan weer om: de stappen van die dag lopen verder (geen herstart naar nul, geen dubbele telling).
+- [ ] Een dagwissel om middernacht met het horloge om: de stappen beginnen bij 0 op de nieuwe dag, en de dag ervoor staat compleet in de geschiedenis.
+- [ ] Meldingen, bellen, muziek en live hartslag werken als bij 0.3.25 (zelfde lijst als daar, snel doorlopen).
+
+## 0.3.28, 2026-11-18 (R-V15 deel 2, accu onderweg)
+
+Wat veranderde: de telefoon laat op mobiele data zijn werkende verbinding met de Mac met rust. Een scherm dat aan gaat of een VPN die
+opnieuw verbindt telt niet meer als nieuw netwerk: alleen een andere set adressen die even blijft staat telt, of de computer die uit
+slaap komt. Een verbinding krijgt bij zo'n melding geen Ping meer met een kapstok van 3 seconden (daar sneuvelden werkende
+verbindingen op een slapende radio), en elke nieuwe verbinding stuurt de albumhoezen niet opnieuw die de Mac al heeft. De Mac belt
+de telefoon niet elke paar seconden meer als de aanwijzer aan de rand staat. Een apparaat dat dagen weg is wordt op mobiele data niet
+meer gebeld, ook als de VPN zegt dat het netwerk niet betaald is (`costly` leest nu het onderliggende transport). Gemeten op een
+emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen Tailscale), en met kern- en eenheidstests.
+
+- [ ] **Drie uur op mobiele data met het scherm vaak aan en uit.** Haal daarna het verkeerslog van de Oppo op (`adb pull
+  /sdcard/Android/data/nl.markmaaktmedia.tandem/files/traffic`) en vergelijk met 0.3.25: `network_changed` van 108 in 3 uur naar
+  hooguit een paar (alleen echte wisselingen), "closed here" van ongeveer 20 per uur naar bijna nul, Pings per 5 minuten met het
+  scherm uit van 150 tot 270 pakketten naar een stuk minder. Daalt het stroomverbruik met het scherm uit onder de 254 mA?
+- [ ] **De aanwijzer aan de rand van het scherm.** Zet de Mac naast de telefoon (aanwijzer delen), laat de aanwijzer een minuut aan de
+  rand staan en kijk in het verkeerslog van de Mac: geen 63 tot 77 Pings per 5 minuten meer. En de aanwijzer gaat nog steeds over naar de
+  telefoon als je hem naar de rand duwt, ook als de telefoon net uit zijn slaap komt.
+- [ ] **De Mac uit de slaap.** Klap de Mac dicht, een paar minuten later weer open: de telefoon verbindt binnen een halve minuut weer
+  (het log toont dan `woke_from_sleep`). Hetzelfde met de deksel van een Windows-laptop.
+- [ ] **De telefoon oppakken.** Scherm uit, een paar minuten wachten, scherm aan: de Mac ziet de telefoon weer online en een bestand of
+  het klembord komt meteen over. Er hoort geen nieuwe verbinding bij te komen als de oude nog werkt (log: geen `disconnected`).
+- [ ] **Echt van netwerk wisselen** (wifi uit, mobiele data aan, en terug): de verbinding met de Mac wordt opnieuw gelegd en de wachttijd
+  begint opnieuw, `network_changed` met `changed: true` staat een keer per wissel in het log. Komt er na een wissel niets en blijft
+  de verbinding hangen tot de heartbeat hem een paar minuten later laat vallen, meld het: dan ziet de kern de adressen niet veranderen.
+- [ ] **Muziek met hoes.** Speel iets met een albumhoes op de telefoon terwijl de Mac meekijkt, laat de verbinding een keer wisselen
+  (vliegtuigstand een halve minuut): de hoes staat er na het terugkomen nog, en het verkeerslog toont geen tweede `MediaArt` van 12 KB.
+  Sluit Tandem op de Mac en open hem weer: nu komt de hoes wel opnieuw.
+- [ ] **Een computer die dagen uit staat** (de Linux-laptop) wordt op mobiele data niet meer elke 5 tot 10 minuten gebeld. Zet de telefoon
+  op wifi: hij probeert hem weer zoals vroeger.

@@ -51,6 +51,7 @@ import nl.markmaaktmedia.tandem.watch.link.LinkService
 import nl.markmaaktmedia.tandem.watch.track.AutoSleep
 import nl.markmaaktmedia.tandem.watch.track.HeartTracker
 import nl.markmaaktmedia.tandem.watch.track.LastSleep
+import nl.markmaaktmedia.tandem.watch.track.PassiveHealth
 import nl.markmaaktmedia.tandem.watch.track.Tracking
 import nl.markmaaktmedia.tandem.watch.track.TrackingKind
 import nl.markmaaktmedia.tandem.watch.track.TrackingService
@@ -93,6 +94,7 @@ internal fun HealthScreen() {
     var backgroundMissing by remember { mutableStateOf(backgroundHeartMissing(context)) }
     val requestBackground = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         backgroundMissing = backgroundHeartMissing(context)
+        PassiveHealth.refresh(context)
         AutoSleep.refresh()
     }
 

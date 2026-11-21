@@ -10,6 +10,7 @@ import TandemCore
 /// person would click to: `TANDEM_DEBUG_PAGE=shared` or `files` or `files:<device name>`, `TANDEM_DEBUG_SETTINGS=<section>`
 /// and `TANDEM_DEBUG_PANEL=1` (the menu bar panel in an ordinary window).
 /// `TANDEM_DEBUG_UPDATE=1` shows the update card with a made up newer version.
+/// `TANDEM_DEBUG_HOTSPOT=new:<name>` (with `TANDEM_DEBUG_PANEL=devices`) lets the made up phone say its hotspot is new.
 /// `TANDEM_DEBUG_CLIPBOARD=seed` fills the clipboard history with samples and `=panel` also opens the quick panel,
 /// which then stays open when it loses the focus; `TANDEM_DEBUG_PAGE=clipboard` opens the page of the history.
 /// `TANDEM_DEBUG_LIVE=<file>` opens a window of the phone's screen or camera fed from a recorded stream and writes
@@ -123,6 +124,15 @@ enum DebugSupport {
         // `TANDEM_DEBUG_DEVICEPAGE=linux|linux-away|android|watch`: the page of a made up device, for the layout of its buttons.
         if let kind = variable("TANDEM_DEBUG_DEVICEPAGE") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showDevicePageWindow(kind) }
+        }
+        // `TANDEM_DEBUG_HOTSPOT=sheet:<name>` (with `TANDEM_DEBUG_DEVICEPAGE=android`): the phone said its hotspot is called that and its setup
+        // opens with the name filled in, as the tap on the notification does.
+        if let value = variable("TANDEM_DEBUG_HOTSPOT"), value.hasPrefix("sheet:") {
+            let name = String(value.dropFirst("sheet:".count))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                HotspotProfiles.shared.hear(name, from: "debug")
+                EngineModel.shared.hotspotSetupFor = "debug"
+            }
         }
         // `TANDEM_DEBUG_MESSAGES=1`: the Messages page of a made up phone, filled with made up conversations.
         if variable("TANDEM_DEBUG_MESSAGES") != nil {
@@ -754,6 +764,16 @@ enum DebugSupport {
                 made("debug-pc", "Maruks Linux Laptop", .linux, online: true, battery: nil, caps: ["screen.host", "screen.extend.view"]),
                                 made("debug-xperia", "Xperia test", .android, online: false, battery: nil, caps: []),
             ]
+        }
+        // `TANDEM_DEBUG_HOTSPOT=new:<name>` or `renamed:<name>` (with `TANDEM_DEBUG_PANEL=devices`): the made up phone says its hotspot is
+        // called that, as its `Name` message would. `renamed` has an older name saved for it first. The row and the notification follow.
+        if let value = variable("TANDEM_DEBUG_HOTSPOT"), let colon = value.firstIndex(of: ":") {
+            let name = String(value[value.index(after: colon)...])
+            UserDefaults.standard.set(true, forKey: HotspotCoordinator.enabledKey)
+            if value.hasPrefix("renamed") { HotspotProfiles.shared.save(ssid: "Old hotspot", password: "old", for: "debug-phone") }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                EngineModel.shared.hotspot.handle(from: "debug-phone", message: .name(ssid: name))
+            }
         }
         let host = NSHostingView(rootView: MenuBarPanel().environment(EngineModel.shared))
         let window = NSWindow(

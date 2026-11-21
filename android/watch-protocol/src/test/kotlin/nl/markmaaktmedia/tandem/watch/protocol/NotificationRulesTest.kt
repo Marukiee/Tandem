@@ -100,6 +100,26 @@ class OutboundQueueTest {
     }
 
     @Test
+    fun `a state that waits in the queue is replaced by the newer one`() {
+        val queue = OutboundQueue()
+        queue.offer(Message.DeviceBatteries(listOf(DeviceBattery("a", "A", 50, false))))
+        queue.offer(Message.NotificationRemoved("x"))
+        queue.offer(Message.DeviceBatteries(listOf(DeviceBattery("a", "A", 49, false))))
+        assertEquals(Message.NotificationRemoved("x"), queue.poll())
+        assertEquals(Message.DeviceBatteries(listOf(DeviceBattery("a", "A", 49, false))), queue.poll())
+        assertNull(queue.poll())
+    }
+
+    @Test
+    fun `what the queue lets go of is reported`() {
+        val dropped = mutableListOf<Message>()
+        val queue = OutboundQueue(capacity = 1, onDrop = dropped::add)
+        queue.offer(Message.NotificationRemoved("a"))
+        queue.offer(Message.NotificationRemoved("b"))
+        assertEquals(listOf<Message>(Message.NotificationRemoved("a")), dropped)
+    }
+
+    @Test
     fun `the notification of a music app is a player, not something to read`() {
         assertTrue(NotificationRules.isPlayer("transport", false, null))
         assertTrue(NotificationRules.isPlayer(null, true, null))

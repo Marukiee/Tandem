@@ -130,6 +130,9 @@ pub(crate) struct Inner {
     pub my_status: Mutex<Status>,
     /// When the whole status was last sent to everybody (see `Engine::update_status`).
     pub status_sent_in_full: Mutex<std::time::Instant>,
+    /// What goes over the connections, kept for days in the data folder (see `traffic_log`).
+    pub traffic: Arc<crate::traffic_log::TrafficLog>,
+    pub traffic_context_source: Mutex<Option<crate::traffic_log::ContextSource>>,
     /// Held while a status is worked out and sent, so that statuses leave in the order they were made.
     pub status_in_order: tokio::sync::Mutex<()>,
     /// What was last said about the battery of each other device (see `battery_alert`).
@@ -152,7 +155,19 @@ pub(crate) struct Inner {
     pub discovery: Mutex<Option<Discovery>>,
     pub accept_slots: Arc<Semaphore>,
     pub last_announce_hour: AtomicU64,
-    my_addresses: Mutex<Vec<std::net::IpAddr>>,
+    /// The addresses of this device, as `notice_new_addresses` and `network_changed` look at them (see `reach`).
+    addresses: Mutex<crate::reach::AddressWatch>,
+    /// For noticing that the device slept (see `reach::Clocks`).
+    clocks: Mutex<crate::reach::Clocks>,
+    /// The app said the network changed but the addresses looked the same: the next few looks do not wait for a second one, since the
+    /// addresses of an Android phone may follow its callback a moment late.
+    recheck_addresses: std::sync::atomic::AtomicU8,
+    /// Addresses to see instead of the real ones. Only tests set it: a loopback network never changes by itself.
+    address_override: Mutex<Option<Vec<std::net::IpAddr>>>,
+    /// The last time the devices that are away were tried because a screen went on or a pointer pushed towards one (see `try_away`).
+    last_away_try: Mutex<Option<Instant>>,
+    /// The covers each device is known to have (see `reach::ArtHeld`).
+    pub(crate) art_held: Mutex<HashMap<DeviceId, crate::reach::ArtHeld>>,
     said_back: Mutex<Option<Instant>>,
     /// This device is on a network that costs, as its app says (`set_metered`): large files are asked about first.
     pub(crate) metered: AtomicBool,
@@ -236,6 +251,7 @@ impl Engine {
         let focus = Mutex::new(crate::focus::FocusSync::load(&store));
         let health = Mutex::new(crate::health::Health::load(&store));
         let journal = crate::journal::Journal::load(&cfg.data_dir)?;
+        let traffic = Arc::new(crate::traffic_log::TrafficLog::new(&cfg.data_dir, now_ms()));
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(my_name),
@@ -258,6 +274,8 @@ impl Engine {
             my_status: Mutex::new(Status::default()),
             status_sent_in_full: Mutex::new(std::time::Instant::now()),
             status_in_order: tokio::sync::Mutex::new(()),
+            traffic,
+            traffic_context_source: Mutex::new(None),
             battery_said: Mutex::new(HashMap::new()),
             settings: RwLock::new(settings),
             last_remote_clip: Mutex::new(None),
@@ -273,7 +291,12 @@ impl Engine {
             discovery: Mutex::new(None),
             accept_slots: Arc::new(Semaphore::new(16)),
             last_announce_hour: AtomicU64::new(discovery::current_hour()),
-            my_addresses: Mutex::new(Vec::new()),
+            addresses: Mutex::new(Default::default()),
+            clocks: Mutex::new(crate::reach::Clocks::new()),
+            recheck_addresses: std::sync::atomic::AtomicU8::new(0),
+            address_override: Mutex::new(None),
+            last_away_try: Mutex::new(None),
+            art_held: Mutex::new(HashMap::new()),
             said_back: Mutex::new(None),
             metered: AtomicBool::new(false),
             queue_offline: AtomicBool::new(false),
@@ -344,10 +367,48 @@ impl Engine {
         self.inner.session_of(id).map(|session| session.remote.ip().to_canonical().to_string())
     }
 
-    /// Tell the engine the network changed (Wi-Fi to cellular, VPN up or down), so it
-    /// reconnects right away instead of waiting for the next retry.
+    /// The app thinks the network may have changed (a signal, a VPN, a screen that went on). Only a different set of addresses of this
+    /// device counts: the others are not tried again, no connection is asked whether it still works, and no wait starts over.
     pub fn network_changed(&self) {
         self.inner.network_changed();
+    }
+
+    /// For tests only: this device sees these addresses from now on (`None`: its real ones), so a test can move it to another network.
+    #[doc(hidden)]
+    pub fn pretend_addresses(&self, addresses: Option<Vec<std::net::IpAddr>>) {
+        *self.inner.address_override.lock().unwrap() = addresses.map(|mut list| {
+            list.sort();
+            list
+        });
+    }
+
+    /// The device woke from sleep (a lid opened, the system resumed): its connections may be dead although its addresses are the same.
+    pub fn woke_from_sleep(&self) {
+        self.inner.woke_from_sleep();
+    }
+
+    /// Of `targets`, the devices that do not have the cover `key` yet: not the ones that were sent it on an earlier connection and are
+    /// the same running app (see `reach::ArtHeld`). A new connection does not send the covers again.
+    pub fn art_missing_on(&self, targets: &[DeviceId], key: u64) -> Vec<DeviceId> {
+        let held = self.inner.art_held.lock().unwrap();
+        targets.iter().copied().filter(|id| !held.get(id).is_some_and(|h| h.holds(key))).collect()
+    }
+
+    /// The cover `key` was sent to these devices.
+    pub fn art_was_sent_to(&self, ids: &[DeviceId], key: u64) {
+        let mut held = self.inner.art_held.lock().unwrap();
+        let now = Instant::now();
+        for id in ids {
+            if let Some(h) = held.get_mut(id) {
+                h.sent(key, now);
+            }
+        }
+    }
+
+    /// The devices that are not connected get one try now, without asking the connections that work whether they still do and without
+    /// touching any wait: a pointer pushed towards a device that is away. At most once in a few seconds.
+    pub fn try_away_now(&self) {
+        self.inner.try_away("pointer", AWAY_TRY_GAP_POINTER);
     }
 
     pub async fn rename_self(&self, name: &str) -> Result<()> {
@@ -641,6 +702,12 @@ impl Engine {
         if self.inner.quiet.swap(quiet, Ordering::Relaxed) == quiet {
             return;
         }
+        self.inner.traffic_context_changed(|c| c.quiet = quiet);
+        // A phone that is picked up tries the devices that are away itself, so a computer's pointer can come over at once. That is all:
+        // the connections that work are left alone (the screen going on is not a change of network).
+        if !quiet {
+            self.inner.try_away("screen", AWAY_TRY_GAP_SCREEN);
+        }
         let change = Status { quiet: Some(quiet), ..Status::default() };
         let _in_order = self.inner.status_in_order.lock().await;
         self.inner.my_status.lock().unwrap().merge(&change);
@@ -658,6 +725,27 @@ impl Engine {
     /// The app says whether this device is on a network that costs (mobile data, a hotspot it pays for).
     pub fn set_metered(&self, on: bool) {
         self.inner.metered.store(on, Ordering::Relaxed);
+        self.inner.traffic_context_changed(|c| c.metered = on);
+    }
+
+    /// The app tells what it knows that the core does not (screen, network, battery), when the core asks as it closes a line of the
+    /// traffic log. Called from the work the engine does anyway, so it must be quick and must not wait for anything.
+    pub fn set_traffic_context_source(&self, source: Option<crate::traffic_log::ContextSource>) {
+        *self.inner.traffic_context_source.lock().unwrap() = source;
+    }
+
+    /// Where the days of the traffic log are, and a second place the same lines are copied to.
+    pub fn traffic_dir(&self) -> std::path::PathBuf {
+        self.inner.traffic.dir.clone()
+    }
+
+    pub fn set_traffic_mirror(&self, dir: Option<std::path::PathBuf>) {
+        self.inner.traffic.set_mirror(dir);
+    }
+
+    /// Totals from the files of the traffic log: since `since_ms` per kind and per device, and per hour for the last 24 hours.
+    pub fn traffic_summary(&self, since_ms: u64) -> crate::traffic_log::TrafficSummary {
+        crate::traffic_log::summarize(&self.inner.traffic.dir, since_ms, now_ms())
     }
 
     /// Lets files sent to a device that is away wait in the queue until it is back, up to 7 days (P3). Off by default: an app turns it
@@ -1159,21 +1247,62 @@ impl Inner {
         Ok(())
     }
 
+    /// What `Engine::network_changed` does. The app calls it for every callback of the system, so it only looks: whether the addresses of
+    /// this device are different now. If they are, that is a move to another network (see `hurry_traced`). If not, nothing happens
+    /// except that the next few looks do not wait for a second one, in case the addresses are late.
     pub fn network_changed(self: &Arc<Self>) {
-        self.hurry(false);
+        let slept = self.slept_since_last_look();
+        match self.look_at_addresses(true) {
+            crate::reach::Look::Changed(moved) => {
+                self.recheck_addresses.store(0, Ordering::Relaxed);
+                self.hurry_traced(false, false, if slept { "wake" } else { "app" }, true, moved.json());
+            }
+            _ if slept => self.hurry_traced(false, false, "wake", true, serde_json::json!({})),
+            _ => {
+                self.recheck_addresses.store(RECHECK_LOOKS, Ordering::Relaxed);
+                self.traffic_event("network_changed", serde_json::json!({ "source": "app", "changed": false }));
+            }
+        }
+    }
+
+    /// Whether this device slept since the last look (see `reach::Clocks`). Not for a phone: its processor sleeps between any two
+    /// beats of the heartbeat with the screen off, which is no reason to ask every connection whether it works.
+    fn slept_since_last_look(&self) -> bool {
+        let slept = self.clocks.lock().unwrap().slept();
+        slept && self.cfg.platform != Platform::Android && self.cfg.platform != Platform::Ios
+    }
+
+    /// See `Engine::woke_from_sleep`.
+    pub fn woke_from_sleep(self: &Arc<Self>) {
+        self.slept_since_last_look();
+        // So the addresses it finds now are not found again by the next tick as another change.
+        let moved = match self.look_at_addresses(true) {
+            crate::reach::Look::Changed(moved) => moved.json(),
+            _ => serde_json::json!({}),
+        };
+        self.hurry_traced(false, false, "wake", true, moved);
+    }
+
+    /// Has every device that is not connected tried soon, on all its addresses, because something new happened to the network of this
+    /// device that is not a move: a device that just joined (`at_once`), or Tailscale that was turned on (`force`, whatever the screen, the
+    /// data and how long it has been gone). Connections that work are not asked anything.
+    pub(crate) fn hurry(self: &Arc<Self>, at_once: bool) {
+        self.hurry_traced(at_once, false, if at_once { "pairing" } else { "app" }, false, serde_json::json!({}));
+    }
+
+    pub(crate) fn hurry_with(self: &Arc<Self>, at_once: bool, force: bool, source: &'static str) {
+        self.hurry_traced(at_once, force, source, false, serde_json::json!({}));
     }
 
     /// Has every device that is not connected tried soon, on all its addresses. The first change in a while also gives it a few quick
     /// tries after that, for a network that is not quite up yet. One that keeps changing (a Wi-Fi that keeps trying, a VPN that
-    /// reconnects, the screen going on) leaves the back-off as it was, so the radio of a phone does not keep trying a computer that is
-    /// off; and a change soon after the last waits for `HURRY_GAP`. `at_once`: now, for a device that just joined.
-    pub(crate) fn hurry(self: &Arc<Self>, at_once: bool) {
-        self.hurry_with(at_once, false);
-    }
-
-    /// `force`: something happened that makes a device reachable that was not (Tailscale was turned on after it was asked for): every
-    /// device that is away is tried now, whatever the screen, the data and how long it has been gone.
-    pub(crate) fn hurry_with(self: &Arc<Self>, at_once: bool, force: bool) {
+    /// reconnects) leaves the back-off as it was, so the radio of a phone does not keep trying a computer that is off; and a change soon
+    /// after the last waits for `HURRY_GAP`. `probe`: the device moved to another network, so the connections it has are asked once
+    /// whether they still work (see `session::probe`), and let go if they do not.
+    ///
+    /// A device that has been gone for days is not tried at all on mobile data, apart from `force`: it dials this one when it is back.
+    fn hurry_traced(self: &Arc<Self>, at_once: bool, force: bool, source: &'static str, probe: bool, detail: serde_json::Value) {
+        self.traffic_event("network_changed", serde_json::json!({ "source": source, "changed": true, "moved": detail }));
         let now = Instant::now();
         let (at, quiet_before) = {
             let mut last = self.last_hurry.lock().unwrap();
@@ -1183,7 +1312,8 @@ impl Inner {
             (at, quiet_before)
         };
         // A device that just joined is wanted now, whatever the screen and the data.
-        let costly = !at_once && !force && self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed);
+        let mobile = !at_once && !force && self.metered.load(Ordering::Relaxed);
+        let costly = mobile && self.quiet.load(Ordering::Relaxed);
         // The one try each device gets there is given at most once in a while, however often the network is said to have changed.
         let skip = costly && {
             let mut last = self.last_costly_hurry.lock().unwrap();
@@ -1196,12 +1326,73 @@ impl Inner {
         let mut peers = self.peers.lock().unwrap();
         for (id, peer) in peers.iter_mut().filter(|(_, p)| p.session.is_none() && !skip) {
             let long_away = self.away_for_days(id, peer);
-            apply_hurry(peer, at, quiet_before, long_away, costly, force);
+            apply_hurry(peer, at, quiet_before, long_away, costly, force, mobile);
         }
         drop(peers);
-        self.probe_sessions();
+        if probe {
+            self.probe_sessions();
+        }
         self.say_back();
         self.poke.notify_one();
+    }
+
+    /// The devices that are not connected get one try soon: a screen went on, or a pointer pushed towards one. The connections that work
+    /// are left alone, and so are the waits (a device that is off stays at its long wait). At most once per `gap`.
+    pub(crate) fn try_away(self: &Arc<Self>, source: &'static str, gap: Duration) {
+        {
+            let mut last = self.last_away_try.lock().unwrap();
+            if last.is_some_and(|at| at.elapsed() < gap) {
+                return;
+            }
+            *last = Some(Instant::now());
+        }
+        let now = Instant::now();
+        // Shares its pace with the changes of network: a device that keeps being away is not tried more than once per `HURRY_GAP`.
+        let at = {
+            let mut last = self.last_hurry.lock().unwrap();
+            let at = hurry_at(*last, now, false);
+            *last = Some(at);
+            at
+        };
+        let mobile = self.metered.load(Ordering::Relaxed);
+        let costly = mobile && self.quiet.load(Ordering::Relaxed);
+        let mut tried = 0u32;
+        {
+            let mut peers = self.peers.lock().unwrap();
+            for (id, peer) in peers.iter_mut().filter(|(_, p)| p.session.is_none()) {
+                let long_away = self.away_for_days(id, peer);
+                apply_hurry(peer, at, false, long_away, costly, false, mobile);
+                tried += 1;
+            }
+        }
+        if tried > 0 {
+            self.traffic_event("away_try", serde_json::json!({ "source": source, "devices": tried }));
+            self.poke.notify_one();
+        }
+    }
+
+    /// The addresses of this device now, compared with what was known (see `reach::AddressWatch`).
+    fn look_at_addresses(&self, at_once: bool) -> crate::reach::Look {
+        let pretended = self.address_override.lock().unwrap().clone();
+        let now = match pretended {
+            Some(list) => list,
+            None => {
+                let Ok(interfaces) = if_addrs::get_if_addrs() else { return crate::reach::Look::Same };
+                // A link-local address comes and goes with every attempt of a Wi-Fi to connect, and reaches no other device.
+                let mut now: Vec<std::net::IpAddr> = interfaces.iter().map(|i| i.ip()).filter(|ip| reaches_others(*ip)).collect();
+                now.sort();
+                now.dedup();
+                now
+            }
+        };
+        let look = self.addresses.lock().unwrap().look(now, at_once);
+        if matches!(look, crate::reach::Look::Waiting | crate::reach::Look::Changed(_))
+            && let Some(discovery) = self.discovery.lock().unwrap().as_mut()
+        {
+            // Mobile data or Tailscale may have come up since the last look.
+            discovery.stay_quiet();
+        }
+        look
     }
 
     /// Tells every connected device (except `skip`) about new circle statements.
@@ -1279,6 +1470,10 @@ impl Inner {
                 _ = self.poke.notified() => {}
                 _ = tick.tick() => {}
             }
+            // Not every app says when the device woke (Linux does not): a clock that ran on while the monotonic one stood still does.
+            if self.slept_since_last_look() {
+                self.woke_from_sleep();
+            }
             self.notice_tailscale_arriving();
             self.dial_due_peers();
             self.expire_transfers();
@@ -1293,37 +1488,23 @@ impl Inner {
     }
 
     /// Not every app is told of every change of network (Linux and Windows are not), and it is what decides whether a device has to be
-    /// tried again at once.
+    /// tried again at once. A set of addresses only counts when it stays the same for two looks in a row (5 seconds apart): an address
+    /// that comes and goes every few seconds was asking every connection whether it still worked, each time (R-V15).
     fn notice_new_addresses(self: &Arc<Self>) {
-        let Ok(interfaces) = if_addrs::get_if_addrs() else { return };
-        // A link-local address comes and goes with every attempt of a Wi-Fi to connect, and reaches no other device.
-        let mut now: Vec<std::net::IpAddr> = interfaces.iter().map(|i| i.ip()).filter(|ip| reaches_others(*ip)).collect();
-        now.sort();
-        let first = {
-            let mut known = self.my_addresses.lock().unwrap();
-            if *known == now {
-                return;
-            }
-            let first = known.is_empty();
-            *known = now;
-            first
-        };
-        if let Some(discovery) = self.discovery.lock().unwrap().as_mut() {
-            discovery.stay_quiet();
-        }
-        if first {
-            return;
-        }
-        // An address on an interface that changed while the app reported no change of network: with the screen off on metered data
-        // this is a reason to try again at most once in a while (see `apply_hurry`).
-        if self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed) {
+        // The app said the network changed and the addresses looked the same: for a few looks a different set counts at once.
+        let urgent = self.recheck_addresses.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1)).is_ok();
+        let crate::reach::Look::Changed(moved) = self.look_at_addresses(urgent) else { return };
+        // With the screen off on metered data a change of the addresses (and not of the network, as its app says) is a reason to try
+        // again at most once in a while (see `apply_hurry`), and otherwise not twice within `ADDRESS_HURRY_GAP`.
+        let gap = if self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed) { COSTLY_ADDRESS_CHANGE_GAP } else { ADDRESS_HURRY_GAP };
+        {
             let mut last = self.last_address_hurry.lock().unwrap();
-            if last.is_some_and(|at| at.elapsed() < COSTLY_ADDRESS_CHANGE_GAP) {
+            if last.is_some_and(|at| at.elapsed() < gap) {
                 return;
             }
             *last = Some(Instant::now());
         }
-        self.network_changed();
+        self.hurry_traced(false, false, "addresses", true, moved.json());
     }
 
     /// Says on the local network that this device is here again. A phone calls `network_changed` for each small change, so not every time.
@@ -1348,7 +1529,7 @@ impl Inner {
         if if_addrs::get_if_addrs().map(|all| all.iter().any(|i| net::is_tailnet(i.ip()))).unwrap_or(false) {
             // Asked again only after it has gone away again.
             *self.tailscale_asked.lock().unwrap() = None;
-            self.hurry_with(false, true);
+            self.hurry_with(false, true, "tailscale");
         }
     }
 
@@ -1357,13 +1538,15 @@ impl Inner {
         {
             let mut peers = self.peers.lock().unwrap();
             let now = Instant::now();
-            // A phone with its screen off on mobile data does not go looking for a device that has been gone for days: that
-            // device dials this one when it is back, and this one dials it when the screen goes on or the data is not metered.
-            let costly = self.quiet.load(Ordering::Relaxed) && self.metered.load(Ordering::Relaxed);
+            // A phone on mobile data does not go looking for a device that has been gone for days, whatever the screen: that device
+            // dials this one when it is back, and this one dials it when the data is not metered. (A phone that is picked up every few
+            // minutes with the screen off in between was calling a laptop that was off every 5 to 10 minutes.)
+            let mobile = self.metered.load(Ordering::Relaxed);
+            let costly = mobile && self.quiet.load(Ordering::Relaxed);
             for (id, peer) in peers.iter_mut() {
                 if peer.session.is_none() && !peer.dialing && now >= peer.next_dial && !peer.addrs.is_empty() {
                     let long_away = self.away_for_days(id, peer);
-                    if !may_dial(long_away, costly, peer.force) {
+                    if !may_dial(long_away, mobile, peer.force) {
                         continue;
                     }
                     peer.force = false;
@@ -1396,6 +1579,21 @@ impl Inner {
         // Counted on a phone with `adb logcat -s Tandem`: every attempt wakes the radio.
         info!(peer = %id, fails, addrs = sockets.len(), "dialling a device that is away");
         let outcome = self.dial_any(Some(key), tls::ALPN_MAIN, &sockets).await;
+        let (mut lan, mut tailnet, mut other) = (0, 0, 0);
+        for a in addrs.iter().filter(|a| a.socket().is_some_and(|s| sockets.contains(&s))) {
+            match a.route {
+                net::Route::Lan => lan += 1,
+                net::Route::Tailnet => tailnet += 1,
+                net::Route::Other => other += 1,
+            }
+        }
+        self.traffic_event(
+            "dial",
+            serde_json::json!({
+                "peer": id.to_string(), "fails": fails, "addrs": sockets.len(), "routes": { "lan": lan, "tailnet": tailnet, "other": other },
+                "away_for_days": long_away, "costly": costly, "result": if outcome.is_ok() { "ok" } else { "failed" },
+            }),
+        );
         match outcome {
             Ok((connection, addr)) => {
                 self.learn_addr(&id, addr, true);
@@ -1651,6 +1849,14 @@ const COSTLY_HURRY_GAP: Duration = Duration::from_secs(120);
 /// With the screen off on metered data a change of the addresses of this device (and not of the network, as its app says) is a reason to
 /// try the devices that are away at most this often.
 const COSTLY_ADDRESS_CHANGE_GAP: Duration = Duration::from_secs(300);
+/// Not twice within this a change of the addresses of this device tries the devices that are away.
+const ADDRESS_HURRY_GAP: Duration = Duration::from_secs(10);
+/// After the app said the network changed and the addresses looked the same, this many looks (5 seconds apart) take a different set as a
+/// change at once.
+const RECHECK_LOOKS: u8 = 3;
+/// At most this often a screen that goes on gives the devices that are away a try, and a pointer that pushes towards one.
+const AWAY_TRY_GAP_SCREEN: Duration = Duration::from_secs(60);
+const AWAY_TRY_GAP_POINTER: Duration = Duration::from_secs(5);
 /// A device that has not been seen for this long is "away for days": see `is_away_for_days`.
 const AWAY_AFTER_MS: u64 = 24 * 3600 * 1000;
 /// How often a change of network may give such a device its one try.
@@ -1684,17 +1890,17 @@ fn is_away_for_days(now: u64, last_seen: Option<u64>, last_worked: Option<u64>, 
 ///
 /// One that has been gone for days gets that one try as well, since the change may be the reason it can be reached now (a laptop that
 /// is opened, a Tailscale that is turned on), but its back-off is left as it was: the tries after it are the long ones, and not more than
-/// one such try per `LONG_AWAY_HURRY_GAP` however often the network changes. With the screen off on metered data (`costly`) it is not
-/// dialled at all, apart from `force` (see `Inner::hurry_with`).
+/// one such try per `LONG_AWAY_HURRY_GAP` however often the network changes. On mobile data (`mobile`, whatever the screen) it is not
+/// dialled at all, apart from `force` (see `Inner::hurry_traced`).
 ///
-/// With the screen off on metered data a device that was here lately gets one try soon, on its best addresses, so that a notification is
-/// not lost because the way to it changed; but its back-off is left as it was, so the quick tries do not start again.
-fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool, costly: bool, force: bool) {
+/// With the screen off on metered data (`costly`) a device that was here lately gets one try soon, on its best addresses, so that a
+/// notification is not lost because the way to it changed; but its back-off is left as it was, so the quick tries do not start again.
+fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool, costly: bool, force: bool, mobile: bool) {
     if force {
         peer.force = true;
     }
     if long_away {
-        if costly && !force {
+        if mobile && !force {
             return;
         }
         if force || peer.long_hurried.is_none_or(|previous| at >= previous + LONG_AWAY_HURRY_GAP) {
@@ -1715,10 +1921,10 @@ fn apply_hurry(peer: &mut Peer, at: Instant, quiet_before: bool, long_away: bool
     }
 }
 
-/// Whether a device that is due is dialled now: not one that has been gone for days while the screen is off on metered data, unless
-/// something asked for it in particular.
-fn may_dial(long_away: bool, costly: bool, forced: bool) -> bool {
-    !(long_away && costly) || forced
+/// Whether a device that is due is dialled now: not one that has been gone for days while on mobile data, unless something asked for it
+/// in particular.
+fn may_dial(long_away: bool, mobile: bool, forced: bool) -> bool {
+    !(long_away && mobile) || forced
 }
 
 /// What a device that has been gone for days starts at when this device starts: one try on every address, and then the long back-off.
@@ -1911,23 +2117,23 @@ mod tests {
         let later = now + Duration::from_secs(6 * 3600);
 
         let mut recent = a_peer(30, later);
-        apply_hurry(&mut recent, now, true, false, false, false);
+        apply_hurry(&mut recent, now, true, false, false, false, false);
         assert_eq!(recent.next_dial, now);
         assert!(recent.hurry);
         assert_eq!(recent.fail_count, QUICK_TRIES);
 
         // The laptop that is opened after three days and joins its Wi-Fi: tried at once, on every address.
         let mut gone = a_peer(LONG_AWAY_FAILS, later);
-        apply_hurry(&mut gone, now, true, true, false, false);
+        apply_hurry(&mut gone, now, true, true, false, false, false);
         assert_eq!(gone.next_dial, now);
         assert!(gone.hurry, "on every address");
         assert_eq!(gone.fail_count, LONG_AWAY_FAILS, "but it does not start counting from the quick tries again");
 
         // A network that keeps changing gives it one such try per 5 minutes.
         gone.next_dial = later;
-        apply_hurry(&mut gone, now + Duration::from_secs(60), true, true, false, false);
+        apply_hurry(&mut gone, now + Duration::from_secs(60), true, true, false, false, false);
         assert_eq!(gone.next_dial, later);
-        apply_hurry(&mut gone, now + LONG_AWAY_HURRY_GAP, true, true, false, false);
+        apply_hurry(&mut gone, now + LONG_AWAY_HURRY_GAP, true, true, false, false, false);
         assert_eq!(gone.next_dial, now + LONG_AWAY_HURRY_GAP);
     }
 
@@ -1938,13 +2144,13 @@ mod tests {
 
         // Without a reason it is not dialled at all in that state, and a change of network does not make it so.
         let mut gone = a_peer(LONG_AWAY_FAILS, later);
-        apply_hurry(&mut gone, now, true, true, true, false);
+        apply_hurry(&mut gone, now, true, true, true, false, true);
         assert_eq!(gone.next_dial, later);
         assert!(!gone.force);
         assert!(!may_dial(true, true, gone.force));
 
         // Tailscale arriving is a reason: now, on every address, whatever the screen and the data.
-        apply_hurry(&mut gone, now, true, true, false, true);
+        apply_hurry(&mut gone, now, true, true, false, true, false);
         assert_eq!(gone.next_dial, now);
         assert!(gone.hurry && gone.force);
         assert!(may_dial(true, true, gone.force));
@@ -1953,6 +2159,27 @@ mod tests {
         // Nothing else is held back: not away, or the screen on or Wi-Fi.
         assert!(may_dial(false, true, false));
         assert!(may_dial(true, false, false));
+    }
+
+    #[test]
+    fn on_mobile_data_a_device_that_has_been_away_for_days_is_left_alone_whatever_the_screen() {
+        let now = Instant::now();
+        let later = now + Duration::from_secs(6 * 3600);
+        // The screen is on (so not `costly`) but the data is mobile: the laptop that is off was called every 5 to 10 minutes.
+        let mut gone = a_peer(LONG_AWAY_FAILS, later);
+        apply_hurry(&mut gone, now, true, true, false, false, true);
+        assert_eq!(gone.next_dial, later);
+        assert!(!gone.hurry);
+        assert!(!may_dial(true, true, false));
+        // The same on Wi-Fi gets its one try, and a reason (Tailscale, or it dialled this one) still gets through on mobile data.
+        apply_hurry(&mut gone, now, true, true, false, false, false);
+        assert_eq!(gone.next_dial, now);
+        let mut gone = a_peer(LONG_AWAY_FAILS, later);
+        apply_hurry(&mut gone, now, true, true, false, true, true);
+        assert_eq!(gone.next_dial, now);
+        assert!(may_dial(true, true, true));
+        // A device that was here lately is not held back by the data.
+        assert!(may_dial(false, true, false));
     }
 
     #[test]
@@ -1969,13 +2196,13 @@ mod tests {
         let now = Instant::now();
         let later = now + Duration::from_secs(3600);
         let mut lately = a_peer(7, later);
-        apply_hurry(&mut lately, now, true, false, true, false);
+        apply_hurry(&mut lately, now, true, false, true, false, true);
         assert_eq!(lately.next_dial, now, "one try soon, so a notification is not lost");
         assert!(!lately.hurry, "not on every address");
         assert_eq!(lately.fail_count, 7, "and the quick tries do not start again");
         // Already due earlier: not pushed back.
         let mut due = a_peer(7, now - Duration::from_secs(5));
-        apply_hurry(&mut due, now, true, false, true, false);
+        apply_hurry(&mut due, now, true, false, true, false, true);
         assert_eq!(due.next_dial, now - Duration::from_secs(5));
     }
 

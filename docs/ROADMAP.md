@@ -95,13 +95,35 @@ via een ander apparaat, kern; de drie punten uit de review gedaan). Alleen gebou
 daarna voor nu uitbrengen: PR 31 komt in de release erna. Mark meet de accu opnieuw met de sessie
 `local_1ec53a59-7b07-495f-a3e3-b35f368900dc`.
 
+**In 0.3.24.** PR 47 (de horlogekaart toont altijd een slaaptegel naast de stappen, op alle platforms) en PR 48 (R-V15: een verkeerslog
+in de kern, een bestand per dag in `traffic/`, 14 dagen en hooguit 30 MB per map, zonder timer of wake lock van zichzelf; op Android
+ook in `/sdcard/Android/data/nl.markmaaktmedia.tandem/files/traffic`). Nagelopen: geen lock vast bij het wegschrijven, verzenden wacht
+niet op de schijf, geen adressen of inhoud in de regels. Alleen gebouwd en door CI getest. Open puntje: op Android loopt de grens van
+30 MB per map, dus met de kopie voor `adb pull` kan het samen 60 MB zijn. Mac, Linux en Windows geven scherm, netwerk en batterij
+nog niet door aan het log.
+
 **Open, voor wie verder gaat (stand 2026-11-15, nacht).** PR 31 (de Mac in het nieuwe
 ontwerp) botst met main; de sessie bouwt de punten 5 (een icoonfamilie), 6 (rond horloge), 7 (kop en speler), 8 (een woord bij de knop
-van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
+van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; bij punt 7 nog: de tegel Steps op de kaart Health is hoger dan de tegels Last night en Heart rate now door zijn grotere icoon in een ring; alle drie even hoog en hetzelfde icoon; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
 Pas samenvoegen na Marks akkoord. Mark wil ze in de release na 0.3.23. Daarna de Mac-schillen van P4, P9, Circle (ook een regel in het menu Tandem) en R-I33 ("Instellingen van
 dit apparaat" op elke apparaatpagina), en op Android en Linux en Windows de rij "Instellingen van dit apparaat" van R-I33.
 
 Gevonden bij het nakijken van die PR's, nog te doen:
+
+- **R-D22. Mac-ontwerp (PR 31): de bovenkant van de apparaatpagina eerst goed bekijken voordat het in een build komt** (Mark,
+  2026-11-16: "nu is het lelijk"). Het gaat om de kop van het apparaat naast de speler: de kaart is leeg boven en onder de inhoud
+  sinds de pillen eruit gingen, en een poging om ze terug te zetten is op zijn verzoek gestopt. Vóór PR 31 wordt samengevoegd: eerst
+  een paar voorbeelden van de kop (met pillen voor verbonden, route, ms en laden; met systeem en versie; met en zonder speler
+  ernaast, licht en donker) aan Mark laten zien en hem laten kiezen, pas dan bouwen. PR 31 gaat niet in een release voordat Mark de
+  bovenkant heeft goedgekeurd.
+
+- **R-D21. Linux en Windows: dezelfde overgang als de Mac bij het wisselen van pagina** (wens van Mark, 2026-11-16). Op de Mac (PR
+  31, commits `94c69597` en `4cfd9f34`) is het wisselen tussen apparaten en pagina's een rustige beweging: de hele pagina vloeit
+  kort over (ongeveer 200 tot 250 ms) en schuift een paar punten mee in de richting waarin je in de zijbalk klikt, er vervormt niets
+  (geen kop die van halve naar hele breedte rekt, geen accuring die van de ene waarde naar de andere draait, geen kaart die groeit
+  terwijl de inhoud nog de oude is), en het gekozen vlak in de zijbalk glijdt mee als een vlak. Vooral tussen een apparaat met en
+  een zonder speler. Met verminderde beweging alleen overvloeien. Hetzelfde in `windows/ui` (de zijbalk van PR 24, `pages.js`, de
+  overgangen die daar al zijn); Android heeft zijn eigen navigatie en hoort hier niet bij.
 
 - **R-I33. Instellingen van een apparaat op zijn eigen pagina, met de naam aanpasbaar vanaf elk apparaat** (wens van Mark,
   2026-11-15). Op de pagina van elk apparaat komt een rij "Instellingen van dit apparaat" (de Mac heeft die nu alleen op de pagina van
@@ -120,10 +142,248 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   zet een teller per soort bericht en een regel per belpoging in het logboek (`adb logcat -s Tandem`). Nagelezen: het wacht op fixes,
   omdat opnieuw verbinden in twee gevallen trager werd. Daarna opnieuw meten.
 
+  Stand 2026-11-17: gemeten met 0.3.23 op de telefoon en de Mac (16 en 17 november, onderweg op mobiele data): onveranderd, scherm
+  uit 195 tot 207 mA, CPU ongeveer 80% wakker, de radio 99% actief, 950 tot 1.600 wekmomenten per uur van het modem. Tandem in de
+  tunnel: rx 6.811 en tx 13.579 pakketten op een dag, meer dan op 15 november. De besparing van PR 42 is dus niet de oorzaak, of
+  niet de hele. In logcat vond de meetsessie geen enkele regel met tag `Tandem`; de kern logt in de release op info met die tag
+  (`K/ffi.rs` `tandem_init_logging`), maar alleen bij gebeurtenissen, en de buffer van de Oppo bewaart maar een paar minuten.
+  Daarom heeft 0.3.24 een verkeerslog op schijf (PR 48); de meetsessie leest daarmee na een nacht uit wat er verstuurd werd.
+  Volgende stap: de teller per soort bericht en per apparaat (`K/sent_tally.rs`) ook optellen sinds een tijdstip en die totalen in
+  de app laten zien (een rij onder Over of Diagnose, met kopiëren) en wegschrijven in de externe bestandenmap van de app, zodat ze
+  na een dag onderweg met `adb pull` te lezen zijn. Pas daarna verder bouwen aan de besparing.
+
+  Stand 2026-11-18 (meetsessie, 0.3.25 met het verkeerslog, 1,5 uur scherm uit onderweg op mobiel): het log kost niets (geen alarm- of
+  job-wake locks van Tandem). Verbruik 254 mA, modem 430 tot 700 wekmomenten per uur (was 1100 tot 1600), maar de radio slaapt nog
+  niet: 150 tot 270 QUIC-pakketten per 5 minuten met het scherm uit. Wat het log laat zien, in volgorde van vermoedelijk belang:
+  1. De Mac-verbinding wisselt onderweg zo'n 20 keer in een uur ("closed here", afwisselend route other en tailnet; soms twee
+     verbindingen in dezelfde seconde, dialer false en true). Elke nieuwe verbinding stuurt alles opnieuw (Introduce, BleKey, Focus,
+     HealthHave, MediaPlayers, MediaArt twee keer, Status: samen ongeveer 15 KB).
+  2. `network_changed` 108 keer in 3 uur, tot 16 per kwartier. Vermoeden: elke melding laat een werkende verbinding sluiten of opnieuw
+     kiezen en zet de backoff terug. Voorstel: debouncen, alleen reageren als het onderliggende transport of de adressen echt
+     veranderen, een werkende verbinding eerst een Ping geven of laten migreren in plaats van sluiten.
+  3. De Mac pingt soms elke 4 s (63 tot 77 ontvangen Pings per 5 minuten, thuis 0 tot 4), en de telefoon antwoordt elke keer. Uitzoeken
+     waarom (na migratie of verlies?).
+  4. De Linux-laptop (weg voor dagen) is 22 keer gebeld, elke 5 tot 10 minuten, ook op mobiel met het scherm uit, want `costly` was
+     false: `ctx.metered` is false omdat het standaardnetwerk de Tailscale-VPN is. `ctx.network="mobile"` klopt wel. Voorstel: `costly`
+     op het transport baseren (mobiel), niet alleen op metered.
+  5. Dials naar de Mac: 55 mislukt en 13 gelukt, naar de Xperia 56 mislukt en 3 gelukt: kijken of parallelle routepogingen als mislukt tellen.
+  6. Bij opnieuw verbinden niets sturen dat niet veranderde (Introduce, MediaArt).
+  Nog niet gemeten: een nacht van de lader.
+
+  Stand 2026-11-18, deel 2 (gebouwd, 0.3.28; wacht op een nieuwe meting op de Oppo). Wat de oorzaken bleken, uit het log en de code:
+  1. 91 van de 108 `network_changed` kwamen binnen 1,5 s na een scherm-aan: `StatusReporter` riep bij `ACTION_SCREEN_ON` en
+     `USER_PRESENT` `onNetworkChanged()` aan. Elke melding liet `hurry_with` lopen, en dat doet `probe_sessions()`: elke werkende
+     verbinding kreeg een Ping en werd na 3 s zonder Pong gesloten ("path lost", log "closed here"). Op een slapende mobiele radio
+     haalt een Pong dat vaak niet: 12 van de 23 verbindingsverliezen kwamen 1,4 tot 3,0 s na een `network_changed`. Elke nieuwe
+     verbinding stuurde daarna alles opnieuw (punt 1 en 6).
+  2. Het 4 s-pingpad van de Mac: `PointerShare.reconnectAway` riep bij elke tik van 3 s `networkChanged()` aan zolang de aanwijzer
+     aan de rand stond, dus telkens `probe_sessions()`. De adressenlijst wisselde niet (`notice_new_addresses` is niet de oorzaak).
+  3. `costly` was `quiet && metered`: `quiet` sprong bij elk scherm-aan terug naar false, en `metered` werd kort false als de
+     Tailscale-VPN opnieuw verbond (de capabilities van het actieve netwerk hadden dan geen CELLULAR). Lang weg zijnde apparaten werden
+     alleen op `quiet && metered` tegengehouden.
+  Wat er nu anders is. De kern kijkt zelf naar de adressen (`reach.rs`, `AddressWatch`): alleen een andere set die twee kijkjes van 5 s
+  gelijk blijft telt als netwerkwissel, of meteen als de app het meldt en de set echt anders is. Een melding zonder andere adressen doet
+  niets: geen Ping, geen backoff terug, geen verbinding dicht. Een scherm dat aan gaat probeert alleen apparaten die weg zijn (een
+  `try_away` met eigen maximumtempo van 60 s, op de Mac-aanwijzer 5 s) en bellen niet. `probe` houdt zich aan de wachttijden van het
+  hartslagplan (5 of 15 s, een herhaling), slaat een verbinding over die de afgelopen 3 s nog iets zei en vraagt dezelfde verbinding
+  hooguit elke 20 s. Slaap herkent de kern met `woke_from_sleep()` (Mac `didWake`, Windows deksel) en op computers met de wandklok
+  tegenover de monotone klok; op Android en iOS niet, daar zegt de klok niets. Lang weg zijnde apparaten worden op mobiele data niet
+  gebeld (tenzij de gebruiker erom vraagt), en `NetworkCost.costly` in de Android-schil kijkt naar het onderliggende transport en
+  houdt de vorige waarde vast als de VPN heen en weer flapt. MediaArt wordt per apparaat en per draai van de andere app onthouden
+  (`ArtHeld`, `Hello::boot_id`) en na een nieuwe verbinding niet opnieuw gestuurd, zodra de eerste verbinding minstens 10 s leefde.
+  Gemeten op een Android-emulator (Pixel 7, Android 16) met een `tandemd` als Mac, 6,5 minuten, 13 keer scherm uit en aan en twee
+  keer wifi uit en aan, oude bouw (0.3.26) tegenover nieuwe bouw, zelfde scenario: Pings van de telefoon 17 tegen 0, berichten
+  ontvangen 27 tegen 6, een verbinding in beide gevallen (niets verloren, geen nieuwe dial). `network_changed` in het log 27 tegen 1
+  (alleen koppelen): dat is geen gelijk getal, want een scherm dat aan gaat meldt zich niet meer als netwerkwissel (de oude bouw
+  telde twee per scherm-aan, 13 keer 2 is 26). De wifi-wissels gaven de emulator in beide bouwen geen enkele systeemmelding, dus
+  daar is niet mee gemeten of een echte wissel nog doorkomt. Daarvoor: de test `a_move_to_another_network_asks_the_connections_and_lets_go_of_the_one_that_is_silent`
+  (kern, met nagebootste adressen: dezelfde adressen vragen niets, andere adressen vragen elke verbinding en laten de stille los),
+  en het log van de Oppo met 0.3.25 (6 keer `source: addresses` in 3,3 uur, dus het opsommen van de adressen werkt op een echte
+  telefoon). De emulator heeft geen mobiele radio en geen Tailscale: het verbruik in mA en het sluiten op een slapende radio zijn
+  daarop niet na te bootsen. Dat meet de Oppo.
+  Nog open: (a) de dials naar de Mac die mislukken (punt 5) zijn niet onderzocht; (b) de Status (ongeveer 265 B) die bij elk scherm
+  aan of uit naar elke verbinding gaat blijft het grootste deel van het verkeer van de telefoon met het scherm aan en uit: een kleinere
+  melding alleen voor `quiet` kan; (c) de catch-up berichten bij het verbinden (Status, Focus, HealthHave, BleKey, Wifi, Introduce)
+  worden nog steeds opnieuw gestuurd, alleen MediaArt (twee keer 12 KB) niet; (d) op de directe route `other` kan een NAT-tabel de
+  verbinding in de stille stand (240 s tussen twee heartbeats) vergeten: staat het log nog vol "closed here" met afstanden van rond
+  de 240 s, dan is de heartbeat in de stille stand te ruim voor die route.
+  Meting van 0.3.28 (Oppo, 2026-11-19, 14:41 tot 15:10, mobiel, wifi uit, Mac wakker, ProtonVPN op de Mac uit, zie R-V20): een verbinding,
+  geen disconnects, 0 lost, rtt 33 tot 46 ms. Scherm uit per 5 minuten: 1 Ping/Pong, 2 tot 3 Status en 21 tot 48 udp-pakketten. Stroom met
+  het scherm uit 162 mA over 22 minuten (254 mA op 0.3.25 met verbonden Mac; 131 tot 158 mA zonder verbinding): te kort voor een harde
+  conclusie, mobiele radio 94% actief. Nog te meten: een lange rit onderweg. Het open punt Status bij elk scherm aan/uit is bevestigd (3
+  Status, 1,8 KB, bij scherm uit om 14:52).
+  Avondmeting 0.3.28 (2026-11-19, 18:01 tot 22:37, mobiel, scherm uit, Mac via de tailnet verbonden, 2 disconnects): 221 mA over 3,2 uur,
+  CPU 96% wakker, radio 93% actief (muziek en Snapchat/WhatsApp vertroebelen het). Mark wil eerst betere metingen, nog niets bouwen. Uit het
+  telefoonlog (27 buckets met scherm uit op mobiel) een verdachte: in 15 van de 27 staan precies rond 9 QUIC `ping`-frames die de telefoon
+  stuurt (tx), met 40 tot 50 udp-pakketten en bijna geen berichten van de app (bijvoorbeeld 18:53: twee Pong, 9 ping, 44 pakketten). Dat zijn
+  waarschijnlijk quinns eigen MTU-probes: `MtuDiscoveryConfig` staat op de standaard (`upper_bound` 1452, `interval` 600 s, 3 herhalingen per
+  verloren probe) en `tls::transport` zet er niets aan. Een tailnet heeft MTU 1280 (UDP-lading 1232 over IPv6), dus elke probe boven de 1232
+  gaat verloren, wordt drie keer herhaald, en dat geeft per ronde van 10 minuten ongeveer 8 tot 12 pakketten van ruim 1200 B plus de
+  tijdouts die daarop volgen. Eén pakket per paar seconden houdt een LTE-radio wakker. Mogelijke kleine oplossing (niet gebouwd): `upper_bound`
+  1232, of de ontdekking uit toen de route een tailnet is of de telefoon stil is; kost op wifi een paar procent snelheid bij grote bestanden.
+  Te controleren: of de pings met de 600 s-klok samenvallen (twee opeenvolgende buckets per ronde) en of ze verdwijnen met `upper_bound` 1232.
+  Daarnaast stuurt de telefoon met het scherm uit gemiddeld 4 `Status` per 5 minuten (open punt b).
+  Nagemeten door de Oppo-sessie: de 8 of 9 pings komen op een vaste klok van ongeveer 10 minuten, ook op wifi met MTU 1500 en ook na een
+  nieuwe verbinding zonder dat het ritme verschuift. Dat past bij quinns 600 s-klok, maar een ronde is 30 tot 40 pakketten (11 KB) die
+  dicht op elkaar zitten: een radiosessie per 10 minuten, dus het verklaart niet dat radio (93%) en CPU (96%) bijna altijd wakker zijn.
+  Grotere verdachte, uit batterystats 18:05 tot 23:54: Tailscale zelf (31.954 pakketten verzonden op mobiel, radio 1 u 05 min, 46 sessies)
+  tegen Tandem (4.699 verzonden, radio 5,5 min). Tailscale stuurt waarschijnlijk disco-heartbeats en netcheck zolang een peer in de laatste
+  tientallen seconden verkeer had (nog te verifiëren), dus elk Tandem-pakket (ack, Pong, Status) kan het wakker houden. De winst zit dan in
+  langere stiltes van Tandem op de tailnet: minder ack-uitlokkend verkeer, Status bundelen, MTU-ontdekking eenmalig. Meetplan voor Mark, onderweg,
+  elk een uur met het scherm uit en zonder muziek: 1. Tandem actief, 2. Tandem gestopt met Tailscale aan, 3. Tailscale uit. Eerst meten, dan bouwen.
+  Uitkomst van de nachtmeting (Oppo, 2026-11-20, mobiel, wifi uit, scherm uit, ProtonVPN uit, drie blokken van twee uur): Tandem en Tailscale
+  zijn NIET de grote kostenpost. Alles aan 138 mA (Mac de hele tijd verbonden via de tailnet, 0 disconnects), Tandem gestopt 123 mA, ook
+  Tailscale uit 131 mA; op wifi 69 mA. De Tandem-verbinding kost 's nachts dus ongeveer 15 mA, Tailscale zit in de ruis. De vloer op mobiel
+  (rond 125 mA, CPU bijna altijd wakker, modem aan het ontvangen) komt van iets anders, hoofdverdachte Syncthing-Fork (draaide op batterij ondanks
+  de run condition): geen Tandem-zaak, de Oppo-sessie zoekt het uit met Mark. De 221 mA van de avond kwam dus grotendeels niet door Tandem. R-V15
+  deel 2 (0.3.28) is daarmee gelukt voor wat Tandem zelf kon; de MTU-ontdekking en het bundelen van `Status` blijven kleine verbeteringen.
+  Dagtest 2026-11-20 (10:56 tot 13:56, na de Syncthing-fix, mobiel, Mark gebruikte de telefoon tussendoor, dus ruisig): alles aan 201 mA, Tandem
+  gestopt met Tailscale aan 210 mA (Tailscale ongeveer 190 pakketten per minuut zonder Tandem-verkeer), Tailscale ook uit 126 mA met CPU 25%.
+  Tandems eigen kosten zijn klein (nachts ongeveer 15 mA, overdag niet meetbaar); Tailscale houdt overdag de CPU wakker, maar die winst zag de
+  nacht niet. De Oppo-sessie stelt Mark een tweede schone nachtmeting voor. Niets te bouwen voor Tandem tot die er is.
+  Schone nachtmeting 2026-11-21 (02:47 tot 04:46, mobiel, niet aangeraakt, Tailscale aan, Tandem gestopt, Mac sliep, Syncthing uit): 80 mA, CPU
+  24% wakker, radio 88% actief, Tailscale ongeveer 4.000 pakketten per uur (wifi: 69 mA). Overdag met een wakkere Mac en gebruik verstuurde
+  Tailscale ongeveer 11.400 per uur. Het hoge verbruik van eerder (125 tot 221 mA) kwam vooral door Syncthing op Force start, plus app-activiteit
+  na gebruik; Tailscale is geen grote kostenpost. De kosten van Tandem met een wakkere Mac zonder Syncthing zijn nog niet schoon gemeten
+  (schatting ongeveer 15 mA bovenop de rust). Het MTU-punt en `Status` bundelen blijven kleine verbeteringen, alleen als Mark wil.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
   Keuze van Mark (2026-11-14): wat het beste werkt zonder gedoe voor de gebruiker. Dus alleen op wat iets kan starten (dezelfde
   soorten als `runs_something` in `T/browse.rs`); documenten openen gewoon. Gebouwd in PR 25.
+- **R-V16. De telefoon als speaker haperen: het geluid stopt steeds kort en gaat dan weer verder** (gemeld door Mark op 2026-11-16; nog
+  niet gebouwd, alleen genoteerd). Het geluid van de computer naar de telefoon (de Tandem Speaker, `docs/MUSIC_AND_SOUND.md`, de
+  jitterbuffer van ongeveer 100 ms en de vertraging met drie standen: laag, normaal, soepel) loopt niet soepel. Eerst uitzoeken of het
+  aan de stand ligt (laag laat bij een wisselende verbinding de buffer leeglopen) of aan de verbinding (wifi, Tailscale, mobiele data), en
+  of andere apparaten dat ook hebben: een Mac of computer als luisteraar, de Xperia en de Oppo, het horloge, en de richting telefoon naar
+  Mac (microfoon). Meet per apparaat hoe vaak de buffer leegloopt en hoeveel pakketten te laat komen (de logregel van de buffer bestaat
+  al of komt erbij). Voorstel voor wat Mark wil: merkt het apparaat dat de buffer steeds leegloopt terwijl de stand laag staat, dan komt
+  er een melding "Het geluid haperde, een andere stand kan beter" met een knop die direct naar de volgende stand (normaal, dan soepel)
+  gaat, en dezelfde melding in alle vier de apps. Niets automatisch omzetten: de persoon kiest. Zekerheid: een vermoeden, pas te zien
+  op een echt toestel.
+- **R-V17. De tegels van Gezondheid mooier, met kleur en inzicht, op alle apparaten** (wens van Mark, 2026-11-16). De slaapscore beter in
+  beeld (een duidelijke score met kleur, rood, oranje, groen, of een kleine meter naast de duur), bij Steps het rare cirkeltje weg en het
+  stappendoel zichtbaar met een voortgangsbalk (stappen van het doel), en de hartslag met een kleur of meter. Rustig, geen gradient,
+  dezelfde iconenfamilie als de rest. Het doel komt uit Health Connect of de horloge-app als dat er is, anders 10.000 als standaard. Op
+  de Mac gevraagd aan de sessie van PR 31 (de tegels staan daar); Android, Linux en Windows volgen in een eigen ronde (alles op elk
+  apparaat).
+- **R-V18. Het horloge is binnen een dag leeg** (gemeld door Mark, 2026-11-18). Opdracht: uitzoeken wat het wakker houdt en zuiniger
+  maken zonder dat meldingen, bellen, muziek, slaap, stappen of hartslag minder goed werken. Gebouwd in PR 49 (0.3.25). Per bron, in
+  volgorde van wat het vermoedelijk kost (de kosten zijn uit de code en de sensorlogs afgeleid, niet in mA op een echt horloge gemeten):
+  1. **Live hartslag** (`LiveHeart`): de hartslagsensor met de led staat doorlopend aan zolang iemand vraagt, elke sensorwaarde wekt de
+     processor (`batchingPeriod` 0), en een Mac, Windows- of Linux-venster dat open blijft staan vraagt elke 30 s opnieuw, ook als het
+     achter andere vensters zit. Dat kon de hele dag duren. Nu: de sensor schrijft per 2 s weg, de meting stopt na 15 minuten met daarna
+     30 minuten rust (`LiveHeartLimit`), stopt bij uitzetten en als de link wegvalt, en de Mac en de Windows-app (ook Linux)
+     vragen alleen terwijl hun venster zichtbaar is.
+  2. **De telefoon stuurt het horloge dingen die niets nieuws zeggen** (`SendGate` in `WatchBridge`): een vernieuwde apparatenlijst elke
+     minuut, een batterijbericht elke halve minuut, dezelfde spelerslijst bij elke callback, een melding die een app opnieuw plaatst (of
+     met een voortgangsbalk elke seconde bijwerkt), en het weghalen van iets wat het horloge nooit kreeg. Elk bericht wekt de radio en de
+     processor van het horloge, en elke melding kan ook nog trillen. Nu gaat een bericht alleen als het horloge er iets van weet te maken:
+     zelfde toestand niet nog eens, een afspelend nummer dat op tijd is niet, een melding alleen bij andere woorden of na 2 minuten, een
+     voortgangsbalk per 10 procent. Wat de wachtrij laat vallen mag opnieuw. De teller in het logboek (`adb logcat -s TandemWatch`, regel
+     "Sent to the watch / left out") laat per soort zien wat er ging en wat er bleef.
+  3. **Een hartslagmeting die niet eindigt** (`HeartTracker`): elke 5 minuten een meting van 30 s. Vond hij niets (horloge af, aan de
+     lader), dan stond de opgeefgrens van 2 minuten alleen op papier: hij werd bij de volgende versnellingstik gecontroleerd, en die
+     komen niet meer als het horloge af is, waarna de led bleef zoeken. Nu een eigen timer van 2 minuten (de sensor levert zijn blok na ongeveer 30 s, dus dat is ruim), en meteen stoppen als het horloge
+     afgaat of aan de lader komt.
+  4. **Een verbinding die steeds wegvalt** (`WatchBleClient`): elke keer opnieuw een scan van 60 s op volle sterkte en een terugval naar
+     het begin na 30 s stabiel. Nu begint de snelle scan niet opnieuw binnen 10 minuten en telt een verbinding pas als stabiel na 2 minuten
+     (`ScanPolicy`).
+  Een keuze voor Mark: de grens van 15 minuten laat ook iemand die echt naar een zichtbaar Mac-venster kijkt na 15 minuten zonder getal
+  zitten (30 minuten rust, de tegel valt terug op de gewone hartslag). Nu de computers niet meer vragen terwijl hun venster verborgen is,
+  kan de grens ruimer (bijvoorbeeld 30 minuten aan, 15 uit) als dat prettiger is; de waarden staan in `LiveHeartLimit`.
+
+  Niet veranderd, met de reden: de versnellingsmeter voor slaap (5 Hz in blokken van 4 minuten, een wekmoment per blok) en de stappenteller
+  (5 minuten), omdat de slaapdetectie ze nodig heeft; de nachtopname zelf; de verbindingsprioriteit van Bluetooth (LOW_POWER zou de
+  vertraging van meldingen en bediening verhogen, eerst op een echt horloge proberen). Health Services (passive monitoring) in plaats van
+  eigen sensoren, waar het horloge de hartslag en de stappen zelf bundelt, kreeg Marks ja en staat hieronder (0.3.27).
+
+  Gemeten, op een Android 35 emulator (telefoonvormig, geen Wear OS-image gedownload; geen diepe slaap, geen Bluetooth, geen sensorbuffer
+  in de hardware, dus tellingen en tijden, geen mA): dezelfde test voor de oude en de nieuwe build, 4 minuten aan de lader, 6 minuten
+  om de pols, 17 minuten een asker die elke 30 s blijft vragen (zoals een Mac-venster dat open blijft):
+  - Live hartslag, registratie bij de sensorservice: oud `batchingPeriod` 0 us, nieuw 2.000.000 us (2 s).
+  - Live hartslag, duur: oud 17 minuten en ononderbroken tot ik hem zelf stopte, nieuw gestopt na 15 minuten 02 s door de grens en daarna
+    niet meer gestart ondanks de vragen. Over een dag met een open venster: een derde van de tijd (`LiveHeartLimitTest`) in plaats van de hele dag.
+  - Hartslagmetingen van 5 minuten, wekalarm, jobs en wake locks: gelijk (6 metingen van rond de 26 s, `*walarm*:tandem:auto-sleep` een
+    keer, geen jobs, in beide runs geen wake lock van de horloge-app zelf; alleen het bericht van het systeem bij de voorgrondmelding).
+    Er is dus niets erbij gekomen.
+  - De sensortijd in `dumpsys batterystats` is voor beide builds gelijk (ongeveer 41 minuten): de emulator laat het verschil in
+    batching en de 15 minuten daar niet in zien, dus daar steunt niets op.
+  - Berichten naar het horloge (`SendGateTest`, een rekenvoorbeeld van een uur met een apparatenlijst, een batterijbericht en een
+    spelerslijst per minuut, een voortgangsbalk elke seconde 5 minuten lang en een herhaalde chatmelding): 544 aangeboden, 14 verstuurd.
+    Het is een model van wat de telefoon deed, niet gemeten op een echte link: dat zegt de teller in het logboek na een dag.
+  Gemeten op een echt horloge: niets. De meting die telt is de dag om de pols (zie `docs/TESTLIJST.md`, 0.3.25): het percentage 's avonds
+  met en zonder deze build.
+
+  **Health Services (0.3.27, Mark zei ja).** Stappen en hartslag van de dag komen van `PassiveMonitoringClient`
+  (`androidx.health:health-services-client` 1.1.0, de enige nieuwe afhankelijkheid) in plaats van een eigen meting van 30 s per 5 minuten
+  en een eigen stappenteller. Met de bibliotheek komen Guava (32.0.1-android), protobuf-lite en `concurrent-futures` mee, en de `fast`-build
+  groeit met ongeveer 218 KB (5,63 naar 5,84 MB). Wat er veranderde (`PassiveHealth`, `PassiveHealthService`, `StepFeed`, `PassiveHeartRules`):
+  - **Stappen**: `DataType.STEPS_DAILY` (het totaal sinds middernacht, in losse stukken aangeleverd, niet op volgorde: gesorteerd op
+    `endDurationFromBoot`). `StepFeed` kiest de bron: Health Services zolang die levert, de eigen teller (die als schaduw meeloopt, ingesteld op
+    5 minuten bundelen) als die 2 uur zwijgt terwijl de teller wel beweegt. De dag telt nooit twee keer (`DailySteps.count`, getest met een dagwissel
+    en een verlaagd totaal).
+  - **Hartslag**: `DataType.HEART_RATE_BPM`, per slot van 5 minuten de mediaan (`PassiveHeartRules.perSlot`), alleen betrouwbare waarden
+    (accuracy laag of beter, net als de eigen meting). De eigen meting van 30 s slaat een tik over zolang er een verse waarde van het systeem
+    is (jonger dan 20 minuten), en pakt het anders zelf op. Het horloge meldt de hartslagkromme hooguit elke 15 minuten en de stappen hooguit
+    elke 5, zodat de winst van PR 49 niet verloren gaat.
+  - **Terugval**: zonder Health Services op dit horloge, zonder toestemming, of als het systeem zwijgt, werkt alles als voor deze build. Elke
+    30 minuten zonder levering registreert hij opnieuw (`reregisterIfDue`), want het systeem laat een registratie bij een herstart van zijn eigen
+    dienst los.
+  - **Toestemmingen**: stappen vragen `ACTIVITY_RECOGNITION` (er al), hartslag `BODY_SENSORS` tot en met Android 15 en `READ_HEART_RATE` vanaf Android 16,
+    in de achtergrond `BODY_SENSORS_BACKGROUND` of `READ_HEALTH_DATA_IN_BACKGROUND` (de bestaande knop op de gezondheidspagina). Niets
+    nieuws gevraagd: de samengevoegde manifesten van de build ervoor en deze hebben dezelfde 17 `uses-permission`. De bibliotheek voegt wel een
+    `<queries>`-regel toe voor het systeempakket `com.google.android.wearable.healthservices` en een `VersionApiService`. Op Android 15 en
+    ouder (dat pad is op de emulator, API 36, niet gelopen) staan stappen en hartslag in een registratie: weigert het systeem die om de
+    hartslagtoestemming, dan valt ook de stappenbron terug op de eigen teller. Slechter dan voor deze build wordt het niet. Ontbreekt iets, dan staat dat in het logboek (`Wanted: ... Allowed: ...`) en meet Tandem zelf.
+  - **Slaap: niet vervangen, met de reden.** Health Services biedt ook een slaapstand (`UserActivityState.USER_ACTIVITY_ASLEEP`, de emulator meldt dat
+    hij die kent: `Passive: [...], sleep states: [USER_ACTIVITY_PASSIVE, USER_ACTIVITY_EXERCISE, USER_ACTIVITY_ASLEEP]`). De versnellingsmeter staat
+    niet aan voor alleen die beslissing: `AutoSleep` en `SleepAutoDetector` rekenen ermee (25 minuten stil, wakker worden, `bedtime`-nachten en de
+    ochtend), de nachtopname schrijft hem als ruwe data, en een slaapstand van het systeem zou vertraging en een eigen drempel meebrengen
+    die ik op deze emulator niet kan beoordelen. Daarom is `AutoSleep` niet aangeraakt. Wat Mark zelf kan zien: dat de stand er op een Pixel Watch
+    ook is (zelfde logregel), en dan is het een proef voor later, naast de huidige detector, niet erin.
+  - **Live hartslag** (met `LiveHeartLimit`) blijft zoals hij was: die wil elke paar seconden een waarde, en dat geeft passive monitoring niet.
+
+  Gemeten op een Wear OS 6 emulator (API 36, `whs.USE_SYNTHETIC_PROVIDERS` voor de nepgegevens van Health Services): de registratie en de
+  capabilities in het logboek, levering elke minuut van 60 hartslagwaarden en 12 stapentotalen, de stappen van de app gelijk aan het totaal van Health
+  Services na een schone start, een eigen meting die niet start zolang de waarde van het systeem vers is (`No measurement of our own: the system's newest value
+  is 119 s old` tot `1021 s old`), en een eigen meting die wel start zonder toestemming voor hartslag, en stappen via de eigen teller zonder toestemming
+  voor beweging. Niet gezien op de emulator: de eigen meting na 20 minuten van een stil geworden systeem (de nachtopname van de emulator begon
+  halverwege en nam de tikken over; de regel is met `PassiveHeartRulesTest` getest) en het opnieuw registreren na een halfuur. Geen enkel
+  batterijcijfer: een emulator kan de winst niet meten, en `PassiveHealth` belooft hem ook niet. De winst die ik verwacht is dat het horloge
+  de hartslag en stappen toch al verzamelt voor zichzelf en wij dus geen tweede sensormeting en geen eigen teller meer wakker houden; dat zegt
+  de dag om de pols.
+- **R-V19. Een nieuwe telefoon, of een andere hotspot: de Mac moet het weten** (vraag van Mark, 2026-11-18: "wat gebeurt er als je een nieuwe
+  telefoon hebt? dan weet de mac niet dat je nieuwe hotspot hebt"). Nagelezen op main 52bbf7bd: ja, het ging fout. De Mac bewaarde een
+  naam (`hotspotSSID`) en een wachtwoord (`hotspot.secret`) voor alle telefoons, en `joinAndConnect` verbond daarmee. Een nieuwe telefoon,
+  of een andere naam of een ander wachtwoord, gaf na tien pogingen van vier seconden "The hotspot is not visible yet", zonder te zeggen wat
+  er te doen viel. En de telefoon zei zijn hotspotnaam nooit: `HotspotMsg::State { ssid }` bestaat, maar Android stuurde `ssid = null`, en
+  over Bluetooth (de weg als de Mac geen netwerk heeft) past er alleen een status en een aantal in. Gebouwd in 0.3.26:
+  1. **Per telefoon** (`HotspotProfiles`): naam en wachtwoord horen bij het apparaat. Wat er al stond gaat naar de eerste Android-telefoon
+     die de Mac kent (die werd altijd gevraagd), niemand vult iets opnieuw in. De Mac vraagt aan een telefoon die in bereik is en zijn
+     hotspot ingevuld heeft; de lijsten van netwerken die de Mac niet als "eigen" ziet bevatten alle hotspotnamen.
+  2. **Melding, een keer per naam** (`HotspotRules`, getest zonder app): "Hotspot van <telefoon> is nieuw" als systeemmelding en als rij in het
+     menubalkpaneel (Later of Instellen). De knop opent de pagina van die telefoon met het instelscherm en de naam al ingevuld. Twee bronnen:
+     de telefoon zegt zijn naam (nieuw bericht `HotspotMsg::Name`, en `ssid` in een `State`; alleen met Shizuku), of verbinden mislukt omdat de
+     naam niet te vinden is of het wachtwoord geweigerd wordt (werkt voor elke telefoon en over Bluetooth). Geen blijvende waarschuwing.
+  3. **Wachtwoord van de telefoon halen** (Shizuku): de shell heeft NETWORK_SETTINGS en leest `getSoftApConfiguration` zoals `ShellWifi` de
+     opgeslagen netwerken leest. Het instelscherm heeft "Wachtwoord ophalen bij <telefoon>": een `Ask` over de bestaande Wi-Fi-deelroute, de
+     telefoon antwoordt met `Share`, de Mac slaat het op bij die telefoon. Geen nieuwe rechten of afhankelijkheden. Gezien dat de shell het
+     leest: op een Android 16 emulator (naam, beveiliging en wachtwoord uit `getSoftApConfiguration` als `shell`). Niet gezien: de hele
+     route met Shizuku op een echte telefoon, en dat de Android 17 van de Xperia dezelfde aanroep nog toestaat.
+  4. **Linux en Windows**: hebben het hotspotverzoek zelf niet (zie `docs/PARITY.md`), dus er is niets om te onthouden of te melden. Het
+     komt mee als het verzoek er is; het bericht `HotspotMsg::Name` en de beslissingen in `HotspotRules` zijn er dan al. Niet gebouwd.
+  Open: een telefoon zonder Shizuku zegt zijn naam niet en kan geen wachtwoord geven (geen app mag zijn eigen hotspot lezen), dus daar
+  blijft het de fout bij het verbinden en intikken. Zit er een nieuwe telefoon naast de oude in de kring, dan kiest de Mac er een die in
+  bereik is; een apart keuzemenu voor welke telefoon de hotspot levert is er niet.
+- **R-V20. Een andere VPN met kill switch blokkeert de tailnet-route, en de app zegt er niets over** (gemeten 2026-11-19, Oppo-sessie, 0.3.28:
+  geen regressie). ProtonVPN draaide op de Mac naast Tailscale (allebei Connected, Proton met de default route op utun6). Een UDP-pakket van
+  de telefoon kwam op de Mac aan, maar de Mac kon niet antwoorden (`Network is unreachable`), `tailscale ping` werkte wel (dat loopt via
+  tailscaled zelf). Elke Tandem-dial over de tailnet mislukte in beide richtingen tot Proton uit ging; daarna verbond de Mac in een dial,
+  route tailnet. Wens: zie je dat een tailnet-adres al vaker mislukte terwijl de ander wel bereikbaar is via een andere weg, of dat een
+  tweede VPN actief is, zeg dan bij het apparaat in een zin wat er speelt ("Een andere VPN kan Tailscale blokkeren"), alleen als je erop
+  klikt of het apparaat opent, geen blijvende waarschuwing. Nog niet ontworpen. Bijvangst: de Mac logde die verbinding als route tailnet
+  (dialer), de telefoon als route `other` (dialer=false): dezelfde verbinding krijgt aan de ontvangende kant een ander label. Nog niet
+  uitgezocht waarom (welk adres de telefoon als afzender ziet); het raakt alleen het log en de routekeuze op de telefoon.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
   `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
@@ -765,6 +1025,7 @@ op je pols, presenteren met de kroon, spraaknotitie.
 - **5. Muziek stopt als je slaapt**
   - Wat: slaap je in, dan pauzeert alles wat speelt: op de telefoon, op verbonden computers en via de telefoon ook Sonos, als dat daar als mediasessie loopt.
   - Wanneer: tijdens een slaapopname, na 25 minuten stil (de drempel van `SleepAutoDetector`), dus niet meteen als je bedtime mode met de hand aanzet.
+  - **Hersteld (0.3.26):** bedtime mode pauzeerde de muziek meteen, want `SleepMode(on)` gold als in slaap vallen. Nu heeft `SleepMode` een tweede veld `asleep`: de opname en de stille stand beginnen bij bedtime mode, de pauze en het vergrendelen pas als de detector (25 minuten stil, `AutoSleep`) het horloge laat melden dat je slaapt. Wordt je 's nachts wakker (de detector ziet 8 van 12 minuten beweging) en val je opnieuw in slaap, dan pauzeert het opnieuw. Een nacht die je met de hand start telt als slapen vanaf het begin, zoals eerst. Een oud horloge zonder het veld blijft "slaapt meteen" betekenen, een oude telefoon leest alleen het eerste veld: beide combinaties werken als voorheen. De volgorde staat in `SleepSessionTest`.
   - Bericht: nieuw `Asleep` (id van de nacht) van horloge naar telefoon. `SleepMode` kan dit niet dragen: die wordt na elke verbinding herhaald. Het id zorgt dat het één keer per nacht gebeurt. Was de link weg, dan telt het bericht alleen als het jonger is dan 10 minuten.
   - Telefoon: `WatchMedia` pauzeert de eigen spelers, `sendMediaCommand` die op computers, alleen wat echt speelt.
   - Schakelaars op de telefoon, naast "Stille slaap": "Muziek pauzeren" (standaard uit) en apart "Computers vergrendelen" (standaard uit), want iemand anders kan dan achter de computer zitten. **Gebouwd (0.3.2):** op de pagina van het horloge op de telefoon; de telefoon pauzeert zijn eigen spelers en die van de computers, en vergrendelt de computers die online zijn.

@@ -731,29 +731,34 @@ private struct DevicesSettings: View {
 // MARK: Hotspot
 
 private struct HotspotSettings: View {
+    @Environment(EngineModel.self) private var model
     @AppStorage(HotspotCoordinator.enabledKey) private var auto = false
     @AppStorage(HotspotCoordinator.delayKey) private var delay = 8.0
-    @AppStorage("hotspotSSID") private var ssid = ""
-    @LocalState private var password = HotspotCredentials.password() ?? ""
+    @LocalState private var profiles = HotspotProfiles.shared
     @LocalState private var bluetooth = CBManager.authorization
-    @LocalState private var showSetup = false
+    /// The phone whose setup is open: each phone has a hotspot of its own.
+    @LocalState private var setupFor: String?
 
-    private var credentialsSet: Bool { !ssid.isEmpty && !password.isEmpty }
+    private var phones: [TandemDevice] { model.devices.filter { $0.platform == .android } }
+    private var credentialsSet: Bool { phones.contains { profiles.complete(for: $0.id) } }
     private var bluetoothAllowed: Bool { bluetooth == .allowedAlways }
     /// The switch only shows on when everything it needs is in place, so it never looks on
     /// while nothing can happen.
     private var ready: Bool { credentialsSet && bluetoothAllowed }
+    private var setupPhone: TandemDevice? { setupFor.flatMap { id in phones.first { $0.id == id } } }
 
     var body: some View {
         Form {
-            Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Guided setup")
-                        Text("Join your phone's hotspot once and Tandem takes over.").font(.caption).foregroundStyle(.secondary)
+            if let phone = model.hotspotPhone {
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Guided setup")
+                            Text("Join your phone's hotspot once and Tandem takes over.").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 12)
+                        Button("Set up…") { setupFor = phone.id }
                     }
-                    Spacer(minLength: 12)
-                    Button("Set up…") { showSetup = true }
                 }
             }
             Section {
@@ -761,7 +766,7 @@ private struct HotspotSettings: View {
                 // on at its end.
                 Toggle("Use my phone's hotspot when this Mac has no connection", isOn: Binding(
                     get: { auto && ready },
-                    set: { on in if on && !ready { showSetup = true } else { auto = on } }
+                    set: { on in if on && !ready { setupFor = model.hotspotPhone?.id } else { auto = on } }
                 ))
                 LabeledContent("Wait before asking") {
                     HStack(spacing: 10) {
@@ -775,14 +780,29 @@ private struct HotspotSettings: View {
                 .disabled(!(auto && ready))
             }
 
-            Section {
-                TextField("Network name", text: $ssid)
-                SecureField("Password", text: $password)
-                    .onChange(of: password) { _, value in HotspotCredentials.save(password: value) }
-            } header: {
-                Text("Your phone's hotspot")
-            } footer: {
-                Text("Kept on this Mac only.")
+            // Each phone has its own hotspot: a new phone, or a phone with another name or password, is not the one that was filled in.
+            ForEach(phones, id: \.id) { phone in
+                Section {
+                    TextField("Network name", text: Binding(
+                        get: { profiles.ssid(for: phone.id) },
+                        set: { profiles.save(ssid: $0, for: phone.id) }
+                    ))
+                    SecureField("Password", text: Binding(
+                        get: { profiles.password(for: phone.id) },
+                        set: { profiles.save(password: $0, for: phone.id) }
+                    ))
+                } header: {
+                    Text(phones.count > 1 ? String(localized: "Hotspot of \(phone.name)") : String(localized: "Your phone's hotspot"))
+                } footer: {
+                    if phone.id == phones.last?.id {
+                        Text("Tandem needs these once to join the hotspot. They are stored privately on this Mac and never leave it.")
+                    }
+                }
+            }
+            if phones.isEmpty {
+                Section {
+                    Text("Pair an Android phone to set up its hotspot.").foregroundStyle(.secondary)
+                }
             }
         }
         .formStyle(.grouped)
@@ -791,10 +811,11 @@ private struct HotspotSettings: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             bluetooth = CBManager.authorization
         }
-        .sheet(isPresented: $showSetup, onDismiss: {
+        .sheet(isPresented: Binding(get: { setupPhone != nil }, set: { if !$0 { setupFor = nil } }), onDismiss: {
             bluetooth = CBManager.authorization
-            password = HotspotCredentials.password() ?? ""
-        }) { HotspotSetupSheet() }
+        }) {
+            if let phone = setupPhone { HotspotSetupSheet(phone: phone, prefill: profiles.reported[phone.id]) }
+        }
     }
 }
 
@@ -880,7 +901,9 @@ private struct AboutSettings: View {
                     .padding(.top, 10)
                 Link("github.com/Marukiee/Tandem", destination: URL(string: "https://github.com/Marukiee/Tandem")!)
                     .padding(.top, 10)
-
+                // What Tandem sent, per device and kind, one file per day: to find out afterwards what kept a phone awake.
+                Button("Open the traffic log") { EngineModel.shared.openTrafficLog() }
+                    .padding(.top, 6)
             }
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)

@@ -1,5 +1,7 @@
 package nl.markmaaktmedia.tandem.watch.protocol
 
+import kotlin.math.abs
+
 /** What the order of the players needs to know of one media session on the phone. */
 data class SessionView(
     val id: String,
@@ -54,6 +56,19 @@ object PlayerRules {
         .map { it.value.id }
         .distinct()
         .take(MAX_PLAYERS)
+
+    /** A player further from where the watch thinks it is than this was moved by someone, and the ring on the watch would be wrong. */
+    const val JUMP_MS = 3_000L
+
+    /**
+     * Whether [now] tells the watch nothing that [before], sent [elapsedMs] ago, did not. A position changes with every update, so by
+     * itself it is no reason to send: the watch works out how time passes. It is one when it is off from where a playing one should be.
+     */
+    fun unchanged(before: List<MediaPlayer>, now: List<MediaPlayer>, elapsedMs: Long): Boolean =
+        before.size == now.size && before.zip(now).all { (was, after) ->
+            was.copy(positionMs = 0) == after.copy(positionMs = 0) &&
+                abs(after.positionMs - (was.positionMs + if (was.playing) elapsedMs else 0)) <= JUMP_MS
+        }
 
     /** The player on the screen: the one chosen on the watch for as long as it is there, else the one in front. */
     fun shown(players: List<MediaPlayer>, picked: String?): MediaPlayer? =

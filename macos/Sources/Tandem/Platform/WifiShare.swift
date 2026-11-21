@@ -149,6 +149,8 @@ final class WifiShare: NSObject {
     // MARK: Messages
 
     func handle(from id: String, message: TandemWifi) {
+        // The password of a phone's hotspot that was asked for in the hotspot setup: saved there, not offered as a network to join.
+        if EngineModel.shared.hotspot.handleWifi(from: id, message: message) { return }
         switch message {
         case let .ask(ssid):
             asked(by: id, for: ssid)

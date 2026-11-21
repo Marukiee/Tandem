@@ -645,6 +645,7 @@
     <string name="sleep_music_yes">Ja, voortaan</string>
     <string name="sleep_music_not_now">Nu niet</string>
     <string name="sleep_music_never">Niet meer vragen</string>
+    <string name="watch_glance_no_data">Geen gegevens</string>
     <string name="watch_glance_night">Afgelopen nacht</string>
     <string name="watch_glance_score">Score %1$d</string>
     <string name="watch_section_wrist">Op je pols</string>
@@ -824,4 +825,15 @@
     <string name="watch_bluetooth_off_sub">Je horloge kan geen verbinding maken met deze telefoon. Tik om het aan te zetten.</string>
     <string name="link_waiting_title">Link van een ander apparaat</string>
     <string name="link_waiting_text">%1$s (staat ook op je klembord)</string>
+    <string name="traffic_title">Verkeerslog</string>
+    <string name="traffic_sub">Wat Tandem verstuurt, per apparaat en soort, 14 dagen bewaard</string>
+    <string name="traffic_since">Sinds %1$s</string>
+    <string name="traffic_reset">Opnieuw beginnen met tellen</string>
+    <string name="traffic_reset_sub">De totalen hieronder beginnen nu opnieuw; de bestanden blijven</string>
+    <string name="traffic_share">Bestanden delen</string>
+    <string name="traffic_share_sub">Eén bestand per dag, zonder inhoud van berichten en zonder adressen</string>
+    <string name="traffic_empty">Nog niets geteld. Er komt ongeveer elke 5 minuten een regel bij zolang Tandem bezig is.</string>
+    <string name="traffic_devices">Per apparaat</string>
+    <string name="traffic_kinds">Per soort bericht</string>
+    <string name="traffic_hours">Per uur, de laatste 24 uur</string>
 </resources>

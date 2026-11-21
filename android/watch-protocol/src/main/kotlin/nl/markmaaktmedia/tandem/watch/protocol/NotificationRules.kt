@@ -54,7 +54,7 @@ object NotificationRules {
  * Outgoing messages with room for a call to overtake. Messages are sealed only when they leave this queue:
  * a counter sealed earlier would arrive out of order after overtaking, and the receiver would reject it.
  */
-class OutboundQueue(private val capacity: Int = 64) {
+class OutboundQueue(private val capacity: Int = 64, private val onDrop: (Message) -> Unit = {}) {
     private val urgent = ArrayDeque<Message>()
     private val normal = ArrayDeque<Message>()
 
@@ -79,9 +79,16 @@ class OutboundQueue(private val capacity: Int = 64) {
                 normal.removeAll { it is Message.MediaArt && it.playerId == message.playerId }
                 normal.addLast(message)
             }
+            is Message.DeviceBatteries, is Message.PointerTargets, is Message.MediaPlayers, is Message.StepGoal,
+            is Message.HeartAllDay, is Message.SmartWakeAlarm,
+            -> {
+                // State: what waits here is behind the times by now, and the watch should not wake for each step on the way.
+                normal.removeAll { it::class == message::class }
+                normal.addLast(message)
+            }
             else -> {
                 // The next resync repairs anything dropped here, so a stuck link cannot grow this without limit.
-                if (normal.size >= capacity) normal.removeFirst()
+                if (normal.size >= capacity) onDrop(normal.removeFirst())
                 normal.addLast(message)
             }
         }

@@ -44,12 +44,12 @@ class StatusReporter(
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            // A phone that slept was away for the others, who only try it again after a while: it tries them itself as soon as it is
-            // in a hand again, so a computer's pointer can come over at once.
+            // A phone that slept was away for the others, who only try it again after a while: the core tries them itself as soon as the
+            // screen is on (`setQuiet`), so a computer's pointer can come over at once. The screen going on is not a change of network:
+            // it was said to be one, and each time every connection was asked whether it still worked (R-V15).
             // Awake first, so the others go back to checking on it often before it asks them whether they are still there.
             if (intent.action == Intent.ACTION_SCREEN_ON || intent.action == Intent.ACTION_USER_PRESENT) {
                 host.screenChanged(true)
-                host.onNetworkChanged()
             }
             // With the screen off the others check on this phone every few minutes instead of every half minute.
             if (intent.action == Intent.ACTION_SCREEN_OFF) host.screenChanged(false)
@@ -71,6 +71,7 @@ class StatusReporter(
         // This also comes with every change of signal strength, which is many times a minute. Trying every absent device again each time
         // is what kept a battery and a radio busy; the status only goes out when it changed.
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            host.refreshMetered()
             val kind = listOf(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.TRANSPORT_CELLULAR, NetworkCapabilities.TRANSPORT_ETHERNET, NetworkCapabilities.TRANSPORT_VPN)
                 .map(capabilities::hasTransport) + capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             val now = network to kind

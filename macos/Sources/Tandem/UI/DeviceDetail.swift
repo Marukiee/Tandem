@@ -13,6 +13,7 @@ struct DeviceDetail: View {
     var onViewAll: () -> Void = {}
 
     @LocalState private var confirmRemoval = false
+    @LocalState private var showDeviceSettings = false
     /// The address at which this computer answers for ssh, once looked for.
     @LocalState private var sshAddress: String?
 
@@ -37,6 +38,7 @@ struct DeviceDetail: View {
         // The battery comes a moment after the connection, in a status of its own: the space it takes is made smoothly too.
         .animation(.tandem, value: device.status.battery != nil)
         .animation(.tandem, value: shownPlayers)
+        .sheet(isPresented: $showDeviceSettings) { DeviceSettingsSheet(device: device) }
         .confirmationDialog(
             "Remove \(device.name)?",
             isPresented: $confirmRemoval,
@@ -414,12 +416,17 @@ struct DeviceDetail: View {
                 if device.isComputer || device.platform == .android {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     SideRow(device: device)
-                    Divider().opacity(0.4).padding(.horizontal, 14)
-                    SettingsLinkRow(
-                        symbol: "cursorarrow.motionlines", title: "Mouse and keyboard",
-                        subtitle: "Which computers share them, and how the screens stand", section: .pointer
-                    )
                 }
+                Divider().opacity(0.4).padding(.horizontal, 14)
+                // Everything else that is set for this device, and its name, on a page of its own: what is used often stays here.
+                Button { showDeviceSettings = true } label: {
+                    SettingRow(symbol: "gearshape", title: "Settings for this device", subtitle: "Its name, and what it may do on this Mac") {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -715,26 +722,54 @@ struct HotspotCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
     @AppStorage("autoHotspot") private var auto = false
-    @AppStorage("hotspotSSID") private var ssid = ""
+    @LocalState private var profiles = HotspotProfiles.shared
     @LocalState private var bluetooth = CBManager.authorization
     @LocalState private var showSetup = false
+    /// The name the phone said its hotspot has, for the setup: it opens with that filled in.
+    @LocalState private var prefill: String?
 
     /// Bluetooth is allowed and the phone's network is filled in. The switch only shows on when this is so, and turning it on before
     /// opens the setup, which turns it on at its end: what it needs is said when it is wanted, not on the page all the time.
     private var ready: Bool {
-        bluetooth == .allowedAlways && !ssid.isEmpty && (HotspotCredentials.password()?.isEmpty == false)
+        bluetooth == .allowedAlways && profiles.complete(for: device.id)
+    }
+
+    private func openSetup() {
+        prefill = profiles.reported[device.id]
+        showSetup = true
+    }
+
+    /// The row in the panel, or the click on its notification, asked for this page's setup.
+    private func setupAsked() {
+        guard model.hotspotSetupFor == device.id else { return }
+        model.hotspotSetupFor = nil
+        model.hotspot.dismissNotice()
+        openSetup()
     }
 
     var body: some View {
         Card(radius: Metrics.card, padding: 6) {
             VStack(spacing: 0) {
+                if let notice = model.hotspotNotice, notice.phone == device.id {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(notice.title).font(.callout.weight(.semibold))
+                            Text(notice.detail).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Set up") { openSetup(); model.hotspot.dismissNotice() }.buttonStyle(.tandemGlass)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    Divider().opacity(0.4).padding(.horizontal, 14)
+                }
                 SettingRow(
                     symbol: "personalhotspot",
                     title: "Use its hotspot when I have no connection",
                     subtitle: "Your phone turns its hotspot on and this Mac joins it"
                 ) {
                     Toggle("", isOn: Binding(get: { auto && ready }, set: { on in
-                        if on && !ready { showSetup = true } else { auto = on }
+                        if on && !ready { openSetup() } else { auto = on }
                     }))
                     .controlSize(.mini)
                 }
@@ -776,7 +811,7 @@ struct HotspotCard: View {
                         }
                         Spacer()
                         Button("Turn on hotspot") {
-                            if ready { model.hotspot.requestNow(device.id) } else { showSetup = true }
+                            if ready { model.hotspot.requestNow(device.id) } else { openSetup() }
                         }
                         .buttonStyle(.tandemGlass)
                     }
@@ -787,7 +822,10 @@ struct HotspotCard: View {
         }
         .animation(.tandem, value: model.hotspotStatus)
         .animation(.tandem, value: ready)
-        .sheet(isPresented: $showSetup, onDismiss: { bluetooth = CBManager.authorization }) { HotspotSetupSheet() }
+        .animation(.tandem, value: model.hotspotNotice)
+        .sheet(isPresented: $showSetup, onDismiss: { bluetooth = CBManager.authorization }) { HotspotSetupSheet(phone: device, prefill: prefill) }
+        .onAppear { setupAsked() }
+        .onChange(of: model.hotspotSetupFor) { _, _ in setupAsked() }
         // The permission only changes in System Settings, so it is read again when the person comes back from there.
         // A timer that asked the system every second kept the app and the permission service awake for nothing.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in

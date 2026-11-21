@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.ParcelUuid
 import android.os.SystemClock
 import nl.markmaaktmedia.tandem.watch.protocol.GattContract
+import nl.markmaaktmedia.tandem.watch.protocol.ScanPolicy
 import java.util.ArrayDeque
 
 /**
@@ -57,6 +58,9 @@ class WatchBleClient(
     private var linkUp = false
     private var upSince = 0L
     private var lostAt = 0L
+
+    /** The [lostAt] of the last loss that got the fast minute of scanning, see [ScanPolicy]. */
+    private var fastFor: Long? = null
     private var failures = 0
 
     private val queue = ArrayDeque<ByteArray>()
@@ -130,16 +134,19 @@ class WatchBleClient(
             retryLater()
             return
         }
-        val since = SystemClock.elapsedRealtime() - lostAt
+        val now = SystemClock.elapsedRealtime()
+        val since = now - lostAt
+        val speed = ScanPolicy.speed(lostAt, now, fastFor)
+        if (speed == ScanPolicy.Speed.LOW_LATENCY) fastFor = lostAt
         val settings = ScanSettings.Builder()
             // Fastest in the first minute after losing the phone: that is mostly Tandem on the phone restarting for an update, and then
             // it advertises again within seconds, while the slower scans found it only well after. Then quick while it is most likely
-            // still close, then easy on the battery.
+            // still close, then easy on the battery. A link that keeps dropping does not get that first minute every time.
             .setScanMode(
-                when {
-                    since < FAST_MS -> ScanSettings.SCAN_MODE_LOW_LATENCY
-                    since < RECENT_MS -> ScanSettings.SCAN_MODE_BALANCED
-                    else -> ScanSettings.SCAN_MODE_LOW_POWER
+                when (speed) {
+                    ScanPolicy.Speed.LOW_LATENCY -> ScanSettings.SCAN_MODE_LOW_LATENCY
+                    ScanPolicy.Speed.BALANCED -> ScanSettings.SCAN_MODE_BALANCED
+                    ScanPolicy.Speed.LOW_POWER -> ScanSettings.SCAN_MODE_LOW_POWER
                 },
             )
             .build()
@@ -148,10 +155,10 @@ class WatchBleClient(
         scanner.startScan(listOf(filter), settings, scanCallback)
         handler.removeCallbacks(scanCycle)
         // A fresh scan where the mode changes, and otherwise once in a while.
-        val next = when {
-            since < FAST_MS -> FAST_MS - since
-            since < RECENT_MS -> RECENT_MS - since
-            else -> SCAN_CYCLE_MS
+        val next = when (speed) {
+            ScanPolicy.Speed.LOW_LATENCY -> ScanPolicy.FAST_MS - since
+            ScanPolicy.Speed.BALANCED -> ScanPolicy.RECENT_MS - since
+            ScanPolicy.Speed.LOW_POWER -> SCAN_CYCLE_MS
         }
         handler.postDelayed(scanCycle, next.coerceAtLeast(MIN_SCAN_MS))
     }
@@ -196,7 +203,7 @@ class WatchBleClient(
     }
 
     private fun teardownAndRetry() {
-        val stable = linkUp && SystemClock.elapsedRealtime() - upSince > STABLE_MS
+        val stable = linkUp && SystemClock.elapsedRealtime() - upSince > ScanPolicy.STABLE_MS
         closeGatt()
         if (!wanted) return
         if (stable) failures = 0
@@ -381,7 +388,6 @@ class WatchBleClient(
 
     private companion object {
         val BACKOFF_MS = longArrayOf(500, 1_500, 3_000, 6_000, 12_000, 30_000)
-        const val FAST_MS = 60_000L
         /** Android allows a few scan starts per half minute: never restart one sooner than this. */
         const val MIN_SCAN_MS = 7_000L
         const val CONNECT_TIMEOUT_MS = 20_000L
@@ -389,8 +395,6 @@ class WatchBleClient(
         const val BUSY_RETRY_MS = 30L
         const val REFRESH_RETRY_MS = 200L
         const val MAX_REFRESH_ATTEMPTS = 25
-        const val STABLE_MS = 30_000L
-        const val RECENT_MS = 2 * 60_000L
         const val SCAN_CYCLE_MS = 10 * 60_000L
     }
 }

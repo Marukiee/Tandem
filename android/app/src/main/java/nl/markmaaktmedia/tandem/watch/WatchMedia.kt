@@ -17,7 +17,6 @@ import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.protocol.SessionView
 import java.io.ByteArrayOutputStream
-import kotlin.math.abs
 import kotlin.math.min
 
 /** Publishes active media sessions. Requires notification access, which is also what grants session access. */
@@ -159,7 +158,7 @@ class WatchMedia(
             player.copy(artKey = art?.key.orEmpty())
         }
         // Position changes on every update, so that alone is no reason to send: the watch works out how time passes by itself.
-        if (players.map { it.copy(positionMs = 0) } == last.map { it.copy(positionMs = 0) } && !jumped(players)) return
+        if (PlayerRules.unchanged(last, players, SystemClock.elapsedRealtime() - lastSentAt)) return
         last = players
         lastSentAt = SystemClock.elapsedRealtime()
         onChange(players)
@@ -170,13 +169,6 @@ class WatchMedia(
         if (player.playing == player.id in wasPlaying) return
         playedAt[player.id] = SystemClock.elapsedRealtime()
         if (player.playing) wasPlaying += player.id else wasPlaying -= player.id
-    }
-
-    /** Someone moved through the track, so the ring on the watch would be wrong from here on. */
-    private fun jumped(players: List<MediaPlayer>): Boolean = players.any { now ->
-        val before = last.firstOrNull { it.id == now.id } ?: return@any false
-        val expected = before.positionMs + if (before.playing) SystemClock.elapsedRealtime() - lastSentAt else 0
-        abs(now.positionMs - expected) > JUMP_MS
     }
 
     private fun positionNow(state: PlaybackState): Long {
@@ -234,7 +226,6 @@ class WatchMedia(
 
         /** The size it has on the watch, at the density of the Pixel Watch. */
         const val COVER_PIXELS = 152
-        const val JUMP_MS = 3_000L
         val NOTHING_TO_OFFER = setOf(PlaybackState.STATE_NONE, PlaybackState.STATE_STOPPED, PlaybackState.STATE_ERROR)
         val COVER_QUALITIES = intArrayOf(70, 50, 30)
     }

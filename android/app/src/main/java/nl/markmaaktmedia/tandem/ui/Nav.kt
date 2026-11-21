@@ -48,6 +48,7 @@ sealed interface Route {
     data object MirrorApps : Route
     data object Appearance : Route
     data object Developer : Route
+    data object TrafficLog : Route
     data object Hotspot : Route
     data object Changelog : Route
     data object MediaApps : Route
@@ -130,6 +131,7 @@ private fun routeFromKey(key: String): Route? = when {
     key == "mirror" -> Route.MirrorApps
     key == "appearance" -> Route.Appearance
     key == "developer" -> Route.Developer
+    key == "traffic-log" -> Route.TrafficLog
     key == "hotspot" -> Route.Hotspot
     key == "changelog" -> Route.Changelog
     key == "media-apps" -> Route.MediaApps
