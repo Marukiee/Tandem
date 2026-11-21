@@ -955,10 +955,11 @@ private struct SideChoice: View {
     var body: some View {
         HStack(spacing: 4) {
             option("left", on: left)
+            // This Mac is not a choice: always in the full colour of the text, so it does not read as a third button.
             Image(systemName: Self.thisMac)
                 .font(.system(size: 15, weight: .medium))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.secondary)
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 2)
                 .accessibilityLabel(Text("This Mac"))
             option("right", on: !left)
