@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.33",
+    "date": "2026-11-21",
+    "en": {
+      "title": "The player on its own card",
+      "new": [],
+      "fixed": [
+        "On the page of a device the player is a card of its own under the device card, instead of inside it"
+      ]
+    },
+    "nl": {
+      "title": "De speler op een eigen kaart",
+      "new": [],
+      "fixed": [
+        "Op de pagina van een apparaat staat de speler op een eigen kaart onder de apparaatkaart, niet meer erin"
+      ]
+    }
+  },
+  {
     "version": "0.3.31",
     "date": "2026-11-21",
     "en": {
