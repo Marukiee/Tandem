@@ -571,3 +571,15 @@ emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen
   Sluit Tandem op de Mac en open hem weer: nu komt de hoes wel opnieuw.
 - [ ] **Een computer die dagen uit staat** (de Linux-laptop) wordt op mobiele data niet meer elke 5 tot 10 minuten gebeld. Zet de telefoon
   op wifi: hij probeert hem weer zoals vroeger.
+
+## 0.3.30, 2026-11-21 (kant kiezen op Linux en Windows)
+
+Wat veranderde: op de pagina van een apparaat in de Linux- en Windows-app staat een rij "Where <naam> stands" met een pill Links of
+Rechts van deze computer. Kiezen doet hetzelfde als het doosje van het apparaat links of rechts in de schermindeling zetten
+(`arrange_side` roept `arrange::put` aan). Alleen in een browser met `mock.js` bekeken en met `check-linux.sh`, niet op echte toestellen.
+
+- [ ] **Kant kiezen.** Open de pagina van een telefoon en van een computer: de rij staat bovenaan Instellingen. Kies Links: in Instellingen
+  onder Muis springt het doosje van het apparaat naar links, en omgekeerd. Sleep het doosje daar naar rechts: de pill volgt.
+- [ ] **Zonder keuze** staat Rechts gevuld, en een tik op Rechts zet het apparaat er echt neer (het doosje verschijnt rechts).
+- [ ] **Zoek met geluid** (alleen bij een Mac of een telefoon met de nieuwste app): de knop staat naast de pill, en de uitkomst zet de pill om.
+- [ ] **Teksten.** Op Windows staat "deze pc" in de ondertitel, op Linux "deze computer", in Engels en Nederlands.
