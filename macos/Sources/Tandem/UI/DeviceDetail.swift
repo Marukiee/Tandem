@@ -180,6 +180,8 @@ struct DeviceDetail: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: hasTiles ? .topLeading : .leading)
+            // In the corner, as far from the top of the card as from its side.
+            .overlay(alignment: .topTrailing) { statePill }
         }
     }
 
@@ -212,7 +214,8 @@ struct DeviceDetail: View {
                             // A long name is a little smaller before it is cut short.
                             .minimumScaleFactor(0.8)
                         Spacer(minLength: 0)
-                        statePill
+                        // Its room on the line of the name, so a long name stops before it. The pill itself sits in the corner of the card.
+                        statePill.hidden()
                     }
                     Text(verbatim: systemLine)
                         .font(.callout)
