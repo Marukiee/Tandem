@@ -597,6 +597,7 @@ Rechts van deze computer. Kiezen doet hetzelfde als het doosje van het apparaat 
 - [ ] **Zonder keuze** staat Rechts gevuld, en een tik op Rechts zet het apparaat er echt neer (het doosje verschijnt rechts).
 - [ ] **Zoek met geluid** (alleen bij een Mac of een telefoon met de nieuwste app): de knop staat naast de pill, en de uitkomst zet de pill om.
 - [ ] **Teksten.** Op Windows staat "deze pc" in de ondertitel, op Linux "deze computer", in Engels en Nederlands.
+
 ## 0.3.32, 2026-11-21 (gezondheidstegels)
 
 - [ ] **Telefoon, pagina van het horloge.** Tik op de tegel met de hartslag (BPM): je komt meteen op Hart, niet op het Gezondheidsoverzicht.
