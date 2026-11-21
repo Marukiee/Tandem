@@ -309,6 +309,7 @@ pub fn run() {
             arrange::arrange_place,
             arrange::arrange_snap,
             arrange::arrange_remove,
+            arrange::arrange_side,
             commands::check_update,
             commands::open_url,
             commands::install_update,
