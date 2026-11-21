@@ -631,7 +631,28 @@ accu zijn daar niet echt, dus de winst zelf is niet gemeten.
 - [ ] **Teksten.** De pagina staat in het Nederlands (Accu-logboek, wekmomenten, scherm, link, scan) en in het Engels (Battery log, wake
   moments), en past op het ronde scherm.
 
-## Mac-ontwerp, 2026-11-21 (PR 31, changelog 0.3.33)
+## 0.3.32, 2026-11-21 (gezondheidstegels, tweede deel)
+
+- [ ] **Telefoon, pagina van het horloge.** Tik op de tegel met de hartslag (BPM): je komt meteen op Hart, niet op het Gezondheidsoverzicht.
+  Idem Slaap voor de nacht en Activiteit voor de stappen. Terug brengt je naar de pagina van het horloge. De kop "Gezondheid" bovenaan
+  de kaart opent nog wel het overzicht. De tegels op de kaart van het startscherm gingen al naar hun eigen pagina.
+- [ ] **Windows en Linux, pagina van het horloge.** Dezelfde drie tegels openen hun eigen deel (Slaap, Activiteit, Hart); de pijl terug
+  gaat naar het horloge, en de kop Gezondheid opent nog het overzicht.
+- [ ] **Hart: nu.** Met het horloge bij de telefoon: open Gezondheid, Hart. Bovenaan staat je hartslag nu met "Now" (NL "Nu") en een
+  kloppend hartje; zonder live waarde (horloge weg) staat er het laatste getal zoals vroeger. Op Windows/Linux hetzelfde als de
+  telefoon bij de computer is, op de Hart-pagina van het horloge.
+- [ ] **Hart op het overzicht.** De kaart Hart op de Gezondheidspagina heeft 0, 6, 12, 18 onder de lijn en een dunne lijn op je
+  gebruikelijke rusthartslag, zoals Slaap de dagen onder de balkjes heeft. Idem op Windows/Linux.
+
+## 0.3.32, 2026-11-21 (speler op een eigen kaart, Android)
+
+- [ ] **Android, pagina van een computer die muziek speelt.** De speler (hoes, titel, balk, knoppen) staat op een eigen kaart direct
+  onder de kaart met naam, versie, pillen en accuring, met dezelfde ruimte als tussen de andere kaarten. Stop de muziek op een
+  telefoon of tablet die alleen een speler toont als er iets speelt: de spelerkaart schuift weg en laat geen lege ruimte achter; start
+  hem weer: hij komt terug met de animatie. Een bereikbare Mac of Windows-pc houdt zijn speler ook als er niets speelt.
+- Linux en Windows hadden al twee kaarten (kop en speler naast elkaar); daar is niets veranderd.
+
+## Mac-ontwerp, 2026-11-21 (PR 31, changelog 0.3.32)
 
 Het nieuwe uiterlijk van de Mac-app. Mark heeft het in de Dev-app met testapparaten bekeken; met echte apparaten nog niet.
 
@@ -648,4 +669,3 @@ Het nieuwe uiterlijk van de Mac-app. Mark heeft het in de Dev-app met testappara
   komt op al je apparaten. Waar het staat: zoeken op geluid, vanzelf controleren, het geluid. Bij een computer "Mag deze Mac gebruiken".
   De schakelaars voor wat het apparaat op deze Mac mag (bestanden, bedienen, vergrendelen, herstarten, wifiwachtwoord) doen wat ze zeggen.
 - [ ] **Horlogepagina.** "Verbonden" is dezelfde rustige pil, niet meer helemaal groen.
-

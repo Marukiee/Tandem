@@ -70,6 +70,16 @@ class MediaMirror(
     private val _local = MutableStateFlow<List<TandemMediaPlayer>>(emptyList())
     val local: StateFlow<List<TandemMediaPlayer>> = _local.asStateFlow()
 
+    /** Something playing on a made-up computer, for the debug demo of its page ([EngineHost.showDemoDevice]). */
+    fun showDemo(deviceId: String) {
+        if (!nl.markmaaktmedia.tandem.BuildConfig.DEBUG) return
+        val player = TandemMediaPlayer(
+            id = "demo", app = "Music", title = "Golden Hour", artist = "Kacey Musgraves", album = "Golden Hour", playing = true,
+            positionMs = 84_000uL, durationMs = 213_000uL, canPrev = true, canNext = true, canSeek = true, art = 0uL,
+        )
+        _remote.update { it + (deviceId to RemotePlayers(listOf(player), SystemClock.elapsedRealtime())) }
+    }
+
     private val _remote = MutableStateFlow<Map<String, RemotePlayers>>(emptyMap())
 
     /** What each Mac plays, by device id. */
