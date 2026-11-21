@@ -586,7 +586,7 @@ emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen
   een Mac (alles), een Linux-pc, een andere telefoon (geen Nudges) en een tablet zonder simkaart (geen Berichten): de vormen kloppen steeds.
 - Windows en Linux hadden dit pad al goed (de klembordcode onthoudt wat ze zelf zetten); daar valt niets nieuws te testen.
 
-## 0.3.30, 2026-11-21 (kant kiezen op Linux en Windows)
+## 0.3.31, 2026-11-21 (kant kiezen en Instellingen onderaan, Linux en Windows)
 
 Wat veranderde: op de pagina van een apparaat in de Linux- en Windows-app staat een rij "Where <naam> stands" met een pill Links of
 Rechts van deze computer. Kiezen doet hetzelfde als het doosje van het apparaat links of rechts in de schermindeling zetten
@@ -597,3 +597,9 @@ Rechts van deze computer. Kiezen doet hetzelfde als het doosje van het apparaat 
 - [ ] **Zonder keuze** staat Rechts gevuld, en een tik op Rechts zet het apparaat er echt neer (het doosje verschijnt rechts).
 - [ ] **Zoek met geluid** (alleen bij een Mac of een telefoon met de nieuwste app): de knop staat naast de pill, en de uitkomst zet de pill om.
 - [ ] **Teksten.** Op Windows staat "deze pc" in de ondertitel, op Linux "deze computer", in Engels en Nederlands.
+
+En Instellingen staat in de zijbalk direct boven Apparaat toevoegen, onder de meldingsbanners (alleen in een browser met `mock.js` bekeken):
+
+- [ ] **Brede zijbalk.** Onderaan staan Instellingen en Apparaat toevoegen in dezelfde stijl; Gedeeld, Berichten, Klembord en Meldingen staan
+  erboven. Instellingen opent nog en is gemarkeerd als hij open is.
+- [ ] **Smalle zijbalk** (venster smal maken): alleen icoon, met de tooltip "Instellingen" en "Apparaat toevoegen". Een update- of scherm-banner schuift Instellingen niet weg.
