@@ -589,7 +589,7 @@ export function WatchPage({ device }) {
     call("set_watch_settings", { id: device.id, ...patch }).catch(failed);
   };
   // Health as a page of its own in the window, with a way back here; in Settings it opened somewhere else entirely.
-  const openHealth = () => set({ page: "health" });
+  const openHealth = (part) => set({ page: "health", healthPart: typeof part === "string" ? part : null });
   const toggle = (icon, key, title, sub) => html`<${SettingRow} icon=${icon} title=${t(title)} sub=${t(sub)} why=${why}>
     <${Switch} on=${shown[key]} label=${t(title)} disabled=${!device.online} onChange=${(on) => change({ [key]: on })} />
   <//>`;
@@ -619,7 +619,7 @@ export function WatchPage({ device }) {
         <span class="grow"><span class="t">${t("tab_health")}</span><span class="s">${t("health_open_sub")}</span></span>
         <${Icon} name="chevron-right" size=${16} />
       </button>
-      <${WatchGlance} i=${insights} records=${state.health} onOpen=${openHealth} goal=${shown && shown.stepGoal} phone=${device.id} live=${reachable} />
+      <${WatchGlance} i=${insights} records=${state.health} onPart=${openHealth} goal=${shown && shown.stepGoal} phone=${device.id} live=${reachable} />
     </div>
 
     <h2>${t("watch")}</h2>
@@ -1647,9 +1647,12 @@ function HealthChoices() {
 /** Health as a page of the main window, opened from the page of the watch: the overview, a page per part, and the settings behind the gear. */
 export function HealthPage() {
   // In a plain browser a part can be asked for by name (`?part=heart`), as `?page=` does for pages.
-  const [part, setPart] = useState(() => (native ? null : new URLSearchParams(location.search).get("part")));
+  // A tile on the page of the watch opens its own part (`healthPart`), and back from it goes to the watch, where the tile was.
+  const [direct] = useState(() => state.healthPart || null);
+  useEffect(() => { if (state.healthPart) set({ healthPart: null }); }, []);
+  const [part, setPart] = useState(() => direct || (native ? null : new URLSearchParams(location.search).get("part")));
   const titles = { sleep: "health_sleep", activity: "health_activity_title", heart: "health_heart_title", settings: "health_settings_title" };
-  const back = () => (part ? setPart(null) : set({ page: "watch" }));
+  const back = () => (part && part !== direct ? setPart(null) : set({ page: "watch" }));
   return html`<div class="wrap">
     <div class="card" style="--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))">
       <div class="head">
@@ -1675,6 +1678,7 @@ function HealthSection({ plain = false, part = null, onOpen = () => {} } = {}) {
   const hasWatch = (state.devices || []).some((d) => d.status?.watch?.paired);
   const records = (state.health || []).filter((r) => r.kind === "sleep" || r.kind === "workout").slice(0, 60);
   const goal = ((state.devices || []).find((d) => d.status?.watch?.settings) || {}).status?.watch?.settings?.stepGoal;
+  const watchDevice = (state.devices || []).find((d) => d.id === state.selected && d.status?.watch?.paired);
   const visible = hasWatch || shown;
   // The page opens on the overview with a page per part; the choices and your data are behind the gear, and they are what Settings
   // shows for Health.
@@ -1689,7 +1693,7 @@ function HealthSection({ plain = false, part = null, onOpen = () => {} } = {}) {
     ${!settings && visible && insights && part == null && html`<${HealthOverview} i=${insights} records=${records} goal=${goal} onOpen=${onOpen} />`}
     ${!settings && visible && insights && part === "sleep" && html`<${SleepDetail} i=${insights} records=${records} />`}
     ${!settings && visible && insights && part === "activity" && html`<${ActivityDetail} i=${insights} records=${records} goal=${goal} />`}
-    ${!settings && visible && insights && part === "heart" && html`<${HeartDetail} i=${insights} />`}
+    ${!settings && visible && insights && part === "heart" && html`<${HeartDetail} i=${insights} phone=${watchDevice && watchDevice.id} live=${!!(watchDevice && watchDevice.online && watchDevice.status?.watch?.online)} />`}
     ${!settings && visible && records.length === 0 && html`<div class="muted">${t("health_empty", ((state.devices || []).find((d) => d.status?.watch?.paired) || {}).name || t("your_phone"))}</div>`}
     ${settings && html`<${HealthChoices} />`}
     ${settings && visible && records.length > 0 && html`<div class="card flush"><${SettingRow} icon="download" title=${t("health_export")} sub=${t("health_export_sub")}>

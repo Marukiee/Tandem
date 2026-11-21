@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.3.31",
+    "date": "2026-11-21",
+    "en": {
+      "title": "Health tiles go straight to their page, and a live heart",
+      "new": [
+        "The Heart page shows the heart rate now when the watch passes it on, with \"Now\" and a beating heart, and the heart card of Health has the hours and the usual resting rate under its line"
+      ],
+      "fixed": [
+        "On the page of the watch, the tiles for the night, the steps and the heart rate open their own page instead of the Health overview"
+      ]
+    },
+    "nl": {
+      "title": "Gezondheidstegels gaan meteen naar hun pagina, en een live hart",
+      "new": [
+        "De Hart-pagina toont de hartslag nu als het horloge die doorgeeft, met \"Nu\" en een kloppend hartje, en de hartkaart van Gezondheid heeft de uren en je gebruikelijke rusthartslag onder de lijn"
+      ],
+      "fixed": [
+        "Op de pagina van het horloge openen de tegels voor de nacht, de stappen en de hartslag hun eigen pagina in plaats van het Gezondheidsoverzicht"
+      ]
+    }
+  },
+  {
     "version": "0.3.28",
     "date": "2026-11-18",
     "en": {

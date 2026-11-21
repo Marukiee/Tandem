@@ -578,6 +578,47 @@ internal fun ActivityToday(insights: TandemHealthInsights?) {
     }
 }
 
+/** A heart that beats: two quick swells and a rest, about once a second. 1 while it should be still. */
+@Composable
+internal fun rememberHeartBeat(on: Boolean): Float {
+    if (!on) return 1f
+    val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "heartBeat")
+    return pulse.animateFloat(
+        1f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.keyframes {
+                durationMillis = 1000
+                1.18f at 120
+                1f at 240
+                1.12f at 360
+                1f at 520
+            },
+        ),
+        label = "heartScale",
+    ).value
+}
+
+/** Asks the watch for the heart rate now for as long as this is on screen and the watch is here; asked again every half minute, as the watch stops by itself. */
+@Composable
+internal fun LiveHeartWhileShown() {
+    val graph = LocalContext.current.graph
+    val watch by graph.watch.state.collectAsState()
+    if (!watch.ready) return
+    val lifecycle = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            try {
+                while (true) {
+                    graph.watch.liveHeart(nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE, true)
+                    kotlinx.coroutines.delay(30_000)
+                }
+            } finally {
+                graph.watch.liveHeart(nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE, false)
+            }
+        }
+    }
+}
+
 /** The heart rate of today, to slide over and zoom into; on a computer the last whole day, because only the phone hears the watch during it. */
 @Composable
 internal fun HeartToday(insights: TandemHealthInsights?) {
@@ -585,13 +626,18 @@ internal fun HeartToday(insights: TandemHealthInsights?) {
     val watch by context.graph.watch.state.collectAsState()
     val todayHeart = watch.heartToday.takeIf { curve -> curve.any { it > 0 } }
     val lastDay = insights?.latestDayHeart
-    if (todayHeart == null && lastDay == null) return
+    // While the watch says the heart rate now, that is what the card shows, with "Now" next to it.
+    val now = watch.heartNow
+    LiveHeartWhileShown()
+    if (todayHeart == null && lastDay == null && now == null) return
     SectionHeader(stringResource(R.string.health_today), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
         if (todayHeart != null) {
-            HeartCard(0, 1, stringResource(R.string.health_heart_today), todayHeart)
+            HeartCard(0, 1, stringResource(R.string.health_heart_today), todayHeart, now)
         } else if (lastDay != null) {
-            HeartCard(0, 1, stringResource(R.string.health_heart_on_day, dayName(context, lastDay.startMs.toLong())), lastDay.curve.map { it.toInt() })
+            HeartCard(0, 1, stringResource(R.string.health_heart_on_day, dayName(context, lastDay.startMs.toLong())), lastDay.curve.map { it.toInt() }, now)
+        } else {
+            HeartCard(0, 1, stringResource(R.string.health_heart_today), emptyList(), now)
         }
     }
 }
@@ -606,17 +652,36 @@ internal fun Naps(insights: TandemHealthInsights?) {
 }
 
 @Composable
-private fun HeartCard(index: Int, total: Int, title: String, curve: List<Int>) {
+private fun HeartCard(index: Int, total: Int, title: String, curve: List<Int>, now: Int?) {
     val measured = curve.filter { it > 0 }
     HealthCard(index, total) {
         CardTitle(title, stringResource(R.string.health_more_heart), Modifier.padding(bottom = 6.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            BigNumber(stringResource(R.string.health_resting_line, measured.last()))
-            Text(
-                stringResource(R.string.health_heart_range, measured.min(), measured.max()),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
+            if (now != null) {
+                // Live: the number now with a heart that beats, and "Now" over the range so it cannot be taken for the last measurement.
+                val beat = rememberHeartBeat(true)
+                Icon(
+                    TandemIcons.Heart, null, tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp).padding(bottom = 6.dp).graphicsLayer { scaleX = beat; scaleY = beat },
+                )
+                BigNumber(stringResource(R.string.health_resting_line, now))
+                Column(Modifier.padding(bottom = 6.dp)) {
+                    Text(stringResource(R.string.watch_glance_now), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    if (measured.isNotEmpty()) {
+                        Text(
+                            stringResource(R.string.health_heart_range, measured.min(), measured.max()),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else {
+                BigNumber(stringResource(R.string.health_resting_line, measured.last()))
+                Text(
+                    stringResource(R.string.health_heart_range, measured.min(), measured.max()),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
         }
         DayHeartLine(curve, title, Modifier.fillMaxWidth().padding(top = 12.dp))
     }
@@ -1011,7 +1076,7 @@ private fun StepGoalRow(index: Int, total: Int) {
  * It was a row near the bottom called after only a part of it, which was easy to miss.
  */
 @Composable
-internal fun WatchHealthCard(onOpen: () -> Unit) {
+internal fun WatchHealthCard(onOpen: () -> Unit, onPart: (String) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer)) {
         Row(
@@ -1028,16 +1093,16 @@ internal fun WatchHealthCard(onOpen: () -> Unit) {
             }
             Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant)
         }
-        WatchGlance(onOpen, Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp))
+        WatchGlance(onPart, Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp))
     }
 }
 
 /**
  * What the watch measured last, as three numbers: the night, today's steps as the watch counts them, and the resting heart rate. A tap
- * opens the health page. Nothing while there is nothing to show.
+ * opens that part of Health (the nights, the activity or the heart). Nothing while there is nothing to show.
  */
 @Composable
-internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
+internal fun WatchGlance(onPart: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val graph = context.graph
     val records by graph.host.healthRecords.collectAsState()
@@ -1047,23 +1112,9 @@ internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val score = insights?.latestNight?.takeIf { it.id == night?.id }?.score
     val resting = insights?.resting
     val steps = watch.stepsToday.takeIf { watch.paired }
-    // The heart rate now, while these tiles are on screen and the watch is here. Asked again every half minute: the watch stops by itself.
+    // The heart rate now, while these tiles are on screen and the watch is here.
     val now = watch.heartNow.takeIf { watch.ready }
-    if (watch.ready) {
-        val lifecycle = LocalLifecycleOwner.current
-        LaunchedEffect(lifecycle) {
-            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-                try {
-                    while (true) {
-                        graph.watch.liveHeart(nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE, true)
-                        kotlinx.coroutines.delay(30_000)
-                    }
-                } finally {
-                    graph.watch.liveHeart(nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE, false)
-                }
-            }
-        }
-    }
+    LiveHeartWhileShown()
     if (night == null && steps == null && resting == null && now == null) return
     // Three tiles of their own, each in its own colour of the theme, so the eye finds each number by its colour as well as its place.
     // All as tall as the tallest, so a caption on two lines does not make one stick out.
@@ -1073,13 +1124,13 @@ internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
             Glance(
                 TandemIcons.Sleep, stringResource(R.string.watch_glance_night), duration(night.sleepMinutes.toInt()),
                 score?.let { stringResource(R.string.watch_glance_score, it.toInt()) } ?: dayName(context, night.endMs.toLong()),
-                scheme.secondaryContainer, scheme.onSecondaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(),
+                scheme.secondaryContainer, scheme.onSecondaryContainer, { onPart("sleep") }, Modifier.weight(1f).fillMaxHeight(),
             )
         }
         if (steps != null) {
             Glance(
                 TandemIcons.Steps, stringResource(R.string.health_steps_title), number(steps), stringResource(R.string.health_today),
-                scheme.primaryContainer, scheme.onPrimaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(),
+                scheme.primaryContainer, scheme.onPrimaryContainer, { onPart("activity") }, Modifier.weight(1f).fillMaxHeight(),
             )
         }
         if (now != null) {
@@ -1087,14 +1138,14 @@ internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
             Glance(
                 TandemIcons.Heart, stringResource(R.string.watch_glance_now), stringResource(R.string.health_resting_line, now),
                 resting?.let { stringResource(R.string.watch_glance_resting_value, it.latest.toInt()) } ?: stringResource(R.string.watch_glance_live),
-                scheme.tertiaryContainer, scheme.onTertiaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(), beating = true,
+                scheme.tertiaryContainer, scheme.onTertiaryContainer, { onPart("heart") }, Modifier.weight(1f).fillMaxHeight(), beating = true,
             )
         } else if (resting != null) {
             Glance(
                 TandemIcons.Heart, stringResource(R.string.watch_glance_resting), stringResource(R.string.health_resting_line, resting.latest.toInt()),
                 resting.usual?.let { stringResource(R.string.health_usually, it.toInt()) }
                     ?: pluralStringResource(R.plurals.watch_glance_nights_left, resting.nightsNeeded.toInt(), resting.nightsNeeded.toInt()),
-                scheme.tertiaryContainer, scheme.onTertiaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(),
+                scheme.tertiaryContainer, scheme.onTertiaryContainer, { onPart("heart") }, Modifier.weight(1f).fillMaxHeight(),
             )
         }
     }
@@ -1118,22 +1169,7 @@ private fun Glance(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // A live number beats: two quick swells and a rest, about once a second.
-        val beat = if (beating) {
-            val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "heartBeat")
-            pulse.animateFloat(
-                1f, 1f,
-                androidx.compose.animation.core.infiniteRepeatable(
-                    androidx.compose.animation.core.keyframes {
-                        durationMillis = 1000
-                        1.18f at 120
-                        1f at 240
-                        1.12f at 360
-                        1f at 520
-                    },
-                ),
-                label = "heartScale",
-            ).value
-        } else 1f
+        val beat = rememberHeartBeat(beating)
         Box(Modifier.size(34.dp).clip(CircleShape).background(content.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = content, modifier = Modifier.size(20.dp).graphicsLayer { scaleX = beat; scaleY = beat })
         }

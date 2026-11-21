@@ -249,7 +249,7 @@ class WatchBridge(
         _state.update {
             it.copy(
                 paired = true, name = it.name ?: "Pixel Watch", batteryLevel = it.batteryLevel ?: 76, stepsToday = byHour.sum().toLong(),
-                activeMinutesToday = 21, stepsByHour = byHour + List(24 - byHour.size) { 0 },
+                activeMinutesToday = 21, stepsByHour = byHour + List(24 - byHour.size) { 0 }, heartNow = 72,
             )
         }
     }

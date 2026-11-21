@@ -571,3 +571,16 @@ emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen
   Sluit Tandem op de Mac en open hem weer: nu komt de hoes wel opnieuw.
 - [ ] **Een computer die dagen uit staat** (de Linux-laptop) wordt op mobiele data niet meer elke 5 tot 10 minuten gebeld. Zet de telefoon
   op wifi: hij probeert hem weer zoals vroeger.
+
+## 0.3.31, 2026-11-21 (gezondheidstegels)
+
+- [ ] **Telefoon, pagina van het horloge.** Tik op de tegel met de hartslag (BPM): je komt meteen op Hart, niet op het Gezondheidsoverzicht.
+  Idem Slaap voor de nacht en Activiteit voor de stappen. Terug brengt je naar de pagina van het horloge. De kop "Gezondheid" bovenaan
+  de kaart opent nog wel het overzicht. De tegels op de kaart van het startscherm gingen al naar hun eigen pagina.
+- [ ] **Windows en Linux, pagina van het horloge.** Dezelfde drie tegels openen hun eigen deel (Slaap, Activiteit, Hart); de pijl terug
+  gaat naar het horloge, en de kop Gezondheid opent nog het overzicht.
+- [ ] **Hart: nu.** Met het horloge bij de telefoon: open Gezondheid, Hart. Bovenaan staat je hartslag nu met "Now" (NL "Nu") en een
+  kloppend hartje; zonder live waarde (horloge weg) staat er het laatste getal zoals vroeger. Op Windows/Linux hetzelfde als de
+  telefoon bij de computer is, op de Hart-pagina van het horloge.
+- [ ] **Hart op het overzicht.** De kaart Hart op de Gezondheidspagina heeft 0, 6, 12, 18 onder de lijn en een dunne lijn op je
+  gebruikelijke rusthartslag, zoals Slaap de dagen onder de balkjes heeft. Idem op Windows/Linux.
