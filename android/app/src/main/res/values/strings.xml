@@ -633,7 +633,7 @@
     <string name="watch_glance_resting">Resting</string>
     <string name="watch_glance_now">Now</string>
     <string name="watch_glance_resting_value">Resting %1$d</string>
-    <string name="watch_glance_live">Live from your watch</string>
+    <string name="watch_glance_live">From your watch</string>
     <plurals name="watch_glance_nights_left">
         <item quantity="one">%d more night</item>
         <item quantity="other">%d more nights</item>

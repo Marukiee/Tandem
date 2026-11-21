@@ -768,6 +768,8 @@ button.health-title:not(:disabled) { cursor: pointer; }
    a card was empty. */
 .health-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .health-part-picture { margin-top: auto; }
+.spark-hours { display: flex; justify-content: space-between; margin-top: 6px; }
+.health-now { color: var(--accent); font-weight: 600; }
 .health-part-picture .health-goal { width: 100%; }
 .health-week-chart { flex: 1 1 196px; max-width: 420px; min-width: 196px; }
 .health-bars { display: flex; align-items: flex-end; height: 76px; }

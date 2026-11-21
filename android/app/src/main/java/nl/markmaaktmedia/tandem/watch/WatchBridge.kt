@@ -107,6 +107,12 @@ internal fun watchRestAfter(failures: Int): Long = when {
 /** This phone's own screen, among the computers that ask for the heart rate now ([WatchBridge.liveHeart]). */
 const val LIVE_HEART_HERE = "here"
 
+/**
+ * Every screen of this phone asks under a key of its own (`here:glance`, `here:heart`): when one page replaces another, the old one
+ * lets go after the new one asked, and under one shared key that would stop the live heart rate the new page waits for.
+ */
+fun isLocalHeartAsker(who: String) = who.startsWith(LIVE_HEART_HERE)
+
 /** Which computer the watch steers, and whether with the hand on a table. */
 data class WatchMouseNow(val target: String, val table: Boolean)
 
@@ -249,7 +255,7 @@ class WatchBridge(
         _state.update {
             it.copy(
                 paired = true, name = it.name ?: "Pixel Watch", batteryLevel = it.batteryLevel ?: 76, stepsToday = byHour.sum().toLong(),
-                activeMinutesToday = 21, stepsByHour = byHour + List(24 - byHour.size) { 0 },
+                activeMinutesToday = 21, stepsByHour = byHour + List(24 - byHour.size) { 0 }, heartNow = 72,
             )
         }
     }
@@ -452,7 +458,7 @@ class WatchBridge(
 
     /** The heart rate now to each computer that asked for it, and only to those. */
     private fun forwardHeart(bpm: Int) {
-        val computers = heartAskers.keys.filter { it != LIVE_HEART_HERE }
+        val computers = heartAskers.keys.filter { !isLocalHeartAsker(it) }
         val engine = host.engine ?: return
         if (computers.isEmpty()) return
         scope.launch(Dispatchers.IO) {

@@ -144,7 +144,7 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
         }
 
         // What the watch measures is what most people open its page for, so the way to all of it is a card of its own near the top.
-        WatchHealthCard { onOpen(Route.SettingsPage(SettingsPageId.Health)) }
+        WatchHealthCard({ onOpen(Route.SettingsPage(SettingsPageId.Health)) }, { onOpen(Route.HealthDetail(it)) })
 
         SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
