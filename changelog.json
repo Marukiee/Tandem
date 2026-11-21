@@ -1,5 +1,33 @@
 [
   {
+    "version": "0.3.33",
+    "date": "2026-11-21",
+    "en": {
+      "title": "A new look on the Mac",
+      "new": [
+        "The page of a device has a calmer head with tiles for battery, network and sound or free space, and the player beside it",
+        "Settings for this device: its name for every device, where it stands, and what it may do on this Mac",
+        "Where a device stands is a clear choice of left or right of this Mac"
+      ],
+      "fixed": [
+        "Plainer icons for phones, an Xperia and a PC",
+        "Every page rises into place, the top one too"
+      ]
+    },
+    "nl": {
+      "title": "Een nieuw uiterlijk op de Mac",
+      "new": [
+        "De pagina van een apparaat heeft een rustigere kop met tegels voor accu, netwerk en geluid of vrije ruimte, en de speler ernaast",
+        "Instellingen voor dit apparaat: de naam voor elk apparaat, waar het staat, en wat het op deze Mac mag",
+        "Waar een apparaat staat is een duidelijke keuze tussen links of rechts van deze Mac"
+      ],
+      "fixed": [
+        "Eenvoudiger iconen voor telefoons, een Xperia en een pc",
+        "Elke pagina schuift soepel in beeld, ook de bovenste"
+      ]
+    }
+  },
+  {
     "version": "0.3.32",
     "date": "2026-11-21",
     "en": {
