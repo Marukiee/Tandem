@@ -56,12 +56,7 @@ struct WatchDetail: View {
                         if !reachable, phone.online, watch?.bluetoothOff == true {
                             Chip(symbol: "antenna.radiowaves.left.and.right.slash", text: "Bluetooth off on \(phone.name)", tint: .orange, strong: true)
                         } else {
-                            Chip(
-                                symbol: reachable ? "checkmark.circle.fill" : "xmark.circle",
-                                text: reachable ? "Connected" : "Watch away",
-                                tint: reachable ? .green : .secondary,
-                                strong: reachable
-                            )
+                            StatePill(there: reachable, text: reachable ? "Connected" : "Watch away")
                         }
                         if reachable, watch?.sleeping == true {
                             Chip(symbol: "bed.double.fill", text: "Recording your sleep", tint: Palette.indigo)

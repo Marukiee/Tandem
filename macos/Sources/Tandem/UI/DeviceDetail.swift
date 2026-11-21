@@ -151,20 +151,8 @@ struct DeviceDetail: View {
     /// That it is there, at the top right of the head: a tick or a dashed round and the word, on a faint pill. How quick it
     /// answers is in its help, as it matters only when something is slow.
     private var statePill: some View {
-        HStack(spacing: 5) {
-            Image(systemName: reach.reachable ? "checkmark.circle.fill" : "circle.dashed")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(reach.reachable ? Color.green : Color.secondary)
-            Text(reach.text)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 4)
-        .background(Color.primary.opacity(0.06), in: .capsule)
-        .fixedSize()
-        .help(device.online ? device.rttMs.map { String(localized: "Answers in \($0) ms") } ?? "" : "")
+        StatePill(there: reach.reachable, text: reach.text)
+            .help(device.online ? device.rttMs.map { String(localized: "Answers in \($0) ms") } ?? "" : "")
     }
 
     /// The head of the page: the device, its name, what it runs on and that it is there, and under them tiles with what there is
@@ -618,6 +606,29 @@ private struct HeadPill: View {
                     .foregroundStyle(symbolTint ?? Color.secondary)
             }
             text.font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(Color.primary.opacity(0.06), in: .capsule)
+        .fixedSize()
+    }
+}
+
+/// Whether a device is there, as the head of its page says it: a tick or a dashed round and the word, on a faint pill. Quiet on
+/// purpose; the same on the page of a device and of a watch.
+struct StatePill: View {
+    let there: Bool
+    let text: LocalizedStringKey
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: there ? "checkmark.circle.fill" : "circle.dashed")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(there ? Color.green : Color.secondary)
+            Text(text)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 4)
