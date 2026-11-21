@@ -3,16 +3,18 @@
     "version": "0.3.31",
     "date": "2026-11-21",
     "en": {
-      "title": "Settings at the foot of the sidebar",
+      "title": "Left or right, Settings at the foot, on Linux and Windows",
       "new": [
-        "On Linux and Windows, Settings moved down next to Add a device, so the top of the sidebar is only about content"
+        "A device page has a Left or Right choice for where the device stands, the same as dragging it in the screen layout",
+        "Settings moved down next to Add a device, so the top of the sidebar is only about content"
       ],
       "fixed": []
     },
     "nl": {
-      "title": "Instellingen onderaan de zijbalk",
+      "title": "Links of rechts, Instellingen onderaan, op Linux en Windows",
       "new": [
-        "Op Linux en Windows staat Instellingen nu onderaan bij Apparaat toevoegen, zodat de bovenkant van de zijbalk alleen over inhoud gaat"
+        "Op de pagina van een apparaat kies je Links of Rechts voor waar het staat, hetzelfde als het slepen in de schermindeling",
+        "Instellingen staat onderaan bij Apparaat toevoegen, zodat de bovenkant van de zijbalk alleen over inhoud gaat"
       ],
       "fixed": []
     }

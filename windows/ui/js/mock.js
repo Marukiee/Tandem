@@ -33,7 +33,7 @@ const devices = empty ? [] : [
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false,
       watch: { paired: true, online: true, level: 62, charging: false, ringing: false, name: "Pixel Watch", sleeping: false, settings: { mouse: true, sleepQuiet: true, smartWake: true, heartAllDay: true, stepGoal: 8000 } } } },
-  { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view", "audio.play"],
+  { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view", "audio.play", "side.listen"],
     features: [
       { id: "control", ready: false, name: "Control this Mac", why: "Accessibility is off for Tandem on this Mac", page: "accessibility" },
       { id: "screen", ready: true, name: "See this Mac's screen", why: "", page: null },
@@ -419,6 +419,8 @@ export async function call(command, args) {
       if (p) layout.push({ id: args.id, ...p });
       return arrangement();
     }
+    case "arrange_side": layout = layout.filter((s) => s.id !== args.id); layout.push({ id: args.id, edge: args.edge, offset: 100 }); return arrangement();
+    case "side_find": return "left";
     case "arrange_remove": layout = layout.filter((s) => s.id !== args.id); return arrangement();
     case "media_policy": case "media_policy_set": return { screen: "ask", control: "ask" };
     case "ssh_probe": return args.id === "mac" ? "192.168.1.20" : null;
