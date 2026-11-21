@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.3.32",
+    "date": "2026-11-21",
+    "en": {
+      "title": "A battery log on the watch",
+      "new": [
+        "The watch has a Battery log in its settings: per hour what Tandem did and what the battery lost, so a day on the wrist shows where it went"
+      ],
+      "fixed": [
+        "A phone that has been gone for a long time is looked for a fifth of the time instead of all the time",
+        "The Bluetooth link of a resting watch takes less power and speeds up again for messages or when the screen is on"
+      ]
+    },
+    "nl": {
+      "title": "Een accu-logboek op het horloge",
+      "new": [
+        "Het horloge heeft een Accu-logboek in de instellingen: per uur wat Tandem deed en wat de accu verloor, zodat een dag om de pols laat zien waar het bleef"
+      ],
+      "fixed": [
+        "Een telefoon die lang weg is wordt een vijfde van de tijd gezocht in plaats van de hele tijd",
+        "De Bluetooth-verbinding van een horloge in rust kost minder stroom en gaat weer sneller bij berichten of als het scherm aan gaat"
+      ]
+    }
+  },
+  {
     "version": "0.3.31",
     "date": "2026-11-21",
     "en": {
