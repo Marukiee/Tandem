@@ -1,5 +1,6 @@
 package nl.markmaaktmedia.tandem.quickshare
 
+import nl.markmaaktmedia.tandem.graph
 import android.app.Application
 import android.content.Context
 import android.net.Uri
@@ -293,6 +294,7 @@ class QuickShareHost(
                     runCatching {
                         val clipboard = app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Quick Share", last.text))
+                        app.graph.host.noteRemoteClip(last.text)
                     }
                 }
             }

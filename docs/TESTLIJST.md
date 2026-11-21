@@ -572,7 +572,32 @@ emulator met het verkeerslog (tellingen, geen mA, geen echte mobiele radio, geen
 - [ ] **Een computer die dagen uit staat** (de Linux-laptop) wordt op mobiele data niet meer elke 5 tot 10 minuten gebeld. Zet de telefoon
   op wifi: hij probeert hem weer zoals vroeger.
 
-## 0.3.31, 2026-11-21 (gezondheidstegels)
+## 0.3.29, 2026-11-21 (klembord dat terugkwam, voorkeuren in een groep)
+
+- [ ] **Screenshot naar de Mac.** Maak een screenshot op de telefoon en deel hem via Tandem naar de Mac met "foto op het klembord" aan.
+  De foto staat op het klembord van de Mac, en de telefoon krijgt hem niet opnieuw als klembord binnen (geen tweede melding, geen
+  nieuwe foto in de klembordmap). Een eigen copy op de Mac daarna gaat wel gewoon naar de telefoon.
+- [ ] **Tekst via Quick Share of "invoegen vanaf telefoon".** Stuur tekst met Quick Share naar de Mac of voeg een foto van de telefoon
+  in: niets daarvan komt terug naar de telefoon.
+- [ ] **Telefoon met Shizuku-klembord.** Tekst die van de Mac over de aanwijzer of via Quick Share op de telefoon op het klembord komt,
+  gaat niet terug naar de Mac.
+- [ ] **Voorkeuren van een apparaat (telefoon, Instellingen voor dit apparaat).** Klembord, Meldingen, Bestanden automatisch en, als
+  ze er zijn, Berichten, Slaap en trainingen en Nudges staan in een groep, met afgeronde buitenkant en kleine hoeken ertussen. Bekijk
+  een Mac (alles), een Linux-pc, een andere telefoon (geen Nudges) en een tablet zonder simkaart (geen Berichten): de vormen kloppen steeds.
+- Windows en Linux hadden dit pad al goed (de klembordcode onthoudt wat ze zelf zetten); daar valt niets nieuws te testen.
+
+## 0.3.30, 2026-11-21 (kant kiezen op Linux en Windows)
+
+Wat veranderde: op de pagina van een apparaat in de Linux- en Windows-app staat een rij "Where <naam> stands" met een pill Links of
+Rechts van deze computer. Kiezen doet hetzelfde als het doosje van het apparaat links of rechts in de schermindeling zetten
+(`arrange_side` roept `arrange::put` aan). Alleen in een browser met `mock.js` bekeken en met `check-linux.sh`, niet op echte toestellen.
+
+- [ ] **Kant kiezen.** Open de pagina van een telefoon en van een computer: de rij staat bovenaan Instellingen. Kies Links: in Instellingen
+  onder Muis springt het doosje van het apparaat naar links, en omgekeerd. Sleep het doosje daar naar rechts: de pill volgt.
+- [ ] **Zonder keuze** staat Rechts gevuld, en een tik op Rechts zet het apparaat er echt neer (het doosje verschijnt rechts).
+- [ ] **Zoek met geluid** (alleen bij een Mac of een telefoon met de nieuwste app): de knop staat naast de pill, en de uitkomst zet de pill om.
+- [ ] **Teksten.** Op Windows staat "deze pc" in de ondertitel, op Linux "deze computer", in Engels en Nederlands.
+## 0.3.32, 2026-11-21 (gezondheidstegels)
 
 - [ ] **Telefoon, pagina van het horloge.** Tik op de tegel met de hartslag (BPM): je komt meteen op Hart, niet op het Gezondheidsoverzicht.
   Idem Slaap voor de nacht en Activiteit voor de stappen. Terug brengt je naar de pagina van het horloge. De kop "Gezondheid" bovenaan

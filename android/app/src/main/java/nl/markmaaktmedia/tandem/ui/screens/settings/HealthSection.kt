@@ -1206,24 +1206,26 @@ internal fun duration(minutes: Int): String =
     if (minutes >= 60) stringResource(R.string.health_duration_hm, minutes / 60, minutes % 60)
     else stringResource(R.string.health_duration_m, minutes)
 
+/** Whether the sleep row is shown: a computer or other non-phone device with the capability, on a phone that has any to give. */
+@Composable
+internal fun healthDeviceShown(device: TandemDevice): Boolean =
+    "health" in device.caps && !device.isPhone() && rememberHealthAvailable()
+
 /**
  * Whether [device] gets the nights and workouts: off until the person says so, because how someone slept is not for every computer
  * in a circle. Only shown on a phone that has any to give, and not for another phone, which always gets them.
  */
 @Composable
-internal fun HealthDeviceSection(device: TandemDevice) {
+internal fun HealthDeviceRow(device: TandemDevice, index: Int, count: Int) {
     val graph = LocalContext.current.graph
-    if ("health" !in device.caps || device.isPhone() || !rememberHealthAvailable()) return
     val engine = graph.host.engine
     val scope = rememberCoroutineScope()
     var allowed by remember(device.id) { mutableStateOf(engine?.healthAllowed(device.id) ?: false) }
-    SettingsGroup {
-        SwitchRow(
-            0, 1, TandemIcons.Sleep, stringResource(R.string.health_share), stringResource(R.string.health_share_sub), allowed,
-            { on ->
-                allowed = on
-                scope.launch { runCatching { engine?.setHealthAllowed(device.id, on) } }
-            },
-        )
-    }
+    SwitchRow(
+        index, count, TandemIcons.Sleep, stringResource(R.string.health_share), stringResource(R.string.health_share_sub), allowed,
+        { on ->
+            allowed = on
+            scope.launch { runCatching { engine?.setHealthAllowed(device.id, on) } }
+        },
+    )
 }

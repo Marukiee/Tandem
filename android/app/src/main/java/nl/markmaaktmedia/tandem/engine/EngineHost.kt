@@ -428,6 +428,11 @@ class EngineHost(
         nl.markmaaktmedia.tandem.share.ClipboardPictures.movedOn()
     }
 
+    /** Text from another device that was put on the clipboard somewhere else in the app: the Shizuku watcher must not send it back. */
+    fun noteRemoteClip(text: String) {
+        lastRemoteClip = text
+    }
+
     /** The text we just wrote to the clipboard ourselves, so we do not send it back. */
     @Volatile
     var lastRemoteClip: String? = null

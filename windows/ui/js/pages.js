@@ -293,6 +293,53 @@ function SettingRow({ icon, title, sub, on, onChange, children, disabled, why, g
   </div>`;
 }
 
+/** On which side of this computer a device stands: left or right, as the desk seen from the front. It is the same as putting the box of
+ *  the device left or right of this screen in the arrangement, and "Find by sound" fills it in for a device that can listen. */
+function SideRow({ device }) {
+  const [view, setView] = useState(null);
+  const [finding, setFinding] = useState(false);
+  useEffect(() => {
+    let off;
+    const load = () => call("arrange_state").then(setView).catch(() => {});
+    load();
+    listen("arrangement", setView).then((f) => { off = f; });
+    return () => { if (off) off(); };
+  }, [device.id]);
+  const mine = view && view.devices.find((d) => d.id === device.id);
+  const edge = mine && mine.placed ? mine.placed.edge : null;
+  // Nothing chosen yet counts as right, as a second screen and the shared mouse take it. Above or below is neither.
+  const side = edge === null ? "right" : edge;
+  const pick = (name) => call("arrange_side", { id: device.id, edge: name }).then(setView).catch(failed);
+  const find = () => {
+    setFinding(true);
+    call("side_find", { id: device.id, audible: false })
+      .then((found) => {
+        if (found.startsWith("quiet-")) { say(t("side_quiet_missed", device.name)); return; }
+        say(t(found === "left" ? "side_left" : found === "right" ? "side_right" : found === "unsure" ? "side_unsure" : found === "not-listening" ? "side_not_listening" : "side_not_heard", device.name));
+      })
+      .catch(failed)
+      .finally(() => setFinding(false));
+  };
+  const option = (name) => {
+    const on = side === name;
+    const glyph = html`<${Icon} name=${platformIcon(device.platform)} size=${16} />`;
+    const word = html`<span>${t(name === "left" ? "side_left_word" : "side_right_word")}</span>`;
+    return html`<button type="button" class=${on ? "on" : ""} aria-pressed=${on} title=${t(name === "left" ? "side_put_left" : "side_put_right")}
+      onClick=${() => { if (!on || edge === null) pick(name); }}>${name === "left" ? html`${glyph}${word}` : html`${word}${glyph}`}</button>`;
+  };
+  return html`<${SettingRow} icon="devices" title=${t("side_where", device.name)} sub=${t("side_where_sub")}>
+    <div class="side-row-end">
+      ${hasListen(device) && html`<button class="btn small" disabled=${!device.online || finding} onClick=${find}>${finding ? t("side_listening") : t("side_find")}</button>`}
+      <div class="side-pick" role="group" aria-label=${t("side_where", device.name)}>
+        ${option("left")}
+        <${Icon} name=${state.hasLid ? "device-laptop" : "device-desktop"} size=${17} />
+        ${option("right")}
+      </div>
+    </div>
+  <//>`;
+}
+const hasListen = (device) => Array.isArray(device.caps) && device.caps.includes("side.listen");
+
 /** Why this system will not let Tandem drive the pointer and keyboard, in words, or nothing when it does. */
 function inputWhy() {
   const input = state.input;
@@ -541,6 +588,7 @@ export function DevicePage({ device }) {
 
     <h2>${t("settings")}</h2>
     <div class="card flush">
+      ${(isComputer || device.platform === "android") && html`<${SideRow} device=${device} />`}
       <${SettingRow} icon="clipboard" title=${t("sync_clipboard")} sub=${t("sync_clipboard_sub")} on=${device.clipboard} onChange=${(v) => setting({ clipboard: v })} />
       <${SettingRow} icon="bell" title=${t("show_its_notifications")} sub=${t("show_its_notifications_sub")} on=${device.notifications} onChange=${(v) => setting({ notifications: v })} />
       ${hasCap("screen.view") && html`<${ScreenPolicyRows} device=${device} />`}

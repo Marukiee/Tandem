@@ -1,6 +1,6 @@
 [
   {
-    "version": "0.3.31",
+    "version": "0.3.32",
     "date": "2026-11-21",
     "en": {
       "title": "Health tiles go straight to their page, and a live heart",
@@ -18,6 +18,40 @@
       ],
       "fixed": [
         "Op de pagina van het horloge openen de tegels voor de nacht, de stappen en de hartslag hun eigen pagina in plaats van het Gezondheidsoverzicht"
+    "version": "0.3.30",
+    "date": "2026-11-21",
+    "en": {
+      "title": "Left or right, on Linux and Windows too",
+      "new": [
+        "A device page has a Left or Right choice for where the device stands, the same as dragging it in the screen layout"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Links of rechts, ook op Linux en Windows",
+      "new": [
+        "Op de pagina van een apparaat kies je Links of Rechts voor waar het staat, hetzelfde als het slepen in de schermindeling"
+      ],
+      "fixed": []
+    }
+  },
+  {
+    "version": "0.3.29",
+    "date": "2026-11-21",
+    "en": {
+      "title": "No more echo, one group",
+      "new": [],
+      "fixed": [
+        "A picture or text that a device sent to the Mac no longer comes back to that device as a new clipboard",
+        "On the phone, all the preferences of a device are in one group again"
+      ]
+    },
+    "nl": {
+      "title": "Geen echo meer, een groep",
+      "new": [],
+      "fixed": [
+        "Een foto of tekst die een apparaat naar de Mac stuurt, komt niet meer als nieuw klembord bij dat apparaat terug",
+        "Op de telefoon staan alle voorkeuren van een apparaat weer in een groep"
       ]
     }
   },
