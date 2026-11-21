@@ -630,3 +630,16 @@ accu zijn daar niet echt, dus de winst zelf is niet gemeten.
   regel per uur (en `adb logcat -s TandemWatchPower` dezelfde regel). Bestanden ouder dan 14 dagen verdwijnen.
 - [ ] **Teksten.** De pagina staat in het Nederlands (Accu-logboek, wekmomenten, scherm, link, scan) en in het Engels (Battery log, wake
   moments), en past op het ronde scherm.
+
+## 0.3.32, 2026-11-21 (gezondheidstegels, tweede deel)
+
+- [ ] **Telefoon, pagina van het horloge.** Tik op de tegel met de hartslag (BPM): je komt meteen op Hart, niet op het Gezondheidsoverzicht.
+  Idem Slaap voor de nacht en Activiteit voor de stappen. Terug brengt je naar de pagina van het horloge. De kop "Gezondheid" bovenaan
+  de kaart opent nog wel het overzicht. De tegels op de kaart van het startscherm gingen al naar hun eigen pagina.
+- [ ] **Windows en Linux, pagina van het horloge.** Dezelfde drie tegels openen hun eigen deel (Slaap, Activiteit, Hart); de pijl terug
+  gaat naar het horloge, en de kop Gezondheid opent nog het overzicht.
+- [ ] **Hart: nu.** Met het horloge bij de telefoon: open Gezondheid, Hart. Bovenaan staat je hartslag nu met "Now" (NL "Nu") en een
+  kloppend hartje; zonder live waarde (horloge weg) staat er het laatste getal zoals vroeger. Op Windows/Linux hetzelfde als de
+  telefoon bij de computer is, op de Hart-pagina van het horloge.
+- [ ] **Hart op het overzicht.** De kaart Hart op de Gezondheidspagina heeft 0, 6, 12, 18 onder de lijn en een dunne lijn op je
+  gebruikelijke rusthartslag, zoals Slaap de dagen onder de balkjes heeft. Idem op Windows/Linux.
