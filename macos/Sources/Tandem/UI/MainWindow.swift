@@ -6,11 +6,11 @@ extension AnyTransition {
     /// A page that is not one of the rows of the sidebar (the start, an error): a plain fade.
     static var page: AnyTransition { .opacity }
 
-    /// How a page arrives when another row of the sidebar is chosen: whole, in a short fade with a small shift, from below when
-    /// its row is further down and from above when it is further up, so the page follows the fill that glides to that row. The
-    /// page it replaces only fades. Nothing of one page turns into something of the other.
+    /// How a page arrives when another row of the sidebar is chosen: whole, in a short fade with a small rise from below, the same
+    /// for every row. From above for a row further up read as no movement at all on the top row, so every page now rises.
+    /// The page it replaces only fades. Nothing of one page turns into something of the other.
     static func page(from shift: Int) -> AnyTransition {
-        .asymmetric(insertion: .opacity.combined(with: .offset(y: CGFloat(shift) * 10)), removal: .opacity)
+        .asymmetric(insertion: .opacity.combined(with: .offset(y: shift == 0 ? 0 : 12)), removal: .opacity)
     }
 
     /// What sits inside a page, where a slight rise is safe: a short fade with a small lift.
@@ -107,6 +107,7 @@ struct MainWindow: View {
                     MainWindow.remembered = selection
                     if case let .messages(id) = selection { Sidebar.lastMessagesPhone = id }
                     if selection != waitingOn.map({ .device($0) }) { waitingOn = nil }
+                    DeviceSettingsShown.shared.id = nil
                     // A page was chosen: the sidebar that was opened over the page has done its work.
                     if peek { withAnimation(.tandemSidebar) { peek = false } }
                 }
@@ -144,7 +145,8 @@ struct MainWindow: View {
         .background(HideWindowTitle(showsBar: false))
         // A sheet or dialog covers the window; nothing behind it should react to the pointer.
         // Set before the sheet is attached, so the sheet itself is not affected.
-        .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle || CallConfirmation.shared.pending != nil))
+        .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle || CallConfirmation.shared.pending != nil
+            || DeviceSettingsShown.shared.id != nil))
         .overlay(alignment: .bottom) {
             if let toast = model.toast {
                 ToastView(text: toast)
@@ -160,6 +162,13 @@ struct MainWindow: View {
             }
         }
         .animation(.tandemSpringy, value: showPairing)
+        .overlay {
+            if let id = DeviceSettingsShown.shared.id, let device = model.device(id) {
+                DeviceSettingsOverlay(device: device) { DeviceSettingsShown.shared.id = nil }
+                    .transition(.opacity)
+            }
+        }
+        .animation(.tandemSpringy, value: DeviceSettingsShown.shared.id)
         .callConfirmation()
     }
 

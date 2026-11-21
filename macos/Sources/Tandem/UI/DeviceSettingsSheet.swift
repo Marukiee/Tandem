@@ -1,3 +1,4 @@
+import ApplicationServices
 import SwiftUI
 import TandemCore
 
@@ -5,9 +6,11 @@ import TandemCore
 /// What is used often (the clipboard, its notifications, files without asking, where it stands) stays on the page itself.
 struct DeviceSettingsSheet: View {
     @Environment(EngineModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     let device: TandemDevice
+    let close: () -> Void
 
+    @Bindable private var share = PointerShare.shared
+    @State private var trusted = AXIsProcessTrusted()
     @State private var name = ""
     @State private var denied: Set<TandemPermission> = []
 
@@ -35,9 +38,9 @@ struct DeviceSettingsSheet: View {
                     Text("Settings for this device").font(.callout).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Done") { save(); dismiss() }
-                    .buttonStyle(.tandemGlassProminent)
-                    .keyboardShortcut(.defaultAction)
+                RoundIconButton(symbol: "xmark", size: 28, action: close)
+                    .keyboardShortcut(.cancelAction)
+                    .help("Close")
             }
             .padding(20)
 
@@ -56,27 +59,24 @@ struct DeviceSettingsSheet: View {
                     }
                 }
 
-                if device.isComputer || device.platform == .android {
+                if device.isComputer {
                     Section {
-                        Button {
-                            dismiss()
-                            AppScenes.showSettings(.pointer)
-                        } label: {
-                            LabeledContent {
-                                Image(systemName: "chevron.right").foregroundStyle(.tertiary)
-                            } label: {
-                                Label {
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text("Mouse and keyboard")
-                                        Text("Which computers share them, and how the screens stand").font(.caption).foregroundStyle(.secondary)
-                                    }
-                                } icon: {
-                                    Image(systemName: "cursorarrow.motionlines").foregroundStyle(Palette.indigo)
+                        DescribedToggle(
+                            "May use this Mac",
+                            subtitle: !trusted ? "Needs Accessibility, in Mouse and keyboard in Settings"
+                                : share.controlledBy == device.id ? "Using this Mac right now" : "Its mouse and keyboard can cross over to this Mac",
+                            isOn: Binding(
+                                get: { share.isAllowed(device.id) && trusted },
+                                set: { on in
+                                    if on { share.allowed.insert(device.id) } else { share.allowed.remove(device.id) }
                                 }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                            )
+                        )
+                        .disabled(!trusted)
+                    } header: {
+                        Text("Mouse and keyboard")
+                    } footer: {
+                        Text("Where it stands is on its page.")
                     }
                 }
 
@@ -104,17 +104,47 @@ struct DeviceSettingsSheet: View {
                 }
             }
             .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
         }
         .frame(width: 520, height: 560)
         .onAppear {
             name = device.name
             denied = Set(model.deniedPermissions(device.id))
         }
+        // However it is closed, with the cross, Escape or a click beside it, a changed name is kept.
+        .onDisappear(perform: save)
     }
 
     private func save() {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard canRename, !trimmed.isEmpty, trimmed != device.name else { return }
         model.renameDevice(device.id, to: trimmed)
+    }
+}
+
+/// Which device has its settings open over the window, if any. Kept apart from the page, so the window can lay them over all of
+/// itself, the sidebar included, with the rest dimmed and no longer reacting to the pointer.
+@Observable final class DeviceSettingsShown {
+    static let shared = DeviceSettingsShown()
+    var id: String?
+}
+
+/// The settings of a device over the window, as the pairing panel is: the window dimmed behind it, and a click beside it closes it.
+struct DeviceSettingsOverlay: View {
+    let device: TandemDevice
+    let close: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.32)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture(perform: close)
+            DeviceSettingsSheet(device: device, close: close)
+                .floatingGlass(in: .rect(cornerRadius: Metrics.panel, style: .continuous))
+                .shadow(color: .black.opacity(0.28), radius: 30, y: 12)
+                .transition(.scale(scale: 0.94).combined(with: .opacity))
+        }
+        .environment(\.hoverEnabled, true)
     }
 }

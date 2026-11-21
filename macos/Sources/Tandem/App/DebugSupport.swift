@@ -589,8 +589,12 @@ enum DebugSupport {
         var withWatch = made("debug-phone", "Pixel 9", .android, online: true, caps: ["sms", "files"])
         withWatch.status.watch = TandemWatchStatus(paired: true, online: true, level: 62, charging: false, ringing: false, name: nil)
         withWatch.status.battery = TandemBattery(level: 78, charging: false, powerSave: false)
+        withWatch.status.network = TandemNetwork(kind: .wifi, ssid: "Thuis", metered: false, roaming: false, signal: 3)
+        withWatch.status.sound = .vibrate
         var computer = made("debug-mac", "MacBook Air van Mark", .macOs, online: true, caps: ["files"])
         computer.status.battery = TandemBattery(level: 100, charging: true, powerSave: false)
+        computer.status.network = TandemNetwork(kind: .wifi, ssid: "Thuis", metered: false, roaming: false, signal: 3)
+        computer.status.freeStorage = 212_000_000_000
         var away = made("debug-phone-2", "Xperia 1 VI", .android, online: false, caps: [])
         away.status.battery = TandemBattery(level: 12, charging: false, powerSave: false)
         model.devices = [withWatch, computer, away, made("debug-pc", "Werk-pc", .windows, online: true, caps: ["files"])]

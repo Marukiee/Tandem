@@ -1715,3 +1715,13 @@
 "When it asks, after a confirmation" = "Als het erom vraagt, na een bevestiging";
 "Get the Wi-Fi password" = "Het wifiwachtwoord krijgen";
 "When it has no network and asks for this one" = "Als het geen netwerk heeft en om dit netwerk vraagt";
+"Network, metered" = "Netwerk, met datalimiet";
+"Free space" = "Vrije ruimte";
+"Mobile data" = "Mobiele data";
+"No network" = "Geen netwerk";
+"May use this Mac" = "Mag deze Mac gebruiken";
+"Needs Accessibility, in Mouse and keyboard in Settings" = "Heeft Toegankelijkheid nodig, onder Muis en toetsenbord in Instellingen";
+"Its mouse and keyboard can cross over to this Mac" = "De muis en het toetsenbord kunnen naar deze Mac oversteken";
+"Where it stands is on its page." = "Waar het staat, zie je op de pagina van het apparaat.";
+"Left or right of this Mac on your desk. The mouse crosses over to it on that side, and a second screen goes there." = "Links of rechts van deze Mac op je bureau. De muis steekt aan die kant naar het apparaat over, en een tweede scherm komt daar.";
+"This Mac" = "Deze Mac";
