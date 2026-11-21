@@ -34,38 +34,16 @@ struct PointerSettings: View {
 
     var body: some View {
         Form {
+            // On top what is changed most: the switch, and where the computers stand.
             Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Accessibility")
-                        // Grey either way: someone may not want this, so a permission that is not given is no warning.
-                        Text(trusted
-                            ? "Allowed. Tandem can see your mouse and keyboard and play them from another computer"
-                            : "Needed to see your mouse and keyboard, and to play them when another computer uses this Mac")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 12)
-                    if trusted {
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                    } else {
-                        Button("Allow") { requestAccessibility() }
-                    }
-                }
-            } header: {
-                Text("What this Mac has to allow")
-            } footer: {
-                Text("Windows needs nothing but the firewall: allow Tandem on private networks when Windows asks.")
-            }
-
-            Section {
-                // Grey and off without the permission, not on as if it worked: the Allow button is just above.
+                // Grey and off without the permission, not on as if it worked: the Allow button is just under it.
                 DescribedToggle(
                     "Universal mouse",
-                    subtitle: trusted ? "Choose below where each computer sits" : "Needs Accessibility, above",
+                    subtitle: "One mouse and keyboard for the computers next to this Mac",
                     isOn: Binding(get: { share.enabled && trusted }, set: { on in share.enabled = on })
                 )
                 .disabled(!trusted)
+                if !trusted { accessibility }
                 // Always there and only greyed while off: rows that come and go with the switch made the whole page jump.
                 Group {
                     if neighbourChoices.isEmpty {
@@ -73,68 +51,12 @@ struct PointerSettings: View {
                     } else {
                         ArrangementEditor(share: share, devices: neighbourChoices)
                             .padding(.vertical, 4)
-                        ForEach(neighbourChoices, id: \.id) { device in
-                            LabeledContent(device.name) {
-                                HStack(spacing: 10) {
-                                    Group {
-                                        if share.layout[device.id] == nil { Text("Not placed") } else { Text(sideText(share.layout[device.id]?.edge ?? "")) }
-                                    }
-                                    .foregroundStyle(.secondary)
-                                    // This Mac plays a sound and the other one says which speaker was louder: it is then put on that side.
-                                    if device.caps.contains("side.listen") {
-                                        Button(finding == device.id ? "Listening…" : "Find by sound") { findSide(device) }
-                                            .disabled(!device.online || finding != nil)
-                                    }
-                                    if share.layout[device.id] != nil {
-                                        Button("Remove") { share.layout[device.id] = nil }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
                 .disabled(!share.enabled || !trusted)
                 .opacity(share.enabled && trusted ? 1 : 0.45)
-            } header: {
-                Text("Use this Mac's mouse and keyboard on other computers")
             } footer: {
                 Text("The other computer has to allow it too: in its Tandem, under Mouse and keyboard.")
-            }
-
-            Section {
-                DescribedToggle(
-                    "Check the side by itself",
-                    subtitle: "When a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. With a sound too high to hear, and only when this Mac plays through its own speakers.",
-                    isOn: $checkByItself
-                )
-                Picker("Sound for finding the side", selection: $sideSound) {
-                    Text("Quiet (recommended)").tag("quiet")
-                    Text("Audible").tag("audible")
-                }
-                Text("Quiet is too high to hear. Audible only helps with a device whose microphone does not pick up the quiet one.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if checkByItself {
-                    Picker("Check every", selection: $checkEvery) {
-                        ForEach([1, 2, 5, 10], id: \.self) { minutes in
-                            Text(minutes == 1 ? String(localized: "Minute") : String(localized: "\(minutes) minutes")).tag(minutes)
-                        }
-                        Divider()
-                        // Never: only a screen that starts, the mouse turned on, a device that connects or wakes.
-                        Text("Never").tag(0)
-                    }
-                }
-                HStack {
-                    Text("A short sweep from low to high on the left and from high to low on the right, at the same time. Soft first, louder when it was not heard.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 12)
-                    Button("Play") { Task { await SideTone.play() } }
-                }
-            } header: {
-                Text("Finding the side by sound")
-            } footer: {
-                Text("This Mac plays a short sound from its left and its right speaker, and the other device listens with its microphone. A second screen goes on that side too.")
             }
 
             Section {
@@ -161,33 +83,103 @@ struct PointerSettings: View {
                 Text("Nobody may until you turn it on here. Only computers in your circle can ask at all.")
             }
 
-            Section {
-                Text("A phone can sit next to this Mac too, when you turn on \"Universal mouse\" in its Tandem. Or show its screen in a window here and move the pointer into it: clicks, scrolling and typing go to the phone. Both need Tandem's control under Accessibility on the phone.")
-                    .foregroundStyle(.secondary)
-                ForEach(phones, id: \.id) { device in
-                    LabeledContent(device.name) {
-                        // Grey only while the phone is away; an older Tandem there is said when the button is pressed.
-                        Button("Show screen") {
-                            if device.caps.contains("screen.host") {
-                                LiveManager.shared.start(device: device, kind: .screen)
-                            } else {
-                                FloatingToast.show(String(localized: "Update Tandem on the phone to version 0.1.38 or newer"), symbol: "iphone.gen3")
+            MoreSettings(holds: "Where each one stands, finding the side by sound, your phone, how it works") {
+                if !neighbourChoices.isEmpty {
+                    Section {
+                        ForEach(neighbourChoices, id: \.id) { device in
+                            LabeledContent(device.name) {
+                                HStack(spacing: 10) {
+                                    Group {
+                                        if share.layout[device.id] == nil { Text("Not placed") } else { Text(sideText(share.layout[device.id]?.edge ?? "")) }
+                                    }
+                                    .foregroundStyle(.secondary)
+                                    // This Mac plays a sound and the other one says which speaker was louder: it is then put on that side.
+                                    if device.caps.contains("side.listen") {
+                                        Button(finding == device.id ? "Listening…" : "Find by sound") { findSide(device) }
+                                            .disabled(!device.online || finding != nil)
+                                    }
+                                    if share.layout[device.id] != nil {
+                                        Button("Remove") { share.layout[device.id] = nil }
+                                    }
+                                }
                             }
                         }
-                        .disabled(!device.online)
+                    } header: {
+                        Text("Where each one stands")
                     }
+                    .disabled(!share.enabled || !trusted)
                 }
-            } header: {
-                Text("Your phone")
-            }
 
-            // At the end: it is read once, and the settings themselves come first.
-            Section {
-                step("rectangle.2.swap", "Drag the screens next to this one, the way they stand on your desk. That is where the pointer goes over.")
-                step("cursorarrow.motionlines", "Push the pointer over that edge. Your mouse and keyboard now work on the other computer.")
-                step("arrow.uturn.backward", "Push it back over the edge it came in by, or press Control, Option and Command with Escape.")
-            } header: {
-                Text("How it works")
+                Section {
+                    DescribedToggle(
+                        "Check the side by itself",
+                        subtitle: "When a second screen or the shared mouse starts, and every few minutes. With a sound too high to hear.",
+                        isOn: $checkByItself
+                    )
+                    Picker("Sound for finding the side", selection: $sideSound) {
+                        Text("Quiet (recommended)").tag("quiet")
+                        Text("Audible").tag("audible")
+                    }
+                    Text("Quiet is too high to hear. Audible only helps with a device whose microphone does not pick up the quiet one.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if checkByItself {
+                        Picker("Check every", selection: $checkEvery) {
+                            ForEach([1, 2, 5, 10], id: \.self) { minutes in
+                                Text(minutes == 1 ? String(localized: "Minute") : String(localized: "\(minutes) minutes")).tag(minutes)
+                            }
+                            Divider()
+                            // Never: only a screen that starts, the mouse turned on, a device that connects or wakes.
+                            Text("Never").tag(0)
+                        }
+                    }
+                    HStack {
+                        Text("A short sweep from low to high on the left and from high to low on the right, at the same time. Soft first, louder when it was not heard.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 12)
+                        Button("Play") { Task { await SideTone.play() } }
+                    }
+                } header: {
+                    Text("Finding the side by sound")
+                } footer: {
+                    Text("This Mac plays a short sound left and right, and the other device listens. A second screen goes on that side too.")
+                }
+
+                Section {
+                    Text("A phone can sit next to this Mac too: turn on \"Universal mouse\" in its Tandem. Or show its screen here and move the pointer into it.")
+                        .foregroundStyle(.secondary)
+                    ForEach(phones, id: \.id) { device in
+                        LabeledContent(device.name) {
+                            // Grey only while the phone is away; an older Tandem there is said when the button is pressed.
+                            Button("Show screen") {
+                                if device.caps.contains("screen.host") {
+                                    LiveManager.shared.start(device: device, kind: .screen)
+                                } else {
+                                    FloatingToast.show(String(localized: "Update Tandem on the phone to version 0.1.38 or newer"), symbol: "iphone.gen3")
+                                }
+                            }
+                            .disabled(!device.online)
+                        }
+                    }
+                } header: {
+                    Text("Your phone")
+                }
+
+                Section {
+                    step("rectangle.2.swap", "Drag the screens next to this one, the way they stand on your desk. That is where the pointer goes over.")
+                    step("cursorarrow.motionlines", "Push the pointer over that edge. Your mouse and keyboard now work on the other computer.")
+                    step("arrow.uturn.backward", "Push it back over the edge it came in by, or press Control, Option and Command with Escape.")
+                } header: {
+                    Text("How it works")
+                }
+
+                // Given: nothing to do here any more, so it is out of the way with the rest.
+                Section {
+                    if trusted { accessibility }
+                } footer: {
+                    Text("Windows needs nothing but the firewall: allow Tandem on private networks when Windows asks.")
+                }
             }
         }
         .formStyle(.grouped)
@@ -204,6 +196,26 @@ struct PointerSettings: View {
         .onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in
             let now = AXIsProcessTrusted()
             if now != trusted { trusted = now }
+        }
+    }
+
+    /// What macOS has to allow for it. Grey either way: someone may not want this, so a permission that is not given is no warning.
+    private var accessibility: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Accessibility")
+                Text(trusted
+                    ? "Allowed. Tandem can see your mouse and keyboard and play them from another computer"
+                    : "Needed to see your mouse and keyboard, and to play them when another computer uses this Mac")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 12)
+            if trusted {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            } else {
+                Button("Allow") { requestAccessibility() }
+            }
         }
     }
 

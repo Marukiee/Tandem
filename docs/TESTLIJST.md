@@ -651,3 +651,21 @@ accu zijn daar niet echt, dus de winst zelf is niet gemeten.
   telefoon of tablet die alleen een speler toont als er iets speelt: de spelerkaart schuift weg en laat geen lege ruimte achter; start
   hem weer: hij komt terug met de animatie. Een bereikbare Mac of Windows-pc houdt zijn speler ook als er niets speelt.
 - Linux en Windows hadden al twee kaarten (kop en speler naast elkaar); daar is niets veranderd.
+
+## Mac-ontwerp, 2026-11-21 (PR 31, changelog 0.3.32)
+
+Het nieuwe uiterlijk van de Mac-app. Mark heeft het in de Dev-app met testapparaten bekeken; met echte apparaten nog niet.
+
+- [ ] **Kop van een apparaat.** Naam, systeem en versie van Tandem, rechtsboven de pil "Verbonden" (even ver van boven als van rechts),
+  daaronder tegels voor accu, netwerk (naam van het wifi) en bij een telefoon het geluid, bij een computer de vrije ruimte. De speler
+  staat ernaast als eigen kaart, met de keuze tussen spelers linksboven. Niets staat er leeg bij.
+- [ ] **Bovenaan.** Boven de kaarten is evenveel ruimte als ernaast. Wisselen tussen apparaten in de zijbalk schuift elke pagina van
+  onderen in beeld, ook de bovenste.
+- [ ] **Iconen.** Een telefoon heeft een camerapil, de Xperia een gewoon scherm, een pc een scherm op een voet.
+- [ ] **Waar het staat.** De keuze [telefoon Links] laptop [Rechts telefoon]: de vrije kant licht op onder de muis, de laptop is geen knop.
+  Na een keuze steekt de muis aan die kant over en komt een tweede scherm daar.
+- [ ] **Settings for this device.** De eigen kaart onder de instellingen opent een laag over het hele venster; erachter dimt alles en
+  reageert niets op de muis, een klik ernaast, Esc of het kruisje sluit hem. Naam wijzigen (op een apparaat met 0.3.24 of nieuwer)
+  komt op al je apparaten. Waar het staat: zoeken op geluid, vanzelf controleren, het geluid. Bij een computer "Mag deze Mac gebruiken".
+  De schakelaars voor wat het apparaat op deze Mac mag (bestanden, bedienen, vergrendelen, herstarten, wifiwachtwoord) doen wat ze zeggen.
+- [ ] **Horlogepagina.** "Verbonden" is dezelfde rustige pil, niet meer helemaal groen.
