@@ -20,6 +20,7 @@ import nl.markmaaktmedia.tandem.watch.track.HeartTracker
 import nl.markmaaktmedia.tandem.watch.track.PassiveHealth
 import nl.markmaaktmedia.tandem.watch.track.StepTracker
 import nl.markmaaktmedia.tandem.watch.ui.MainActivity
+import nl.markmaaktmedia.tandem.watch.power.PowerLog
 
 /** Keeps the connection alive with the screen off. */
 class LinkService : Service() {
@@ -31,6 +32,7 @@ class LinkService : Service() {
             val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
             if (level < 0 || scale <= 0) return
             val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+            PowerLog.charging(plugged)
             WatchLink.reportBattery(level * 100 / scale, plugged)
         }
     }
@@ -62,6 +64,7 @@ class LinkService : Service() {
             return START_NOT_STICKY
         }
         WatchLink.start(this)
+        PowerLog.start(this)
         if (steps == null) steps = StepTracker.shared(this).also { it.start() }
         HeartTracker.start(this)
         PassiveHealth.start(this)
@@ -76,6 +79,7 @@ class LinkService : Service() {
     override fun onDestroy() {
         steps?.stop()
         steps = null
+        PowerLog.flush()
         AutoSleep.stop()
         HeartTracker.stop()
         if (watchingBattery) unregisterReceiver(batteryReceiver)

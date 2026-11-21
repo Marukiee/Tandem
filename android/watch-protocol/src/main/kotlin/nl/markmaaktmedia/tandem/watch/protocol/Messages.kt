@@ -359,6 +359,56 @@ object MessageCodec {
     /** A day has 24 hours; anything far longer in a message is not counts but damage. */
     private const val MAX_COUNTS = 48
 
+    /** A short name for the kind of a message, for logs: the class names are not kept in a release build. */
+    fun kind(message: Message): String = when (message) {
+        Message.SyncRequest -> "SyncRequest"
+        Message.Unpair -> "Unpair"
+        Message.TryWakeBuzz -> "TryWakeBuzz"
+        Message.PointerClose -> "PointerClose"
+        is Message.Ping -> "Ping"
+        is Message.Pong -> "Pong"
+        is Message.NotificationSnapshot -> "NotificationSnapshot"
+        is Message.Notification -> "Notification"
+        is Message.NotificationRemoved -> "NotificationRemoved"
+        is Message.NotificationAction -> "NotificationAction"
+        is Message.AppIcon -> "AppIcon"
+        is Message.Call -> "Call"
+        is Message.CallAction -> "CallAction"
+        is Message.MediaPlayers -> "MediaPlayers"
+        is Message.MediaCommand -> "MediaCommand"
+        is Message.MediaSeek -> "MediaSeek"
+        is Message.MediaArt -> "MediaArt"
+        is Message.PointerTargets -> "PointerTargets"
+        is Message.PointerSession -> "PointerSession"
+        is Message.PointerMove -> "PointerMove"
+        is Message.PointerScroll -> "PointerScroll"
+        is Message.PointerClick -> "PointerClick"
+        is Message.PointerKey -> "PointerKey"
+        is Message.PointerButton -> "PointerButton"
+        is Message.FindDevice -> "FindDevice"
+        is Message.Ringing -> "Ringing"
+        is Message.DeviceBatteries -> "DeviceBatteries"
+        is Message.WatchStatus -> "WatchStatus"
+        is Message.MouseEnabled -> "MouseEnabled"
+        is Message.SmartWakeAlarm -> "SmartWakeAlarm"
+        is Message.StepGoal -> "StepGoal"
+        is Message.HeartToday -> "HeartToday"
+        is Message.HeartAllDay -> "HeartAllDay"
+        is Message.HeartLive -> "HeartLive"
+        is Message.HeartNow -> "HeartNow"
+        is Message.SleepMode -> "SleepMode"
+        is Message.HealthRecord -> "HealthRecord"
+        is Message.PointerOpen -> "PointerOpen"
+        is Message.MouseState -> "MouseState"
+        is Message.HealthAck -> "HealthAck"
+        is Message.AppVersion -> "AppVersion"
+        is Message.UpdateOffer -> "UpdateOffer"
+        is Message.UpdateWant -> "UpdateWant"
+        is Message.UpdatePart -> "UpdatePart"
+        is Message.UpdateState -> "UpdateState"
+        is Message.Unknown -> "Unknown"
+    }
+
     fun encode(message: Message): ByteArray {
         val w = ByteWriter()
         when (message) {
