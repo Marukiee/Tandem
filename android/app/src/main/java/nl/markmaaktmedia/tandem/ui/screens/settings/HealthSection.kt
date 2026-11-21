@@ -600,20 +600,21 @@ internal fun rememberHeartBeat(on: Boolean): Float {
 
 /** Asks the watch for the heart rate now for as long as this is on screen and the watch is here; asked again every half minute, as the watch stops by itself. */
 @Composable
-internal fun LiveHeartWhileShown() {
+internal fun LiveHeartWhileShown(screen: String) {
     val graph = LocalContext.current.graph
     val watch by graph.watch.state.collectAsState()
     if (!watch.ready) return
     val lifecycle = LocalLifecycleOwner.current
+    val who = "${nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE}:$screen"
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
             try {
                 while (true) {
-                    graph.watch.liveHeart(nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE, true)
+                    graph.watch.liveHeart(who, true)
                     kotlinx.coroutines.delay(30_000)
                 }
             } finally {
-                graph.watch.liveHeart(nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE, false)
+                graph.watch.liveHeart(who, false)
             }
         }
     }
@@ -628,7 +629,7 @@ internal fun HeartToday(insights: TandemHealthInsights?) {
     val lastDay = insights?.latestDayHeart
     // While the watch says the heart rate now, that is what the card shows, with "Now" next to it.
     val now = watch.heartNow
-    LiveHeartWhileShown()
+    LiveHeartWhileShown("heart")
     if (todayHeart == null && lastDay == null && now == null) return
     SectionHeader(stringResource(R.string.health_today), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
@@ -1114,7 +1115,7 @@ internal fun WatchGlance(onPart: (String) -> Unit, modifier: Modifier = Modifier
     val steps = watch.stepsToday.takeIf { watch.paired }
     // The heart rate now, while these tiles are on screen and the watch is here.
     val now = watch.heartNow.takeIf { watch.ready }
-    LiveHeartWhileShown()
+    LiveHeartWhileShown("glance")
     if (night == null && steps == null && resting == null && now == null) return
     // Three tiles of their own, each in its own colour of the theme, so the eye finds each number by its colour as well as its place.
     // All as tall as the tallest, so a caption on two lines does not make one stick out.
