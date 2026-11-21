@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.30",
+    "date": "2026-11-21",
+    "en": {
+      "title": "Left or right, on Linux and Windows too",
+      "new": [
+        "A device page has a Left or Right choice for where the device stands, the same as dragging it in the screen layout"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Links of rechts, ook op Linux en Windows",
+      "new": [
+        "Op de pagina van een apparaat kies je Links of Rechts voor waar het staat, hetzelfde als het slepen in de schermindeling"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.29",
     "date": "2026-11-21",
     "en": {

@@ -252,6 +252,15 @@ pub fn put(app: &AppHandle, id: &str, edge: &str) {
     crate::host::place_made(id, edge);
 }
 
+/// The choice on the page of a device: left or right of this screen, the same as putting its box there in the arrangement.
+#[tauri::command]
+pub fn arrange_side(app: AppHandle, id: String, edge: String) -> Value {
+    if edge == "left" || edge == "right" {
+        put(&app, &id, &edge);
+    }
+    state_of(&app)
+}
+
 /// A check by itself found a device on the other side: its spot moves there at the same height (left and right both count along the
 /// height of this screen). Nothing else changes, and a device without a spot left or right gets none.
 pub fn flip(app: &AppHandle, id: &str, edge: &str) {

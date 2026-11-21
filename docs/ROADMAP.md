@@ -102,6 +102,13 @@ niet op de schijf, geen adressen of inhoud in de regels. Alleen gebouwd en door 
 30 MB per map, dus met de kopie voor `adb pull` kan het samen 60 MB zijn. Mac, Linux en Windows geven scherm, netwerk en batterij
 nog niet door aan het log.
 
+**In 0.3.25 tot en met 0.3.29.** 0.3.25: PR 49 (horloge: SendGate, het scherm als bron voor de live hartslag, 15 minuten aan en 30 uit).
+0.3.26: PR 50 (hotspot per telefoon, bedtijdmuziek) en PR 51 (R-V19, een nieuwe telefoon of hotspot meldt zich bij de Mac). 0.3.27: PR 52
+(passieve hartslag en stappen op het horloge). 0.3.28: PR 53 (R-V15 deel 2: een adres telt pas na twee gelijke blikken, een scherm aan
+telt niet als netwerkwissel, covers niet opnieuw, `mobile` en `costly` los). 0.3.29: PR 54 (alle voorkeuren van een apparaat in een groep op
+Android; een ontvangen foto, Quick Share-tekst en tekst van de telefoon komen niet meer als klembord terug). PR 31 (Mac-ontwerp) zit in geen
+van allen, tot Mark de bovenkant van de apparaatpagina kiest (R-D22).
+
 **Open, voor wie verder gaat (stand 2026-11-15, nacht).** PR 31 (de Mac in het nieuwe
 ontwerp) botst met main; de sessie bouwt de punten 5 (een icoonfamilie), 6 (rond horloge), 7 (kop en speler), 8 (een woord bij de knop
 van Klembord), 9 (het wisselen tussen apparaten) en bij punt 5 nog dit van Mark: het grote icoon in de kop heeft een andere stijl dan de kleine in de zijbalk en moet dezelfde familie zijn, zonder gradient; bij punt 7 nog: de tegel Steps op de kaart Health is hoger dan de tegels Last night en Heart rate now door zijn grotere icoon in een ring; alle drie even hoog en hetzelfde icoon; en een nieuw punt van Mark: de tabs van de speler (Spotify, Pocket Casts) morphen mee als de vensterbreedte verandert, terwijl de rest dat niet doet; dat moet zonder en merget main zonder force push, en meldt dan dat de Dev-app voor Mark openstaat.
