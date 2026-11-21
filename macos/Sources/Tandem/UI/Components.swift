@@ -19,6 +19,49 @@ struct Card<Content: View>: View {
     }
 }
 
+/// Things side by side that go on to a next line when the row is full, such as the labels in the head of a device.
+struct FlowRow: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 8
+
+    private func lines(width: CGFloat, subviews: Subviews) -> [[(index: Int, size: CGSize)]] {
+        var lines: [[(index: Int, size: CGSize)]] = [[]]
+        var used: CGFloat = 0
+        for (index, subview) in subviews.enumerated() {
+            let size = subview.sizeThatFits(.unspecified)
+            if !lines[lines.count - 1].isEmpty, used + spacing + size.width > width {
+                lines.append([])
+                used = 0
+            }
+            used += (lines[lines.count - 1].isEmpty ? 0 : spacing) + size.width
+            lines[lines.count - 1].append((index, size))
+        }
+        return lines.filter { !$0.isEmpty }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let lines = lines(width: proposal.width ?? .infinity, subviews: subviews)
+        let width = lines.map { line in line.reduce(0) { $0 + $1.size.width } + spacing * CGFloat(line.count - 1) }.max() ?? 0
+        let height = lines.reduce(0) { $0 + ($1.map(\.size.height).max() ?? 0) } + lineSpacing * CGFloat(max(0, lines.count - 1))
+        return CGSize(width: min(width, proposal.width ?? width), height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in lines(width: bounds.width, subviews: subviews) {
+            let height = line.map(\.size.height).max() ?? 0
+            var x = bounds.minX
+            for item in line {
+                // One that is wider than the row gets the row, so its words are cut and not drawn over the edge.
+                let width = min(item.size.width, bounds.width)
+                subviews[item.index].place(at: CGPoint(x: x, y: y + height / 2), anchor: .leading, proposal: ProposedViewSize(width: width, height: item.size.height))
+                x += width + spacing
+            }
+            y += height + lineSpacing
+        }
+    }
+}
+
 /// The title of a page and the line under it, the same on every page that has one.
 struct PageHeader<Extra: View, Actions: View>: View {
     let title: LocalizedStringKey
@@ -187,7 +230,7 @@ struct Pill<Content: View>: View {
                 Capsule()
                     .fill(wash)
                     .allowsHitTesting(false)
-                    .animation(.tandemFade, value: lit)
+                    .animation(.hover(lit), value: lit)
                     .animation(.tandemFade, value: pressed)
             }
             .padding(inset)
@@ -279,25 +322,28 @@ extension ButtonStyle where Self == TandemGlassStyle {
 
 // MARK: Round icon buttons for the menu bar panel
 
-/// An action as a row on a card: the symbol in a disc and the name next to it, as the tiles of the menu bar panel. Under the pointer the
-/// row deepens and the disc fills; an action that is on keeps the filled disc and says its name in the tint.
+/// An action as a row on a card: the symbol in a disc and the name next to it, as the tiles of the menu bar panel. The disc has the
+/// colour of its group. Under the pointer only the row deepens; an action that is on, and the main one, has the disc filled with the
+/// accent and says its name in it.
 private struct ActionRow: View {
     let title: LocalizedStringKey
     let symbol: String
     let on: Bool
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @Environment(\.actionTone) private var tone
     @LocalState private var hovering = false
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        let filled = on || (hovering && enabled)
         HStack(spacing: 10) {
             ZStack {
-                Circle().fill(filled ? Palette.indigo : Palette.indigo.opacity(0.15))
+                Circle().fill(tone.fill)
+                Circle().fill(Palette.indigo).opacity(on ? 1 : 0)
                 Image(systemName: symbol)
                     .font(.system(size: 13, weight: .semibold))
                     .contentTransition(.symbolEffect(.replace))
-                    .fadingForeground(Palette.indigo, to: Color.white, when: filled)
+                    .fadingForeground(tone.ink, to: Color.white, when: on)
             }
             .frame(width: 30, height: 30)
             Text(title)
@@ -308,11 +354,11 @@ private struct ActionRow: View {
         }
         .padding(.horizontal, 6)
         .frame(height: 42)
-        .background(shape.fill(Color.primary.opacity(hovering && enabled ? 0.07 : 0)))
+        .background(shape.fill(Color.primary.opacity(hovering && enabled && hoverEnabled ? 0.07 : 0)))
         .contentShape(shape)
         .opacity(enabled ? 1 : 0.45)
         .onHover { hovering = $0 }
-        .animation(.tandemFade, value: hovering)
+        .animation(.hover(hovering), value: hovering)
         .animation(.tandemFade, value: on)
     }
 }
@@ -320,6 +366,8 @@ private struct ActionRow: View {
 extension EnvironmentValues {
     /// Action buttons on a card of a group draw themselves as rows, as on the page of a device.
     @Entry var actionButtonsAsRows = false
+    /// The colour of the discs of the actions in a group.
+    @Entry var actionTone = Tone.indigo
     /// Round icon buttons in a row that share out its width as equal rounded keys, as under a device in the menu bar panel.
     @Entry var iconButtonsFill = false
 }
@@ -347,7 +395,7 @@ private struct RoundIconDisc: View {
             .overlay(shape.strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
             .contentShape(shape)
             .opacity(enabled ? 1 : 0.4)
-            .animation(.tandemFade, value: hovering)
+            .animation(.hover(hovering), value: hovering)
     }
 }
 
@@ -408,11 +456,13 @@ struct RoundIconMenu<Content: View>: View {
 extension TandemPlatform {
     var symbol: String {
         switch self {
-        case .android: "iphone"
+        // A phone with a camera pill and not one with a home button, and a plain screen on a stand for a desktop: the
+        // `desktopcomputer` and `pc` symbols drew a face on the screen that looked unhappy at that size.
+        case .android: "iphone.gen3"
         case .macOs: "laptopcomputer"
-        case .linux: "desktopcomputer"
-        case .windows: "pc"
-        case .ios: "iphone"
+        case .linux: "display"
+        case .windows: "display"
+        case .ios: "iphone.gen3"
         case .other: "display"
         }
     }
@@ -505,11 +555,14 @@ struct DeviceGlyph: View {
     var deviceID: String?
     /// Green instead of indigo while the device is there, for where nothing else says that it is (the menu bar panel).
     var greenWhenOnline = false
+    /// A symbol to draw as it is, for the board that shows every kind (`DeviceIconsBoard`).
+    var drawn: String?
 
     private var onlineColor: Color { greenWhenOnline ? .green : Palette.indigo }
 
     private var symbol: String {
-        deviceID.flatMap { model.deviceIcons[$0] } ?? platform.symbol
+        if let drawn { return DeviceSymbol.shown(drawn) }
+        return DeviceSymbol.of(deviceID.flatMap { model.device($0) }, platform: platform, picked: deviceID.flatMap { model.deviceIcons[$0] })
     }
 
     var body: some View {
@@ -518,11 +571,17 @@ struct DeviceGlyph: View {
             if !plain {
                 Circle().fill(onSelection ? Color.white.opacity(0.24) : (online ? onlineColor.opacity(0.14) : Color.primary.opacity(0.07)))
             }
-            Image(systemName: symbol)
-                .font(.system(size: size * (plain ? 0.86 : (size > 60 ? 0.5 : 0.42)), weight: plain ? .regular : .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(onSelection ? Color.white : (online ? onlineColor : Color.secondary))
-                .contentTransition(.symbolEffect(.replace))
+            let tint = onSelection ? Color.white : (online ? onlineColor : Color.secondary)
+            let points = size * (plain ? 0.86 : (size > 60 ? 0.5 : 0.42))
+            if symbol == DeviceSymbol.plainPhone {
+                PlainPhoneGlyph(points: points, bold: !plain, tint: tint)
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: points, weight: plain ? .regular : .semibold))
+                    .symbolRenderingMode(DeviceSymbol.rendering(symbol))
+                    .foregroundStyle(tint)
+                    .contentTransition(.symbolEffect(.replace))
+            }
             if ring {
                 Circle()
                     .stroke(Color.primary.opacity(0.08), lineWidth: ringWidth)
@@ -540,17 +599,89 @@ struct DeviceGlyph: View {
     }
 }
 
+/// One drawing for each kind of device, the same wherever the device is shown: in its row of the sidebar, at the head of its
+/// page, in the menu bar panel. The head shows what the row shows, larger.
+enum DeviceSymbol {
+    /// Tandem's watch is a Wear OS watch, such as the Pixel Watch, and those are round.
+    static let watch = "watch.analog"
+
+    /// A phone without any cut out in its screen, such as a Sony Xperia with its bezels: drawn by Tandem, as no symbol is one.
+    static let plainPhone = "tandem.phone.plain"
+
+    /// What an icon that was picked or kept is drawn as: the square watch of an earlier choice is the round one, and the phone and
+    /// the desktop of an earlier choice are the ones drawn now.
+    static func shown(_ symbol: String) -> String {
+        switch symbol {
+        case "applewatch": watch
+        case "iphone": "iphone.gen3"
+        case "desktopcomputer", "pc": "display"
+        default: symbol
+        }
+    }
+
+    /// The symbol for a device: the icon picked for it, otherwise the one of its system, and for an Xperia the plain phone.
+    static func of(_ device: TandemDevice?, platform: TandemPlatform, picked: String?) -> String {
+        if let picked { return shown(picked) }
+        if platform == .android, device?.name.localizedCaseInsensitiveContains("xperia") == true { return plainPhone }
+        return platform.symbol
+    }
+
+    /// The outline of a device is the strong part of its symbol and its screen the soft part. In the watch the case and the
+    /// strap are the soft part, which made it paler than the rest, so the watch is drawn in one strength.
+    static func rendering(_ symbol: String) -> SymbolRenderingMode { symbol == watch ? .monochrome : .hierarchical }
+}
+
+/// A phone with no cut out in its screen, drawn to stand beside the symbols at the same font size: the outline in the full colour,
+/// the screen soft, as a hierarchical symbol has it, with the deeper bezels above and under the screen that such a phone has.
+struct PlainPhoneGlyph: View {
+    /// The font size the symbols around it are drawn at.
+    let points: CGFloat
+    var bold = true
+    let tint: Color
+
+    var body: some View {
+        let height = points * 1.18
+        let width = points * 0.66
+        let line = points * (bold ? 0.105 : 0.075)
+        ZStack {
+            RoundedRectangle(cornerRadius: width * 0.22, style: .continuous)
+                .strokeBorder(tint, lineWidth: line)
+            RoundedRectangle(cornerRadius: width * 0.06, style: .continuous)
+                .fill(tint.opacity(0.32))
+                .padding(.horizontal, line * 1.8)
+                .padding(.vertical, height * 0.15)
+        }
+        .frame(width: width, height: height)
+    }
+}
+
+/// The watch as a round glyph, drawn the way a device is (`DeviceGlyph`): in the accent while it is there, grey while it is not.
+struct WatchGlyph: View {
+    var online: Bool
+    var size: CGFloat = 44
+
+    var body: some View {
+        Image(systemName: DeviceSymbol.watch)
+            .font(.system(size: size * 0.45, weight: .semibold))
+            .symbolRenderingMode(DeviceSymbol.rendering(DeviceSymbol.watch))
+            .foregroundStyle(online ? Palette.indigo : Color.secondary)
+            .frame(width: size, height: size)
+            .background(online ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07), in: Circle())
+            .animation(.tandem, value: online)
+    }
+}
+
 /// The icons a device can be given, for the picker on its page.
 enum DeviceIconChoice: CaseIterable {
     case phone, tablet, laptop, desktop, watch, tv
 
     var symbol: String {
         switch self {
-        case .phone: "iphone"
+        case .phone: "iphone.gen3"
         case .tablet: "ipad"
         case .laptop: "laptopcomputer"
-        case .desktop: "desktopcomputer"
-        case .watch: "applewatch"
+        case .desktop: "display"
+        case .watch: DeviceSymbol.watch
         case .tv: "tv"
         }
     }
@@ -665,11 +796,70 @@ enum TransferReason {
     }
 }
 
+/// How much of a transfer has a column of its own: nothing in a plain list, only how it stands in a narrow table, and the size, the
+/// time and how it stands in a wide one.
+enum TransferColumns { case none, state, all }
+
+extension TransferReason {
+    /// Why a transfer is not a file that is here, with the colour to say it in: it failed, or it arrived and is gone since.
+    @MainActor
+    static func of(_ item: TransferItem, peerName: String, model: EngineModel) -> (text: String, tint: Color)? {
+        if item.state == .failed {
+            return (text(item.error, incoming: item.incoming, peerName: peerName), Palette.urgent)
+        }
+        if item.state == .done, item.location != nil, !model.canOpen(item) { return (String(localized: "No longer there"), Color.secondary) }
+        return nil
+    }
+}
+
+/// How a kind of file looks in a row: the colour of its tile and the symbol on it.
+extension SharedKind {
+    var tone: Tone {
+        switch self {
+        case .pictures: .indigo
+        case .videos: .rose
+        case .documents: .mint
+        case .audio: .peach
+        case .all, .archives, .other: .plain
+        }
+    }
+
+    var tileSymbol: String { self == .other || self == .all ? "doc" : symbol }
+}
+
+/// Why a row did not end as a file that is here, as a label at its end, directly before its three dots.
+struct ReasonLabel: View {
+    let text: String
+    var tint: Color = Palette.urgent
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            // One line that may shrink: with a long name of a device it is cut before it runs past the card, and says the rest when
+            // the pointer rests on it.
+            .lineLimit(1)
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(tint.opacity(0.14), in: .capsule)
+            .help(Text(verbatim: text))
+    }
+}
+
 /// What a transfer looks like. Interaction lives in `TransferEntry`.
 struct TransferRow: View {
     let item: TransferItem
     let peerName: String
+    /// On the page Shared the size, the time and how it stands each have a column of their own.
+    var columns = TransferColumns.none
+    /// Chosen among others: the tile says so.
+    var chosen = false
     @Environment(EngineModel.self) private var model
+
+    /// The widths of the columns, shared with the head of the table.
+    static let sizeWidth: CGFloat = 64
+    static let whenWidth: CGFloat = 104
+    static let stateWidth: CGFloat = 160
 
     var body: some View {
         HStack(spacing: 12) {
@@ -678,19 +868,9 @@ struct TransferRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
-                Group {
-                    switch item.state {
-                    case .active:
-                        Text("\(formatBytes(item.done)) of \(formatBytes(item.total))  \(formatSpeed(item.speed))")
-                    case .done:
-                        if missing {
-                            Text("The file is no longer there")
-                        } else {
-                            Text(item.incoming ? "From \(peerName)" : "To \(peerName)")
-                        }
-                    case .failed:
-                        Text(TransferReason.text(item.error, incoming: item.incoming, peerName: peerName))
-                    }
+                HStack(spacing: 4) {
+                    Image(systemName: item.incoming ? "arrow.down" : "arrow.up").font(.system(size: 9, weight: .bold))
+                    Text(detail)
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -702,34 +882,94 @@ struct TransferRow: View {
                         .transition(.opacity)
                 }
             }
+            // The name keeps a little room of its own, so a long reason beside it cannot push it away altogether.
+            .frame(minWidth: 96, maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 0)
+            switch columns {
+            case .all:
+                column(item.total > 0 ? formatBytes(item.total) : "", width: Self.sizeWidth)
+                column(when, width: Self.whenWidth)
+                state.frame(width: Self.stateWidth, alignment: .leading)
+            case .state:
+                // Outside a column the reason has the room first and the name gives way.
+                state.layoutPriority(1)
+            case .none:
+                if let reason {
+                    ReasonLabel(text: reason.text, tint: reason.tint)
+                        .layoutPriority(1)
+                        .transition(.opacity)
+                }
+            }
         }
         .padding(.vertical, 6)
         .animation(.tandem, value: item.state)
+        .animation(.tandemFade, value: chosen)
         .task(id: item.state == .done ? item.location : nil) { await loadThumbnail() }
         // A file that is here can be dragged out of the list, into Finder, a mail or any app that takes files (R-D13).
         .modifier(FileDrag(path: model.canOpen(item) ? model.filePath(item) : nil))
     }
 
+    private func column(_ text: String, width: CGFloat) -> some View {
+        Text(text)
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(width: width, alignment: .leading)
+    }
+
+    /// How it stands, in the last column: the reason it is not here, otherwise how far it is or which way it went.
+    @ViewBuilder
+    private var state: some View {
+        if let reason {
+            ReasonLabel(text: reason.text, tint: reason.tint)
+        } else {
+            Text(item.state == .active ? "\(Int(item.fraction * 100))%" : (item.incoming ? String(localized: "Received") : String(localized: "Sent")))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    /// The line under the name: who it was with, and in a list without columns how big it is and when it was.
+    private var detail: String {
+        let with = item.incoming ? String(localized: "From \(peerName)") : String(localized: "To \(peerName)")
+        if item.state == .active {
+            return String(localized: "\(formatBytes(item.done)) of \(formatBytes(item.total))  \(formatSpeed(item.speed))")
+        }
+        if columns != .none { return with }
+        let size = item.state == .done && item.total > 0 ? formatBytes(item.total) : nil
+        return [with, size, when].compactMap { $0 }.joined(separator: " \u{00B7} ")
+    }
+
+    private var when: String { item.updated.formatted(.relative(presentation: .named)) }
+
+    private var reason: (text: String, tint: Color)? { TransferReason.of(item, peerName: peerName, model: model) }
+
     @LocalState private var thumbnail: NSImage?
 
-    /// The picture of the file when there is one to show, otherwise what state it is in.
+    /// The picture of the file when there is one to show, otherwise a tile that says what kind of file it is.
     @ViewBuilder
     private var leading: some View {
-        if let thumbnail {
+        let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
+        if chosen {
+            ZStack {
+                shape.fill(Palette.indigo)
+                Image(systemName: "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+            }
+            .transition(.scale(scale: 0.8).combined(with: .opacity))
+        } else if let thumbnail {
             Image(nsImage: thumbnail)
                 .resizable()
                 .scaledToFill()
                 .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .clipShape(shape)
         } else {
+            let kind = SharedKind.of(item.name)
             ZStack {
-                Circle().fill(iconTint.opacity(0.16))
-                Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(iconTint)
-                    .contentTransition(.symbolEffect(.replace))
+                shape.fill(kind.tone.fill)
+                Image(systemName: kind.tileSymbol)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(kind.tone.ink)
             }
         }
     }
@@ -749,44 +989,139 @@ struct TransferRow: View {
         thumbnail = made?.nsImage
     }
 
-    /// A file that arrived and is gone now: no check but a cross, so the list does not promise what is not there.
-    private var missing: Bool { item.state == .done && item.location != nil && !model.canOpen(item) }
+}
 
-    private var symbol: String {
-        switch item.state {
-        case .active: item.incoming ? "arrow.down" : "arrow.up"
-        case .done: missing ? "xmark" : "checkmark"
-        case .failed: "exclamationmark"
-        }
-    }
+/// The name of a round button, shown the moment the pointer is on it, not after the wait of a tooltip.
+///
+/// The button only says where it is and what it is called; the window draws the name (`showsNames`). Drawn by the button itself
+/// the name lay on the button, and under whatever comes after the button: the next row, the next card. In a window that draws no
+/// names the button has the tooltip of the system.
+struct InstantName: ViewModifier {
+    let name: LocalizedStringKey
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.showsNames) private var hosted
+    @LocalState private var hovering = false
+    @LocalState private var id = UUID()
 
-    private var iconTint: Color {
-        switch item.state {
-        case .active: Palette.indigo
-        case .done: missing ? Palette.urgent : .green
-        case .failed: Palette.urgent
+    func body(content: Content) -> some View {
+        let shown = (hovering || DebugSupport.pointerEverywhere) && hoverEnabled && isEnabled
+        Group {
+            if hosted {
+                content
+                    .onHover { hovering = $0 }
+                    .anchorPreference(key: ShownNames.self, value: .bounds) { shown ? [ShownName(id: id, name: name, bounds: $0)] : [] }
+            } else {
+                content.help(name)
+            }
         }
+        .accessibilityLabel(Text(name))
     }
 }
 
-/// A small button at the end of a row (pin, delete): the bare symbol in grey, at the size the lists of the system use, with no plate
-/// behind it, and its name as a tooltip.
+/// A name the window has to draw: of which button, and where that button is.
+struct ShownName: Equatable, Identifiable {
+    let id: UUID
+    let name: LocalizedStringKey
+    let bounds: Anchor<CGRect>
+}
+
+struct ShownNames: PreferenceKey {
+    static let defaultValue: [ShownName] = []
+    static func reduce(value: inout [ShownName], nextValue: () -> [ShownName]) { value += nextValue() }
+}
+
+/// Puts a name under its button with a gap between them, in the middle of it, as on Linux and Windows. Near the edge of the
+/// window it moves sideways to stay whole, and at the bottom it goes above the button. It never lies on the button it names.
+private struct NamePlacement: Layout {
+    let button: CGRect
+    private static let gap: CGFloat = 6
+    private static let edge: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let name = subviews.first else { return }
+        let size = name.sizeThatFits(.unspecified)
+        let x = max(Self.edge, min(button.midX - size.width / 2, bounds.width - size.width - Self.edge))
+        let below = button.maxY + Self.gap + size.height <= bounds.height
+        let y = below ? button.maxY + Self.gap : button.minY - size.height - Self.gap
+        name.place(at: CGPoint(x: bounds.minX + x, y: bounds.minY + y), anchor: .topLeading, proposal: .unspecified)
+    }
+}
+
+extension EnvironmentValues {
+    /// This window draws the names of its round buttons (`showsNames`).
+    @Entry var showsNames = false
+}
+
+extension View {
+    func instantName(_ name: LocalizedStringKey) -> some View { modifier(InstantName(name: name)) }
+
+    /// The names of the round buttons in this view are drawn here, over everything in it. For the whole of a window.
+    func showsNames() -> some View {
+        environment(\.showsNames, true)
+            .overlayPreferenceValue(ShownNames.self) { names in
+                GeometryReader { proxy in
+                    ForEach(names) { item in
+                        NamePlacement(button: proxy[item.bounds]) {
+                            Text(item.name)
+                                .font(.system(size: 11.5, weight: .medium))
+                                .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.primary.opacity(0.9), in: .rect(cornerRadius: 8, style: .continuous))
+                                .fixedSize()
+                        }
+                        .transition(.opacity.combined(with: .offset(y: 3)))
+                    }
+                }
+                .animation(.hover(!names.isEmpty), value: names.map(\.id))
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+    }
+}
+
+/// The disc of a small round button at the end of a row: nothing at rest, a faint fill under the pointer, the same for a button
+/// and for a menu.
+private struct RowButtonDisc: View {
+    let symbol: String
+    let hovering: Bool
+    var pressed = false
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+
+    /// One size for every round button of a row.
+    static let size: CGFloat = 28
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.secondary)
+            .frame(width: Self.size, height: Self.size)
+            .background(Circle().fill(Color.primary.opacity(pressed ? 0.16 : (hovering && isEnabled && hoverEnabled ? 0.09 : 0))))
+            .contentShape(Circle())
+            .opacity(isEnabled ? 1 : 0.4)
+            .animation(.hover(hovering), value: hovering)
+    }
+}
+
+/// A small button at the end of a row (pin, delete): the symbol in grey on a disc that fades in under the pointer, with its name
+/// shown at once.
 struct RowActionButton: View {
     let symbol: String
     let help: LocalizedStringKey
     let action: () -> Void
+    @LocalState private var hovering = false
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .medium))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
-        .foregroundStyle(.secondary)
-        .help(help)
-        .accessibilityLabel(Text(help))
+        Button(action: action) { RowButtonDisc(symbol: symbol, hovering: hovering) }
+            .buttonStyle(.bouncy)
+            .onHover { hovering = $0 }
+            .instantName(help)
     }
 }
 
@@ -795,23 +1130,20 @@ struct RowMenuButton<Content: View>: View {
     var symbol = "ellipsis"
     let help: LocalizedStringKey
     @ViewBuilder var content: Content
+    @LocalState private var hovering = false
 
     var body: some View {
         Menu {
             content
         } label: {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .medium))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
+            RowButtonDisc(symbol: symbol, hovering: hovering)
         }
         .menuStyle(.button)
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
-        .foregroundStyle(.secondary)
         .fixedSize()
-        .help(help)
-        .accessibilityLabel(Text(help))
+        .onHover { hovering = $0 }
+        .instantName(help)
     }
 }
 
@@ -826,22 +1158,31 @@ struct TransferEntry: View {
     var chosen = false
     /// What a click does instead of opening, for a page where rows can be chosen; nil opens.
     var onTap: (() -> Void)?
+    /// What the second click of a double click does, for a page where a click only picks the row; nil leaves it at the two clicks.
+    var onDoubleTap: (() -> Void)?
+    /// As a line of the table on the page Shared.
+    var columns = TransferColumns.none
+    /// The row whose file is shown beside the list.
+    var picked = false
     @FocusState private var focused: Bool
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Metrics.cardInner, style: .continuous)
         HStack(spacing: 6) {
-            TransferRow(item: item, peerName: peerName)
-            // The three dots of the Android app: everything the right click offers, where it can be seen.
+            TransferRow(item: item, peerName: peerName, columns: columns, chosen: chosen)
+            // Everything that can be done with it, where it can be seen: the same as the right click.
             RowMenuButton(help: "More") { TransferMenu(item: item) }
         }
         .padding(.horizontal, 10)
-        .hoverHighlight(radius: Metrics.cardInner, tint: focused || chosen ? Palette.indigo : .primary, selected: focused || chosen)
+        .hoverHighlight(radius: Metrics.cardInner, tint: focused || chosen || picked ? Palette.indigo : .primary, selected: focused || chosen || picked)
         .contentShape(shape)
         .onTapGesture {
             focused = true
             if let onTap { onTap() } else { model.open(item) }
         }
+        // Beside the single click and not before it: the first click acts at once, and a second one in time is the double click. As
+        // a gesture of its own it does not depend on which click the app says is being handled when the single one is called.
+        .simultaneousGesture(TapGesture(count: 2).onEnded { onDoubleTap?() }, including: onDoubleTap == nil ? .subviews : .all)
         .focusable()
         .focused($focused)
         .focusEffectDisabled()
@@ -869,23 +1210,23 @@ struct TransferMenu: View {
         let available = model.canOpen(item)
         // While it runs the one thing to do is stop it.
         if item.state == .active {
-            Button("Cancel transfer", role: .destructive) { model.cancelTransfer(item) }
+            Button("Cancel transfer", systemImage: "xmark", role: .destructive) { model.cancelTransfer(item) }
             Divider()
         }
-        Button("Open") { model.open(item) }
+        Button("Open", systemImage: "arrow.up.forward.square") { model.open(item) }
             .disabled(!available)
-        Button("Open File Location") { model.reveal(item) }
+        Button("Open File Location", systemImage: "folder") { model.reveal(item) }
             .disabled(!available)
-        Button("Copy path") { model.copyPath(item) }
+        Button("Copy path", systemImage: "doc.on.doc") { model.copyPath(item) }
             .disabled(item.location == nil)
         Divider()
-        Button("Remove from List") {
+        Button("Remove from List", systemImage: "minus.circle") {
             withAnimation(.tandem) { model.removeFromList([item.id]) }
         }
         .disabled(item.state == .active)
         // Only what arrived on this Mac. A file that was sent is the person's own original.
         if item.incoming {
-            Button("Move File to Trash…", role: .destructive) { model.requestTrash(item) }
+            Button("Move File to Trash…", systemImage: "trash", role: .destructive) { model.requestTrash(item) }
                 .disabled(!available)
         }
     }

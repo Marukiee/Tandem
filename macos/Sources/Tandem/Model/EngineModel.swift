@@ -1418,6 +1418,27 @@ final class EngineModel {
         }
     }
 
+    /// Whether a device can be named from this Mac: one new enough to take a name for the whole circle (R-I33).
+    func canRename(_ id: String) -> Bool { engine?.canRename(id: id) ?? false }
+
+    /// Gives a device a name for every device of the circle, this Mac included.
+    func renameDevice(_ id: String, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if let i = devices.firstIndex(where: { $0.id == id }) { devices[i].name = trimmed }
+        Task {
+            try? await engine?.renameDevice(id: id, name: trimmed)
+            refreshDevices()
+        }
+    }
+
+    /// What a device may not do on this Mac (P6). Everything else it may.
+    func deniedPermissions(_ id: String) -> [TandemPermission] { (try? engine?.deniedPermissions(id: id)) ?? [] }
+
+    func setPermission(_ permission: TandemPermission, allowed: Bool, for id: String) {
+        try? engine?.setPermission(id: id, permission: permission, allowed: allowed)
+    }
+
     /// Shows a name in the sidebar while it is still being typed, without telling the
     /// engine or saving anything yet.
     func previewName(_ name: String) {

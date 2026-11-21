@@ -212,59 +212,38 @@ struct ScreenSettings: View {
     @LocalState private var tick = 0
 
     private var host: ScreenHost { ScreenHost.shared }
-    private var engine: TandemEngine? { model.tandem }
+    private var engine: TandemEngine? { model.tandem ?? DebugSupport.engineForMadeUp }
 
     /// The chosen devices in the order of the list. The first one is shown; a change goes to all of them.
     private var chosen: [String] { model.devices.map(\.id).filter(targets.contains) }
     private var target: String? { chosen.first }
 
-    private var policy: TandemMediaPolicy? {
+    /// What holds for every device that has no choices of its own.
+    private var allPolicy: TandemMediaPolicy? {
         _ = version
-        guard let engine else { return nil }
-        if let target { return try? engine.mediaPolicy(id: target) }
-        return engine.mediaDefaultPolicy()
+        return engine?.mediaDefaultPolicy()
+    }
+
+    /// What holds for the first of the chosen devices.
+    private var chosenPolicy: TandemMediaPolicy? {
+        _ = version
+        guard let engine, let target else { return nil }
+        return try? engine.mediaPolicy(id: target)
     }
 
     private var own: Bool {
-        guard let target else { return true }
         _ = version
-        return chosen.allSatisfy { engine?.hasOwnMediaPolicy(id: $0) ?? false }
+        return !chosen.isEmpty && chosen.allSatisfy { engine?.hasOwnMediaPolicy(id: $0) ?? false }
     }
-
-    private var editable: Bool { target == nil || own }
 
     var body: some View {
         _ = tick
         return Form {
-            Section("Sound") {
-                Picker("Sound of a screen you look at", selection: Binding(
-                    get: { UserDefaults.standard.string(forKey: ScreenSound.whereKey) ?? "there" },
-                    set: { UserDefaults.standard.set($0, forKey: ScreenSound.whereKey); tick += 1 }
-                )) {
-                    Text("Plays on that device").tag("there")
-                    Text("Comes to this Mac").tag("here")
-                }
-                DescribedToggle(
-                    "Ask when headphones are in",
-                    subtitle: "With Bluetooth headphones or something in the jack, asks whether the sound should come here this time.",
-                    isOn: Binding(
-                        get: { ScreenSound.askWithHeadphones },
-                        set: { UserDefaults.standard.set($0, forKey: ScreenSound.askKey); tick += 1 }
-                    )
-                )
-                .disabled(ScreenSound.choice == "here")
-                if !ScreenSound.remembered.isEmpty {
-                    Button("Ask again for all devices") {
-                        UserDefaults.standard.removeObject(forKey: ScreenSound.devicesKey)
-                        tick += 1
-                    }
-                    .buttonStyle(.tandemGlass)
-                }
-            }
+            // On top what is changed most: whether this Mac can be looked at at all, what runs now, and what a device gets when it asks.
             Section {
                 DescribedToggle(
                     "Let my other devices see and control this Mac",
-                    subtitle: "Your phone shows a Control this Mac button on this Mac's page once it can. You still decide for every device below.",
+                    subtitle: "You still decide below what a device may do.",
                     isOn: Binding(get: { host.enabled }, set: { host.enabled = $0 })
                 )
                 if host.needsRestart {
@@ -276,24 +255,6 @@ struct ScreenSettings: View {
                     }
                 }
             }
-
-            Section("Permissions") {
-                permissionRow(
-                    symbol: "rectangle.dashed.badge.record", title: "Screen Recording",
-                    why: "To send the picture of your screen. macOS asks for it once.",
-                    allowed: ScreenCapturer.hasPermission,
-                    allow: { host.requestScreenRecording() },
-                    pane: "Privacy_ScreenCapture"
-                )
-                permissionRow(
-                    symbol: "cursorarrow.motionlines", title: "Accessibility",
-                    why: "To move the pointer and press keys for a device you let control this Mac. Without it, devices can only watch.",
-                    allowed: host.accessibility,
-                    allow: { host.requestAccessibility() },
-                    pane: "Privacy_Accessibility"
-                )
-            }
-            LockedAccessSection()
 
             if !host.running.isEmpty {
                 Section("Right now") {
@@ -310,44 +271,96 @@ struct ScreenSettings: View {
                 }
             }
 
-            Section {
-                DeviceTargetsPicker(devices: model.devices, selection: $targets)
-                if !chosen.isEmpty {
-                    DescribedToggle(
-                        chosen.count == 1 ? LocalizedStringKey("Own settings for this device") : LocalizedStringKey("Own settings for these devices"),
-                        subtitle: "Otherwise it follows the settings for all devices",
-                        isOn: Binding(
-                            get: { own },
-                            set: { wantOwn in
-                                if wantOwn {
-                                    if let policy { for id in chosen where !(engine?.hasOwnMediaPolicy(id: id) ?? false) { try? engine?.setMediaPolicy(id: id, policy: policy) } }
-                                } else {
-                                    for id in chosen { try? engine?.clearMediaPolicy(id: id) }
-                                }
-                                version += 1
-                            }
-                        )
-                    )
+            // A permission that is still to give stands here, where it is in the way of nothing. One that is given is behind More.
+            if !ScreenCapturer.hasPermission || !host.accessibility {
+                Section("Permissions") { permissions(given: false) }
+            }
+
+            if let policy = allPolicy {
+                Section {
+                    Picker("Looking at this Mac", selection: Binding(get: { policy.screen }, set: { value in changeAll { $0.screen = value } })) {
+                        permissionTags
+                    }
+                    Picker("Using the mouse and keyboard", selection: Binding(get: { policy.control }, set: { value in changeAll { $0.control = value } })) {
+                        permissionTags
+                    }
+                } header: {
+                    Text("When a device asks")
+                } footer: {
+                    Text("Ask shows a question on this Mac every time. Always allow lets that device in without asking. Never turns it away without a word.")
                 }
             }
 
-            if let policy {
-                Section("When a device asks") {
-                    Picker("Looking at this Mac", selection: Binding(get: { policy.screen }, set: { value in change { $0.screen = value } })) {
-                        permissionTags
+            MoreSettings(holds: "One device apart, a locked Mac, sound, permissions, your phone as a camera") {
+                Section {
+                    DeviceTargetsPicker(devices: model.devices, selection: $targets)
+                    if !chosen.isEmpty {
+                        DescribedToggle(
+                            chosen.count == 1 ? LocalizedStringKey("Own settings for this device") : LocalizedStringKey("Own settings for these devices"),
+                            subtitle: "Otherwise it follows the settings for all devices",
+                            isOn: Binding(
+                                get: { own },
+                                set: { wantOwn in
+                                    if wantOwn {
+                                        if let policy = chosenPolicy { for id in chosen where !(engine?.hasOwnMediaPolicy(id: id) ?? false) { try? engine?.setMediaPolicy(id: id, policy: policy) } }
+                                    } else {
+                                        for id in chosen { try? engine?.clearMediaPolicy(id: id) }
+                                    }
+                                    version += 1
+                                }
+                            )
+                        )
+                        if let policy = chosenPolicy {
+                            Group {
+                                Picker("Looking at this Mac", selection: Binding(get: { policy.screen }, set: { value in changeChosen { $0.screen = value } })) {
+                                    permissionTags
+                                }
+                                Picker("Using the mouse and keyboard", selection: Binding(get: { policy.control }, set: { value in changeChosen { $0.control = value } })) {
+                                    permissionTags
+                                }
+                            }
+                            .disabled(!own)
+                        }
                     }
-                    Picker("Using the mouse and keyboard", selection: Binding(get: { policy.control }, set: { value in change { $0.control = value } })) {
-                        permissionTags
-                    }
-                    Text("Ask shows a question on this Mac every time. Always allow lets that device in without asking. Never turns it away without a word.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("One device apart")
                 }
-                .disabled(!editable)
+
+                LockedAccessSection()
+
+                Section("Sound") {
+                    Picker("Sound of a screen you look at", selection: Binding(
+                        get: { UserDefaults.standard.string(forKey: ScreenSound.whereKey) ?? "there" },
+                        set: { UserDefaults.standard.set($0, forKey: ScreenSound.whereKey); tick += 1 }
+                    )) {
+                        Text("Plays on that device").tag("there")
+                        Text("Comes to this Mac").tag("here")
+                    }
+                    DescribedToggle(
+                        "Ask when headphones are in",
+                        subtitle: "With Bluetooth headphones or something in the jack, asks whether the sound should come here this time.",
+                        isOn: Binding(
+                            get: { ScreenSound.askWithHeadphones },
+                            set: { UserDefaults.standard.set($0, forKey: ScreenSound.askKey); tick += 1 }
+                        )
+                    )
+                    .disabled(ScreenSound.choice == "here")
+                    if !ScreenSound.remembered.isEmpty {
+                        Button("Ask again for all devices") {
+                            UserDefaults.standard.removeObject(forKey: ScreenSound.devicesKey)
+                            tick += 1
+                        }
+                        .buttonStyle(.tandemGlass)
+                    }
+                }
+
+                if ScreenCapturer.hasPermission || host.accessibility {
+                    Section("Permissions") { permissions(given: true) }
+                }
+                WebcamSection()
+                // Last and small: for the few who stream with OBS.
+                CameraStreamSection()
             }
-            WebcamSection()
-            // Last and small: for the few who stream with OBS.
-            CameraStreamSection()
         }
         .formStyle(.grouped)
         .task {
@@ -367,20 +380,45 @@ struct ScreenSettings: View {
         Text("Never").tag(TandemMediaPermission.never)
     }
 
-    private func change(_ edit: (inout TandemMediaPolicy) -> Void) {
-        guard let engine, var next = policy else { return }
+    private func changeAll(_ edit: (inout TandemMediaPolicy) -> Void) {
+        guard let engine, var next = allPolicy else { return }
         edit(&next)
-        if !chosen.isEmpty {
-            // Each device keeps what it had in the other choices; only the one that was changed is made the same.
-            for id in chosen {
-                guard var own = try? engine.mediaPolicy(id: id) else { continue }
-                edit(&own)
-                try? engine.setMediaPolicy(id: id, policy: own)
-            }
-        } else {
-            try? engine.setMediaDefaultPolicy(policy: next)
+        try? engine.setMediaDefaultPolicy(policy: next)
+        version += 1
+    }
+
+    private func changeChosen(_ edit: (inout TandemMediaPolicy) -> Void) {
+        guard let engine else { return }
+        // Each device keeps what it had in the other choices; only the one that was changed is made the same.
+        for id in chosen {
+            guard var own = try? engine.mediaPolicy(id: id) else { continue }
+            edit(&own)
+            try? engine.setMediaPolicy(id: id, policy: own)
         }
         version += 1
+    }
+
+    /// The permissions macOS wants: the ones that are given, or the ones that are still to give.
+    @ViewBuilder
+    private func permissions(given: Bool) -> some View {
+        if ScreenCapturer.hasPermission == given {
+            permissionRow(
+                symbol: "rectangle.dashed.badge.record", title: "Screen Recording",
+                why: "To send the picture of your screen. macOS asks for it once.",
+                allowed: ScreenCapturer.hasPermission,
+                allow: { host.requestScreenRecording() },
+                pane: "Privacy_ScreenCapture"
+            )
+        }
+        if host.accessibility == given {
+            permissionRow(
+                symbol: "cursorarrow.motionlines", title: "Accessibility",
+                why: "To move the pointer and press keys for a device you let control this Mac. Without it, devices can only watch.",
+                allowed: host.accessibility,
+                allow: { host.requestAccessibility() },
+                pane: "Privacy_Accessibility"
+            )
+        }
     }
 
     private func permissionRow(symbol: String, title: LocalizedStringKey, why: LocalizedStringKey, allowed: Bool, allow: @escaping () -> Void, pane: String) -> some View {

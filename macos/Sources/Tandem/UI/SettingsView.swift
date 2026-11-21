@@ -4,11 +4,72 @@ import ServiceManagement
 import SwiftUI
 import TandemCore
 
-/// The sections of the Settings window, in the order System Settings would list them.
-enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, devices, features, shortcuts, files, clipboard, screen, pointer, quickShare, access, hotspot, health, updates, about
+/// The subjects of the Settings window, the same seven as on Linux and Windows. What belongs together is together, by subject and
+/// not by the part of the app that made it: what this Mac does, what the phone brings here, what is shared, what is shown and
+/// steered, and what is heard.
+enum SettingsSubject: String, CaseIterable, Identifiable {
+    case thisMac, phone, sharing, control, sound, works, about
 
     var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .thisMac: "This Mac"
+        case .phone: "Phone"
+        case .sharing: "Sharing"
+        case .control: "Screen and control"
+        case .sound: "Sound and music"
+        case .works: "What works"
+        case .about: "Updates and about"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .thisMac: "laptopcomputer"
+        case .phone: "iphone"
+        case .sharing: "paperplane"
+        case .control: "display"
+        case .sound: "speaker.wave.2"
+        case .works: "checklist"
+        case .about: "info.circle"
+        }
+    }
+
+    /// What the subject holds, from the top of its page down.
+    var parts: [SettingsSection] {
+        switch self {
+        case .thisMac: [.general, .shortcuts, .devices]
+        case .phone: [.phone, .hotspot, .health]
+        case .sharing: [.received, .files, .quickShare, .clipboard]
+        case .control: [.screen, .pointer]
+        case .sound: [.sound]
+        case .works: [.features, .access]
+        case .about: [.updates, .about]
+        }
+    }
+}
+
+/// The parts of Settings. Each was a tab of its own once and is a part of a subject now; the names stay, because the search of the
+/// Mac, a row on the page of a device and a debug run still ask for a part by its name.
+enum SettingsSection: String, CaseIterable, Identifiable {
+    case general, devices, features, shortcuts, files, clipboard, screen, pointer, quickShare, access, hotspot, health, updates, about
+    /// What was in General and belongs to another subject.
+    case phone, received, sound
+
+    var id: String { rawValue }
+
+    var subject: SettingsSubject {
+        SettingsSubject.allCases.first { $0.parts.contains(self) } ?? .thisMac
+    }
+
+    /// The first part of a subject is the subject itself and has no heading; neither has a part whose own first line names it.
+    var hasHeading: Bool {
+        switch self {
+        case .general, .phone, .received, .sound, .features, .updates, .about: false
+        default: true
+        }
+    }
 
     var title: LocalizedStringKey {
         switch self {
@@ -26,6 +87,9 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .health: "Health"
         case .updates: "Updates"
         case .about: "About"
+        case .phone: "Phone"
+        case .received: "Received files"
+        case .sound: "Sound and music"
         }
     }
 
@@ -45,76 +109,207 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .health: "bed.double"
         case .updates: "arrow.down.circle"
         case .about: "info.circle"
-        }
-    }
-
-    /// The window is as tall as the tab needs, like the system's own Settings windows.
-    var height: CGFloat {
-        switch self {
-        case .general: 720
-        case .devices: 460
-        case .features: 640
-        case .shortcuts: 700
-        case .files: 680
-        case .clipboard: 720
-        case .screen: 700
-        case .pointer: 720
-        case .quickShare: 560
-        case .access: 460
-        case .hotspot: 470
-        case .health: 620
-        case .updates: 330
-        case .about: 360
+        case .phone: "iphone"
+        case .received: "tray.and.arrow.down"
+        case .sound: "speaker.wave.2"
         }
     }
 }
 
-/// The Settings window like System Settings: a sidebar with the sections and the section next to it. Tabs ran out of room as
-/// the sections grew, and the ones that did not fit went into a menu behind two arrows. A sidebar has room for all of them and
-/// scrolls when there are more.
+/// The Settings window like System Settings: a sidebar with the subjects and the subject next to it. Seven subjects instead of a
+/// tab for every part of the app: a subject is one page with its parts under each other, each under its own name.
 struct SettingsView: View {
     @Environment(EngineModel.self) private var model
-    @LocalState private var selection: SettingsSection = DebugSupport.initialSettingsSection() ?? .general
-
-    private var sections: [SettingsSection] { SettingsSection.allCases }
+    @LocalState private var selection: SettingsSubject = DebugSupport.initialSettingsSubject() ?? .thisMac
+    /// The part that was asked for by name, to bring into view on the page of its subject.
+    @LocalState private var wanted: SettingsSection? = DebugSupport.initialSettingsSection()
+    /// Raised each time a part is asked for, also the same one twice.
+    @LocalState private var asked = 0
 
     var body: some View {
         NavigationSplitView {
-            List(sections, selection: $selection) { section in
-                Label(section.title, systemImage: section.symbol)
-                    .tag(section)
+            List(SettingsSubject.allCases, selection: $selection) { subject in
+                Label(subject.title, systemImage: subject.symbol)
+                    .tag(subject)
             }
             // Wide enough for the longest name in both languages, so none is cut off.
             .frame(minWidth: 214)
             .navigationSplitViewColumnWidth(214)
-            // The sections always fit, so there is nothing to fold away, and the round button for it only got in the way.
+            // The subjects always fit, so there is nothing to fold away, and the round button for it only got in the way.
             .toolbar(removing: .sidebarToggle)
         } detail: {
-            detail(for: selection)
+            SubjectPage(subject: selection, wanted: wanted, asked: asked) { wanted = nil }
+                .id(selection)
                 .navigationTitle(Text(selection.title))
         }
-        .frame(width: 780, height: 620)
-        .modifier(SpotlightSettingsNavigation(selection: $selection))
+        .frame(width: 780, height: DebugSupport.settingsHeight ?? 620)
+        .onAppear(perform: take)
+        .onReceive(NotificationCenter.default.publisher(for: .tandemSettingsSection)) { _ in take() }
+    }
+
+    /// Goes to the part that the search of the Mac, or a row that leads here, asked for.
+    private func take() {
+        guard let part = SettingsSection.requested else { return }
+        SettingsSection.requested = nil
+        selection = part.subject
+        wanted = part
+        asked += 1
+        if DebugSupport.directory != nil { DebugSupport.write("settings section \(part.rawValue)\n", named: "spotlight-settings.txt") }
+    }
+}
+
+/// One subject: its parts under each other on one page that scrolls as a whole. Each part is the grouped form it always was, as
+/// tall as what is in it and without a scroll of its own.
+private struct SubjectPage: View {
+    let subject: SettingsSubject
+    let wanted: SettingsSection?
+    let asked: Int
+    /// The part that was asked for is in view: it is not asked for any more, so coming back to this subject starts at its top.
+    var arrived: () -> Void = {}
+
+    @LocalState private var position = ScrollPosition(idType: SettingsSection.self)
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // What the page holds, to see at a glance and to go to.
+                if subject.parts.count > 1 {
+                    FlowRow {
+                        ForEach(subject.parts) { part in
+                            PartChip(part: part) {
+                                withAnimation(.tandem) {
+                                    if part == subject.parts.first { position.scrollTo(edge: .top) } else { position.scrollTo(id: part, anchor: .top) }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.top, 14)
+                }
+                ForEach(subject.parts, id: \.self) { part in
+                    VStack(alignment: .leading, spacing: 0) {
+                        if part.hasHeading {
+                            Label(part.title, systemImage: part.symbol)
+                                .font(.title3.weight(.semibold))
+                                .padding(.horizontal, 22)
+                                .padding(.top, 16)
+                                // Over the ground of the form under it, which reaches up a little.
+                                .zIndex(1)
+                        }
+                        content(of: part)
+                            // Asked for by name: what the part keeps folded away opens, so what was looked for is in sight.
+                            .environment(\.settingsPartAsked, wanted == part)
+                    }
+                    .id(part)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .scrollTargetLayout()
+        }
+        .scrollPosition($position)
+        .onChange(of: asked, initial: true) {
+            guard let wanted, wanted.subject == subject else { return }
+            // The first part is where the page starts anyway.
+            guard wanted != subject.parts.first else { return arrived() }
+            // Once the forms have their height.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                position.scrollTo(id: wanted, anchor: .top)
+                arrived()
+                if DebugSupport.directory != nil { DebugSupport.write("settings part \(wanted.rawValue)\n", named: "settings-part.txt") }
+            }
+        }
     }
 
     @ViewBuilder
-    private func detail(for section: SettingsSection) -> some View {
-        switch section {
-        case .general: GeneralSettings()
-        case .devices: DevicesSettings()
-        case .features: FeaturesSettings()
-        case .shortcuts: ShortcutsSettings()
-        case .files: FileSettings()
-        case .clipboard: ClipboardSettings()
-        case .screen: ScreenSettings()
-        case .pointer: PointerSettings()
-        case .quickShare: QuickShareSettings()
-        case .access: AccessSettings()
-        case .hotspot: HotspotSettings()
-        case .health: HealthSettings()
-        case .updates: UpdateSettings()
+    private func content(of part: SettingsSection) -> some View {
+        switch part {
+        case .general: GeneralSettings().asPart()
+        case .devices: DevicesSettings().asPart()
+        case .features: FeaturesSettings().asPart()
+        case .shortcuts: ShortcutsSettings().asPart()
+        case .files: FileSettings().asPart()
+        case .clipboard: ClipboardSettings().asPart()
+        case .screen: ScreenSettings().asPart()
+        case .pointer: PointerSettings().asPart()
+        case .quickShare: QuickShareSettings().asPart()
+        case .access: AccessSettings().asPart()
+        case .hotspot: HotspotSettings().asPart()
+        case .health: HealthSettingsContent().padding(20)
+        case .updates: UpdateSettings().asPart()
         case .about: AboutSettings()
+        case .phone: PhoneSettings().asPart()
+        case .received: ReceivedFilesSettings().asPart()
+        case .sound: SoundSettings().asPart()
         }
+    }
+}
+
+/// One of the parts of a page, in the row at its top: a press brings that part into view.
+private struct PartChip: View {
+    let part: SettingsSection
+    let action: () -> Void
+    @LocalState private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Label(part.title, systemImage: part.symbol)
+                .font(.callout.weight(.medium))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(hovering ? 0.1 : 0.06), in: .capsule)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.bouncy)
+        .onHover { hovering = $0 }
+        .animation(.hover(hovering), value: hovering)
+    }
+}
+
+extension EnvironmentValues {
+    /// This part of Settings was asked for by name, by the search of the Mac or a row that leads to it.
+    @Entry var settingsPartAsked = false
+}
+
+/// The last row of a part of Settings, with behind it what is rarely touched: fine tuning, what holds for one device, how it
+/// works. The row says what is there, and the rest is only laid out once it is opened, so the page stays short enough to scan.
+/// It opens by itself when its part was asked for by name: what someone searched for may be behind it.
+struct MoreSettings<Content: View>: View {
+    /// What is behind the row, in a few words.
+    let holds: LocalizedStringKey
+    @ViewBuilder var content: Content
+    @Environment(\.settingsPartAsked) private var asked
+    @LocalState private var open = false
+
+    var body: some View {
+        Section {
+            Button {
+                withAnimation(.tandem) { open.toggle() }
+            } label: {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("More")
+                        Text(holds).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(open ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(open ? .isSelected : [])
+            .onChange(of: asked, initial: true) { if asked { open = true } }
+        }
+        if open { content }
+    }
+}
+
+extension View {
+    /// A grouped form as a part of a longer page: as tall as what is in it, and the page does the scrolling.
+    fileprivate func asPart() -> some View {
+        scrollDisabled(true).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -142,33 +337,17 @@ struct DescribedToggle: View {
     }
 }
 
-// MARK: General
+// MARK: This Mac
 
+/// The first part of This Mac: its name, its language, how it starts and stays awake, how it reaches the others, and its backup.
 private struct GeneralSettings: View {
-    /// What Tandem can read of the music apps right now, so it is clear when a phone shows nothing and why.
-    private var mediaSeen: String {
-        let players = model.macMedia.players
-        if players.isEmpty { return String(localized: "Nothing from Spotify or Music yet") }
-        return players
-            .map { $0.playing ? String(localized: "\($0.app) (playing)") : String(localized: "\($0.app) (paused)") }
-            .joined(separator: ", ")
-    }
-
     @Environment(EngineModel.self) private var model
     @LocalState private var name = ""
     @FocusState private var nameFocused: Bool
     @LocalState private var startAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("showInDock") private var showInDock = true
-    @AppStorage("copyCodes") private var copyCodes = true
-    @AppStorage("batteryAlerts") private var batteryAlerts = true
-    @AppStorage(CallPause.enabledKey) private var pauseDuringCalls = true
     @AppStorage("bleMessages") private var bleMessages = true
     @AppStorage(TailscaleAuto.enabledKey) private var autoTailscale = true
-    @AppStorage("audioMuteLocal") private var audioMuteLocal = true
-    @AppStorage(ReceivedImages.copyKey) private var copyImages = true
-    @AppStorage(ReceivedImages.pasteKey) private var pasteImages = false
-    @LocalState private var folder = DownloadFolder.url
-    @LocalState private var folderIsDefault = DownloadFolder.isDefault
     @LocalState private var confirmReset = false
     @LocalState private var backupChoice: BackupChoice?
     @LocalState private var language = LanguageSetting.current
@@ -182,8 +361,6 @@ private struct GeneralSettings: View {
                     .onSubmit(commitName)
                     .onChange(of: name) { _, value in model.previewName(value) }
                     .onChange(of: nameFocused) { _, focused in if !focused { commitName() } }
-            } header: {
-                Text("This Mac")
             } footer: {
                 Text("This is how your other devices see it.")
             }
@@ -209,15 +386,7 @@ private struct GeneralSettings: View {
                 }
             }
 
-            PhoneSoundSettings()
-
-            TandemAudioSettings()
-
-            FindSoundSettings()
-
-            KeepAwakeSettings()
-
-            Section("Behaviour") {
+            Section("Starting") {
                 Toggle("Start at login", isOn: $startAtLogin)
                     .onChange(of: startAtLogin) { _, on in
                         do {
@@ -230,70 +399,127 @@ private struct GeneralSettings: View {
                     .onChange(of: showInDock) { _, on in
                         NSApp.setActivationPolicy(on ? .regular : .accessory)
                     }
-                DescribedToggle(
-                    "Copy codes from text messages to the clipboard",
-                    subtitle: "You also get a notification when a code was copied. Without this, the notification has a Copy code button.",
-                    isOn: $copyCodes
-                )
-                DescribedToggle(
-                    "Pause music during calls",
-                    subtitle: "When your phone rings or this Mac is in a call, music here and on your phone pauses, and plays again after. Starting it yourself during the call works as always.",
-                    isOn: $pauseDuringCalls
-                )
-                DescribedToggle(
-                    "Battery alerts",
-                    subtitle: "A notification when another device is almost empty or fully charged.",
-                    isOn: $batteryAlerts
-                )
-                DescribedToggle(
-                    "Copy pictures from your phone to the clipboard",
-                    subtitle: "A picture you send from your phone is ready to paste.",
-                    isOn: $copyImages
-                )
-                DescribedToggle(
-                    "Paste them straight away",
-                    subtitle: "Where the cursor is when the picture arrives. Needs the Accessibility permission.",
-                    isOn: $pasteImages
-                )
-                .disabled(!copyImages)
-                DescribedToggle(
-                    "Show and control music",
-                    subtitle: "Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone, with its cover. Spotify covers are fetched from Spotify.",
-                    isOn: Binding(get: { model.mediaShare }, set: { model.mediaShare = $0 })
-                )
-                if model.mediaShare {
-                    LabeledContent("Seen on this Mac") {
-                        Text(mediaSeen).foregroundStyle(.secondary)
-                    }
-                    DescribedToggle(
-                        "Media keys for your phone's music",
-                        subtitle: "While your phone plays, its music shows in Control Center and in apps that show what plays, and the media keys of your keyboard control it.",
-                        isOn: Binding(get: { model.systemNowPlaying }, set: { model.systemNowPlaying = $0 })
-                    )
-                }
-                DescribedToggle(
-                    "Mute this Mac while another device is its speaker",
-                    subtitle: "Turn this off to hear the sound on both. It takes effect the next time you start it.",
-                    isOn: $audioMuteLocal
-                )
+            }
+
+            KeepAwakeSettings()
+
+            // The rest is set once, if at all.
+            MoreSettings(holds: "Connection, Focus, Spotlight, backup, starting over") {
+            Section("Connection") {
                 DescribedToggle(
                     "Turn on Tailscale when needed",
-                    subtitle: "When a device cannot be reached on this network, Tandem turns Tailscale on. Devices on the same network do not need it.",
+                    subtitle: "Only when a device cannot be reached on this network.",
                     isOn: $autoTailscale
                 )
                 DescribedToggle(
                     "Bluetooth without a network",
-                    subtitle: "Clipboard and notifications from your phone still arrive over Bluetooth when this Mac has no connection.",
+                    subtitle: "Clipboard and notifications still arrive when this Mac is offline.",
                     isOn: $bleMessages
                 )
             }
 
-            SpotlightSettingsSection()
-
-
             FocusSettingsSection()
 
+            SpotlightSettingsSection()
+
             Section {
+                LabeledContent("Back up all devices") {
+                    Button("Export…") { SettingsBackup.export(model: model) }
+                }
+                LabeledContent("Restore from a backup") {
+                    Button("Import…") { backupChoice = SettingsBackup.open(model: model) }
+                }
+            } header: {
+                Text("Backup")
+            } footer: {
+                Text("One file with the settings of this Mac and your devices. Identities, pairings and passwords are never in it.")
+            }
+            .sheet(item: $backupChoice) { choice in
+                RestorePicker(choice: choice) { device in
+                    SettingsBackup.restore(device, model: model)
+                }
+            }
+
+            Section {
+                LabeledContent("Forgets this Mac's identity and all pairings. You can pair again afterwards.") {
+                    Button("Reset Tandem…", role: .destructive) { confirmReset = true }
+                }
+            }
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear { name = model.myName }
+        .onDisappear(perform: commitName)
+        // Closing the window does not always end the focus, and the name must not be lost.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in commitName() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in commitName() }
+        .onChange(of: model.myName) { _, value in
+            // A name that changed elsewhere, such as through an import.
+            if !nameFocused, value != name { name = value }
+        }
+        .confirmationDialog("Reset Tandem?", isPresented: $confirmReset, titleVisibility: .visible) {
+            Button("Reset and restart", role: .destructive) { model.resetEverything() }
+            Button("Cancel", role: .cancel) {}
+        }
+        .animation(.tandem, value: needsRestart)
+    }
+
+    private func commitName() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            // An empty name is not a name: fall back to the last good one.
+            name = EngineModel.savedName ?? model.myName
+        } else if trimmed != EngineModel.savedName {
+            model.rename(to: trimmed)
+        }
+    }
+}
+
+// MARK: Phone
+
+/// The first part of Phone: what the phone brings to this Mac by itself.
+private struct PhoneSettings: View {
+    @AppStorage("copyCodes") private var copyCodes = true
+    @AppStorage("batteryAlerts") private var batteryAlerts = true
+    @AppStorage(ReceivedImages.copyKey) private var copyImages = true
+    @AppStorage(ReceivedImages.pasteKey) private var pasteImages = false
+
+    var body: some View {
+        Form {
+            Section {
+                DescribedToggle(
+                    "Copy codes from text messages to the clipboard",
+                    subtitle: "Without this, the notification has a Copy code button.",
+                    isOn: $copyCodes
+                )
+                DescribedToggle(
+                    "Battery alerts",
+                    subtitle: "When another device is almost empty or fully charged.",
+                    isOn: $batteryAlerts
+                )
+                Toggle("Copy pictures from your phone to the clipboard", isOn: $copyImages)
+                DescribedToggle(
+                    "Paste them straight away",
+                    subtitle: "Where the cursor is. Uses the Accessibility permission.",
+                    isOn: $pasteImages
+                )
+                .disabled(!copyImages)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: Sharing
+
+/// The first part of Sharing: where files that arrive go.
+private struct ReceivedFilesSettings: View {
+    @LocalState private var folder = DownloadFolder.url
+    @LocalState private var folderIsDefault = DownloadFolder.isDefault
+
+    var body: some View {
+        Form {
+            Section("Received files") {
                 LabeledContent("Folder") {
                     Text(folder.path)
                         .lineLimit(1)
@@ -312,63 +538,11 @@ private struct GeneralSettings: View {
                     }
                     Button("Choose…", action: chooseFolder)
                 }
-            } header: {
-                Text("Received files")
-            } footer: {
-                Text("Files that arrive go straight into this folder. By default that is your Downloads folder.")
-            }
-
-            Section {
-                LabeledContent("Back up all devices") {
-                    Button("Export…") { SettingsBackup.export(model: model) }
-                }
-                LabeledContent("Restore from a backup") {
-                    Button("Import…") { backupChoice = SettingsBackup.open(model: model) }
-                }
-            } header: {
-                Text("Backup")
-            } footer: {
-                Text("One file with the settings of this Mac and your connected devices. After a reset, open it on the device and it finds itself again. Identities, pairings and passwords are never in it.")
-            }
-            .sheet(item: $backupChoice) { choice in
-                RestorePicker(choice: choice) { device in
-                    SettingsBackup.restore(device, model: model)
-                    refreshFolder()
-                }
-            }
-
-            Section {
-                LabeledContent("Forgets this Mac's identity and all pairings. You can pair again afterwards.") {
-                    Button("Reset Tandem…", role: .destructive) { confirmReset = true }
-                }
             }
         }
         .formStyle(.grouped)
-        .onAppear { name = model.myName }
-        .onDisappear(perform: commitName)
-        // Closing the window does not always end the focus, and the name must not be lost.
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in commitName() }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in commitName() }
-        .onChange(of: model.myName) { _, value in
-            // A name that changed elsewhere, such as through an import.
-            if !nameFocused, value != name { name = value }
-        }
-        .confirmationDialog("Reset Tandem?", isPresented: $confirmReset, titleVisibility: .visible) {
-            Button("Reset and restart", role: .destructive) { model.resetEverything() }
-            Button("Cancel", role: .cancel) {}
-        }
-        .animation(.tandem, value: needsRestart)
+        .onAppear(perform: refreshFolder)
         .animation(.tandem, value: folderIsDefault)
-    }
-
-    private func commitName() {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            // An empty name is not a name: fall back to the last good one.
-            name = EngineModel.savedName ?? model.myName
-        } else if trimmed != EngineModel.savedName {
-            model.rename(to: trimmed)
-        }
     }
 
     private func chooseFolder() {
@@ -389,11 +563,75 @@ private struct GeneralSettings: View {
     }
 }
 
+// MARK: Sound and music
+
+/// Everything that is heard: the sound of other devices here, Tandem's own sound devices, the sound that finds this Mac, and music.
+private struct SoundSettings: View {
+    @Environment(EngineModel.self) private var model
+    @AppStorage(CallPause.enabledKey) private var pauseDuringCalls = true
+    @AppStorage("audioMuteLocal") private var audioMuteLocal = true
+
+    /// What Tandem can read of the music apps right now, so it is clear when a phone shows nothing and why.
+    private var mediaSeen: String {
+        let players = model.macMedia.players
+        if players.isEmpty { return String(localized: "Nothing from Spotify or Music yet") }
+        return players
+            .map { $0.playing ? String(localized: "\($0.app) (playing)") : String(localized: "\($0.app) (paused)") }
+            .joined(separator: ", ")
+    }
+
+    var body: some View {
+        Form {
+            Section("Music") {
+                DescribedToggle(
+                    "Show and control music",
+                    subtitle: "Your phone's music here, and this Mac's music on your phone. Spotify covers are fetched from Spotify.",
+                    isOn: Binding(get: { model.mediaShare }, set: { model.mediaShare = $0 })
+                )
+                if model.mediaShare {
+                    LabeledContent("Seen on this Mac") {
+                        Text(mediaSeen).foregroundStyle(.secondary)
+                    }
+                    DescribedToggle(
+                        "Media keys for your phone's music",
+                        subtitle: "It also shows in Control Center while your phone plays.",
+                        isOn: Binding(get: { model.systemNowPlaying }, set: { model.systemNowPlaying = $0 })
+                    )
+                }
+                DescribedToggle(
+                    "Pause music during calls",
+                    subtitle: "Here and on your phone. It plays again after the call.",
+                    isOn: $pauseDuringCalls
+                )
+            }
+
+            PhoneSoundSettings()
+
+            Section {
+                DescribedToggle(
+                    "Mute this Mac while another device is its speaker",
+                    subtitle: "Off plays the sound on both, from the next time you start it.",
+                    isOn: $audioMuteLocal
+                )
+            }
+
+            TandemAudioSettings()
+
+            FindSoundSettings()
+        }
+        .formStyle(.grouped)
+        .animation(.tandem, value: model.mediaShare)
+    }
+}
+
 // MARK: Devices
 
 private struct DevicesSettings: View {
     @Environment(EngineModel.self) private var model
     @LocalState private var removing: TandemDevice?
+    /// The devices whose settings are open. Closed, a device is one row: with a handful of devices the page was four rows for
+    /// each of them.
+    @LocalState private var opened: Set<String> = []
 
     var body: some View {
         Form {
@@ -411,16 +649,28 @@ private struct DevicesSettings: View {
                 Section {
                     // Not a LabeledContent: that sets the state level with the first line of the name, and with two lines
                     // beside it the state belongs in the middle.
-                    HStack(spacing: 10) {
-                        DeviceGlyph(platform: device.platform, online: device.online, size: 30)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(device.name).font(.body.weight(.medium))
-                            Text(device.platform.label).font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        withAnimation(.tandem) { if opened.contains(device.id) { opened.remove(device.id) } else { opened.insert(device.id) } }
+                    } label: {
+                        HStack(spacing: 10) {
+                            DeviceGlyph(platform: device.platform, online: device.online, size: 30, deviceID: device.id)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(device.name).font(.body.weight(.medium))
+                                Text(device.platform.label).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 12)
+                            Text(model.reach(of: device).text)
+                                .foregroundStyle(model.reach(of: device).color)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                                .rotationEffect(.degrees(opened.contains(device.id) ? 90 : 0))
                         }
-                        Spacer(minLength: 12)
-                        Text(model.reach(of: device).text)
-                            .foregroundStyle(model.reach(of: device).color)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(opened.contains(device.id) ? .isSelected : [])
+                    if opened.contains(device.id) {
                     DescribedToggle(
                         "Sync clipboard",
                         subtitle: "Text and links you copy show up on both devices",
@@ -457,6 +707,7 @@ private struct DevicesSettings: View {
                         }
                         Spacer(minLength: 12)
                         Button("Remove…", role: .destructive) { removing = device }
+                    }
                     }
                 }
             }
@@ -634,7 +885,6 @@ private struct UpdateSettings: View {
 
 private struct AboutSettings: View {
     var body: some View {
-        ScrollView {
             VStack(spacing: 6) {
                 PillMark(size: 104, style: .plate)
                     .padding(.top, 8)
@@ -658,7 +908,6 @@ private struct AboutSettings: View {
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)
             .padding(24)
-        }
     }
 }
 

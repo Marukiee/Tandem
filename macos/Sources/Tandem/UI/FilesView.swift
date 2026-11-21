@@ -107,9 +107,9 @@ struct FilesView: View {
                     }
                     Spacer()
                     Button { browser.refresh() } label: {
-                        Image(systemName: "arrow.clockwise").font(.body.weight(.semibold))
+                        Label("Refresh", systemImage: "arrow.clockwise")
                     }
-                    .buttonStyle(.icon(size: 34))
+                    .buttonStyle(.tandemGlass)
                     .help("Look again")
                 }
                 breadcrumb

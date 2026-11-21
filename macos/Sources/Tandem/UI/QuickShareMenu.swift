@@ -175,14 +175,14 @@ struct QuickShareSettings: View {
             Section {
                 DescribedToggle(
                     "Quick Share",
-                    subtitle: "Send files to and receive files from Android phones and Windows PCs with Quick Share, without Google services or an account",
+                    subtitle: "With Android phones and Windows PCs, without Google services or an account",
                     isOn: $share.enabled
                 )
                 if let problem = share.problem {
                     Text(problem).font(.caption).foregroundStyle(.secondary)
                 }
             } footer: {
-                Text("While this is on, this Mac can be found by everyone on the same network. Only the mode Everyone works, not Your contacts.")
+                Text("Everyone on the same network can find this Mac while this is on. On the phone, choose Everyone.")
             }
 
             if share.enabled {

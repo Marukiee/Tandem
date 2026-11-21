@@ -71,6 +71,8 @@
 "Could not move the file to the Trash" = "Kon het bestand niet naar de prullenmand verplaatsen";
 "Path copied" = "Pad gekopieerd";
 "The file is no longer there" = "Het bestand is er niet meer";
+"No longer there" = "Is er niet meer";
+"Playing now" = "Speelt nu";
 "Files you send and receive. Click one to open it, right click for more." = "Bestanden die je verstuurt en ontvangt. Klik om er een te openen, klik met rechts voor meer.";
 "Send files" = "Bestanden sturen";
 "Send clipboard" = "Klembord sturen";
@@ -116,6 +118,8 @@
 "Files you send and receive show up here." = "Bestanden die je verstuurt en ontvangt staan hier.";
 "Clipboard sent" = "Klembord verstuurd";
 "Not connected" = "Niet verbonden";
+"Charging" = "Laadt op";
+"of %@" = "van %@";
 "There is no text on the clipboard" = "Er staat geen tekst op het klembord";
 "%lld device(s) were offline and did not get it" = "%lld apparaat/apparaten waren offline en kregen het niet";
 
@@ -188,21 +192,16 @@
 "Your phone's hotspot" = "De hotspot van je telefoon";
 "Network name" = "Netwerknaam";
 "Password" = "Wachtwoord";
-"Tandem needs these once to join the hotspot. They are stored privately on this Mac and never leave it." = "Tandem heeft deze eenmalig nodig om met de hotspot te verbinden. Ze worden privé op deze Mac bewaard en verlaten hem nooit.";
 
 /* Instellingen */
-"Behaviour" = "Gedrag";
 "Folder" = "Map";
 "Use Downloads" = "Gebruik Downloads";
-"Files that arrive go straight into this folder. By default that is your Downloads folder." = "Ontvangen bestanden komen direct in deze map. Standaard is dat je Downloads-map.";
-"You also get a notification when a code was copied. Without this, the notification has a Copy code button." = "Je krijgt ook een melding als een code is gekopieerd. Zonder dit heeft de melding een knop Kopieer code.";
 "Remove…" = "Verwijder…";
 "Backup" = "Back-up";
 "Back up all devices" = "Back-up van alle apparaten";
 "Export…" = "Exporteer…";
 "Restore from a backup" = "Terugzetten uit een back-up";
 "Import…" = "Importeer…";
-"One file with the settings of this Mac and your connected devices. After a reset, open it on the device and it finds itself again. Identities, pairings and passwords are never in it." = "Eén bestand met de instellingen van deze Mac en je verbonden apparaten. Open het na een reset op het apparaat en het vindt zichzelf terug. Identiteiten, koppelingen en wachtwoorden staan er nooit in.";
 "The settings of this Mac and your connected devices, without identities, pairings or passwords." = "De instellingen van deze Mac en je verbonden apparaten, zonder identiteiten, koppelingen of wachtwoorden.";
 "Backup saved" = "Back-up bewaard";
 "Backup saved, without %@" = "Back-up bewaard, zonder %@";
@@ -236,7 +235,7 @@
 "Reset and restart" = "Terugzetten en herstarten";
 
 /* Toegang */
-"Tandem only asks for what a feature needs, and each one is optional. Here you can see what is on, turn things on, and try them without a second device." = "Tandem vraagt alleen wat een functie nodig heeft, en alles is optioneel. Hier zie je wat aan staat, zet je dingen aan en kun je ze proberen zonder tweede apparaat.";
+"Tandem only asks for what a feature needs. Each one is optional." = "Tandem vraagt alleen wat een functie nodig heeft. Alles is optioneel.";
 "Notifications" = "Meldingen";
 "To show notifications from your phone, incoming calls and files that arrived." = "Om meldingen van je telefoon, inkomende gesprekken en ontvangen bestanden te tonen.";
 "To find your other devices on your Wi-Fi. macOS asks the first time Tandem looks for them." = "Om je andere apparaten op je wifi te vinden. macOS vraagt het de eerste keer dat Tandem ze zoekt.";
@@ -324,9 +323,7 @@
 
 /* Pictures from the phone */
 "Copy pictures from your phone to the clipboard" = "Plaatjes van je telefoon naar het klembord kopiëren";
-"A picture you send from your phone is ready to paste." = "Een plaatje dat je vanaf je telefoon stuurt kun je meteen plakken.";
 "Paste them straight away" = "Meteen plakken";
-"Where the cursor is when the picture arrives. Needs the Accessibility permission." = "Waar de cursor staat als het plaatje binnenkomt. Vraagt de toegankelijkheidsrechten.";
 "Picture copied and pasted" = "Plaatje gekopieerd en geplakt";
 "Picture copied to the clipboard" = "Plaatje naar het klembord gekopieerd";
 
@@ -384,7 +381,6 @@
 "Your phone could not turn on its hotspot. Tap the notification on your phone, or make sure Shizuku is running so it can start by itself." = "Je telefoon kon zijn hotspot niet aanzetten. Tik op de melding op je telefoon, of zorg dat Shizuku draait zodat hij zelf kan starten.";
 
 "Bluetooth without a network" = "Bluetooth zonder netwerk";
-"Clipboard and notifications from your phone still arrive over Bluetooth when this Mac has no connection." = "Klembord en meldingen van je telefoon komen ook via Bluetooth aan als deze Mac geen verbinding heeft.";
 
 "Over Bluetooth" = "Via Bluetooth";
 
@@ -395,7 +391,6 @@
 "Fixed" = "Opgelost";
 
 "Show and control music" = "Muziek tonen en bedienen";
-"Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone, with its cover. Spotify covers are fetched from Spotify." = "Muziek van je telefoon staat hier met knoppen, en wat Spotify en Muziek hier spelen staat op je telefoon, met de hoes erbij. Hoezen van Spotify worden bij Spotify opgehaald.";
 "Seen on this Mac" = "Gezien op deze Mac";
 "Nothing from Spotify or Music yet" = "Nog niets van Spotify of Muziek";
 "%@ (playing)" = "%@ (speelt)";
@@ -411,7 +406,6 @@
 "Your phone stopped playing the sound" = "Je telefoon is gestopt met het geluid afspelen";
 "The sound stopped because your phone disconnected" = "Het geluid stopte omdat je telefoon de verbinding verbrak";
 "Mute this Mac while another device is its speaker" = "Zet deze Mac stil als een ander apparaat zijn speaker is";
-"Turn this off to hear the sound on both. It takes effect the next time you start it." = "Zet dit uit om het geluid op allebei te horen. Het werkt de volgende keer dat je het start.";
 "This needs macOS 14.2 or later" = "Dit heeft macOS 14.2 of nieuwer nodig";
 "Could not capture the sound (%@, error %lld)" = "Kon het geluid niet opvangen (%@, fout %lld)";
 
@@ -448,7 +442,6 @@
 "Asked over Bluetooth, your phone is in range" = "Gevraagd via Bluetooth, je telefoon is in bereik";
 "Asked over Bluetooth, so your phone has to be near" = "Gevraagd via Bluetooth, dus je telefoon moet dichtbij zijn";
 "Media keys for your phone's music" = "Mediatoetsen voor de muziek van je telefoon";
-"While your phone plays, its music shows in Control Center and in apps that show what plays, and the media keys of your keyboard control it." = "Terwijl je telefoon speelt, staat de muziek in het Bedieningscentrum en in apps die tonen wat er speelt, en de mediatoetsen van je toetsenbord bedienen hem.";
 "Your phone's daily data limit for the hotspot is reached" = "De daglimiet voor data van de hotspot op je telefoon is bereikt";
 
 /* Bestanden van een ander apparaat */
@@ -608,6 +601,8 @@
 "Everything you copied and what your devices sent. Click one to copy it, right click for more." = "Alles wat je kopieerde en wat je apparaten stuurden. Klik om te kopiëren, rechtsklik voor meer.";
 "Open it anywhere with" = "Overal te openen met";
 "Open the quick panel" = "Open het snelle paneel";
+"Quick panel" = "Snelpaneel";
+"Refresh" = "Vernieuwen";
 "Clear" = "Wis";
 "Keep a history of what you copy" = "Bewaar een geschiedenis van wat je kopieert";
 "Text, links and pictures, and what arrives from your other devices. It stays on this Mac." = "Tekst, links en plaatjes, en wat van je andere apparaten binnenkomt. Het blijft op deze Mac.";
@@ -737,7 +732,6 @@
 "Pause control" = "Bediening pauzeren";
 "Resume control" = "Bediening hervatten";
 "Let my other devices see and control this Mac" = "Laat mijn andere apparaten deze Mac zien en bedienen";
-"Your phone shows a Control this Mac button on this Mac's page once it can. You still decide for every device below." = "Je telefoon toont een knop Bedien deze Mac op de pagina van deze Mac zodra het kan. Je beslist nog steeds per apparaat hieronder.";
 "Restart Tandem so your other devices can see that this Mac is ready." = "Start Tandem opnieuw zodat je andere apparaten zien dat deze Mac klaar is.";
 "Restart" = "Herstart";
 "Permissions" = "Rechten";
@@ -746,6 +740,13 @@
 "To move the pointer and press keys for a device you let control this Mac. Without it, devices can only watch." = "Om de aanwijzer te bewegen en toetsen in te drukken voor een apparaat dat je deze Mac laat bedienen. Zonder kunnen apparaten alleen meekijken.";
 "Right now" = "Op dit moment";
 "When a device asks" = "Als een apparaat erom vraagt";
+"Connection, Focus, Spotlight, backup, starting over" = "Verbinding, Focus, Spotlight, back-up, opnieuw beginnen";
+"You still decide below what a device may do." = "Je bepaalt hieronder nog wat een apparaat mag.";
+"One device apart" = "Eén apparaat apart";
+"One device apart, a locked Mac, sound, permissions, your phone as a camera" = "Eén apparaat apart, een vergrendelde Mac, geluid, rechten, je telefoon als camera";
+"One mouse and keyboard for the computers next to this Mac" = "Eén muis en toetsenbord voor de computers naast deze Mac";
+"Where each one stands" = "Waar elk apparaat staat";
+"Where each one stands, finding the side by sound, your phone, how it works" = "Waar elk apparaat staat, de kant vinden met geluid, je telefoon, hoe het werkt";
 "Looking at this Mac" = "Deze Mac bekijken";
 "Using the mouse and keyboard" = "De muis en het toetsenbord gebruiken";
 "Ask me" = "Vraag het mij";
@@ -765,7 +766,7 @@
 "Low" = "Laag";
 "Normal" = "Normaal";
 "Smooth" = "Soepel";
-"Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time a device starts." = "Laag speelt dichter bij live af en kan haperen bij een slechte verbinding. Soepel wacht iets langer om stabiel te blijven. Het geldt de volgende keer dat een apparaat begint.";
+"Low is closer to live and can stutter. Smooth waits a little longer to stay steady." = "Laag is dichter bij live en kan haperen. Soepel wacht iets langer om stabiel te blijven.";
 "Sound from %@ plays on this Mac" = "Geluid van %@ speelt op deze Mac";
 "Mouse and keyboard across computers" = "Muis en toetsenbord over computers";
 "What this means" = "Wat dit betekent";
@@ -796,7 +797,6 @@
 "Higher" = "Hoger";
 "Usual %lld bpm" = "Normaal %lld bpm";
 "Less" = "Minder";
-"Use this Mac's mouse and keyboard on other computers" = "Gebruik de muis en het toetsenbord van deze Mac op andere computers";
 "Move the pointer over the edge of the screen. This Mac needs Accessibility, which Tandem already asks for" = "Beweeg de aanwijzer over de rand van het scherm. Deze Mac heeft Toegankelijkheid nodig, waar Tandem al om vraagt";
 "Not next to this Mac" = "Niet naast deze Mac";
 "On the left" = "Links";
@@ -822,17 +822,32 @@
 "If the switch is grey: open App info for Tandem on the phone, tap the three dots at the top and choose Allow restricted settings. Then do step 2 and 3 again." = "Is de schakelaar grijs: open op de telefoon App-info van Tandem, tik bovenaan op de drie puntjes en kies Beperkte instellingen toestaan. Doe dan stap 2 en 3 opnieuw.";
 "The button here wakes up by itself once the phone allows it." = "De knop hier wordt vanzelf actief zodra de telefoon het toestaat.";
 "Mouse and keyboard" = "Muis en toetsenbord";
+"Sharing" = "Delen";
+"Screen and control" = "Scherm en bediening";
+"Sound and music" = "Geluid en muziek";
+"Updates and about" = "Updates en over";
+"Connection" = "Verbinding";
+"Music" = "Muziek";
+"Only when a device cannot be reached on this network." = "Alleen als een apparaat op dit netwerk niet te bereiken is.";
+"Clipboard and notifications still arrive when this Mac is offline." = "Klembord en meldingen komen ook aan als deze Mac geen verbinding heeft.";
+"One file with the settings of this Mac and your devices. Identities, pairings and passwords are never in it." = "Eén bestand met de instellingen van deze Mac en je apparaten. Identiteiten, koppelingen en wachtwoorden staan er nooit in.";
+"Without this, the notification has a Copy code button." = "Zonder dit heeft de melding een knop Kopieer code.";
+"When another device is almost empty or fully charged." = "Als een ander apparaat bijna leeg of helemaal vol is.";
+"Where the cursor is. Uses the Accessibility permission." = "Waar de cursor staat. Gebruikt het recht Toegankelijkheid.";
+"Your phone's music here, and this Mac's music on your phone. Spotify covers are fetched from Spotify." = "De muziek van je telefoon hier, en die van deze Mac op je telefoon. Hoezen van Spotify komen van Spotify.";
+"It also shows in Control Center while your phone plays." = "Hij staat ook in het bedieningspaneel zolang je telefoon speelt.";
+"Here and on your phone. It plays again after the call." = "Hier en op je telefoon. Na het gesprek speelt hij weer.";
+"Off plays the sound on both, from the next time you start it." = "Uit speelt het geluid op allebei, vanaf de volgende keer dat je het start.";
+"Kept on this Mac only." = "Blijft alleen op deze Mac.";
 "One mouse and one keyboard for more computers. Push the pointer over the edge of the screen and it carries on at the next computer." = "Eén muis en één toetsenbord voor meer computers. Duw de muis over de rand van het scherm en hij gaat verder op de volgende computer.";
 "How it works" = "Hoe het werkt";
 "Say which computer sits on which side of this one. That is the edge the pointer goes over." = "Geef aan welke computer aan welke kant van deze staat. Dat is de rand waar de muis overheen gaat.";
 "Push the pointer over that edge. Your mouse and keyboard now work on the other computer." = "Duw de muis over die rand. Je muis en toetsenbord werken nu op de andere computer.";
 "Push it back over the edge it came in by, or press Control, Option and Command with Escape." = "Duw hem terug over de rand waar hij binnenkwam, of druk op Control, Option en Command met Escape.";
-"What this Mac has to allow" = "Wat deze Mac moet toestaan";
 "Allowed. Tandem can see your mouse and keyboard and play them from another computer" = "Toegestaan. Tandem kan je muis en toetsenbord zien en ze afspelen vanaf een andere computer";
 "Needed to see your mouse and keyboard, and to play them when another computer uses this Mac" = "Nodig om je muis en toetsenbord te zien en om ze af te spelen als een andere computer deze Mac gebruikt";
 "Windows needs nothing but the firewall: allow Tandem on private networks when Windows asks." = "Windows heeft alleen de firewall nodig: sta Tandem toe op privénetwerken als Windows het vraagt.";
 "Universal mouse" = "Universele muis";
-"Choose below where each computer sits" = "Kies hieronder waar elke computer staat";
 "Pair a Mac or a Windows PC to put it next to this one." = "Koppel een Mac of een Windows-pc om hem naast deze te zetten.";
 "The other computer has to allow it too: in its Tandem, under Mouse and keyboard." = "De andere computer moet het ook toestaan: in zijn Tandem, onder Muis en toetsenbord.";
 "Other computers using this Mac" = "Andere computers die deze Mac gebruiken";
@@ -850,8 +865,8 @@
 "Looking for devices nearby" = "Zoeken naar apparaten in de buurt";
 "Send files to %@" = "Verstuur bestanden naar %@";
 "Send files and receive files with Android phones and Windows PCs with Quick Share, without Google services or an account" = "Verstuur en ontvang bestanden met Android-telefoons en Windows-pc's met Quick Share, zonder Google-diensten of account";
-"Send files to and receive files from Android phones and Windows PCs with Quick Share, without Google services or an account" = "Verstuur bestanden naar en ontvang bestanden van Android-telefoons en Windows-pc's met Quick Share, zonder Google-diensten of account";
-"While this is on, this Mac can be found by everyone on the same network. Only the mode Everyone works, not Your contacts." = "Zolang dit aan staat kan iedereen op hetzelfde netwerk deze Mac vinden. Alleen de modus Iedereen werkt, niet Je contacten.";
+"With Android phones and Windows PCs, without Google services or an account" = "Met Android-telefoons en Windows-pc's, zonder Google-diensten of account";
+"Everyone on the same network can find this Mac while this is on. On the phone, choose Everyone." = "Iedereen op hetzelfde netwerk kan deze Mac vinden zolang dit aan staat. Kies op de telefoon Iedereen.";
 "On the other device open Quick Share and pick this Mac. Both have to be on the same Wi-Fi." = "Open op het andere apparaat Quick Share en kies deze Mac. Beide moeten op hetzelfde wifi zitten.";
 "To send, use the Quick Share row in the menu bar panel: click a device, or drop files on it." = "Om te versturen gebruik je de rij Quick Share in het menubalkpaneel: klik op een apparaat of laat bestanden erop vallen.";
 "Received files go to your download folder, the same as the files of your other devices." = "Ontvangen bestanden gaan naar je downloadmap, net als de bestanden van je andere apparaten.";
@@ -923,14 +938,13 @@
 "A file from %@ did not come in" = "Een bestand van %@ is niet aangekomen";
 "%@ from %@ is in %@" = "%@ van %@ staat in %@";
 "Turn on Tailscale when needed" = "Tailscale aanzetten als dat nodig is";
-"When a device cannot be reached on this network, Tandem turns Tailscale on. Devices on the same network do not need it." = "Als een apparaat niet bereikbaar is op dit netwerk, zet Tandem Tailscale aan. Apparaten op hetzelfde netwerk hebben dat niet nodig.";
 "%@ could not be reached on this network, so Tandem turned Tailscale on" = "%@ was niet bereikbaar op dit netwerk, dus Tandem heeft Tailscale aangezet";
 "Sign in to Tailscale to reach %@" = "Log in bij Tailscale om %@ te bereiken";
 "a device" = "een apparaat";
 "The connection to %@ was lost, so the pointer is back" = "De verbinding met %@ is weg, dus de aanwijzer is terug";
 "the other computer" = "de andere computer";
 "Pair a Mac, a PC or a phone to put it next to this one." = "Koppel een Mac, een pc of een telefoon om hem naast deze te zetten.";
-"A phone can sit next to this Mac too, when you turn on \"Universal mouse\" in its Tandem. Or show its screen in a window here and move the pointer into it: clicks, scrolling and typing go to the phone. Both need Tandem's control under Accessibility on the phone." = "Een telefoon kan ook naast deze Mac staan, als je in zijn Tandem \"Universele muis\" aanzet. Of toon zijn scherm hier in een venster en beweeg de aanwijzer erin: klikken, scrollen en typen gaan naar de telefoon. Beide hebben de bediening van Tandem onder Toegankelijkheid op de telefoon nodig.";
+"A phone can sit next to this Mac too: turn on \"Universal mouse\" in its Tandem. Or show its screen here and move the pointer into it." = "Een telefoon kan ook naast deze Mac staan: zet \"Universele muis\" aan in zijn Tandem. Of toon zijn scherm hier en beweeg de aanwijzer erin.";
 "Drag the screens next to this one, the way they stand on your desk. That is where the pointer goes over." = "Sleep de schermen naast dit scherm, zoals ze op je bureau staan. Daar gaat de aanwijzer overheen.";
 "Drag a screen next to this Mac" = "Sleep een scherm naast deze Mac";
 "Size not known yet" = "Formaat nog niet bekend";
@@ -965,6 +979,15 @@
 "Other" = "Overig";
 "Sent and received" = "Verstuurd en ontvangen";
 "Received" = "Ontvangen";
+"Files you send and receive. Command or Shift-click to choose more." = "Bestanden die je verstuurt en ontvangt. Kies er meer met Command of Shift.";
+"Waiting for you" = "Wacht op jou";
+"Nothing is waiting" = "Er wacht niets";
+"files, %@ arrived or sent" = "bestanden, %@ verstuurd of ontvangen";
+"did not get through" = "niet aangekomen";
+"Size" = "Grootte";
+"State" = "Stand";
+"From" = "Van";
+"To" = "Naar";
 "Sent" = "Verstuurd";
 "Any time" = "Altijd";
 "Today" = "Vandaag";
@@ -991,9 +1014,14 @@
 "Beep" = "Piep";
 "The sweep is heard best in a room with echoes. The bell and the beep only tell the side when the other device stands clearly nearer to one speaker." = "De sweep wordt het best gehoord in een kamer met galm. Het belletje en de piep vinden de kant alleen als het andere apparaat duidelijk dichter bij een speaker staat.";
 "Finding the side by sound" = "De kant vinden met geluid";
-"This Mac plays a short sound from its left and its right speaker, and the other device listens with its microphone. A second screen goes on that side too." = "Deze Mac speelt een kort geluid uit zijn linker en rechter speaker, en het andere apparaat luistert met zijn microfoon. Een tweede scherm komt ook aan die kant.";
-"Where it stands" = "Waar het staat";
-"A second screen goes on this side, and so does this computer for the shared mouse" = "Een tweede scherm komt aan deze kant, en deze computer ook voor de gedeelde muis";
+"This Mac plays a short sound left and right, and the other device listens. A second screen goes on that side too." = "Deze Mac speelt links en rechts een kort geluid en het andere apparaat luistert. Een tweede scherm komt ook aan die kant.";
+"%@ stands left of this Mac" = "%@ staat links van deze Mac";
+"%@ stands right of this Mac" = "%@ staat rechts van deze Mac";
+"A second screen goes there, and the mouse crosses there" = "Een tweede scherm komt daar, en de muis steekt daar over";
+"Put it left" = "Links zetten";
+"Put it right" = "Rechts zetten";
+"Choose a phone" = "Kies een telefoon";
+"Which computers share them, and how the screens stand" = "Welke computers ze delen, en hoe de schermen staan";
 "Left" = "Links";
 "Right" = "Rechts";
 "%@ stands on the left" = "%@ staat links";
@@ -1090,7 +1118,7 @@
 "Ringtones" = "Beltonen";
 "Preview" = "Voorbeeld";
 "Find this Mac" = "Deze Mac zoeken";
-"When your phone or another computer looks for this Mac, this sound plays loudly until you stop it, for two minutes at most." = "Als je telefoon of een andere computer deze Mac zoekt, speelt dit geluid hard tot je het stopt, hooguit twee minuten.";
+"Plays loudly when another device looks for this Mac, for two minutes at most." = "Speelt hard als een ander apparaat deze Mac zoekt, hooguit twee minuten.";
 "%@ is looking for this Mac" = "%@ zoekt deze Mac";
 "This Mac plays a sound until you stop it. Any key or click stops it too." = "Deze Mac speelt een geluid tot je het stopt. Elke toets of klik stopt het ook.";
 "Play a sound to be found" = "Een geluid afspelen om gevonden te worden";
@@ -1122,8 +1150,6 @@
 /* Messages: the text messages of a phone */
 "Messages" = "Berichten";
 "Texts and calls" = "Sms en bellen";
-"Choose a phone" = "Kies een telefoon";
-"Files you send and receive. Click one to open it, Command or Shift-click to choose more, right click for more." = "Bestanden die je stuurt en ontvangt. Klik om te openen, Command- of Shift-klik om meer te kiezen, rechtsklik voor meer.";
 "Move 1 file to the Trash?" = "1 bestand naar de prullenmand verplaatsen?";
 "Move %lld files to the Trash?" = "%lld bestanden naar de prullenmand verplaatsen?";
 "Move to Trash…" = "Naar prullenmand…";
@@ -1194,7 +1220,7 @@
 "%@ disconnected, so the sound plays on this Mac again" = "%@ verbrak de verbinding, dus het geluid speelt weer op deze Mac";
 "The sound of %@ plays here now. Stop that first, or the sound would go back and forth." = "Het geluid van %@ speelt nu hier. Stop dat eerst, anders gaat het geluid heen en weer.";
 "Check the side by itself" = "De kant vanzelf controleren";
-"When a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. With a sound too high to hear, and only when this Mac plays through its own speakers." = "Als een tweede scherm start, de gedeelde muis aangaat, een computer terugkomt, en om de paar minuten. Met een geluid dat te hoog is om te horen, en alleen als deze Mac via zijn eigen speakers speelt.";
+"When a second screen or the shared mouse starts, and every few minutes. With a sound too high to hear." = "Als een tweede scherm of de gedeelde muis start, en om de paar minuten. Met een geluid dat te hoog is om te horen.";
 "Check every" = "Controleer elke";
 "Minute" = "Minuut";
 "%lld minutes" = "%lld minuten";
@@ -1316,9 +1342,7 @@
 "You can unplug it." = "Je kunt de lader eruit halen.";
 "%lld%% left. Time to charge it." = "Nog %lld%%. Tijd om op te laden.";
 "Battery alerts" = "Batterijmeldingen";
-"A notification when another device is almost empty or fully charged." = "Een melding als een ander apparaat bijna leeg of vol is.";
 "Pause music during calls" = "Muziek pauzeren tijdens gesprekken";
-"When your phone rings or this Mac is in a call, music here and on your phone pauses, and plays again after. Starting it yourself during the call works as always." = "Gaat je telefoon over of is deze Mac in gesprek, dan pauzeert de muziek hier en op je telefoon, en speelt daarna verder. Zelf weer aanzetten tijdens het gesprek werkt gewoon.";
 "Phone camera to OBS" = "Telefooncamera naar OBS";
 "While a phone's camera is open here, OBS can show it too, without capturing the window." = "Terwijl de camera van een telefoon hier open is, kan OBS hem ook tonen, zonder het venster op te nemen.";
 "Address for OBS" = "Adres voor OBS";
@@ -1377,7 +1401,7 @@
 "Screen Sharing did not let Tandem in: %@" = "Scherm delen liet Tandem niet binnen: %@";
 "Keep awake" = "Wakker houden";
 "Keep this Mac awake" = "Houd deze Mac wakker";
-"So your other devices can reach it while you are away. Turns itself off when the battery drops below %lld%%." = "Zodat je andere apparaten hem bereiken als je weg bent. Gaat vanzelf uit als de batterij onder %lld%% komt.";
+"So your other devices can reach it. Turns itself off below %lld%% battery." = "Zodat je andere apparaten hem bereiken. Gaat vanzelf uit onder %lld%% batterij.";
 "Also with the lid closed" = "Ook met de klep dicht";
 "macOS asks for your password once. With the lid closed Tandem makes a screen of its own to show." = "macOS vraagt één keer je wachtwoord. Met de klep dicht maakt Tandem een eigen scherm om te tonen.";
 "This Mac stays awake" = "Deze Mac blijft wakker";
@@ -1641,6 +1665,9 @@
 /* Before sending files to a device that reports less free space (P5) */
 "It has less free space than these files take. If they do not fit, it refuses them." = "Daar is minder ruimte vrij dan deze bestanden innemen. Passen ze niet, dan weigert het ze.";
 "Send anyway" = "Toch sturen";
+"Where %@ stands" = "Waar %@ staat";
+"A second screen goes on that side, and the mouse crosses there" = "Een tweede scherm komt aan die kant, en de muis steekt daar over";
+"Battery" = "Batterij";
 "Open the traffic log" = "Open de verkeerslog";
 "No data" = "Geen gegevens";
 
@@ -1667,3 +1694,35 @@
 "Your phone cannot hand over its hotspot password. Sharing with this Mac may be off, or Shizuku is not running." = "Je telefoon kan het wachtwoord van zijn hotspot niet doorgeven. Delen met deze Mac staat misschien uit, of Shizuku draait niet.";
 "Your phone says its hotspot is not called that anymore. Type the name and password." = "Je telefoon zegt dat zijn hotspot niet meer zo heet. Tik de naam en het wachtwoord in.";
 "Your phone could not read the password of its hotspot. Type it instead." = "Je telefoon kon het wachtwoord van zijn hotspot niet lezen. Tik het zelf in.";
+"Settings for this device" = "Instellingen voor dit apparaat";
+"Its name, and what it may do on this Mac" = "De naam, en wat het op deze Mac mag";
+"Every device in your circle shows this name." = "Elk apparaat in je circle toont deze naam.";
+"Update Tandem on %@ to name it from here." = "Werk Tandem op %@ bij om het hier een naam te geven.";
+"What %@ may do on this Mac" = "Wat %@ op deze Mac mag";
+"Browse files on this Mac" = "Bestanden op deze Mac bekijken";
+"See and fetch what is in the folders you share" = "Zien en ophalen wat in je gedeelde mappen staat";
+"Delete files on this Mac" = "Bestanden op deze Mac verwijderen";
+"Remove files from the folders you share" = "Bestanden uit je gedeelde mappen weghalen";
+"See this Mac's notifications" = "Meldingen van deze Mac zien";
+"Notifications from this Mac show up there" = "Meldingen van deze Mac verschijnen daar";
+"Control this Mac" = "Deze Mac bedienen";
+"The mouse, the keyboard and the screen" = "De muis, het toetsenbord en het scherm";
+"Lock this Mac" = "Deze Mac vergrendelen";
+"From its own screen or a button" = "Vanaf het eigen scherm of een knop";
+"Unlock this Mac" = "Deze Mac ontgrendelen";
+"Without typing the password here" = "Zonder hier het wachtwoord te typen";
+"Restart this Mac" = "Deze Mac herstarten";
+"When it asks, after a confirmation" = "Als het erom vraagt, na een bevestiging";
+"Get the Wi-Fi password" = "Het wifiwachtwoord krijgen";
+"When it has no network and asks for this one" = "Als het geen netwerk heeft en om dit netwerk vraagt";
+"Network, metered" = "Netwerk, met datalimiet";
+"Free space" = "Vrije ruimte";
+"Mobile data" = "Mobiele data";
+"No network" = "Geen netwerk";
+"May use this Mac" = "Mag deze Mac gebruiken";
+"Needs Accessibility, in Mouse and keyboard in Settings" = "Heeft Toegankelijkheid nodig, onder Muis en toetsenbord in Instellingen";
+"Its mouse and keyboard can cross over to this Mac" = "De muis en het toetsenbord kunnen naar deze Mac oversteken";
+"Where it stands is on its page." = "Waar het staat, zie je op de pagina van het apparaat.";
+"Left or right of this Mac on your desk. The mouse crosses over to it on that side, and a second screen goes there." = "Links of rechts van deze Mac op je bureau. De muis steekt aan die kant naar het apparaat over, en een tweede scherm komt daar.";
+"This Mac" = "Deze Mac";
+"Answers in %lld ms" = "Antwoordt in %lld ms";

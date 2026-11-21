@@ -24,6 +24,44 @@ extension Color {
             opacity: opacity
         )
     }
+
+    /// A colour that is one thing in a light window and another in a dark one.
+    init(light: UInt32, dark: UInt32, lightOpacity: Double = 1, darkOpacity: Double = 1) {
+        self.init(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            return NSColor(Color(hex: isDark ? dark : light, opacity: isDark ? darkOpacity : lightOpacity))
+        })
+    }
+}
+
+/// A soft ground and the ink that goes on it, for what tells things apart by colour: the discs of a group of actions, the tile of a
+/// kind of file, the tiles at the top of Shared. The same four as on Linux and Windows.
+enum Tone {
+    case indigo, rose, mint, peach, plain
+    /// Indigo as a ground of its own, for a tile large enough to carry words.
+    case lavender
+
+    var fill: Color {
+        switch self {
+        case .indigo: Palette.indigo.opacity(0.15)
+        case .lavender: Color(light: 0xE3E2FB, dark: 0x30305E)
+        case .rose: Color(light: 0xFFDDE9, dark: 0x56283B)
+        case .mint: Color(light: 0xD6F0DA, dark: 0x1F4729)
+        case .peach: Color(light: 0xFFE1D3, dark: 0x573020)
+        case .plain: Color.primary.opacity(0.07)
+        }
+    }
+
+    var ink: Color {
+        switch self {
+        case .indigo: Palette.indigo
+        case .lavender: Color(light: 0x2A2980, dark: 0xDCDBFF)
+        case .rose: Color(light: 0x6B1F3F, dark: 0xFFD7E4)
+        case .mint: Color(light: 0x0F4D1D, dark: 0xC9EDD0)
+        case .peach: Color(light: 0x6A2A10, dark: 0xFFDACB)
+        case .plain: Color.secondary
+        }
+    }
 }
 
 /// One place for how things move, so the whole app moves the same way.
@@ -40,6 +78,8 @@ extension Animation {
     static let tandemBouncy = Animation.spring(response: 0.38, dampingFraction: 0.55)
     /// Colour and opacity.
     static let tandemFade = Animation.easeOut(duration: 0.22)
+    /// The colour a row or a button takes on under the pointer: it comes quickly and leaves a little slower, the same everywhere.
+    static func hover(_ on: Bool) -> Animation { .easeOut(duration: on ? 0.12 : 0.2) }
 }
 
 /// How far a pressed element shrinks. Small enough to feel, not to distract.
@@ -67,6 +107,12 @@ extension View {
     /// edge, so the top only needs a little on top of that, or the gap reads as wasted.
     func pagePadding() -> some View {
         padding(.horizontal, 26).padding(.bottom, 26).padding(.top, 4)
+    }
+
+    /// The page of a device starts in the strip along the top of the window, with as much room above it as beside it: the strip
+    /// carries nothing there, and left empty it pushed the head of the page down. Goes with `.ignoresSafeArea(.container, edges: .top)`.
+    func devicePagePadding() -> some View {
+        padding(26)
     }
 }
 
@@ -191,8 +237,9 @@ extension EnvironmentValues {
     }
 }
 
-// What the pointer does, everywhere: nothing grows or moves under it, as in the system's own apps. A row or a button only takes on a
-// little colour, and that colour fades in and out.
+// What the pointer does, everywhere: nothing grows or moves under it, as in the system's own apps. A row takes on a soft fill in its
+// own shape, a button one that is a step stronger, and that colour comes in 120 ms and leaves in 200 (`Animation.hover`). A press
+// dips a button to `pressedScale` and it springs back; a row stays where it is. A round button shows its name at once (`instantName`).
 
 /// A soft highlight behind a row while the pointer is over it. Colour only, so a
 /// tween is right, and it stays put under Reduce Motion.
@@ -212,7 +259,7 @@ struct HoverHighlight: ViewModifier {
             }
             .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .onHover { hovering = $0 }
-            .animation(.tandemFade, value: hovering)
+            .animation(.hover(hovering), value: hovering)
             .animation(.tandemFade, value: selected)
     }
 }
@@ -295,7 +342,7 @@ private struct IconButtonBody: View {
             .contentShape(Circle())
             .scaleEffect(configuration.isPressed ? pressedScale : 1)
             .onHover { hovering = $0 }
-            .animation(.tandemFade, value: hovering)
+            .animation(.hover(hovering), value: hovering)
             .animation(.tandemBouncy, value: configuration.isPressed)
     }
 }

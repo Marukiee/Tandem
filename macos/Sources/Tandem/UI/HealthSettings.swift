@@ -119,9 +119,9 @@ struct HealthPage: View {
                         Spacer()
                         if part != .settings {
                             Button { withAnimation(.tandem) { part = .settings } } label: {
-                                Image(systemName: "gearshape").font(.body.weight(.semibold))
+                                Label("Settings", systemImage: "gearshape")
                             }
-                            .buttonStyle(.icon(size: 34))
+                            .buttonStyle(.tandemGlass)
                             .help("Health settings")
                         }
                     }

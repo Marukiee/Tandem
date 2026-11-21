@@ -268,7 +268,7 @@ struct PhoneSoundSettings: View {
                 ForEach(SoundDelay.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
-            Text("Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time a device starts.")
+            Text("Low is closer to live and can stutter. Smooth waits a little longer to stay steady.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

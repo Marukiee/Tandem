@@ -1,7 +1,10 @@
+import QuickLookThumbnailing
 import SwiftUI
 
-/// Everything sent and received, newest first. A click opens the file, a right click
-/// offers the rest, and Delete takes the row off the list.
+/// Everything sent and received, newest first. Three tiles at the top say how it stands (today, what waits for an answer, what
+/// failed), and two of them narrow the list. Under them the list is a table with the size, the time and the state in columns. With
+/// room for it a click picks a file to show beside the list and a double click opens it; without, a click opens it. A right click
+/// and the three dots offer the rest, and Delete takes the row off the list.
 struct SharedView: View {
     @Environment(EngineModel.self) private var model
     @LocalState private var query = ""
@@ -14,6 +17,33 @@ struct SharedView: View {
     @LocalState private var anchor: String?
     @LocalState private var kept: Set<String> = []
     @LocalState private var askTrash = false
+    /// The file shown beside the list, when there is room for that.
+    @LocalState private var pickedID: String?
+    /// What the width of the page decides: whether the picked file fits beside the list, and how many columns the table has. Only
+    /// these two are kept, so a window that is being resized redraws the page when one of them changes and not on every frame.
+    private struct Room: Equatable {
+        /// From this width on the picked file stands beside the list.
+        static let forDetail: CGFloat = 900
+        var wide: Bool
+        /// The size and the time have a column while the table has room for them; the state always has one.
+        var columns: TransferColumns
+
+        init(width: CGFloat) {
+            wide = width >= Self.forDetail
+            columns = width - (wide ? SharedView.detailWidth + 14 : 0) >= 660 ? .all : .state
+        }
+    }
+
+    @LocalState private var room = Room(width: 700)
+    fileprivate static let detailWidth: CGFloat = 240
+    private var wide: Bool { room.wide }
+    private var columns: TransferColumns { room.columns }
+
+    /// The file beside the list: the one that was picked, otherwise the newest.
+    private var shown: TransferItem? {
+        guard wide else { return nil }
+        return items.first { $0.id == pickedID } ?? items.first
+    }
 
     /// What the search and the filters, and the device the page was narrowed to, leave of the list.
     private var items: [TransferItem] {
@@ -45,7 +75,7 @@ struct SharedView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "Shared", subtitle: "Files you send and receive. Click one to open it, Command or Shift-click to choose more, right click for more.") {
+                PageHeader(title: "Shared", subtitle: "Files you send and receive. Command or Shift-click to choose more.") {
                     EmptyView()
                 } actions: {
                     if model.transfers.contains(where: { $0.state != .active }) {
@@ -58,6 +88,10 @@ struct SharedView: View {
                 }
                 if !chosen.isEmpty {
                     chosenBar.transition(.opacity.combined(with: .move(edge: .top)))
+                }
+                let waiting = UnderwayTransfers.shared.incoming.filter { $0.kind == .waiting && (model.sharedDeviceFilter == nil || $0.peer.device == model.sharedDeviceFilter) }
+                if !model.transfers.isEmpty || !waiting.isEmpty {
+                    tiles(waiting: waiting)
                 }
                 UnderwaySection()
                 if model.transfers.isEmpty {
@@ -86,25 +120,29 @@ struct SharedView: View {
                     if items.isEmpty {
                         ContentUnavailableView.search.frame(maxWidth: .infinity, minHeight: 200)
                     } else {
-                        Card(radius: Metrics.card, padding: Metrics.cardInset) {
-                            LazyVStack(spacing: 2) {
-                                ForEach(items, id: \.id) { item in
-                                    TransferEntry(
-                                        item: item, peerName: model.device(item.peer)?.name ?? "?",
-                                        chosen: chosen.contains(item.id), onTap: { clicked(item) }
-                                    )
-                                        .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
-                                }
+                        HStack(alignment: .top, spacing: 14) {
+                            table
+                            if let shown {
+                                SharedDetail(item: shown)
+                                    .frame(width: Self.detailWidth)
+                                    // It stays in sight while the list scrolls on under the top of the page.
+                                    .visualEffect { content, proxy in
+                                        content.offset(y: max(0, 12 - proxy.frame(in: .scrollView(axis: .vertical)).minY))
+                                    }
+                                    .transition(.opacity.combined(with: .offset(x: 10)))
                             }
                         }
                     }
                 }
             }
+            .onGeometryChange(for: Room.self) { Room(width: $0.size.width) } action: { room = $0 }
             .pagePadding()
-            .frame(maxWidth: 760, alignment: .leading)
+            // Wider than the other pages: a table has columns to show, and a file beside it.
+            .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: items.map(\.id))
             .animation(.tandem, value: chosen.isEmpty)
+            .animation(.tandem, value: wide)
             .animation(.tandem, value: HalfwayTransfers.shared.waiting)
             .animation(.tandem, value: UnderwayTransfers.shared.all)
         }
@@ -127,6 +165,88 @@ struct SharedView: View {
         }
     }
 
+    // MARK: Tiles
+
+    /// What the three tiles say: today, what waits for an answer here, and what went wrong. Today and failed also narrow the list,
+    /// the way their filters do.
+    private func tiles(waiting: [UnderwayTransfers.Row]) -> some View {
+        let mine = model.transfers.filter { model.sharedDeviceFilter == nil || $0.peer == model.sharedDeviceFilter }
+        let today = mine.filter { Calendar.current.isDateInToday($0.started) }
+        let todayBytes = today.filter { $0.state == .done }.reduce(UInt64(0)) { $0 + $1.total }
+        let failed = mine.filter { $0.state == .failed }.count
+        return WeightedRow(weights: [1, 1.5, 1], spacing: 10) {
+            SharedTile(tone: .lavender, title: "Today", on: period == .today) {
+                withAnimation(.tandem) { period = period == .today ? .always : .today }
+            } content: {
+                TileNumber(today.count)
+                Text("files, \(formatBytes(todayBytes)) arrived or sent").tileLine()
+            }
+            SharedTile(tone: .rose, title: "Waiting for you") {
+                if let first = waiting.first {
+                    let underway = UnderwayTransfers.shared
+                    HStack(spacing: 12) {
+                        TileNumber(waiting.count)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(verbatim: underway.title(first)).font(.callout.weight(.semibold)).lineLimit(1).truncationMode(.middle)
+                            Text(verbatim: "\(underway.name(first)) \u{00B7} \(formatBytes(underway.bytes(first).total))").tileLine()
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    HStack(spacing: 8) {
+                        Button("Accept") { underway.accept(first) }.buttonStyle(TileButtonStyle(prominent: true))
+                        Button("Decline") { underway.decline(first) }.buttonStyle(TileButtonStyle())
+                    }
+                } else {
+                    TileNumber(0)
+                    Text("Nothing is waiting").tileLine()
+                }
+            }
+            SharedTile(tone: .peach, title: "Failed", on: onlyProblems) {
+                withAnimation(.tandem) { onlyProblems.toggle() }
+            } content: {
+                TileNumber(failed)
+                Text("did not get through").tileLine()
+            }
+        }
+    }
+
+    // MARK: Table
+
+    private var table: some View {
+        Card(radius: Metrics.card, padding: Metrics.cardInset) {
+            LazyVStack(spacing: 2) {
+                if columns == .all { tableHead }
+                ForEach(items, id: \.id) { item in
+                    TransferEntry(
+                        item: item, peerName: model.device(item.peer)?.name ?? "?",
+                        chosen: chosen.contains(item.id), onTap: { clicked(item) },
+                        onDoubleTap: wide ? { doubleClicked(item) } : nil,
+                        columns: columns, picked: shown?.id == item.id
+                    )
+                        .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// The names of the columns, over the rows and as wide as they are in them.
+    private var tableHead: some View {
+        HStack(spacing: 12) {
+            // Past the tile of a row, where its name starts.
+            Text("Name").padding(.leading, 52).frame(maxWidth: .infinity, alignment: .leading)
+            Text("Size").frame(width: TransferRow.sizeWidth, alignment: .leading)
+            Text("When").frame(width: TransferRow.whenWidth, alignment: .leading)
+            // The three dots of a row come after its state.
+            Text("State").frame(width: TransferRow.stateWidth, alignment: .leading).padding(.trailing, 34)
+        }
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.tertiary)
+        .padding(.horizontal, 10)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
+    }
+
     /// A click with Command chooses a row or lets it go, with Shift everything from the row clicked last; while something is chosen a plain
     /// click does the same as Command. Otherwise a click opens the file, as before.
     private func clicked(_ item: TransferItem) {
@@ -146,6 +266,21 @@ struct SharedView: View {
         }
         anchor = item.id
         kept = []
+        // With the file beside the list a click picks it, and a double click opens it (`doubleClicked`).
+        if wide {
+            withAnimation(.tandem) { pickedID = item.id }
+            if DebugSupport.directory != nil { DebugInput.note("picked \(item.name)") }
+            return
+        }
+        model.open(item)
+    }
+
+    /// The second click of a double click on a row. It opens the file where a click only picks it; while rows are being chosen the
+    /// two clicks have chosen and let go, and that is all.
+    private func doubleClicked(_ item: TransferItem) {
+        let flags = NSEvent.modifierFlags
+        guard wide, chosen.isEmpty, !flags.contains(.command), !flags.contains(.shift) else { return }
+        if DebugSupport.directory != nil { DebugInput.note("opened \(item.name)") }
         model.open(item)
     }
 
@@ -178,11 +313,10 @@ struct SharedView: View {
             Button("Move to Trash…", role: .destructive) { askTrash = true }
                 .disabled(trashable.isEmpty)
                 .help(trashable.isEmpty ? Text("Only files that came in on this Mac can go to the Trash") : Text("Move to Trash"))
-            Button { withAnimation(.tandem) { chosen = [] } } label: { Image(systemName: "xmark") }
-                .buttonStyle(.borderless)
-                .help("Stop choosing")
+            RowActionButton(symbol: "xmark", help: "Stop choosing") { withAnimation(.tandem) { chosen = [] } }
         }
-        .buttonStyle(.glass)
+        // The app's own pills, as everywhere else on the page: the glass buttons of the system lean towards the pointer.
+        .buttonStyle(.tandemGlass)
         .controlSize(.large)
     }
 
@@ -265,6 +399,226 @@ struct SharedView: View {
             }
             .padding(.vertical, 2)
         }
+    }
+}
+
+// MARK: Tiles and the picked file
+
+/// Things in a row that share its width by weight and are all as tall as the tallest.
+struct WeightedRow: Layout {
+    var weights: [CGFloat]
+    var spacing: CGFloat = 10
+
+    private func widths(_ width: CGFloat, count: Int) -> [CGFloat] {
+        let used = Array(weights.prefix(count)) + Array(repeating: 1, count: max(0, count - weights.count))
+        let room = max(0, width - spacing * CGFloat(max(0, count - 1)))
+        let total = max(used.reduce(0, +), 0.01)
+        return used.map { room * $0 / total }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 700
+        let parts = widths(width, count: subviews.count)
+        let height = zip(subviews, parts).map { $0.sizeThatFits(ProposedViewSize(width: $1, height: nil)).height }.max() ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        for (subview, part) in zip(subviews, widths(bounds.width, count: subviews.count)) {
+            subview.place(at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: part, height: bounds.height))
+            x += part + spacing
+        }
+    }
+}
+
+/// A tile at the top of the page: what it counts, the number, and a line about it, on a ground of its own colour. One with an
+/// action narrows the list: it shows a ring while it does, and a faint one under the pointer.
+private struct SharedTile<Content: View>: View {
+    let tone: Tone
+    let title: LocalizedStringKey
+    var on = false
+    var action: (() -> Void)?
+    @ViewBuilder var content: Content
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    init(tone: Tone, title: LocalizedStringKey, on: Bool = false, action: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
+        self.tone = tone
+        self.title = title
+        self.on = on
+        self.action = action
+        self.content = content()
+    }
+
+    var body: some View {
+        if let action {
+            Button(action: action) { face }
+                .buttonStyle(TilePressStyle())
+                .onHover { hovering = $0 }
+                .accessibilityAddTraits(on ? .isSelected : [])
+        } else {
+            face
+        }
+    }
+
+    private var face: some View {
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption.weight(.bold)).opacity(0.78)
+            Spacer(minLength: 0)
+            content
+        }
+        .foregroundStyle(tone.ink)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, minHeight: 108, maxHeight: .infinity, alignment: .topLeading)
+        .background(tone.fill, in: shape)
+        .overlay { shape.strokeBorder(tone.ink.opacity(on ? 1 : (hovering && hoverEnabled && action != nil ? 0.28 : 0)), lineWidth: 2) }
+        .contentShape(shape)
+        .animation(.hover(hovering), value: hovering)
+        .animation(.tandemFade, value: on)
+    }
+}
+
+/// A tile is large: it dips less far than a button does.
+private struct TilePressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.tandemBouncy, value: configuration.isPressed)
+    }
+}
+
+/// The large number of a tile. It rolls when it changes.
+private struct TileNumber: View {
+    let value: Int
+    init(_ value: Int) { self.value = value }
+
+    var body: some View {
+        Text("\(value)")
+            .font(.system(size: 40, weight: .bold, design: .rounded).monospacedDigit())
+            .contentTransition(.numericText(value: Double(value)))
+            .animation(.tandem, value: value)
+            .lineLimit(1)
+    }
+}
+
+extension Text {
+    /// The line under the number of a tile.
+    fileprivate func tileLine() -> some View {
+        font(.system(size: 12.5)).lineLimit(2).fixedSize(horizontal: false, vertical: true).opacity(0.85)
+    }
+}
+
+/// A button on a tile: a fill of the tile's own ink and not glass, because it sits on the coloured ground of the tile.
+private struct TileButtonStyle: ButtonStyle {
+    var prominent = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        TileButtonBody(configuration: configuration, prominent: prominent)
+    }
+}
+
+private struct TileButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let prominent: Bool
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        let lit = hovering && hoverEnabled
+        configuration.label
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(prominent ? AnyShapeStyle(Color.white) : AnyShapeStyle(.foreground))
+            .padding(.horizontal, 12)
+            .frame(height: 26)
+            .background {
+                Capsule().fill(prominent ? AnyShapeStyle(Palette.indigo) : AnyShapeStyle(.foreground.opacity(lit ? 0.2 : 0.12)))
+                    .overlay { if prominent { Capsule().fill(Color.white.opacity(lit ? 0.16 : 0)) } }
+            }
+            .contentShape(.capsule)
+            .scaleEffect(configuration.isPressed ? pressedScale : 1)
+            .onHover { hovering = $0 }
+            .animation(.hover(hovering), value: hovering)
+            .animation(.tandemBouncy, value: configuration.isPressed)
+    }
+}
+
+/// The file that is picked on the page, beside the list when the window is wide enough for both: what it looks like, what is
+/// known about it, and the two things done most with it.
+private struct SharedDetail: View {
+    @Environment(EngineModel.self) private var model
+    let item: TransferItem
+    @LocalState private var preview: NSImage?
+
+    var body: some View {
+        let peer = model.device(item.peer)?.name ?? "?"
+        let kind = SharedKind.of(item.name)
+        let reason = TransferReason.of(item, peerName: peer, model: model)
+        let folder = model.canOpen(item) ? model.filePath(item).map { ($0 as NSString).deletingLastPathComponent } : nil
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        Card(radius: Metrics.card, padding: 14) {
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    shape.fill(kind.tone.fill)
+                    if let preview {
+                        // A tall picture is cut to the frame by the clip, but would still take the clicks of what is above and under it.
+                        Image(nsImage: preview).resizable().scaledToFill().allowsHitTesting(false)
+                    } else {
+                        Image(systemName: kind.tileSymbol).font(.system(size: 34, weight: .medium)).foregroundStyle(kind.tone.ink)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 112)
+                .clipShape(shape)
+                .contentShape(shape)
+                Text(item.name)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                Grid(alignment: .topLeading, horizontalSpacing: 12, verticalSpacing: 5) {
+                    fact(item.incoming ? "From" : "To", peer)
+                    if item.total > 0 { fact("Size", formatBytes(item.total)) }
+                    fact("When", item.updated.formatted(.relative(presentation: .named)))
+                    if let reason { fact("State", reason.text, tint: reason.tint) }
+                    if let folder { fact("Folder", (folder as NSString).abbreviatingWithTildeInPath) }
+                }
+                .font(.caption)
+                if model.canOpen(item) {
+                    GlassEffectContainer(spacing: 0) {
+                        VStack(spacing: 8) {
+                            GlassActionButton(title: "Open", symbol: "arrow.up.forward.square", prominent: true, wide: true) { model.open(item) }
+                            GlassActionButton(title: "Open File Location", symbol: "folder", wide: true) { model.reveal(item) }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .task(id: item.id + (item.location ?? "")) { await loadPreview() }
+        .animation(.tandemFade, value: item.id)
+    }
+
+    private func fact(_ name: LocalizedStringKey, _ value: String, tint: Color = .primary) -> some View {
+        GridRow {
+            Text(name).foregroundStyle(.tertiary)
+            Text(verbatim: value)
+                .foregroundStyle(tint)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func loadPreview() async {
+        preview = nil
+        guard item.state == .done, model.canOpen(item), let path = model.filePath(item) else { return }
+        let request = QLThumbnailGenerator.Request(
+            fileAt: URL(fileURLWithPath: path), size: CGSize(width: 212, height: 112), scale: 2, representationTypes: .thumbnail
+        )
+        let made = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request)
+        preview = made?.nsImage
     }
 }
 
