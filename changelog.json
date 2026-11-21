@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.29",
+    "date": "2026-11-21",
+    "en": {
+      "title": "No more echo, one group",
+      "new": [],
+      "fixed": [
+        "A picture or text that a device sent to the Mac no longer comes back to that device as a new clipboard",
+        "On the phone, all the preferences of a device are in one group again"
+      ]
+    },
+    "nl": {
+      "title": "Geen echo meer, een groep",
+      "new": [],
+      "fixed": [
+        "Een foto of tekst die een apparaat naar de Mac stuurt, komt niet meer als nieuw klembord bij dat apparaat terug",
+        "Op de telefoon staan alle voorkeuren van een apparaat weer in een groep"
+      ]
+    }
+  },
+  {
     "version": "0.3.28",
     "date": "2026-11-18",
     "en": {

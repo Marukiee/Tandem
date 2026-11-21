@@ -84,14 +84,20 @@ fun DeviceSettingsScreen(id: String, onBack: () -> Unit) {
         )
 
         SectionHeader(stringResource(R.string.section_preferences), top = 12.dp, bottom = 0.dp)
+        // One group: the shape of each row follows from its place, so a section that is not shown must not count.
+        val messages = nl.markmaaktmedia.tandem.messages.messagesDeviceShown(device)
+        val health = nl.markmaaktmedia.tandem.ui.screens.settings.healthDeviceShown(device)
+        val nudge = nl.markmaaktmedia.tandem.ui.screens.settings.nudgeDeviceShown(device)
+        val count = 3 + listOf(messages, health, nudge).count { it }
         SettingsGroup {
-            SwitchRow(0, 3, TandemIcons.Paste, stringResource(R.string.setting_clipboard), stringResource(R.string.setting_clipboard_sub), device.clipboardEnabled, { set(clipboard = it) })
-            SwitchRow(1, 3, TandemIcons.Notifications, stringResource(R.string.setting_notifications_from), stringResource(R.string.setting_notifications_from_sub), device.notificationsEnabled, { set(notifications = it) })
-            SwitchRow(2, 3, TandemIcons.Download, stringResource(R.string.setting_auto_accept), stringResource(R.string.setting_auto_accept_sub), device.autoAccept, { set(autoAccept = it) })
+            var at = 0
+            SwitchRow(at++, count, TandemIcons.Paste, stringResource(R.string.setting_clipboard), stringResource(R.string.setting_clipboard_sub), device.clipboardEnabled, { set(clipboard = it) })
+            SwitchRow(at++, count, TandemIcons.Notifications, stringResource(R.string.setting_notifications_from), stringResource(R.string.setting_notifications_from_sub), device.notificationsEnabled, { set(notifications = it) })
+            SwitchRow(at++, count, TandemIcons.Download, stringResource(R.string.setting_auto_accept), stringResource(R.string.setting_auto_accept_sub), device.autoAccept, { set(autoAccept = it) })
+            if (messages) nl.markmaaktmedia.tandem.messages.MessagesDeviceRow(device, at++, count)
+            if (health) nl.markmaaktmedia.tandem.ui.screens.settings.HealthDeviceRow(device, at++, count)
+            if (nudge) nl.markmaaktmedia.tandem.ui.screens.settings.NudgeDeviceRow(device, at++, count)
         }
-        nl.markmaaktmedia.tandem.messages.MessagesDeviceSection(device)
-        nl.markmaaktmedia.tandem.ui.screens.settings.HealthDeviceSection(device)
-        nl.markmaaktmedia.tandem.ui.screens.settings.NudgeDeviceSection(device)
 
         // What this device may ask of this phone: its screen, its camera, and clicking and typing.
         LiveDeviceSection(device, permissions = true)

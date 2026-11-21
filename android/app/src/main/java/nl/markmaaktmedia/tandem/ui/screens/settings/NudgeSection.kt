@@ -15,17 +15,17 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemPlatform
 
-/** Whether `tandem notify` on this computer reaches this phone. Only a computer has that command. */
+/** Whether the nudge row is shown. Only a computer has the `tandem notify` command. */
+internal fun nudgeDeviceShown(device: TandemDevice): Boolean = device.platform != TandemPlatform.ANDROID
+
+/** Whether `tandem notify` on this computer reaches this phone. */
 @Composable
-internal fun NudgeDeviceSection(device: TandemDevice) {
-    if (device.platform == TandemPlatform.ANDROID) return
+internal fun NudgeDeviceRow(device: TandemDevice, index: Int, count: Int) {
     val prefs = LocalContext.current.graph.prefs
     val scope = rememberCoroutineScope()
     val muted by prefs.nudgeMuted.collectAsState(initial = emptySet())
-    SettingsGroup {
-        SwitchRow(
-            0, 1, TandemIcons.Notifications, stringResource(R.string.setting_nudge), stringResource(R.string.setting_nudge_sub), device.id !in muted,
-            { on -> scope.launch { prefs.setNudgeAllowed(device.id, on) } },
-        )
-    }
+    SwitchRow(
+        index, count, TandemIcons.Notifications, stringResource(R.string.setting_nudge), stringResource(R.string.setting_nudge_sub), device.id !in muted,
+        { on -> scope.launch { prefs.setNudgeAllowed(device.id, on) } },
+    )
 }

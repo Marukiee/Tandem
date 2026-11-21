@@ -1,5 +1,6 @@
 package nl.markmaaktmedia.tandem.live
 
+import nl.markmaaktmedia.tandem.graph
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -175,6 +176,7 @@ class PointerIn(
                 val typed = TandemAccessibilityService.instance?.type(text) == true
                 if (!typed) {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Tandem", text))
+                    context.graph.host.noteRemoteClip(text)
                 }
             }, 300)
         }

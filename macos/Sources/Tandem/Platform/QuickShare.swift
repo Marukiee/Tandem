@@ -210,6 +210,7 @@ final class QuickShare {
         if let last = texts.last {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(last.text, forType: .string)
+            EngineModel.shared.clipboardWritten()
         }
         QuickSharePanel.shared.refresh()
         Task { @MainActor in
