@@ -127,7 +127,7 @@ struct Sidebar: View {
         // At the foot of the sidebar: the update sits just above the way to pair, out of the way of the pages.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
-                UpdateBanner(compact: true, fromBottom: true)
+                UpdateBanner(fromBottom: true)
                     .padding(.horizontal, 10)
                 PairButton(showPairing: $showPairing)
             }

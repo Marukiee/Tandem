@@ -1,235 +1,222 @@
 import SwiftUI
 
-/// The card that shows up at the top of the window and in the menu bar panel when a newer version is out.
-/// It only appears when there is something to do, one button does the whole update, "Later" is
-/// remembered per version so it does not nag, and a failed update says so instead of disappearing.
-///
-/// A solid card like the others on the page, not glass over the content: it has to be read at a glance. In the menu bar panel and the
-/// sidebar (`compact`) it is a card like its neighbours there: the same fill, corners and disc, with its buttons on the row itself.
+/// The card that shows up in the sidebar and in the menu bar panel when a newer version is out. One card for the whole update: Later and
+/// Update share its width, and Update turns into a progress bar while the file comes in. When it is in, the update installs and Tandem
+/// starts again by itself, there is no second click. "Later" is remembered per version so it does not nag, and a failed update says so.
 struct UpdateBanner: View {
     @LocalState private var updater = Updater.shared
     @AppStorage("updateDismissedVersion") private var dismissedVersion = ""
-    var compact = false
     /// Slides in from the bottom, for a banner that sits at the foot of something.
     var fromBottom = false
 
+    private enum Phase { case rest, downloading, installing }
+
+    /// What the card shows: one card whose parts change, not one view per state, so the change can be a movement.
+    private var current: (release: Updater.Release, phase: Phase, progress: Double)? {
+        switch updater.state {
+        case let .available(release) where release.version != dismissedVersion: (release, .rest, 0)
+        case let .downloading(release, progress): (release, .downloading, progress)
+        case .installing:
+            if let release = updater.installingRelease { (release, .installing, 1) } else { nil }
+        default: nil
+        }
+    }
+
     var body: some View {
         Group {
-            switch updater.state {
-            case let .available(release) where release.version != dismissedVersion:
-                available(release)
-            case let .downloading(release, progress):
-                downloading(release, progress)
-            case .installing:
-                installing
-            case let .failed(message) where updater.installFailed:
+            if let current {
+                card(current.release, current.phase, current.progress)
+            } else if case let .failed(message) = updater.state, updater.installFailed {
                 failed(message)
-            default:
-                EmptyView()
             }
         }
         .transition(.move(edge: fromBottom ? .bottom : .top).combined(with: .opacity))
         .animation(.tandemSpringy, value: updater.state)
     }
 
-    // MARK: States
+    // MARK: The card
 
-    @ViewBuilder
-    private func available(_ release: Updater.Release) -> some View {
-        if compact {
-            card {
-                // Always the words on a row and the buttons on a row of their own, as in the failed state. Choosing by what fits did not
-                // hold in the real sidebar: the row was measured wider than it was drawn, and the words were cut off again.
-                VStack(alignment: .leading, spacing: 8) {
-                    compactWords(release)
-                    HStack(spacing: 8) {
-                        Spacer(minLength: 0)
-                        compactButtons(release)
+    private func card(_ release: Updater.Release, _ phase: Phase, _ progress: Double) -> some View {
+        let notes = Updater.notes(release.notes)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                tile(done: phase == .installing)
+                lines(release, phase, progress)
+            }
+            if phase != .installing, !notes.isEmpty {
+                VStack(alignment: .leading, spacing: 1) {
+                    ForEach(notes, id: \.self) { note in
+                        Text("\u{2022} \(note)").lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 50)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
-        } else {
-            wide(release)
+            actions(release, phase, progress)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(4)
+        .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
+        .animation(.tandem, value: phase)
     }
 
-    private func compactWords(_ release: Updater.Release) -> some View {
-        HStack(spacing: 10) {
-            icon("arrow.down.circle.fill")
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Version \(release.version)").font(.callout.weight(.semibold)).lineLimit(1)
-                Text("You have \(updater.currentVersion)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func compactButtons(_ release: Updater.Release) -> some View {
-        Button { dismissedVersion = release.version } label: {
-            Text("Later").font(.caption.weight(.semibold))
-        }
-        .buttonStyle(.tandemGlass)
-        .controlSize(.small)
-        .fixedSize()
-        Button { Task { await updater.install() } } label: {
-            Text("Update").font(.caption.weight(.semibold))
-        }
-        .buttonStyle(.tandemGlassProminent)
-        .controlSize(.small)
-        .fixedSize()
-        .help("Update and restart")
-    }
-
-    private func wide(_ release: Updater.Release) -> some View {
-        card {
-            HStack(spacing: 12) {
-                icon("arrow.down")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Version \(release.version) is available").font(.headline).lineLimit(1)
-                    Text("You have version \(updater.currentVersion)").font(.caption).foregroundStyle(.secondary)
+    /// Title and the line under it: the old pair fades out and the new one fades in on the same place, nothing slides.
+    private func lines(_ release: Updater.Release, _ phase: Phase, _ progress: Double) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(phase == .installing ? "Installing \(release.version)" : "New version \(release.version)")
+                .font(.callout.weight(.semibold)).lineLimit(1)
+            Group {
+                switch phase {
+                case .rest: Text("You have \(updater.currentVersion)")
+                case .downloading:
+                    if release.size > 0 {
+                        Text("\(Self.megabytes(Int64(Double(release.size) * progress))) of \(Self.megabytes(release.size))").monospacedDigit().contentTransition(.numericText())
+                    } else {
+                        Text("Downloading")
+                    }
+                case .installing: Text("Restarts in a moment")
                 }
-                Spacer(minLength: 12)
-                Button("Later") { dismissedVersion = release.version }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                Button("Update and restart") { Task { await updater.install() } }
+            }
+            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .id(phase)
+        .transition(.opacity)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 38)
+    }
+
+    /// A sparkle for "new", and once it installs a round green tick.
+    private func tile(done: Bool) -> some View {
+        let green = Color(hex: 0x34C759)
+        return ZStack {
+            Image(systemName: "sparkles").opacity(done ? 0 : 1).scaleEffect(done ? 0.3 : 1).rotationEffect(.degrees(done ? -30 : 0))
+            Image(systemName: "checkmark").opacity(done ? 1 : 0).scaleEffect(done ? 1 : 0.3)
+        }
+        .font(.system(size: 17, weight: .semibold))
+        .foregroundStyle(done ? green : Palette.indigo)
+        .frame(width: 40, height: 40)
+        .background((done ? green : Palette.indigo).opacity(0.16), in: .rect(cornerRadius: done ? 20 : 13, style: .continuous))
+        .animation(.tandem, value: done)
+    }
+
+    // MARK: Buttons and bar
+
+    /// Later takes a third of the width and Update two thirds. While the file comes in Later shrinks to nothing and Update is the bar.
+    private func actions(_ release: Updater.Release, _ phase: Phase, _ progress: Double) -> some View {
+        GeometryReader { proxy in
+            let share: CGFloat = phase == .rest ? 1 : 0
+            let gap = 8 * share
+            let later = (proxy.size.width - 8) / 3 * share
+            let wide = proxy.size.width - later - gap
+            HStack(spacing: 0) {
+                Button { dismissedVersion = release.version } label: {
+                    Text("Later").font(.caption.weight(.semibold)).lineLimit(1).fixedSize().frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.tandemGlass)
+                .controlSize(.small)
+                .frame(width: later)
+                .clipped()
+                .opacity(share)
+                .allowsHitTesting(phase == .rest)
+                Spacer().frame(width: gap)
+                ZStack {
+                    Button { Task { await updater.install() } } label: {
+                        Text("Update").font(.caption.weight(.semibold)).lineLimit(1).frame(maxWidth: .infinity)
+                    }
                     .buttonStyle(.tandemGlassProminent)
+                    .controlSize(.small)
+                    .opacity(phase == .rest ? 1 : 0)
+                    .allowsHitTesting(phase == .rest)
+                    .help("Update and restart")
+                    bar(phase, progress, width: wide)
+                        .opacity(phase == .rest ? 0 : 1)
+                        .allowsHitTesting(false)
+                }
+                .frame(width: wide)
+            }
+        }
+        .frame(height: 28)
+    }
+
+    /// The bar that Update turns into: filled as far as the download has come, full and softly shimmering while it installs.
+    private func bar(_ phase: Phase, _ progress: Double, width: CGFloat) -> some View {
+        ZStack(alignment: .leading) {
+            Capsule().fill(Color.primary.opacity(0.1))
+            Capsule().fill(Palette.indigo.gradient)
+                .frame(width: max(0, width * (phase == .installing ? 1 : progress)))
+                .animation(.tandem, value: progress)
+            if phase == .installing { Sheen().clipShape(.capsule) }
+            ZStack {
+                if phase == .installing {
+                    Text("Installing…").transition(.opacity)
+                } else {
+                    Text("\(Int((progress * 100).rounded()))%").monospacedDigit().contentTransition(.numericText())
+                        .transition(.opacity)
+                }
+            }
+            .font(.caption.weight(.bold))
+            .foregroundStyle(phase == .installing || progress > 0.5 ? Color.white : Color.primary)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(height: 28)
+        .animation(.tandem, value: phase)
+    }
+
+    /// A soft light that passes over the full bar while the installer works.
+    private struct Sheen: View {
+        var body: some View {
+            TimelineView(.animation) { context in
+                GeometryReader { proxy in
+                    let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.4) / 1.4
+                    LinearGradient(colors: [.clear, .white.opacity(0.22), .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: proxy.size.width * 0.6)
+                        .offset(x: proxy.size.width * (CGFloat(t) * 1.6 - 0.6))
+                }
             }
         }
     }
 
-    private func downloading(_ release: Updater.Release, _ progress: Double) -> some View {
-        card {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
-                    icon("arrow.down")
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Downloading version \(release.version)")
-                            .font(compact ? .callout.weight(.semibold) : .headline)
-                            .lineLimit(1)
-                        if release.size > 0 {
-                            Text("\(Self.bytes(Int64(Double(release.size) * progress))) of \(Self.bytes(release.size))")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    Spacer(minLength: 8)
-                    Text("\(Int((progress * 100).rounded()))%")
-                        .font((compact ? Font.callout : Font.title3).weight(.semibold).monospacedDigit())
-                        .contentTransition(.numericText())
-                }
-                ProgressCapsule(fraction: progress).frame(height: compact ? 6 : 8)
-            }
-        }
-    }
-
-    private var installing: some View {
-        card {
-            HStack(spacing: 12) {
-                PillSpinner(size: compact ? 22 : 26)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Installing").font(compact ? .callout.weight(.semibold) : .headline)
-                    Text("Tandem opens again by itself").font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-            }
-        }
-    }
+    // MARK: Failed
 
     private func failed(_ message: String) -> some View {
-        card(tint: Palette.urgent) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .center, spacing: 12) {
-                    icon("exclamationmark.triangle.fill", tint: Palette.urgent)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("The update did not work")
-                            .font(compact ? .callout.weight(.semibold) : .headline)
-                            .lineLimit(1)
-                        Text(message)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 8)
-                    if !compact { retry }
-                    RowActionButton(symbol: "xmark", help: "Dismiss") { updater.state = .idle }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Palette.urgent)
+                    .frame(width: 40, height: 40)
+                    .background(Palette.urgent.opacity(0.16), in: .rect(cornerRadius: 13, style: .continuous))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("The update did not work").font(.callout.weight(.semibold)).lineLimit(1)
+                    Text(message).font(.caption).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 }
-                // In the narrow panel the button gets its own row, as the update itself does, so nothing wraps.
-                if compact {
-                    HStack {
-                        Spacer(minLength: 0)
-                        retry
-                    }
+                Spacer(minLength: 4)
+                RowActionButton(symbol: "xmark", help: "Dismiss") { updater.state = .idle }
+            }
+            Button {
+                Task {
+                    // The release is forgotten once it failed, so look again, then install what is there.
+                    await updater.check(manual: true)
+                    await updater.install()
                 }
+            } label: {
+                Text("Again").font(.caption.weight(.semibold)).frame(maxWidth: .infinity)
             }
+            .buttonStyle(.tandemGlassProminent)
+            .controlSize(.small)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(4)
+        .background(Palette.urgent.opacity(0.12), in: .rect(cornerRadius: 22, style: .continuous))
     }
 
-    private var retry: some View {
-        Button("Try again") {
-            Task {
-                // The release is forgotten once it failed, so look again, then install what is there.
-                await updater.check(manual: true)
-                await updater.install()
-            }
-        }
-        .buttonStyle(.tandemGlassProminent)
-        .controlSize(compact ? .small : .regular)
-        .fixedSize()
-    }
-
-    // MARK: Pieces
-
-    @ViewBuilder
-    private func icon(_ symbol: String, tint: Color = Palette.indigo) -> some View {
-        if compact {
-            // The disc of the rows above it in the panel.
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 36, height: 36)
-                .background(Circle().fill(tint.opacity(0.14)))
-        } else {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 36, height: 36)
-                .background(tint.gradient, in: .circle)
-        }
-    }
-
-    /// An opaque card with a little of its colour in it and a soft shadow, so it reads as lying on the page. Compact, the card of the
-    /// panel: a faint fill with the corners of the cards above it, and only a colour when something went wrong.
-    @ViewBuilder
-    private func card<Content: View>(tint: Color = Palette.indigo, @ViewBuilder _ content: () -> Content) -> some View {
-        if compact {
-            content()
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(4)
-                .background(tint == Palette.indigo ? Color.primary.opacity(0.05) : tint.opacity(0.12), in: .rect(cornerRadius: 22, style: .continuous))
-        } else {
-            wideCard(tint: tint, content)
-        }
-    }
-
-    private func wideCard<Content: View>(tint: Color, _ content: () -> Content) -> some View {
-        let radius: CGFloat = 22
-        return content()
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .surface(radius: radius, tint: tint)
-            .overlay { RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(tint.opacity(0.25), lineWidth: 1) }
-            .shadow(color: .black.opacity(0.10), radius: 10, y: 3)
-            .padding(.horizontal, 20)
-            .padding(.top, 10)
-            .padding(.bottom, 6)
-    }
-
-    private static func bytes(_ count: Int64) -> String {
-        ByteCountFormatter.string(fromByteCount: count, countStyle: .file)
+    private static func megabytes(_ count: Int64) -> String {
+        (Double(count) / 1_000_000).formatted(.number.precision(.fractionLength(1)))
     }
 }

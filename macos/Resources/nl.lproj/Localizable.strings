@@ -1667,3 +1667,9 @@
 "Your phone cannot hand over its hotspot password. Sharing with this Mac may be off, or Shizuku is not running." = "Je telefoon kan het wachtwoord van zijn hotspot niet doorgeven. Delen met deze Mac staat misschien uit, of Shizuku draait niet.";
 "Your phone says its hotspot is not called that anymore. Type the name and password." = "Je telefoon zegt dat zijn hotspot niet meer zo heet. Tik de naam en het wachtwoord in.";
 "Your phone could not read the password of its hotspot. Type it instead." = "Je telefoon kon het wachtwoord van zijn hotspot niet lezen. Tik het zelf in.";
+
+"New version %@" = "Nieuwe versie %@";
+"Installing %@" = "%@ installeren";
+"Installing…" = "Installeren…";
+"Restarts in a moment" = "Start zo opnieuw";
+"Again" = "Opnieuw";
