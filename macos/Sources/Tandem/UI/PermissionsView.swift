@@ -166,7 +166,7 @@ struct AccessSettings: View {
     var body: some View {
         Form {
             Section {
-                Text("Tandem only asks for what a feature needs, and each one is optional. Here you can see what is on, turn things on, and try them without a second device.")
+                Text("Tandem only asks for what a feature needs. Each one is optional.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

@@ -32,6 +32,18 @@ enum DebugSupport {
     /// instead, so the text on it can be read in the PNG.
     static var flatGlass: Bool { variable("TANDEM_DEBUG_FLAT_GLASS") != nil }
 
+    /// The height of the Settings window under `TANDEM_DEBUG_SETTINGS` with `TANDEM_DEBUG_TALL=<points>`.
+    static let settingsHeight: CGFloat? = variable("TANDEM_DEBUG_SETTINGS") == nil ? nil : variable("TANDEM_DEBUG_TALL").flatMap { Double($0) }.map { CGFloat($0) }
+
+    /// `TANDEM_DEBUG_SLOW=<times>`: the arrival of a page takes that many times as long, so a film of it (`TANDEM_DEBUG_INPUT`,
+    /// `film`) has frames of every part of the way. A picture of a window takes longer than the arrival itself.
+    static let slow: Double = variable("TANDEM_DEBUG_SLOW").flatMap { Double($0) } ?? 1
+
+    /// `TANDEM_DEBUG_POINTER=1`: what only shows while the pointer is on something is there all the time, so a picture shows where
+    /// it lies and how strong it is: the name of every round button (`instantName`) and the highlight of every row of the sidebar.
+    /// The pointer of a person cannot be played without taking theirs.
+    static let pointerEverywhere = variable("TANDEM_DEBUG_POINTER") != nil
+
     static var directory: URL? {
         ProcessInfo.processInfo.environment["TANDEM_DEBUG_DIR"].map { URL(fileURLWithPath: $0, isDirectory: true) }
     }
@@ -82,6 +94,10 @@ enum DebugSupport {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { ClipboardPanelController.shared.show() }
             }
         }
+        // `TANDEM_DEBUG_INPUT=<steps>`: clicks, the scroll wheel, keys and a resize, played against a window (see `DebugInput`).
+        if let steps = variable("TANDEM_DEBUG_INPUT") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { DebugInput.run(steps, into: directory) }
+        }
         if variable("TANDEM_DEBUG_SETTINGS") != nil {
             // In a window of its own rather than through the Settings scene, which only opens for an app that is in front.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSettingsWindow() }
@@ -130,9 +146,21 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_HEALTH") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showHealthWindow() }
         }
-        // `TANDEM_DEBUG_SIDEBAR=1`: the sidebar with two made up phones and a computer, the Messages of the first one chosen.
-        if variable("TANDEM_DEBUG_SIDEBAR") != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSidebarWindow() }
+        // `TANDEM_DEBUG_ICONS=1`: every kind of device as it is drawn, connected and not, in light and in dark, in one window.
+        if variable("TANDEM_DEBUG_ICONS") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                let host = NSHostingView(rootView: DeviceIconsBoard().environment(EngineModel.shared))
+                let window = NSWindow(contentRect: NSRect(origin: NSPoint(x: 120, y: 120), size: host.fittingSize), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                window.title = "Devices (debug)"
+                window.contentView = host
+                window.isReleasedWhenClosed = false
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+        // `TANDEM_DEBUG_SIDEBAR=1`: the main window with made up devices in its sidebar (see `madeUpModel`), `=narrow` narrow enough
+        // to fold it, `=wide` with room to spare. `TANDEM_DEBUG_PAGE` picks the page.
+        if let kind = variable("TANDEM_DEBUG_SIDEBAR") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { sizeMainWindow(width: ["narrow": 760, "wide": 1400][kind] ?? 1060) }
         }
         // `TANDEM_DEBUG_AWAY=1`: the pill that stays while the pointer is on another computer.
         if variable("TANDEM_DEBUG_AWAY") != nil {
@@ -265,6 +293,8 @@ enum DebugSupport {
         guard let page = variable("TANDEM_DEBUG_PAGE") else { return nil }
         if page == "shared" { return .shared }
         if page == "clipboard" { return .clipboard }
+        if page == "messages" { return devices.first(where: Sidebar.offersMessages).map { .messages($0.id) } }
+        if page == "watch" { return devices.first { $0.status.watch != nil }.map { .watch($0.id) } }
         // `files` is the files of the first device that has some, `files:Name` the ones of that device.
         if page.hasPrefix("files") {
             let wanted = page.dropFirst("files".count).dropFirst()
@@ -282,9 +312,20 @@ enum DebugSupport {
 
     static func sharedSamples() -> [TransferItem] {
         let now = Date()
-        return ["IMG_2041.jpg", "Offerte.pdf", "Notities.txt", "Clip 3.mov", "Muziek.zip"].enumerated().map { index, name in
-            TransferItem(id: "debug-\(index)", peer: "debug-phone", name: name, done: 2_000_000, total: 2_000_000, incoming: index % 2 == 0,
-                         state: .done, location: nil, error: nil, started: now, updated: now.addingTimeInterval(Double(-index * 60)))
+        // Every kind of file, both ways, and the ways a transfer can end, so the tiles, the columns and the labels all have something to show.
+        let rows: [(String, UInt64, TransferItem.State, String?, Double)] = [
+            ("Clip 3.mov", 120_000_000, .active, nil, 0),
+            ("IMG_2041.jpg", 2_400_000, .done, nil, 300),
+            ("Offerte 2026.pdf", 840_000, .failed, "connection lost", 3600),
+            ("Notities.txt", 12_000, .done, nil, 7200),
+            ("Muziek.zip", 64_000_000, .failed, "declined", 9000),
+            ("Voice memo.m4a", 1_200_000, .done, nil, 90_000),
+            ("Vakantie 2026 Portugal lange bestandsnaam.heic", 5_300_000, .done, nil, 200_000),
+        ]
+        return rows.enumerated().map { index, row in
+            TransferItem(id: "debug-\(index)", peer: "debug-phone", name: row.0, done: row.2 == .active ? row.1 / 3 : row.1, total: row.1, incoming: index % 2 == 0,
+                         state: row.2, location: nil, error: row.3, started: now.addingTimeInterval(-row.4), updated: now.addingTimeInterval(-row.4),
+                         speed: row.2 == .active ? 8_400_000 : 0)
         }
     }
 
@@ -342,6 +383,15 @@ enum DebugSupport {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }
     }
 
+    /// `TANDEM_DEBUG_SETTINGS=<part>` opens Settings on the subject of that part, as asked for by name. With the name of a subject
+    /// that is not also a part (`thisMac`, `sharing`, `control`, `works`) it opens that subject as a click on it does.
+    static func initialSettingsSubject() -> SettingsSubject? {
+        initialSettingsSection()?.subject ?? variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSubject(rawValue: $0) }
+    }
+
+    /// The engine for a page that asks it something while it shows the made up devices, which have no engine of their own.
+    static var engineForMadeUp: TandemEngine? { madeUpModel == nil ? nil : EngineModel.shared.tandem }
+
     private static func debugVirtualDisplay(_ spec: String) {
         let parts = (spec.split(separator: ":").first ?? "").split(separator: "x").compactMap { Int($0) }
         let (width, height) = parts.count == 2 ? (parts[0], parts[1]) : (1280, 720)
@@ -395,6 +445,7 @@ enum DebugSupport {
         if phone {
             status.sound = .vibrate
             status.lock = false
+            status.battery = TandemBattery(level: 78, charging: false, powerSave: false)
             status.watch = TandemWatchStatus(
                 paired: true, online: true, level: 62, charging: false, ringing: false, name: nil, sleeping: false,
                 settings: TandemWatchSettings(mouse: true, sleepQuiet: true, smartWake: true, heartAllDay: true, stepGoal: 8000)
@@ -410,16 +461,24 @@ enum DebugSupport {
         }
         let device = TandemDevice(
             id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: kind != "linux-away", route: nil, rttMs: 7, status: status,
-            appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
+            appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera", "side.listen"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
             autoAccept: true, notificationsEnabled: true, ble: false, features: []
         )
+        if kind == "android" { fillSamples(EngineModel.shared, phone: "debug") }
         let page = kind == "watch"
             ? AnyView(WatchDetail(phone: device))
             : AnyView(DeviceDetail(device: device))
         // The page of the watch is long: all of it in one snapshot.
-        let height: CGFloat = kind == "watch" ? 1180 : 640
-        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: 760, height: height))
-        let window = NSWindow(contentRect: NSRect(x: 120, y: 40, width: 760, height: height), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        var height: CGFloat = kind == "watch" ? 1180 : 640
+        // `TANDEM_DEBUG_TALL=<points>`: the page that high in a window without a title bar, which may be taller than the screen, so a
+        // long page fits in one snapshot.
+        let tall = variable("TANDEM_DEBUG_TALL").flatMap { Double($0) }
+        if let tall { height = CGFloat(tall) }
+        // `TANDEM_DEBUG_WIDE=<points>`: the page that wide, for what it does with more or less room.
+        let width = variable("TANDEM_DEBUG_WIDE").flatMap { Double($0) }.map { CGFloat($0) } ?? 760
+        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: width, height: height)
+            .background(Color(nsColor: .windowBackgroundColor)))
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 40, width: width, height: height), styleMask: tall == nil ? [.titled, .closable] : [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = "Device page (debug)"
         window.contentView = host
@@ -496,32 +555,71 @@ enum DebugSupport {
         return records
     }
 
-    private static func showSidebarWindow() {
+    /// What only shows with something to show: two players on that phone (the second one plays), and files that arrived, failed and
+    /// are underway.
+    private static func fillSamples(_ model: EngineModel, phone: String) {
+        model.remoteMedia[phone] = EngineModel.RemoteMedia(players: [
+            TandemMediaPlayer(id: "spotify", app: "Spotify", title: "Everything In Its Right Place", artist: "Radiohead", album: "Kid A", playing: false,
+                              positionMs: 61_000, durationMs: 251_000, canPrev: true, canNext: true, canSeek: true, art: 0),
+            TandemMediaPlayer(id: "casts", app: "Pocket Casts", title: "De Dag", artist: "NPO Radio 1", album: "", playing: true,
+                              positionMs: 420_000, durationMs: 1_260_000, canPrev: true, canNext: true, canSeek: true, art: 0),
+        ], at: Date())
+        let now = Date()
+        func file(_ id: String, _ name: String, _ size: UInt64, incoming: Bool, _ state: TransferItem.State, error: String? = nil, ago: Double) -> TransferItem {
+            TransferItem(id: "debug-\(id)", peer: phone, name: name, done: state == .active ? size / 3 : size, total: size, incoming: incoming,
+                         state: state, location: nil, error: error, started: now, updated: now.addingTimeInterval(-ago), speed: state == .active ? 8_400_000 : 0)
+        }
+        model.transfers = [
+            file("a", "Clip 3.mov", 120_000_000, incoming: true, .active, ago: 0),
+            file("b", "IMG_2041.jpg", 2_400_000, incoming: true, .done, ago: 300),
+            file("c", "Offerte 2026.pdf", 840_000, incoming: false, .failed, error: "connection lost", ago: 3600),
+            file("d", "Muziek.zip", 64_000_000, incoming: false, .failed, error: "declined", ago: 7200),
+            file("e", "Voice memo.m4a", 1_200_000, incoming: false, .done, ago: 86_400),
+        ]
+    }
+
+    /// The devices the main window shows under `TANDEM_DEBUG_SIDEBAR`, in place of the ones of the engine: a fresh data folder has
+    /// none, and the sidebar and the pages are there to be tried. It is the main window itself that shows them and not a second
+    /// one beside it, so there is no empty window to take for the real thing.
+    static let madeUpModel: EngineModel? = {
+        guard variable("TANDEM_DEBUG_SIDEBAR") != nil else { return nil }
         let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
         func made(_ id: String, _ name: String, _ platform: TandemPlatform, online: Bool, caps: [String]) -> TandemDevice {
-            TandemDevice(id: id, name: name, platform: platform, online: online, route: nil, rttMs: online ? 12 : nil, status: status, appVersion: nil, caps: caps,
+            TandemDevice(id: id, name: name, platform: platform, online: online, route: nil, rttMs: online ? 12 : nil, status: status, appVersion: "0.3.27", caps: caps,
                          vouchedByRemoved: false, clipboardEnabled: true, autoAccept: false, notificationsEnabled: true, ble: false, features: [])
         }
         // A model of its own, so the made up devices never mix with the ones of the engine.
         let model = EngineModel()
-        // The first phone has a watch, which has a row of its own under it: `TANDEM_DEBUG_SIDEBAR=watch` chooses that row.
+        // The first phone has a watch, which has a row of its own under it.
         var withWatch = made("debug-phone", "Pixel 9", .android, online: true, caps: ["sms", "files"])
         withWatch.status.watch = TandemWatchStatus(paired: true, online: true, level: 62, charging: false, ringing: false, name: nil)
-        model.devices = [
-            withWatch,
-            made("debug-mac", "MacBook Air", .macOs, online: true, caps: ["files"]),
-            made("debug-phone-2", "Xperia", .android, online: false, caps: []),
-        ]
+        withWatch.status.battery = TandemBattery(level: 78, charging: false, powerSave: false)
+        withWatch.status.network = TandemNetwork(kind: .wifi, ssid: "Thuis", metered: false, roaming: false, signal: 3)
+        withWatch.status.sound = .vibrate
+        var computer = made("debug-mac", "MacBook Air van Mark", .macOs, online: true, caps: ["files"])
+        computer.status.battery = TandemBattery(level: 100, charging: true, powerSave: false)
+        computer.status.network = TandemNetwork(kind: .wifi, ssid: "Thuis", metered: false, roaming: false, signal: 3)
+        computer.status.freeStorage = 212_000_000_000
+        var away = made("debug-phone-2", "Xperia 1 VI", .android, online: false, caps: [])
+        away.status.battery = TandemBattery(level: 12, charging: false, powerSave: false)
+        model.devices = [withWatch, computer, away, made("debug-pc", "Werk-pc", .windows, online: true, caps: ["files"])]
         MessagesStore.shared.phone("debug-phone").fillForDebug()
-        let chosen: SidebarSelection = variable("TANDEM_DEBUG_SIDEBAR") == "watch" ? .watch("debug-phone") : .messages("debug-phone")
-        let host = NSHostingView(rootView: Sidebar(selection: .constant(chosen), showPairing: .constant(false))
-            .environment(model)
-            .frame(width: 280, height: 560))
-        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 280, height: 560), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        window.title = "Sidebar (debug)"
-        window.contentView = host
-        window.makeKeyAndOrderFront(nil)
+        // The first phone plays something and has files, so its page shows the player beside the head and the list of what was sent.
+        // The other Mac has one player and the PC none: the three heads a page can have.
+        fillSamples(model, phone: "debug-phone")
+        model.remoteMedia["debug-mac"] = EngineModel.RemoteMedia(players: [
+            TandemMediaPlayer(id: "music", app: "Music", title: "Pyramid Song", artist: "Radiohead", album: "Amnesiac", playing: true,
+                              positionMs: 95_000, durationMs: 289_000, canPrev: true, canNext: true, canSeek: true, art: 0),
+        ], at: Date())
+        model.ready = true
+        return model
+    }()
+
+    /// The main window at a width that is the same every time, whatever size it was left at.
+    private static func sizeMainWindow(width: CGFloat) {
+        guard let window = NSApp.windows.first(where: { $0.title == AppIdentity.displayName && $0.styleMask.contains(.titled) }) else { return }
+        let top = window.frame.maxY
+        window.setFrame(NSRect(x: window.frame.minX, y: top - 660, width: width, height: 660), display: true)
     }
 
     private static func showMessagesWindow() {
@@ -643,10 +741,11 @@ enum DebugSupport {
     }
 
     private static func showSettingsWindow() {
-        let host = NSHostingView(rootView: SettingsView().environment(EngineModel.shared))
+        let host = NSHostingView(rootView: SettingsView().environment(madeUpModel ?? EngineModel.shared))
         let window = NSWindow(
             contentRect: NSRect(x: 120, y: 120, width: 780, height: 620),
-            styleMask: [.titled, .closable],
+            // `TANDEM_DEBUG_TALL=<points>`: that high and without a title bar, so it may be taller than the screen and a whole page is in one picture.
+            styleMask: settingsHeight == nil ? [.titled, .closable] : [.borderless],
             backing: .buffered,
             defer: false
         )

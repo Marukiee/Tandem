@@ -1,6 +1,6 @@
 [
   {
-    "version": "0.3.34",
+    "version": "0.3.33",
     "date": "2026-11-21",
     "en": {
       "title": "A calmer update card",
@@ -21,23 +21,39 @@
     "version": "0.3.32",
     "date": "2026-11-21",
     "en": {
-      "title": "A battery log on the watch",
+      "title": "A new look on the Mac, a battery log on the watch, and health tiles that open their page",
       "new": [
-        "The watch has a Battery log in its settings: per hour what Tandem did and what the battery lost, so a day on the wrist shows where it went"
+        "The page of a device on the Mac has a calmer head with tiles for battery, network and sound or free space, and the player beside it",
+        "Settings for this device on the Mac: its name for every device, where it stands, and what it may do on this Mac",
+        "Where a device stands is a clear choice of left or right of this Mac",
+        "The watch has a Battery log in its settings: per hour what Tandem did and what the battery lost, so a day on the wrist shows where it went",
+        "The Heart page shows the heart rate now when the watch passes it on, with \"Now\" and a beating heart, and the heart card of Health has the hours and the usual resting rate under its line"
       ],
       "fixed": [
         "A phone that has been gone for a long time is looked for a fifth of the time instead of all the time",
-        "The Bluetooth link of a resting watch takes less power and speeds up again for messages or when the screen is on"
+        "The Bluetooth link of a resting watch takes less power and speeds up again for messages or when the screen is on",
+        "On the page of the watch, the tiles for the night, the steps and the heart rate open their own page instead of the Health overview",
+        "On the page of a device the player is a card of its own under the device card, instead of inside it",
+        "Plainer icons for phones, an Xperia and a PC on the Mac",
+        "Every page on the Mac rises into place, the top one too"
       ]
     },
     "nl": {
-      "title": "Een accu-logboek op het horloge",
+      "title": "Een nieuw uiterlijk op de Mac, een accu-logboek op het horloge, en gezondheidstegels die hun pagina openen",
       "new": [
-        "Het horloge heeft een Accu-logboek in de instellingen: per uur wat Tandem deed en wat de accu verloor, zodat een dag om de pols laat zien waar het bleef"
+        "De pagina van een apparaat op de Mac heeft een rustigere kop met tegels voor accu, netwerk en geluid of vrije ruimte, en de speler ernaast",
+        "Instellingen voor dit apparaat op de Mac: de naam voor elk apparaat, waar het staat, en wat het op deze Mac mag",
+        "Waar een apparaat staat is een duidelijke keuze tussen links of rechts van deze Mac",
+        "Het horloge heeft een Accu-logboek in de instellingen: per uur wat Tandem deed en wat de accu verloor, zodat een dag om de pols laat zien waar het bleef",
+        "De Hart-pagina toont de hartslag nu als het horloge die doorgeeft, met \"Nu\" en een kloppend hartje, en de hartkaart van Gezondheid heeft de uren en je gebruikelijke rusthartslag onder de lijn"
       ],
       "fixed": [
         "Een telefoon die lang weg is wordt een vijfde van de tijd gezocht in plaats van de hele tijd",
-        "De Bluetooth-verbinding van een horloge in rust kost minder stroom en gaat weer sneller bij berichten of als het scherm aan gaat"
+        "De Bluetooth-verbinding van een horloge in rust kost minder stroom en gaat weer sneller bij berichten of als het scherm aan gaat",
+        "Op de pagina van het horloge openen de tegels voor de nacht, de stappen en de hartslag hun eigen pagina in plaats van het Gezondheidsoverzicht",
+        "Op de pagina van een apparaat staat de speler op een eigen kaart onder de apparaatkaart, niet meer erin",
+        "Eenvoudiger iconen voor telefoons, een Xperia en een pc op de Mac",
+        "Elke pagina op de Mac schuift soepel in beeld, ook de bovenste"
       ]
     }
   },

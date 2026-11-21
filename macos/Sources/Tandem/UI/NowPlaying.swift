@@ -1,97 +1,118 @@
 import SwiftUI
 import TandemCore
 
-/// What a phone is playing, with the buttons to control it, at the bottom of the header card of its page. Also when this Mac shows the
-/// same track (Spotify on a computer shows the track of the account wherever it plays).
-struct NowPlayingCard: View {
+/// What a device plays, with the buttons to control it, on a card of its own beside the head of its page, or under it where the
+/// page is narrow. Also when this Mac shows the same track (Spotify on a computer shows the track of the account wherever it
+/// plays). The card is the plain card of the page, and what is in it is one row: the cover, what plays, and the three controls.
+/// With more than one player the apps are named at its top left, above the cover, small, and the one in front is in the accent.
+struct PlayersCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
-    /// The player the person picked from the small rows, until it goes away.
+    /// The player the person picked, until it goes away.
     @LocalState private var chosen: String?
 
     var body: some View {
         let players = model.reach(of: device).reachable ? model.visibleMedia(for: device.id) : []
-        // One player gets the whole card: the one that was picked, otherwise what plays, otherwise the first. The
-        // others are small rows in one card below it, so three players take little more room than one.
-        let main = players.first { $0.id == chosen } ?? players.first { $0.playing } ?? players.first
-        let others = players.filter { $0.id != main?.id }
-        // The model changes outside any animation, so the player brings its own: it slides in when something starts
-        // to play and out when it stops. The page animates the card around it on the same change (DeviceDetail).
+        // The one that was picked, otherwise what plays, otherwise the first.
+        let current = players.first { $0.id == chosen } ?? players.first { $0.playing } ?? players.first
+        // The model changes outside any animation, so the card brings its own: it fades in when something starts to play and out
+        // when it stops. The page makes room for it on the same change (DeviceDetail).
         Group {
-            if let main {
-                VStack(spacing: 10) {
-                    PlayerCard(device: device, player: main)
-                    if !others.isEmpty {
-                        OtherPlayers(device: device, players: others) { picked in withAnimation(.tandem) { chosen = picked.id } }
+            if let current {
+                Card(radius: Metrics.card, padding: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if players.count > 1 {
+                            PlayerApps(players: players, current: current.id) { id in withAnimation(.tandem) { chosen = id } }
+                                .transition(.opacity)
+                        }
+                        // Stacked, so the player that leaves and the one that comes cross-fade in the same place.
+                        ZStack(alignment: .top) {
+                            PagePlayer(device: device, player: current, namesApp: players.count == 1)
+                                .id(current.id)
+                                .transition(.opacity)
+                        }
                     }
+                    // Beside the head the card is as tall as the head, with the player in the middle.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                // The gap to the chips belongs to the player, so it opens and closes with it instead of snapping.
-                .padding(.top, 18)
-                // A short slide: a move from the top edge would travel over the name and the chips.
-                .transition(.opacity.combined(with: .offset(y: -10)))
+                .transition(.opacity)
             }
         }
         .animation(.tandem, value: players.map(\.id))
+        .animation(.tandem, value: current?.id)
     }
 }
 
-/// The players that are not in front, one line each: a small cover, what plays, and the play button. A tap on the
-/// line brings that player to the front.
-private struct OtherPlayers: View {
-    @Environment(EngineModel.self) private var model
-    let device: TandemDevice
+/// Which app's player is shown: the names as words, the one in front in the accent, with a speaker beside the one that plays.
+/// Small on purpose: what plays is the content of the card, and the choice of app should not outweigh it.
+private struct PlayerApps: View {
     let players: [TandemMediaPlayer]
-    let pick: (TandemMediaPlayer) -> Void
+    let current: String
+    let pick: (String) -> Void
 
     var body: some View {
-        // A soft fill and not a card: it sits inside the header card already.
-        VStack(spacing: 0) {
+        HStack(spacing: 14) {
             ForEach(players, id: \.id) { player in
-                HStack(spacing: 10) {
-                    PlayerCover(player: player, size: 36)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(player.title.isEmpty ? player.app : player.title).font(.callout.weight(.medium)).lineLimit(1)
-                        Text([player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    // The same round button as the player above it.
-                    RoundIconButton(symbol: player.playing ? "pause.fill" : "play.fill", size: 30) {
-                        model.sendMedia(.toggle, player: player, to: device.id)
-                    }
-                    .help(player.playing ? "Pause" : "Play")
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 5)
-                .contentShape(Rectangle())
-                .onTapGesture { pick(player) }
+                PlayerAppName(player: player, on: player.id == current) { pick(player.id) }
             }
         }
-        .padding(8)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
-private struct PlayerCard: View {
-    @Environment(EngineModel.self) private var model
-    let device: TandemDevice
+private struct PlayerAppName: View {
     let player: TandemMediaPlayer
-
-    private var subtitle: String { [player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · ") }
+    let on: Bool
+    let action: () -> Void
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
 
     var body: some View {
-        // No surface of its own: it is the bottom of the header card.
-        CoverBeside(spacing: 14) {
-            PlayerCover(player: player, size: nil)
-            VStack(alignment: .leading, spacing: 8) {
-                // What plays on the left, the buttons at the top right, and the bar below both, the width of the card.
-                HStack(alignment: .top, spacing: 12) {
-                    PlayerTitle(title: player.title, subtitle: subtitle, titleFont: .headline, subtitleFont: .callout, spacing: 2)
-                    Spacer(minLength: 8)
-                    PlayerButtons(device: device, player: player, size: .regular)
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if player.playing {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                        .transition(.scale.combined(with: .opacity))
                 }
-                PlayerProgress(device: device, player: player)
+                Text(player.app.isEmpty ? player.title : player.app)
+                    .font(.caption.weight(on ? .semibold : .medium))
+                    .lineLimit(1)
             }
+            .foregroundStyle(on ? Palette.indigo : (hovering && hoverEnabled ? Color.primary : Color.secondary))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(.hover(hovering), value: hovering)
+        .animation(.tandem, value: player.playing)
+        .animation(.tandemFade, value: on)
+        .accessibilityLabel(Text(player.app.isEmpty ? player.title : player.app))
+        .accessibilityValue(player.playing ? Text("Playing now") : Text(""))
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+/// One player on the page of a device: the cover, what plays and the controls on one row, and the bar under them.
+private struct PagePlayer: View {
+    let device: TandemDevice
+    let player: TandemMediaPlayer
+    /// With more than one player the apps are named above it, and the line under the title is the artist alone.
+    var namesApp = true
+
+    private var subtitle: String {
+        let parts = [player.artist, namesApp ? player.app : ""].filter { !$0.isEmpty }
+        return parts.isEmpty ? player.app : parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                PlayerCover(player: player, size: 56)
+                PlayerTitle(title: player.title, subtitle: subtitle, titleFont: .headline, subtitleFont: .callout, spacing: 2)
+                Spacer(minLength: 4)
+                PlayerButtons(device: device, player: player, size: .page)
+            }
+            PlayerProgress(device: device, player: player)
         }
         .animation(.tandem, value: player.art)
     }
@@ -104,10 +125,11 @@ private struct PlayerTitle: View {
     let titleFont: Font
     let subtitleFont: Font
     let spacing: CGFloat
+    var titleLines = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) {
-            Text(title).font(titleFont).lineLimit(1)
+            Text(title).font(titleFont).lineLimit(titleLines)
             Text(subtitle).font(subtitleFont).foregroundStyle(.secondary).lineLimit(1)
         }
         .id(title + "\u{1F}" + subtitle)
@@ -169,11 +191,12 @@ struct PlayerCover: View {
 
     private func cover(side: CGFloat) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: side * 0.22, style: .continuous).fill(Color.primary.opacity(0.07))
+            // Without a cover: a tile in the tone of the app with a note on it, not a grey hole.
+            RoundedRectangle(cornerRadius: side * 0.22, style: .continuous).fill(Tone.indigo.fill)
             if let image = (player.art == 0 ? nil : model.mediaArt[player.art] ?? held) {
                 Image(nsImage: image).resizable().scaledToFill()
             } else {
-                Image(systemName: "music.note").font(.system(size: side * 0.4)).foregroundStyle(.secondary)
+                Image(systemName: "music.note").font(.system(size: side * 0.4, weight: .medium)).foregroundStyle(Tone.indigo.ink)
             }
         }
         .frame(width: side, height: side)
@@ -219,7 +242,7 @@ struct PlayerProgress: View {
                             Spacer()
                             Text(Self.time(duration)).foregroundStyle(.secondary)
                         }
-                        .font(.caption2.monospacedDigit())
+                        .font(.caption.monospacedDigit())
                         .animation(.tandemFade, value: scrub == nil)
                     }
                 }
@@ -284,27 +307,71 @@ struct PlayerProgress: View {
 }
 
 struct PlayerButtons: View {
-    enum Size { case regular, small }
+    /// `page` is the player on the page of a device: play or pause is the one filled circle, the other two are their glyph alone.
+    enum Size { case regular, small, page }
 
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
     let player: TandemMediaPlayer
     var size: Size
+    /// Shows the name of a button the moment the pointer is on it. Not in the menu bar panel, which draws no names.
+    var names = true
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: size == .page ? 2 : 6) {
             button("backward.fill", enabled: player.canPrev, help: "Previous") { model.sendMedia(.previous, player: player, to: device.id) }
-            button(player.playing ? "pause.fill" : "play.fill", enabled: true, help: player.playing ? "Pause" : "Play") {
+            button(player.playing ? "pause.fill" : "play.fill", enabled: true, main: true, help: player.playing ? "Pause" : "Play") {
                 model.sendMedia(.toggle, player: player, to: device.id)
             }
             button("forward.fill", enabled: player.canNext, help: "Next") { model.sendMedia(.next, player: player, to: device.id) }
         }
     }
 
-    private func button(_ symbol: String, enabled: Bool, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
-        RoundIconButton(symbol: symbol, size: size == .regular ? 38 : 30, action: action)
-            .disabled(!enabled)
-            .help(help)
+    private func button(_ symbol: String, enabled: Bool, main: Bool = false, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
+        Group {
+            if size == .page {
+                PlayerControl(symbol: symbol, main: main, action: action)
+            } else {
+                RoundIconButton(symbol: symbol, size: size == .regular ? 38 : 30, action: action)
+            }
+        }
+        .disabled(!enabled)
+        .modifier(ButtonName(name: help, instant: names))
+    }
+}
+
+/// A control of the player on the page of a device. Three grey discs read as three buttons that are switched off, so only play
+/// or pause has a circle, filled in the accent, and the other two are their glyph with a faint disc under the pointer.
+private struct PlayerControl: View {
+    let symbol: String
+    let main: Bool
+    let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        let lit = hovering && hoverEnabled && isEnabled
+        let side: CGFloat = main ? 38 : 32
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: main ? 15 : 14, weight: .semibold))
+                .foregroundStyle(main ? Color.white : Color.primary)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: side, height: side)
+                .background {
+                    if main {
+                        Circle().fill(Palette.indigo).brightness(lit ? 0.07 : 0)
+                    } else {
+                        Circle().fill(Color.primary.opacity(lit ? 0.09 : 0))
+                    }
+                }
+                .contentShape(Circle())
+                .opacity(isEnabled ? 1 : 0.35)
+        }
+        .buttonStyle(.bouncy)
+        .onHover { hovering = $0 }
+        .animation(.hover(hovering), value: hovering)
     }
 }
 
@@ -328,7 +395,7 @@ struct MenuNowPlaying: View {
                             spacing: 1
                         )
                         Spacer(minLength: 4)
-                        PlayerButtons(device: device, player: player, size: .small)
+                        PlayerButtons(device: device, player: player, size: .small, names: false)
                     }
                     PlayerProgress(device: device, player: player, compact: true)
                 }
@@ -340,5 +407,15 @@ struct MenuNowPlaying: View {
             }
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
+    }
+}
+
+/// The name of a round button: at once under it, or as the tooltip of the system where there is no room for that.
+private struct ButtonName: ViewModifier {
+    let name: LocalizedStringKey
+    let instant: Bool
+
+    func body(content: Content) -> some View {
+        if instant { content.instantName(name) } else { content.help(name) }
     }
 }

@@ -16,34 +16,27 @@ struct DeviceDetail: View {
     /// The address at which this computer answers for ssh, once looked for.
     @LocalState private var sshAddress: String?
 
-    @LocalState private var position = ScrollPosition(edge: .top)
-
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-                header
-                // Only what sits under the header is swapped when the device changes.
-                // Stacked, so the old and the new one cross-fade in the same place.
-                ZStack(alignment: .top) {
-                    content
-                        .id(device.id)
-                        .transition(.rise)
+                // The head and what plays, each on a card of its own: side by side where there is room, under each other where
+                // there is not. The row decides that from its own width, so the page arrives in the layout it keeps.
+                HeadRow {
+                    header
+                    PlayersCard(device: device)
                 }
+                content
             }
-            .pagePadding()
-            .frame(maxWidth: 760)
+            .devicePagePadding()
+            // As wide as Shared may be: in a wide window the head and the player each have room for all they say.
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
-        .scrollPosition($position)
-        .animation(.tandem, value: device.id)
+        .ignoresSafeArea(.container, edges: .top)
         .animation(.tandem, value: device.online)
         // The battery comes a moment after the connection, in a status of its own: the space it takes is made smoothly too.
         .animation(.tandem, value: device.status.battery != nil)
         .animation(.tandem, value: shownPlayers)
-        .onChange(of: device.id) {
-            confirmRemoval = false
-            position.scrollTo(edge: .top)
-        }
         .confirmationDialog(
             "Remove \(device.name)?",
             isPresented: $confirmRemoval,
@@ -60,8 +53,8 @@ struct DeviceDetail: View {
 
     private var reach: Reach { model.reach(of: device) }
 
-    private var deviceSubtitle: String {
-        let system: String = switch device.platform {
+    private var system: String {
+        switch device.platform {
         case .android: "Android"
         case .macOs: "macOS"
         case .linux: "Linux"
@@ -69,95 +62,158 @@ struct DeviceDetail: View {
         case .ios: "iOS"
         case .other: String(localized: "Device")
         }
+    }
+
+    /// What it is: the system and the version of Tandem on it, where they are known.
+    private var systemLine: String {
         guard let version = device.appVersion, !version.isEmpty else { return system }
         return "\(system) \u{00B7} Tandem \(version)"
     }
 
-    private var header: some View {
-        Card(radius: Metrics.card, padding: 22, tint: device.online ? Palette.indigo : nil) {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 20) {
-                    // The system's menu, like every other choice from a list in the app.
-                    Menu {
-                        ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
-                            Button { model.setIcon(choice.symbol, for: device.id) } label: {
-                                Label(choice.label, systemImage: choice.symbol)
-                            }
-                        }
-                        Divider()
-                        Button("Use the default icon") { model.setIcon(nil, for: device.id) }
-                    } label: {
-                        DeviceGlyph(platform: device.platform, online: device.online, size: 80, deviceID: device.id)
-                    }
-                    .menuStyle(.button)
-                    .buttonStyle(.plain)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .help("Change the icon")
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(device.name)
-                            .font(.title.weight(.bold))
-                            .lineLimit(1)
-                            .contentTransition(.opacity)
-
-                        // What it is: the system and the version of Tandem on it, so the card says who this is and not only how it is reached.
-                        Text(deviceSubtitle)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-
-                        HStack(spacing: 8) {
-                            Chip(symbol: reach.symbol, text: reach.text, tint: reach.color, strong: reach.reachable)
-                            if device.online {
-                                if usingItsHotspot {
-                                    // This Mac is on the phone's hotspot: that says more than the kind of address.
-                                    Chip(symbol: "personalhotspot", text: "Via hotspot", tint: Palette.indigo)
-                                } else if let route = device.route {
-                                    Chip(symbol: route.symbol, text: route.label)
-                                }
-                            }
-                            if let rtt = device.rttMs, device.online {
-                                Chip(symbol: "speedometer", text: "\(rtt) ms")
-                            }
-                        }
-                        if device.online {
-                            HStack(spacing: 8) {
-                                phoneNetworkChips
-                                // A computer: the network it is on, as a chip with the others and not as a line of its own under the buttons.
-                                if device.platform != .android, let ssid = device.lastSeen?.ssid {
-                                    Chip(symbol: "wifi", text: "\(ssid)")
-                                }
-                                // A phone says it on its button in the Sound group.
-                                if device.status.dnd == true, device.status.sound == nil {
-                                    Chip(symbol: "moon.fill", text: "Do not disturb")
-                                }
-                            }
-                        } else {
-                            Text("Tandem connects again as soon as this device can be reached.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    Spacer(minLength: 0)
-
-                    if let battery = device.status.battery {
-                        BatteryRing(battery: battery, size: 74, connected: device.online)
-                            .transition(.scale.combined(with: .opacity))
-                    }
-                }
-
-                // What it plays, in the card: the card grows when it starts and shrinks when it stops. Its own id, so a
-                // player picked on one device is not the pick on the next.
-                NowPlayingCard(device: device)
-                    .id(device.id)
-            }
+    /// The tiles under the name: what there is to know about the device at a glance, each where it is known. That it is connected
+    /// and how quick it answers are small under its name: they matter when they go wrong, not as the first thing on the page.
+    @ViewBuilder
+    private var tiles: some View {
+        if let battery = device.status.battery {
+            HeadTile(
+                symbol: Self.batterySymbol(battery),
+                tint: batteryTint(battery, connected: device.online),
+                value: Text(verbatim: "\(battery.level)%"),
+                label: battery.charging && device.online ? Text("Charging") : Text("Battery")
+            )
         }
-        // While the card shrinks the player is still on its way out, and is not drawn over what sits below the card.
-        .clipShape(RoundedRectangle(cornerRadius: Metrics.card, style: .continuous))
+        if device.online, let network = device.status.network {
+            HeadTile(
+                symbol: Self.networkSymbol(network.kind),
+                tint: Palette.indigo,
+                value: network.ssid.flatMap { $0.isEmpty ? nil : Text(verbatim: $0) } ?? Self.networkName(network.kind),
+                label: network.metered ? Text("Network, metered") : Text("Network")
+            )
+        }
+        if device.platform == .android, device.online, let sound = device.status.sound {
+            let look = Self.soundLook(sound)
+            HeadTile(symbol: look.symbol, tint: Palette.indigo, value: Text(look.title), label: Text("Sound"))
+        }
+        if device.isComputer, device.online, let free = device.status.freeStorage {
+            HeadTile(
+                symbol: "internaldrive", tint: Palette.indigo,
+                value: Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64(free), countStyle: .file)),
+                label: Text("Free space")
+            )
+        }
     }
 
-    /// The players shown in the header, as the page sees them, so the card around them grows and shrinks on the same change.
+    private var hasTiles: Bool {
+        let status = device.status
+        return status.battery != nil || (device.online && (status.network != nil
+            || (device.platform == .android && status.sound != nil) || (device.isComputer && status.freeStorage != nil)))
+    }
+
+    private static func batterySymbol(_ battery: TandemBattery) -> String {
+        if battery.charging { return "battery.100percent.bolt" }
+        switch battery.level {
+        case 88...: return "battery.100percent"
+        case 63...: return "battery.75percent"
+        case 38...: return "battery.50percent"
+        case 13...: return "battery.25percent"
+        default: return "battery.0percent"
+        }
+    }
+
+    private static func networkSymbol(_ kind: TandemNetKind) -> String {
+        switch kind {
+        case .wifi: "wifi"
+        case .cellular: "antenna.radiowaves.left.and.right"
+        case .ethernet: "cable.connector"
+        case .none, .other: "network"
+        }
+    }
+
+    private static func networkName(_ kind: TandemNetKind) -> Text {
+        switch kind {
+        case .wifi: Text("Wi-Fi")
+        case .cellular: Text("Mobile data")
+        case .ethernet: Text("Ethernet")
+        case .none: Text("No network")
+        case .other: Text("Network")
+        }
+    }
+
+    private static func soundLook(_ sound: TandemSoundMode) -> (title: LocalizedStringKey, symbol: String) {
+        switch sound {
+        case .vibrate: ("Vibrate", "iphone.gen3.radiowaves.left.and.right")
+        case .silent: ("Silent", "bell.slash")
+        case .doNotDisturb: ("Do not disturb", "moon.fill")
+        case .sound: ("Sound on", "bell")
+        }
+    }
+
+    /// That it is there, at the top right of the head: a tick or a dashed round and the word, on a faint pill. How quick it
+    /// answers is in its help, as it matters only when something is slow.
+    private var statePill: some View {
+        StatePill(there: reach.reachable, text: reach.text)
+            .help(device.online ? device.rttMs.map { String(localized: "Answers in \($0) ms") } ?? "" : "")
+    }
+
+    /// The head of the page: the device, its name, what it runs on and that it is there, and under them tiles with what there is
+    /// to know at a glance. Tiles and no bar: a bar beside the player read as a second player. Beside a taller player the tiles grow,
+    /// so the card never has empty room above or under what it says.
+    private var header: some View {
+        Card(radius: Metrics.card, padding: 20) {
+            VStack(alignment: .leading, spacing: 14) {
+                headRow
+                if hasTiles {
+                    HStack(spacing: 8) { tiles }
+                        .frame(maxHeight: .infinity)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: hasTiles ? .topLeading : .leading)
+            // In the corner, as far from the top of the card as from its side.
+            .overlay(alignment: .topTrailing) { statePill }
+        }
+    }
+
+    private var headRow: some View {
+        HStack(spacing: 12) {
+                // The system's menu, like every other choice from a list in the app.
+                Menu {
+                    ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
+                        Button { model.setIcon(choice.symbol, for: device.id) } label: {
+                            Label(choice.label, systemImage: choice.symbol)
+                        }
+                    }
+                    Divider()
+                    Button("Use the default icon") { model.setIcon(nil, for: device.id) }
+                } label: {
+                    DeviceGlyph(platform: device.platform, online: device.online, size: 52, deviceID: device.id)
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Change the icon")
+
+                VStack(alignment: .leading, spacing: 1) {
+                    // The pill on the line of the name, so the line under it has the whole width for the system and the version.
+                    HStack(spacing: 8) {
+                        Text(device.name)
+                            .font(.title3.weight(.semibold))
+                            .lineLimit(1)
+                            // A long name is a little smaller before it is cut short.
+                            .minimumScaleFactor(0.8)
+                        Spacer(minLength: 0)
+                        // Its room on the line of the name, so a long name stops before it. The pill itself sits in the corner of the card.
+                        statePill.hidden()
+                    }
+                    Text(verbatim: systemLine)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+        }
+    }
+
+    /// The players shown under the head, as the page sees them, so the room for their card opens and closes on the same change.
     private var shownPlayers: [String] {
         model.reach(of: device).reachable ? model.visibleMedia(for: device.id).map(\.id) : []
     }
@@ -166,44 +222,6 @@ struct DeviceDetail: View {
     private var usingItsHotspot: Bool {
         if device.platform == .android, case .connected = model.hotspotStatus { return true }
         return false
-    }
-
-    /// What the phone's own connection is, said as the phone's, because on this page "mobile data" next to a Mac
-    /// reads as the Mac's. While its hotspot is on over mobile data one chip says both: the hotspot is that data.
-    @ViewBuilder
-    private var phoneNetworkChips: some View {
-        let hotspotOn = device.status.hotspot == true
-        // A computer sends its network too (for where it was last seen), and these words are about a phone.
-        if let network = device.status.network, !device.isComputer {
-            if hotspotOn && network.kind == .cellular {
-                Chip(symbol: "personalhotspot", text: "Hotspot on, sharing mobile data", tint: Palette.indigo)
-            } else {
-                Chip(symbol: networkSymbol(network), text: LocalizedStringKey(phoneNetworkText(network)))
-                if hotspotOn { Chip(symbol: "personalhotspot", text: "Hotspot on", tint: Palette.indigo) }
-            }
-        } else if hotspotOn {
-            Chip(symbol: "personalhotspot", text: "Hotspot on", tint: Palette.indigo)
-        }
-    }
-
-    private func phoneNetworkText(_ network: TandemNetwork) -> String {
-        switch network.kind {
-        case .wifi: network.ssid.map { String(localized: "Phone on \($0)") } ?? String(localized: "Phone on Wi-Fi")
-        case .cellular: network.roaming ? String(localized: "Phone on mobile data (roaming)") : String(localized: "Phone on mobile data")
-        case .ethernet: String(localized: "Phone on Ethernet")
-        case .none: String(localized: "Phone has no network")
-        case .other: String(localized: "Phone on a network")
-        }
-    }
-
-    private func networkSymbol(_ network: TandemNetwork) -> String {
-        switch network.kind {
-        case .wifi: "wifi"
-        case .cellular: "antenna.radiowaves.left.and.right"
-        case .ethernet: "cable.connector"
-        case .none: "wifi.slash"
-        case .other: "network"
-        }
     }
 
     // MARK: Content
@@ -215,6 +233,7 @@ struct DeviceDetail: View {
             if device.platform == .android { HotspotCard(device: device) }
             // What is set comes before what was sent: the list grows, and the settings should not move further down the more is sent.
             settings
+            deviceSettingsCard
             recentTransfers
             removal
         }
@@ -274,7 +293,7 @@ struct DeviceDetail: View {
             .help("Browse files on \(device.name)")
         }
         if isComputer || device.platform == .android {
-            ActionGroup(title: "Screen") {
+            ActionGroup(title: "Screen", tone: .rose) {
                 LiveActionRow(device: device)
                 // Lock and unlock are one place: what is locked and can be opened from here offers that instead.
                 if isComputer, device.online, device.status.unlock == true, device.status.locked == true {
@@ -285,7 +304,7 @@ struct DeviceDetail: View {
             }
         }
         if device.platform == .android {
-            ActionGroup(title: "Sound") {
+            ActionGroup(title: "Sound", tone: .mint) {
                 // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking
                 // the phone in the sound menu.
                 let speaking = model.speaker.device == device.id
@@ -319,7 +338,7 @@ struct DeviceDetail: View {
         }
         // What is done with that computer itself. Four rows, like the other groups: what it cannot do is grey and says why when pressed.
         if isComputer {
-            ActionGroup(title: "Computer") {
+            ActionGroup(title: "Computer", tone: .mint) {
                 // It can be logged in to from here. The button looks the same whether that is set up there or not: someone may not want
                 // it, so what is missing is only said when the button is pressed.
                 GlassActionButton(title: "Terminal", symbol: "terminal") {
@@ -397,7 +416,7 @@ struct DeviceDetail: View {
                         .padding(.vertical, 4)
                         .hoverHighlight(radius: 10)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bouncy)
                     .help("Everything sent to and received from \(device.name)")
                 }
                 .padding(.horizontal, 6)
@@ -456,6 +475,22 @@ struct DeviceDetail: View {
         }
     }
 
+    /// Everything else that is set for this device, and its name, on a page of its own: a card of its own, as the hotspot has, so
+    /// it does not read as one more switch of the card above.
+    private var deviceSettingsCard: some View {
+        Card(radius: Metrics.card, padding: 6) {
+            Button { DeviceSettingsShown.shared.id = device.id } label: {
+                SettingRow(symbol: "gearshape", title: "Settings for this device", subtitle: "Its name, where it stands, and what it may do on this Mac") {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     /// At the very bottom of the page: it is done once, if ever, and should not sit between the things that are used.
     private var removal: some View {
         Card(radius: Metrics.card, padding: 6) {
@@ -511,6 +546,141 @@ extension DeviceDetail {
             if TandemAudioDriver.shared.active { return String(localized: "Pick Tandem Speaker in the sound menu") }
             return String(localized: "Pick \(device.name) (Tandem) in the sound menu")
         }
+    }
+}
+
+/// The head of a device and what it plays. With room they stand side by side, each half of the width and both as tall as the
+/// taller one; without it, or with nothing playing, the head has the whole width at its own height and the player goes under it.
+/// It decides from the width it is given, not from something set after the first layout: a page arrives in the layout it keeps.
+private struct HeadRow: Layout {
+    /// From this width on the two fit side by side.
+    static let room: CGFloat = 720
+    /// The gap between the cards under them.
+    var gap: CGFloat = 12
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 780
+        guard let head = subviews.first else { return .zero }
+        guard subviews.count > 1 else {
+            return CGSize(width: width, height: head.sizeThatFits(ProposedViewSize(width: width, height: nil)).height)
+        }
+        if width >= Self.room {
+            let half = ((width - gap) / 2).rounded(.down)
+            let heights = subviews.prefix(2).map { $0.sizeThatFits(ProposedViewSize(width: half, height: nil)).height }
+            return CGSize(width: width, height: heights.max() ?? 0)
+        }
+        let heights = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)).height }
+        return CGSize(width: width, height: heights.reduce(0, +) + gap * CGFloat(subviews.count - 1))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let head = subviews.first else { return }
+        guard subviews.count > 1 else {
+            head.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
+            return
+        }
+        if bounds.width >= Self.room {
+            let half = ((bounds.width - gap) / 2).rounded(.down)
+            head.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: half, height: bounds.height))
+            subviews[1].place(
+                at: CGPoint(x: bounds.maxX - half, y: bounds.minY), anchor: .topLeading,
+                proposal: ProposedViewSize(width: half, height: bounds.height)
+            )
+        } else {
+            var y = bounds.minY
+            for subview in subviews {
+                let height = subview.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil)).height
+                subview.place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: height))
+                y += height + gap
+            }
+        }
+    }
+}
+
+/// A small tonal pill in the head of a device, in the style of the filters: what it says in the secondary colour on a faint fill.
+private struct HeadPill: View {
+    var symbol: String?
+    var symbolTint: Color?
+    var dot: Color?
+    let text: Text
+
+    var body: some View {
+        HStack(spacing: 5) {
+            if let dot { Circle().fill(dot).frame(width: 7, height: 7) }
+            if let symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(symbolTint ?? Color.secondary)
+            }
+            text.font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(Color.primary.opacity(0.06), in: .capsule)
+        .fixedSize()
+    }
+}
+
+/// Whether a device is there, as the head of its page says it: a tick or a dashed round and the word, on a faint pill. Quiet on
+/// purpose; the same on the page of a device and of a watch.
+struct StatePill: View {
+    let there: Bool
+    let text: LocalizedStringKey
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: there ? "checkmark.circle.fill" : "circle.dashed")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(there ? Color.green : Color.secondary)
+            Text(text)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(Color.primary.opacity(0.06), in: .capsule)
+        .fixedSize()
+    }
+}
+
+/// The colour of a battery in the head: the same as the ring around the device in the sidebar.
+private func batteryTint(_ battery: TandemBattery, connected: Bool) -> Color {
+    if !connected { return .gray }
+    if battery.charging { return .green }
+    return battery.level <= 15 ? Palette.urgent : Palette.indigo
+}
+
+/// One fact in the head of a device, as a tonal tile: what it is small at the top and the value large under it, both starting at
+/// the same edge, with the icon in its colour at the top right where it does not push the words in.
+private struct HeadTile: View {
+    let symbol: String
+    let tint: Color
+    let value: Text
+    let label: Text
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            VStack(alignment: .leading, spacing: 3) {
+                label
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                value
+                    .font(.headline.monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(tint)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -597,7 +767,7 @@ struct DropZone: View {
         }
         .scaleEffect(targeted ? 1.015 : 1)
         .animation(.tandemSpringy, value: targeted)
-        .animation(.tandemFade, value: hovering)
+        .animation(.hover(hovering), value: hovering)
         .onHover { hovering = $0 }
         .deviceDrop(device, model: model, targeted: $targeted)
         .opacity(device.online ? 1 : 0.5)
@@ -608,6 +778,8 @@ struct DropZone: View {
 /// draw themselves as rows (see `actionButtonsAsRows`).
 struct ActionGroup<Content: View>: View {
     let title: LocalizedStringKey
+    /// The colour of the discs in it, so the groups are told apart at a glance.
+    var tone: Tone = .indigo
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -624,6 +796,7 @@ struct ActionGroup<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
         .environment(\.actionButtonsAsRows, true)
+        .environment(\.actionTone, tone)
     }
 }
 
@@ -746,7 +919,8 @@ struct HotspotCard: View {
 }
 
 /// On which side of this Mac the device stands: chosen by hand, or found by sound. A second screen goes on that side, and a computer is put
-/// there for the shared mouse.
+/// there for the shared mouse. The title says what holds and the picture at the end of the row shows it: a press on the free place puts
+/// the device there.
 private struct SideRow: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
@@ -754,8 +928,14 @@ private struct SideRow: View {
     @LocalState private var finding = false
 
     var body: some View {
-        SettingRow(symbol: "rectangle.lefthalf.inset.filled.arrow.left", title: "Where it stands", subtitle: "A second screen goes on this side, and so does this computer for the shared mouse") {
-            HStack(spacing: 10) {
+        // Nothing chosen yet is right, as a second screen and the shared mouse take it.
+        let left = side == "left"
+        SettingRow(
+            symbol: "rectangle.split.2x1",
+            title: "Where \(device.name) stands",
+            subtitle: "Left or right of this Mac on your desk. The mouse crosses over to it on that side, and a second screen goes there."
+        ) {
+            HStack(spacing: 12) {
                 if device.caps.contains("side.listen") {
                     Button(finding ? "Listening…" : "Find by sound") {
                         finding = true
@@ -769,14 +949,105 @@ private struct SideRow: View {
                     .buttonStyle(.tandemGlass)
                     .disabled(!device.online || finding)
                 }
-                Picker("", selection: Binding(get: { side ?? "right" }, set: { side = $0; DeviceSides.set($0, for: device.id) })) {
-                    Text("Left").tag("left")
-                    Text("Right").tag("right")
+                SideChoice(device: device, left: left) { picked in
+                    side = picked
+                    DeviceSides.set(picked, for: device.id)
                 }
-                .pickerStyle(.segmented)
-                .fixedSize()
             }
         }
         .onAppear { side = DeviceSides.side(of: device.id) }
+    }
+}
+
+/// Left or right of this Mac, as the desk seen from the front, built like the button row of the player: three blocks with a small
+/// gap, the outer ends round. This Mac is the block in the middle, filled and fixed, as play is in the player; the device is a choice
+/// on either side of it. The side that holds is filled in the accent.
+private struct SideChoice: View {
+    let device: TandemDevice
+    let left: Bool
+    let pick: (String) -> Void
+
+    /// This Mac as what it is: one with a battery is a laptop.
+    private static let thisMac = PowerReader.battery() != nil ? "laptopcomputer" : "display"
+    private static let height: CGFloat = 32
+    private static let inner: CGFloat = 7
+
+    var body: some View {
+        HStack(spacing: 3) {
+            option("left", on: left)
+            // This Mac is not a choice: always filled and in the colour of the text, so it does not read as a third button.
+            Image(systemName: Self.thisMac)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.primary)
+                .frame(width: 46, height: Self.height)
+                .background(Color.primary.opacity(0.14), in: RoundedRectangle(cornerRadius: Self.inner, style: .continuous))
+                .accessibilityLabel(Text("This Mac"))
+            option("right", on: !left)
+        }
+        .animation(.tandemFade, value: left)
+    }
+
+    private func option(_ name: String, on: Bool) -> some View {
+        SideOption(device: device, isLeft: name == "left", on: on, height: Self.height, inner: Self.inner) { pick(name) }
+    }
+}
+
+/// One side of the side choice. The side that does not hold lights up under the pointer, as the other buttons of the app do.
+private struct SideOption: View {
+    let device: TandemDevice
+    let isLeft: Bool
+    let on: Bool
+    let height: CGFloat
+    let inner: CGFloat
+    let pick: () -> Void
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        let round = height / 2
+        let shape = UnevenRoundedRectangle(
+            topLeadingRadius: isLeft ? round : inner, bottomLeadingRadius: isLeft ? round : inner,
+            bottomTrailingRadius: isLeft ? inner : round, topTrailingRadius: isLeft ? inner : round,
+            style: .continuous
+        )
+        let lit = hovering && hoverEnabled && !on
+        let glyph = DeviceGlyph(platform: device.platform, online: true, size: 17, onSelection: on, plain: true, deviceID: device.id)
+        let word = Text(isLeft ? "Left" : "Right")
+            .font(.callout.weight(on ? .semibold : .medium))
+            .foregroundStyle(on ? Color.white : (lit ? Color.primary : Color.secondary))
+        Button { if !on { pick() } } label: {
+            // The device on the side of the word that it stands on, so the row reads as the desk.
+            HStack(spacing: 5) {
+                if isLeft { glyph; word } else { word; glyph }
+            }
+            .padding(.horizontal, 12)
+            .frame(height: height)
+            .background(on ? AnyShapeStyle(Palette.indigo) : AnyShapeStyle(Color.primary.opacity(lit ? 0.12 : 0.06)), in: shape)
+            .contentShape(shape)
+        }
+        .buttonStyle(.bouncy)
+        .onHover { hovering = $0 }
+        .animation(.hover(hovering), value: hovering)
+        .accessibilityLabel(Text(isLeft ? "Put it left" : "Put it right"))
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+/// A row of the settings card that leads to a part of Settings: the whole row is the button, with a chevron at its end.
+private struct SettingsLinkRow: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
+    let section: SettingsSection
+
+    var body: some View {
+        Button { AppScenes.showSettings(section) } label: {
+            SettingRow(symbol: symbol, title: title, subtitle: subtitle) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }

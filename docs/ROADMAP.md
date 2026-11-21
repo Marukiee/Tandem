@@ -117,7 +117,7 @@ dit apparaat" op elke apparaatpagina), en op Android en Linux en Windows de rij 
 
 Gevonden bij het nakijken van die PR's, nog te doen:
 
-- **R-D22. Mac-ontwerp (PR 31): de bovenkant van de apparaatpagina eerst goed bekijken voordat het in een build komt** (Mark,
+- **R-D22. Mac-ontwerp (PR 31): de bovenkant van de apparaatpagina eerst goed bekijken voordat het in een build komt** (gedaan 2026-11-21: Mark heeft live in de Dev-app meegekeken en de kop goedgekeurd: naam en systeem met versie, "Verbonden" als rustige pil in de hoek, tegels voor accu, netwerk en geluid of vrije ruimte, de speler als eigen kaart, Settings for this device als eigen kaart en laag over het venster; daarna "alles bij elkaar zetten en een nieuwe release". Oorspronkelijk: Mark,
   2026-11-16: "nu is het lelijk"). Het gaat om de kop van het apparaat naast de speler: de kaart is leeg boven en onder de inhoud
   sinds de pillen eruit gingen, en een poging om ze terug te zetten is op zijn verzoek gestopt. Vóór PR 31 wordt samengevoegd: eerst
   een paar voorbeelden van de kop (met pillen voor verbonden, route, ms en laden; met systeem en versie; met en zonder speler

@@ -196,7 +196,7 @@ internal fun HealthParts(insights: TandemHealthInsights?, onOpen: (String) -> Un
             },
             scheme.surfaceContainerHigh, scheme.onSurface, { onOpen("heart") },
         ) {
-            if (curve != null) Sparkline(curve, scheme.primary)
+            if (curve != null) Sparkline(curve, scheme.primary, resting?.usual?.toFloat())
         }
     }
 }
@@ -244,24 +244,37 @@ private fun GoalBar(share: Float, fill: Color, track: Color) {
     }
 }
 
-/** The heart rate of a day as a small line, gaps where the watch was off the wrist. */
+/**
+ * The heart rate of a day as a small line, gaps where the watch was off the wrist. Like the days under the bars of the sleep card, it has
+ * the hours of the day under it, and a thin line at the usual resting rate, so it does not float in the card.
+ */
 @Composable
-private fun Sparkline(curve: List<Int>, colour: Color) {
+private fun Sparkline(curve: List<Int>, colour: Color, usual: Float? = null) {
     val measured = curve.filter { it > 0 }
     if (measured.size < 2) return
-    Canvas(Modifier.fillMaxWidth().height(44.dp)) {
-        val low = measured.min() - 2f
-        val high = measured.max() + 2f
-        val line = Path()
-        var before = -100
-        curve.forEachIndexed { index, value ->
-            if (value <= 0) return@forEachIndexed
-            val x = index / (curve.size - 1f) * size.width
-            val y = (1f - (value - low) / (high - low)) * size.height
-            if (index - before > 6) line.moveTo(x, y) else line.lineTo(x, y)
-            before = index
+    val scheme = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(Modifier.fillMaxWidth().height(44.dp)) {
+            val low = minOf(measured.min().toFloat(), usual ?: Float.MAX_VALUE) - 2f
+            val high = maxOf(measured.max().toFloat(), usual ?: Float.MIN_VALUE) + 2f
+            fun y(value: Float) = (1f - (value - low) / (high - low)) * size.height
+            if (usual != null) drawLine(scheme.outline, Offset(0f, y(usual)), Offset(size.width, y(usual)), 1.dp.toPx())
+            val line = Path()
+            var before = -100
+            curve.forEachIndexed { index, value ->
+                if (value <= 0) return@forEachIndexed
+                val x = index / (curve.size - 1f) * size.width
+                if (index - before > 6) line.moveTo(x, y(value.toFloat())) else line.lineTo(x, y(value.toFloat()))
+                before = index
+            }
+            drawPath(line, colour, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
-        drawPath(line, colour, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        // The hours the curve starts at, a quarter of the day apart: the curve is a whole day from midnight on.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            listOf("0", "6", "12", "18").forEach { hour ->
+                Text(hour, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            }
+        }
     }
 }
 

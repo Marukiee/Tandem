@@ -32,10 +32,11 @@ struct WatchDetail: View {
                 sleepChoices
                 settingsRow
             }
-            .pagePadding()
+            .devicePagePadding()
             .frame(maxWidth: 760)
             .frame(maxWidth: .infinity)
         }
+        .ignoresSafeArea(.container, edges: .top)
         .animation(.tandem, value: reachable)
         .animation(.tandemFade, value: watch?.sleeping)
         .animation(.tandemFade, value: settings == nil)
@@ -43,27 +44,19 @@ struct WatchDetail: View {
     }
 
     private var header: some View {
-        Card(radius: Metrics.card, padding: 22, tint: reachable ? Palette.indigo : nil) {
-            HStack(spacing: 20) {
-                Image(systemName: "applewatch")
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(Palette.indigo)
-                    .frame(width: 80, height: 80)
-                    .background(Palette.indigo.opacity(0.14), in: Circle())
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(verbatim: name).font(.title.weight(.bold)).lineLimit(1).contentTransition(.opacity)
+        // The plain card of the page, as the head of a device has: colour only in what is small.
+        Card(radius: Metrics.card, padding: 20) {
+            HStack(spacing: 16) {
+                WatchGlyph(online: reachable, size: 60)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verbatim: name).font(.title2.weight(.semibold)).lineLimit(1).contentTransition(.opacity)
                     Text("Wear OS \u{00B7} by way of \(phone.name)").font(.callout).foregroundStyle(.secondary).lineLimit(1)
                     HStack(spacing: 8) {
                         // Without Bluetooth on the phone the watch can never connect: say that, not only that it is away.
                         if !reachable, phone.online, watch?.bluetoothOff == true {
                             Chip(symbol: "antenna.radiowaves.left.and.right.slash", text: "Bluetooth off on \(phone.name)", tint: .orange, strong: true)
                         } else {
-                            Chip(
-                                symbol: reachable ? "checkmark.circle.fill" : "applewatch.slash",
-                                text: reachable ? "Connected" : "Watch away",
-                                tint: reachable ? .green : .secondary,
-                                strong: reachable
-                            )
+                            StatePill(there: reachable, text: reachable ? "Connected" : "Watch away")
                         }
                         if reachable, watch?.sleeping == true {
                             Chip(symbol: "bed.double.fill", text: "Recording your sleep", tint: Palette.indigo)
@@ -97,7 +90,7 @@ struct WatchDetail: View {
             Text("Watch").font(.headline).padding(.horizontal, 4)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 WatchActionTile(
-                    symbol: ringing ? "bell.slash.fill" : "applewatch.radiowaves.left.and.right",
+                    symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
                     title: ringing ? "Stop sound" : "Play sound",
                     subtitle: ringing ? String(localized: "Ringing now, also on silent") : String(localized: "It rings, even on silent"),
                     on: ringing, why: away
@@ -336,12 +329,14 @@ private struct WatchHealthCard: View {
                 do {
                     TimelineView(.periodic(from: .now, by: 2)) { context in
                     let now = model.watchHeartNow[phone.id].flatMap { watchHere && $0.fresh(at: context.date) ? $0.bpm : nil }
+                    // Equally tall, whatever each of them says.
                     HStack(alignment: .top, spacing: 8) {
                         if let night {
                             let score = insights?.latestNight?.id == night.id ? insights?.latestNight?.score : nil
                             GlanceTile(
                                 onOpen: onOpen, symbol: "bed.double", title: "Last night", number: minutesText(Int(night.sleepMinutes)),
-                                caption: score.map { String(localized: "Sleep score \(Int($0))") } ?? dayName(night.endMs)
+                                caption: dayName(night.endMs), tint: Palette.indigo,
+                                score: score.map { Int($0) }
                             )
                         } else {
                             GlanceTile(onOpen: onOpen, symbol: "bed.double", title: "Last night", number: String(localized: "No data"), caption: "", muted: true)
@@ -349,24 +344,37 @@ private struct WatchHealthCard: View {
                         // Beside the night also at 0, so the steps never seem gone on a day without any yet.
                         let day = stepsDay ?? insights?.week.last
                         let steps = day?.steps ?? 0
+                        // The goal set for the watch; 10,000 until the watch has said what it is.
+                        let goal = Int(settings?.stepGoal ?? 10_000)
                         GlanceTile(
-                            onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: day.map { dayName($0.startMs) } ?? "",
-                            share: settings.map { min(1, Double(steps) / Double(max($0.stepGoal, 1))) }
+                            onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(),
+                            caption: String(localized: "of \(goal.formatted())"), tint: .green,
+                            share: min(1, Double(steps) / Double(max(goal, 1)))
                         )
                         if let now {
                             // Live: the number now, with the heart beating, and the resting rate under it.
                             GlanceTile(
                                 onOpen: onOpen, symbol: "heart.fill", title: "Heart rate now", number: String(localized: "\(now) bpm"),
                                 caption: insights?.resting.map { String(localized: "Resting \(Int($0.latest))") } ?? String(localized: "Live from your watch"),
-                                beating: true
+                                tint: .pink, beating: true
                             )
                         } else if let resting = insights?.resting {
                             GlanceTile(
                                 onOpen: onOpen, symbol: "heart", title: "Resting heart rate", number: String(localized: "\(Int(resting.latest)) bpm"),
-                                caption: resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this")
+                                caption: resting.usual.map { usual in
+                                    let over = Int(resting.latest) - Int(usual)
+                                    return over > 0 ? String(localized: "\(over) above your usual") : over < 0 ? String(localized: "\(-over) below your usual") : String(localized: "Your usual")
+                                } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this"),
+                                tint: .pink,
+                                // Against what is usual, in words and in colour: the same or lower is good, a few beats higher is worth a look.
+                                captionTint: resting.usual.map { usual in
+                                    let over = Int(resting.latest) - Int(usual)
+                                    return over <= 2 ? Color.green : over <= 6 ? Color.orange : Palette.urgent
+                                }
                             )
                         }
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding([.horizontal, .bottom], 6)
                     }
                 }
@@ -390,6 +398,39 @@ private struct WatchHealthCard: View {
     }
 }
 
+extension WatchHealthCard {
+    /// Green, orange or red for a score.
+    static func grade(_ value: Int, good: Int, fair: Int) -> Color {
+        value >= good ? .green : value >= fair ? .orange : Palette.urgent
+    }
+}
+
+/// A score out of 100 as a ring with the number inside, and under it what the number is. Green from 80, orange from 60, red under.
+private struct SleepScoreRing: View {
+    let score: Int
+
+    var body: some View {
+        let tint = WatchHealthCard.grade(score, good: 80, fair: 60)
+        VStack(spacing: 3) {
+            ZStack {
+                Circle().stroke(tint.opacity(0.18), lineWidth: 5)
+                Circle()
+                    .trim(from: 0, to: CGFloat(min(score, 100)) / 100)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text(verbatim: "\(score)")
+                    .font(.system(size: 17, weight: .bold).monospacedDigit())
+            }
+            .frame(width: 50, height: 50)
+            Text("Sleep score")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .fixedSize()
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// One number of what the watch measured, which opens the page with all of it.
 private struct GlanceTile: View {
     let onOpen: () -> Void
@@ -397,7 +438,14 @@ private struct GlanceTile: View {
     let title: LocalizedStringKey
     let number: String
     let caption: String
-    /// How far toward a goal, as a ring around the icon: a bar under the number made the tile taller than the ones beside it.
+    /// How far toward a goal, as a thin line along the foot of the tile. Not a ring around the icon, which made the icon larger
+    /// than those beside it and the tile taller, and not a bar under the number, which did the same.
+    /// The colour of its icon, and of the line toward a goal: the plain colour itself, as the icons of the app have it.
+    var tint: Color = .secondary
+    /// A score out of 100, as a ring at the right with its number inside and its name under it, in green, orange or red.
+    var score: Int? = nil
+    /// The caption in a colour of its own, when it compares.
+    var captionTint: Color? = nil
     var share: Double? = nil
     /// A number that is live: its symbol beats.
     var beating = false
@@ -408,20 +456,9 @@ private struct GlanceTile: View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    if let share {
-                        ZStack {
-                            Circle().stroke(Color.primary.opacity(0.1), lineWidth: 2.5)
-                            Circle()
-                                .trim(from: 0, to: share)
-                                .stroke(Palette.indigo, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                            Image(systemName: symbol).font(.system(size: 9, weight: .bold))
-                        }
-                        .frame(width: 20, height: 20)
-                    } else {
-                        Image(systemName: symbol)
-                            .symbolEffect(.pulse, options: .repeating, isActive: beating)
-                    }
+                    Image(systemName: symbol)
+                        .foregroundStyle(tint)
+                        .symbolEffect(.pulse, options: .repeating, isActive: beating)
                     Text(title)
                 }
                 .font(.caption.weight(.semibold))
@@ -433,12 +470,29 @@ private struct GlanceTile: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(verbatim: caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption.weight(captionTint == nil ? .regular : .semibold))
+                    .foregroundStyle(captionTint ?? Color.secondary)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .overlay(alignment: .trailing) {
+                if let score { SleepScoreRing(score: score) }
+            }
             .padding(14)
+            // In the padding, so it takes no room of its own.
+            .overlay(alignment: .bottom) {
+                if let share {
+                    GeometryReader { proxy in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.primary.opacity(0.08))
+                            Capsule().fill(tint).frame(width: max(4, proxy.size.width * share))
+                        }
+                    }
+                    .frame(height: 4)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 7)
+                }
+            }
             .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: Metrics.inner(Metrics.card, inset: 6), style: .continuous))
             .contentShape(.rect)
         }
@@ -474,7 +528,7 @@ private struct WatchActionTile: View {
                 Spacer(minLength: 0)
             }
             .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 64, maxHeight: .infinity, alignment: .leading)
             .background(
                 on ? Palette.indigo.opacity(0.16) : Color.primary.opacity(0.05),
                 in: .rect(cornerRadius: Metrics.inner(Metrics.card, inset: 6), style: .continuous)

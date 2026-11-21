@@ -631,7 +631,7 @@ accu zijn daar niet echt, dus de winst zelf is niet gemeten.
 - [ ] **Teksten.** De pagina staat in het Nederlands (Accu-logboek, wekmomenten, scherm, link, scan) en in het Engels (Battery log, wake
   moments), en past op het ronde scherm.
 
-## 0.3.34, 2026-11-21 (updatekaart op Mac en Linux/Windows)
+## 0.3.33, 2026-11-21 (updatekaart op Mac en Linux/Windows)
 
 Wat veranderde: de updatemelding is op de Mac (zijbalk en menubalkpaneel) en op Linux/Windows één tonale kaart: icoon, "Nieuwe versie X",
 "Je hebt Y", hooguit twee regels uit de release notes, en Later en Bijwerken naast elkaar over de hele breedte. Na Bijwerken krimpt Later
@@ -649,3 +649,41 @@ Android volgt apart met een gedeelde bibliotheek.
   de installer na de download, op Linux vervangt de AppImage zichzelf. Bij een .deb of .rpm meldt hij alleen de nieuwe versie.
 - [ ] **Nederlands.** Alle teksten van de kaart staan in het Nederlands als de taal Nederlands is.
 
+## 0.3.32, 2026-11-21 (gezondheidstegels, tweede deel)
+
+- [ ] **Telefoon, pagina van het horloge.** Tik op de tegel met de hartslag (BPM): je komt meteen op Hart, niet op het Gezondheidsoverzicht.
+  Idem Slaap voor de nacht en Activiteit voor de stappen. Terug brengt je naar de pagina van het horloge. De kop "Gezondheid" bovenaan
+  de kaart opent nog wel het overzicht. De tegels op de kaart van het startscherm gingen al naar hun eigen pagina.
+- [ ] **Windows en Linux, pagina van het horloge.** Dezelfde drie tegels openen hun eigen deel (Slaap, Activiteit, Hart); de pijl terug
+  gaat naar het horloge, en de kop Gezondheid opent nog het overzicht.
+- [ ] **Hart: nu.** Met het horloge bij de telefoon: open Gezondheid, Hart. Bovenaan staat je hartslag nu met "Now" (NL "Nu") en een
+  kloppend hartje; zonder live waarde (horloge weg) staat er het laatste getal zoals vroeger. Op Windows/Linux hetzelfde als de
+  telefoon bij de computer is, op de Hart-pagina van het horloge.
+- [ ] **Hart op het overzicht.** De kaart Hart op de Gezondheidspagina heeft 0, 6, 12, 18 onder de lijn en een dunne lijn op je
+  gebruikelijke rusthartslag, zoals Slaap de dagen onder de balkjes heeft. Idem op Windows/Linux.
+
+## 0.3.32, 2026-11-21 (speler op een eigen kaart, Android)
+
+- [ ] **Android, pagina van een computer die muziek speelt.** De speler (hoes, titel, balk, knoppen) staat op een eigen kaart direct
+  onder de kaart met naam, versie, pillen en accuring, met dezelfde ruimte als tussen de andere kaarten. Stop de muziek op een
+  telefoon of tablet die alleen een speler toont als er iets speelt: de spelerkaart schuift weg en laat geen lege ruimte achter; start
+  hem weer: hij komt terug met de animatie. Een bereikbare Mac of Windows-pc houdt zijn speler ook als er niets speelt.
+- Linux en Windows hadden al twee kaarten (kop en speler naast elkaar); daar is niets veranderd.
+
+## Mac-ontwerp, 2026-11-21 (PR 31, changelog 0.3.32)
+
+Het nieuwe uiterlijk van de Mac-app. Mark heeft het in de Dev-app met testapparaten bekeken; met echte apparaten nog niet.
+
+- [ ] **Kop van een apparaat.** Naam, systeem en versie van Tandem, rechtsboven de pil "Verbonden" (even ver van boven als van rechts),
+  daaronder tegels voor accu, netwerk (naam van het wifi) en bij een telefoon het geluid, bij een computer de vrije ruimte. De speler
+  staat ernaast als eigen kaart, met de keuze tussen spelers linksboven. Niets staat er leeg bij.
+- [ ] **Bovenaan.** Boven de kaarten is evenveel ruimte als ernaast. Wisselen tussen apparaten in de zijbalk schuift elke pagina van
+  onderen in beeld, ook de bovenste.
+- [ ] **Iconen.** Een telefoon heeft een camerapil, de Xperia een gewoon scherm, een pc een scherm op een voet.
+- [ ] **Waar het staat.** De keuze [telefoon Links] laptop [Rechts telefoon]: de vrije kant licht op onder de muis, de laptop is geen knop.
+  Na een keuze steekt de muis aan die kant over en komt een tweede scherm daar.
+- [ ] **Settings for this device.** De eigen kaart onder de instellingen opent een laag over het hele venster; erachter dimt alles en
+  reageert niets op de muis, een klik ernaast, Esc of het kruisje sluit hem. Naam wijzigen (op een apparaat met 0.3.24 of nieuwer)
+  komt op al je apparaten. Waar het staat: zoeken op geluid, vanzelf controleren, het geluid. Bij een computer "Mag deze Mac gebruiken".
+  De schakelaars voor wat het apparaat op deze Mac mag (bestanden, bedienen, vergrendelen, herstarten, wifiwachtwoord) doen wat ze zeggen.
+- [ ] **Horlogepagina.** "Verbonden" is dezelfde rustige pil, niet meer helemaal groen.

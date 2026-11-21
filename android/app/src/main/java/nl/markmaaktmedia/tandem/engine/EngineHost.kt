@@ -311,7 +311,27 @@ class EngineHost(
     }
 
     fun refreshDevices() {
-        engine?.let { _devices.value = it.devices() }
+        engine?.let { _devices.value = it.devices() + listOfNotNull(demoDevice) }
+    }
+
+    /** A made-up computer to look at its page without pairing one. Only in builds for testing; gone when the app restarts. */
+    private var demoDevice: TandemDevice? = null
+
+    fun showDemoDevice() {
+        if (!nl.markmaaktmedia.tandem.BuildConfig.DEBUG) return
+        demoDevice = TandemDevice(
+            id = "demo-mac", name = "MacBook Pro", platform = uniffi.tandem_core.TandemPlatform.MAC_OS, online = true,
+            route = uniffi.tandem_core.TandemRoute.LAN, rttMs = 17u,
+            status = uniffi.tandem_core.TandemStatus(
+                battery = uniffi.tandem_core.TandemBattery(level = 80u, charging = false, powerSave = false),
+                network = uniffi.tandem_core.TandemNetwork(kind = uniffi.tandem_core.TandemNetKind.WIFI, ssid = null, metered = false, roaming = false, signal = null),
+                hotspot = null, dnd = null, locked = null, freeStorage = null, asleep = null, wakeMac = null, muted = false,
+            ),
+            appVersion = "0.3.32", caps = listOf("media"), vouchedByRemoved = false, clipboardEnabled = true, autoAccept = false,
+            notificationsEnabled = true, ble = false, features = emptyList(),
+        )
+        context.graph.media.showDemo("demo-mac")
+        refreshDevices()
     }
 
     fun device(id: String): TandemDevice? = _devices.value.firstOrNull { it.id == id }

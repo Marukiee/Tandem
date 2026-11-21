@@ -85,11 +85,11 @@ function useHeartNow(phone, live) {
 }
 
 /**
- * What the watch measured last, as three numbers on the page of the watch, each opening the health page. A computer sees whole days,
+ * What the watch measured last, as three numbers on the page of the watch, each opening its own part of the health page. A computer sees whole days,
  * so the steps are of the last whole day. Nothing until this computer was given something. While the watch is with its phone, the heart
  * rate now takes the place of the resting one, with the resting one under it.
  */
-export function WatchGlance({ i, records, onOpen, goal, phone, live }) {
+export function WatchGlance({ i, records, onPart, goal, phone, live }) {
   const now = useHeartNow(phone, live);
   const night = (records || []).find(isNight);
   const measured = i ? [...i.week].reverse().find((d) => d.steps != null) : null;
@@ -100,19 +100,19 @@ export function WatchGlance({ i, records, onOpen, goal, phone, live }) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const stepsDay = measured || (latest ? { ...latest, steps: 0 } : { startMs: today.getTime(), steps: 0 });
   const score = night && i && i.latestNight && i.latestNight.id === night.id ? i.latestNight.score : null;
-  const tile = (icon, title, value, caption, share, beating, muted) => html`<button class=${"card glance" + (muted ? " muted-tile" : "")} title=${t("tab_health")} onClick=${onOpen}>
+  const tile = (part, icon, title, value, caption, share, beating, muted) => html`<button class=${"card glance" + (muted ? " muted-tile" : "")} title=${t("tab_health")} onClick=${() => onPart(part)}>
     <div class="glance-title">${share != null ? html`<span class="glance-ring" style=${`--p:${Math.round(share * 100)}`}><span><${Icon} name=${icon} size=${12} /></span></span>` : html`<span class=${beating ? "beat" : ""}><${Icon} name=${icon} size=${15} /></span>`}${title}</div>
     <${BigNumber} text=${value} />
     <div class="small muted ellipsis">${caption}</div>
   </button>`;
   return html`<div class="glances">
-    ${night ? tile("moon", t("watch_last_night"), healthDuration(night.sleepMinutes),
+    ${night ? tile("sleep", "moon", t("watch_last_night"), healthDuration(night.sleepMinutes),
       score != null ? t("watch_score", score) : new Date(night.endMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }))
-      : tile("moon", t("watch_last_night"), t("watch_no_data"), "", null, false, true)}
-    ${tile("walk", t("health_steps_title"), number(stepsDay.steps), dayName(stepsDay.startMs), goal ? Math.min(1, stepsDay.steps / goal) : null)}
+      : tile("sleep", "moon", t("watch_last_night"), t("watch_no_data"), "", null, false, true)}
+    ${tile("activity", "walk", t("health_steps_title"), number(stepsDay.steps), dayName(stepsDay.startMs), goal ? Math.min(1, stepsDay.steps / goal) : null)}
     ${now != null
-      ? tile("heart", t("watch_heart_now"), t("health_bpm", now), resting ? t("watch_resting_value", resting.latest) : t("watch_heart_live"), null, true)
-      : resting && tile("heart", t("health_resting"), t("health_bpm", resting.latest),
+      ? tile("heart", "heart", t("watch_heart_now"), t("health_bpm", now), resting ? t("watch_resting_value", resting.latest) : t("watch_heart_live"), null, true)
+      : resting && tile("heart", "heart", t("health_resting"), t("health_bpm", resting.latest),
         resting.usual != null ? t("health_usually", resting.usual) : t("health_nights_more", resting.nightsNeeded))}
   </div>`;
 }
@@ -722,7 +722,9 @@ export function ActivityDetail({ i, records, goal }) {
 }
 
 /** The heart as a page of Health: a warning when the resting rate is up, the heart rate of the day, and the resting rate of the week. */
-export function HeartDetail({ i }) {
+export function HeartDetail({ i, phone, live }) {
+  // The heart rate now, when the watch is with its phone and says it: shown as "Now" with a beating heart, else the last number as before.
+  const now = useHeartNow(phone, live);
   const [offset, setOffset] = useState(0);
   const paged = useWeek(i, offset);
   const week = paged ? paged.week : [];
@@ -730,10 +732,13 @@ export function HeartDetail({ i }) {
   const heart = i.latestDayHeart;
   return html`
     ${i.alertAboveUsual != null && html`<div class="card tinted health-card" style="--tint:var(--accent-soft)"><div class="health-row"><${Icon} name="heart" size=${20} /><div>${t("health_alert", i.alertAboveUsual)}</div></div></div>`}
-    ${heart && html`<${Card} title=${t("health_heart")} more=${t("health_more_heart")}>
-      <div class="health-row"><${BigNumber} text=${t("health_bpm", heart.curve.filter((v) => v > 0).slice(-1)[0] ?? 0)} />
-        <span class="small muted">${t("health_heart_range", dayName(heart.startMs), Math.min(...heart.curve.filter((v) => v > 0)), Math.max(...heart.curve))}</span></div>
-      <${DayHeartLine} curve=${heart.curve} />
+    ${(heart || now != null) && html`<${Card} title=${t("health_heart")} more=${t("health_more_heart")}>
+      <div class="health-row">
+        ${now != null && html`<span class="beat"><${Icon} name="heart" size=${24} /></span>`}
+        <${BigNumber} text=${t("health_bpm", now != null ? now : heart.curve.filter((v) => v > 0).slice(-1)[0] ?? 0)} />
+        ${now != null && html`<span class="health-now">${t("now")}</span>`}
+        ${heart && html`<span class="small muted">${t("health_heart_range", dayName(heart.startMs), Math.min(...heart.curve.filter((v) => v > 0)), Math.max(...heart.curve))}</span>`}</div>
+      ${heart && html`<${DayHeartLine} curve=${heart.curve} />`}
     <//>`}
     ${i.resting && html`<${WeekPager} offset=${offset} setOffset=${setOffset} week=${week} />`}
       ${i.resting && html`<${WeekCard} title=${t("health_resting")} more=${t("health_more_resting")} number=${!paged || paged.now ? t("health_bpm", i.resting.latest) : summary.meanResting != null ? t("health_bpm", summary.meanResting) : "-"}
@@ -745,21 +750,28 @@ export function HeartDetail({ i }) {
   `;
 }
 
-/** The heart rate of a day as a small line, with gaps where the watch was off the wrist. */
-function Sparkline({ curve }) {
+/**
+ * The heart rate of a day as a small line, with gaps where the watch was off the wrist. Like the days under the bars of the sleep card
+ * it has the hours of the day under it, and a thin line at the usual resting rate, so it does not float in the card.
+ */
+function Sparkline({ curve, usual }) {
   const measured = curve.filter((v) => v > 0);
   if (measured.length < 2) return null;
-  const low = Math.min(...measured) - 2, high = Math.max(...measured) + 2;
+  const low = Math.min(...measured, usual ?? Infinity) - 2, high = Math.max(...measured, usual ?? -Infinity) + 2;
   const width = 196, height = 48;
+  const y = (v) => (1 - (v - low) / (high - low)) * height;
   let d = "", before = -100;
   curve.forEach((v, index) => {
     if (v <= 0) return;
-    const x = (index / (curve.length - 1)) * width, y = (1 - (v - low) / (high - low)) * height;
-    d += `${index - before > 6 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    d += `${index - before > 6 ? "M" : "L"}${((index / (curve.length - 1)) * width).toFixed(1)},${y(v).toFixed(1)}`;
     before = index;
   });
-  return html`<svg viewBox=${`0 0 ${width} ${height}`} width="100%" height=${height} preserveAspectRatio="none" aria-hidden="true">
-    <path d=${d} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" /></svg>`;
+  return html`<div>
+    <svg viewBox=${`0 0 ${width} ${height}`} width="100%" height=${height} preserveAspectRatio="none" aria-hidden="true">
+      ${usual != null && html`<line x1="0" x2=${width} y1=${y(usual)} y2=${y(usual)} stroke="var(--border, currentColor)" stroke-opacity="0.6" stroke-width="1" vector-effect="non-scaling-stroke" />`}
+      <path d=${d} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" /></svg>
+    <div class="spark-hours small muted"><span>0</span><span>6</span><span>12</span><span>18</span></div>
+  </div>`;
 }
 
 /** A card of a part of Health: its icon in a round, its name, the number large, a short word, and a little picture beside it. */
@@ -815,7 +827,7 @@ export function HealthOverview({ i, records, goal, onOpen }) {
         value=${resting ? t("health_bpm", resting.latest) : t("health_bpm", heart.curve.filter((v) => v > 0).slice(-1)[0] ?? 0)}
         caption=${resting ? (resting.usual != null ? t("health_usually", resting.usual) : t("health_nights_more", resting.nightsNeeded)) : t("health_heart")}
         onClick=${() => onOpen("heart")}>
-        ${heart && html`<${Sparkline} curve=${heart.curve} />`}
+        ${heart && html`<${Sparkline} curve=${heart.curve} usual=${resting ? resting.usual : null} />`}
       <//>`}
     </div>
   `;

@@ -28,9 +28,10 @@ struct TandemApp: App {
     var body: some Scene {
         Window(AppIdentity.displayName, id: "main") {
             ReleasedWhenClosed {
-                MainWindow().environment(model)
+                MainWindow().environment(DebugSupport.madeUpModel ?? model)
             }
-            .frame(minWidth: 900, minHeight: 600)
+            // Narrow enough for the sidebar to fold: under 900 it is a column of icons, and the page still has its room.
+            .frame(minWidth: 720, minHeight: 600)
         }
         .defaultSize(width: 1020, height: 700)
         .windowResizability(.contentMinSize)
@@ -43,7 +44,7 @@ struct TandemApp: App {
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView().environment(model)
+            SettingsView().environment(DebugSupport.madeUpModel ?? model)
         }
         .commands {
             CommandGroup(after: .pasteboard) {

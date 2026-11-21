@@ -74,7 +74,7 @@ struct UpdateBanner: View {
                 case .rest: Text("You have \(updater.currentVersion)")
                 case .downloading:
                     if release.size > 0 {
-                        Text("\(Self.megabytes(Int64(Double(release.size) * progress))) of \(Self.megabytes(release.size))").monospacedDigit().contentTransition(.numericText())
+                        Text("\(Self.megabytes(Int64(Double(release.size) * progress))) of \(Self.megabytes(release.size)) MB").monospacedDigit().contentTransition(.numericText())
                     } else {
                         Text("Downloading")
                     }
