@@ -445,7 +445,9 @@ final class InsertFromPhone {
         item.setString(url.absoluteString, forType: .fileURL)
         let board = NSPasteboard.general
         board.clearContents()
-        return board.writeObjects([item])
+        let written = board.writeObjects([item])
+        EngineModel.shared.clipboardWritten()
+        return written
     }
 
     private static func pressPaste() {
