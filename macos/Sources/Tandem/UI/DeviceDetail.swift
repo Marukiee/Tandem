@@ -109,7 +109,7 @@ struct DeviceDetail: View {
             || (device.platform == .android && status.sound != nil) || (device.isComputer && status.freeStorage != nil)))
     }
 
-    private static func batterySymbol(_ battery: TandemBattery) -> String {
+    static func batterySymbol(_ battery: TandemBattery) -> String {
         if battery.charging { return "battery.100percent.bolt" }
         switch battery.level {
         case 88...: return "battery.100percent"
@@ -552,7 +552,7 @@ extension DeviceDetail {
 /// The head of a device and what it plays. With room they stand side by side, each half of the width and both as tall as the
 /// taller one; without it, or with nothing playing, the head has the whole width at its own height and the player goes under it.
 /// It decides from the width it is given, not from something set after the first layout: a page arrives in the layout it keeps.
-private struct HeadRow: Layout {
+struct HeadRow: Layout {
     /// From this width on the two fit side by side.
     static let room: CGFloat = 720
     /// The gap between the cards under them.
@@ -645,7 +645,7 @@ struct StatePill: View {
 }
 
 /// The colour of a battery in the head: the same as the ring around the device in the sidebar.
-private func batteryTint(_ battery: TandemBattery, connected: Bool) -> Color {
+func batteryTint(_ battery: TandemBattery, connected: Bool) -> Color {
     if !connected { return .gray }
     if battery.charging { return .green }
     return battery.level <= 15 ? Palette.urgent : Palette.indigo
@@ -653,7 +653,7 @@ private func batteryTint(_ battery: TandemBattery, connected: Bool) -> Color {
 
 /// One fact in the head of a device, as a tonal tile: what it is small at the top and the value large under it, both starting at
 /// the same edge, with the icon in its colour at the top right where it does not push the words in.
-private struct HeadTile: View {
+struct HeadTile: View {
     let symbol: String
     let tint: Color
     let value: Text

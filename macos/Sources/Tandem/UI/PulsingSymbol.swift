@@ -14,11 +14,14 @@ struct PulsingSymbol: NSViewRepresentable {
     var color: NSColor
     /// Whether it pulses. A symbol that does not is still drawn by the same view, so it does not jump when it starts.
     var active = true
+    /// A heart beat instead of a fade: two quick swells and a rest, about once a second, as on the phone and on Linux.
+    var beat = false
 
     func makeNSView(context: Context) -> PulseLayerView { PulseLayerView() }
 
     func updateNSView(_ view: PulseLayerView, context: Context) {
         view.show(symbol: name, pointSize: pointSize, weight: weight, color: color)
+        view.beat = beat
         view.pulsing = active
     }
 }
@@ -31,6 +34,14 @@ final class PulseLayerView: NSView {
         didSet {
             guard pulsing != oldValue else { return }
             applyAnimation()
+        }
+    }
+
+    var beat = false {
+        didSet {
+            guard beat != oldValue else { return }
+            needsLayout = true
+            if pulsing { applyAnimation() }
         }
     }
 
@@ -47,6 +58,9 @@ final class PulseLayerView: NSView {
         super.layout()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        // A heart swells around its own middle, a little above the middle of the view where its round tops make it heavy
+        // (y counts up here), or it seems to grow from the bottom up.
+        glyph.anchorPoint = beat ? CGPoint(x: 0.5, y: 0.54) : CGPoint(x: 0.5, y: 0.5)
         glyph.frame = bounds
         CATransaction.commit()
     }
@@ -98,6 +112,18 @@ final class PulseLayerView: NSView {
     private func applyAnimation() {
         glyph.removeAnimation(forKey: "pulse")
         guard pulsing else { return }
+        if beat {
+            // On the glyph and not on the view's own layer: that one is anchored at its lower left corner, so it would
+            // grow from there. The glyph is anchored in its middle, so the heart swells from its centre.
+            let swell = CAKeyframeAnimation(keyPath: "transform.scale")
+            swell.values = [1.0, 1.18, 1.0, 1.12, 1.0, 1.0]
+            swell.keyTimes = [0, 0.12, 0.24, 0.36, 0.52, 1]
+            swell.duration = 1
+            swell.repeatCount = .infinity
+            swell.timingFunctions = Array(repeating: CAMediaTimingFunction(name: .easeInEaseOut), count: 5)
+            glyph.add(swell, forKey: "pulse")
+            return
+        }
         let fade = CABasicAnimation(keyPath: "opacity")
         fade.fromValue = 1.0
         fade.toValue = 0.35

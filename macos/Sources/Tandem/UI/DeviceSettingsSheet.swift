@@ -166,12 +166,21 @@ struct DeviceSettingsSheet: View {
 @Observable final class DeviceSettingsShown {
     static let shared = DeviceSettingsShown()
     var id: String?
+    /// The phone whose watch has its settings open, the same panel for the watch.
+    var watchOf: String?
+
+    var open: Bool { id != nil || watchOf != nil }
+
+    func close() {
+        id = nil
+        watchOf = nil
+    }
 }
 
 /// The settings of a device over the window, as the pairing panel is: the window dimmed behind it, and a click beside it closes it.
-struct DeviceSettingsOverlay: View {
-    let device: TandemDevice
+struct DeviceSettingsOverlay<Panel: View>: View {
     let close: () -> Void
+    @ViewBuilder let panel: Panel
 
     var body: some View {
         ZStack {
@@ -179,7 +188,7 @@ struct DeviceSettingsOverlay: View {
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture(perform: close)
-            DeviceSettingsSheet(device: device, close: close)
+            panel
                 .floatingGlass(in: .rect(cornerRadius: Metrics.panel, style: .continuous))
                 .shadow(color: .black.opacity(0.28), radius: 30, y: 12)
                 .transition(.scale(scale: 0.94).combined(with: .opacity))

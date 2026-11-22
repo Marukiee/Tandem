@@ -107,7 +107,7 @@ struct MainWindow: View {
                     MainWindow.remembered = selection
                     if case let .messages(id) = selection { Sidebar.lastMessagesPhone = id }
                     if selection != waitingOn.map({ .device($0) }) { waitingOn = nil }
-                    DeviceSettingsShown.shared.id = nil
+                    DeviceSettingsShown.shared.close()
                     // A page was chosen: the sidebar that was opened over the page has done its work.
                     if peek { withAnimation(.tandemSidebar) { peek = false } }
                 }
@@ -146,7 +146,7 @@ struct MainWindow: View {
         // A sheet or dialog covers the window; nothing behind it should react to the pointer.
         // Set before the sheet is attached, so the sheet itself is not affected.
         .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle || CallConfirmation.shared.pending != nil
-            || DeviceSettingsShown.shared.id != nil))
+            || DeviceSettingsShown.shared.open))
         .overlay(alignment: .bottom) {
             if let toast = model.toast {
                 ToastView(text: toast)
@@ -164,11 +164,18 @@ struct MainWindow: View {
         .animation(.tandemSpringy, value: showPairing)
         .overlay {
             if let id = DeviceSettingsShown.shared.id, let device = model.device(id) {
-                DeviceSettingsOverlay(device: device) { DeviceSettingsShown.shared.id = nil }
-                    .transition(.opacity)
+                DeviceSettingsOverlay { DeviceSettingsShown.shared.close() } panel: {
+                    DeviceSettingsSheet(device: device) { DeviceSettingsShown.shared.close() }
+                }
+                .transition(.opacity)
+            } else if let id = DeviceSettingsShown.shared.watchOf, let phone = model.device(id), phone.status.watch != nil {
+                DeviceSettingsOverlay { DeviceSettingsShown.shared.close() } panel: {
+                    WatchSettingsSheet(phone: phone) { DeviceSettingsShown.shared.close() }
+                }
+                .transition(.opacity)
             }
         }
-        .animation(.tandemSpringy, value: DeviceSettingsShown.shared.id)
+        .animation(.tandemSpringy, value: DeviceSettingsShown.shared.open)
         .callConfirmation()
     }
 
