@@ -102,9 +102,9 @@ niet op de schijf, geen adressen of inhoud in de regels. Alleen gebouwd en door 
 30 MB per map, dus met de kopie voor `adb pull` kan het samen 60 MB zijn. Mac, Linux en Windows geven scherm, netwerk en batterij
 nog niet door aan het log.
 
-**In 0.3.30 tot en met 0.3.32.** 0.3.31: PR 55 en 56 (kant kiezen en Instellingen onderaan op Linux en Windows). 0.3.32: PR 57 (hartslag nu en
+**In 0.3.30 tot en met 0.3.33.** 0.3.31: PR 55 en 56 (kant kiezen en Instellingen onderaan op Linux en Windows). 0.3.32: PR 57 (hartslag nu en
 uren op de hartkaart, Android en Windows/Linux), PR 59 (accu-logboek en zuinige verbinding van het horloge, R-V18 tweede ronde), PR 58 (de speler
-op een eigen kaart, Android) en PR 31 (het Mac-ontwerp, R-D22 gedaan). PR 60 (updatekaart) wacht op een aanpassing aan de nieuwe Mac-zijbalk.
+op een eigen kaart, Android) en PR 31 (het Mac-ontwerp, R-D22 gedaan). 0.3.33: PR 60 (één tonale updatekaart op Mac, Linux en Windows) en PR 61 (Android op de gedeelde markupdate-module van Keeper).
 
 **In 0.3.25 tot en met 0.3.29.** 0.3.25: PR 49 (horloge: SendGate, het scherm als bron voor de live hartslag, 15 minuten aan en 30 uit).
 0.3.26: PR 50 (hotspot per telefoon, bedtijdmuziek) en PR 51 (R-V19, een nieuwe telefoon of hotspot meldt zich bij de Mac). 0.3.27: PR 52
