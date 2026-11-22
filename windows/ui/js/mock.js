@@ -77,7 +77,7 @@ if (new URLSearchParams(location.search).get("batteries") === "two" && !empty) d
 function updateFor(kind) {
   const base = { dismissed: "", version: "0.1.27", page: "https://github.com/Marukiee/Tandem/releases/latest" };
   switch (kind) {
-    case "available": return { ...base, state: "available", notes: "" };
+    case "available": return { ...base, state: "available", size: 22000000, notes: "0.1.27\n\u2022 Calmer in your pocket\n\u2022 Heart rate live on the watch" };
     case "downloading": return { ...base, state: "downloading", progress: 0.42 };
     case "installing": return { ...base, state: "installing" };
     case "failed": return { ...base, state: "failed", reason: "The download is damaged (the checksum does not match)" };
@@ -508,6 +508,19 @@ export async function call(command, args) {
     case "search_open_pending": return searchOpen();
     case "set_autostart": state.autostart = args.enabled; return args.enabled;
     case "check_update": state.update = { state: "up-to-date", dismissed: state.update.dismissed }; return state.update;
+    case "install_update": {
+      // The whole way, as the real one goes: the file comes in, then it installs by itself, then the card is gone.
+      const base = { dismissed: "", version: state.update.version, page: state.update.page };
+      let p = 0;
+      const tick = setInterval(() => {
+        p += 0.02;
+        if (p < 1) { state.update = { ...base, state: "downloading", progress: p }; emit("update", state.update); return; }
+        clearInterval(tick);
+        state.update = { ...base, state: "installing" }; emit("update", state.update);
+        setTimeout(() => { state.update = { state: "idle", dismissed: "" }; emit("update", state.update); }, 3000);
+      }, 80);
+      return null;
+    }
     case "dismiss_update": state.update = { ...state.update, dismissed: args.version }; return null;
     case "trust_list": return trustList();
     case "trust_set": {

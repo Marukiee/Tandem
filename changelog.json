@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.33",
+    "date": "2026-11-21",
+    "en": {
+      "title": "A calmer update card",
+      "new": [
+        "On Mac, Linux and Windows the update is one card: Later and Update side by side, Update becomes a progress bar, and the update installs by itself when the download is in"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Een rustigere updatekaart",
+      "new": [
+        "Op Mac, Linux en Windows is de update één kaart: Later en Bijwerken naast elkaar, Bijwerken wordt een voortgangsbalk en de update installeert vanzelf als de download binnen is"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.32",
     "date": "2026-11-21",
     "en": {
@@ -888,42 +906,122 @@
   {
     "version": "0.2.96",
     "date": "2026-11-05",
-    "en": { "title": "Opens on what is connected", "new": ["Tandem opens on the device that is connected", "A pairing link no longer leaves the bottom buttons stuck",
+    "en": {
+      "title": "Opens on what is connected",
+      "new": [
+        "Tandem opens on the device that is connected",
+        "A pairing link no longer leaves the bottom buttons stuck",
         "1 GB extra on the hotspot limit, once, from the Mac or the phone",
-        "Tidier hotspot card and sound question"] },
-    "nl": { "title": "Opent op wat verbonden is", "new": ["Tandem opent op het apparaat dat verbonden is", "Een koppellink laat de knoppen onderin niet meer vastlopen",
+        "Tidier hotspot card and sound question"
+      ]
+    },
+    "nl": {
+      "title": "Opent op wat verbonden is",
+      "new": [
+        "Tandem opent op het apparaat dat verbonden is",
+        "Een koppellink laat de knoppen onderin niet meer vastlopen",
         "1 GB extra op de hotspotlimiet, eenmalig, vanaf de Mac of de telefoon",
-        "Rustigere hotspotkaart en geluidsvraag"] }
+        "Rustigere hotspotkaart en geluidsvraag"
+      ]
+    }
   },
   {
     "version": "0.2.94",
     "date": "2026-11-04",
-    "en": { "title": "Updates keep working", "new": ["A release that is not finished no longer gets in the way of an update", "Move here and Back to phone are gone again: the sound of a call stays on the phone", "A device that is not connected shows its battery in grey", "The question about the sound of a screen can stop asking, per device", "What you type on a remote device stays in view and scrolls along"] },
-    "nl": { "title": "Updates blijven werken", "new": ["Een release die niet af is zit een update niet meer in de weg", "Move here en Back to phone zijn weer weg: het geluid van een gesprek blijft op de telefoon", "Een apparaat dat niet verbonden is toont zijn batterij in grijs", "De vraag over het geluid van een scherm kan per apparaat stoppen", "Wat je typt op een apparaat op afstand blijft in beeld en scrolt mee"] }
+    "en": {
+      "title": "Updates keep working",
+      "new": [
+        "A release that is not finished no longer gets in the way of an update",
+        "Move here and Back to phone are gone again: the sound of a call stays on the phone",
+        "A device that is not connected shows its battery in grey",
+        "The question about the sound of a screen can stop asking, per device",
+        "What you type on a remote device stays in view and scrolls along"
+      ]
+    },
+    "nl": {
+      "title": "Updates blijven werken",
+      "new": [
+        "Een release die niet af is zit een update niet meer in de weg",
+        "Move here en Back to phone zijn weer weg: het geluid van een gesprek blijft op de telefoon",
+        "Een apparaat dat niet verbonden is toont zijn batterij in grijs",
+        "De vraag over het geluid van een scherm kan per apparaat stoppen",
+        "Wat je typt op een apparaat op afstand blijft in beeld en scrolt mee"
+      ]
+    }
   },
   {
     "version": "0.2.91",
     "date": "2026-11-04",
-    "en": { "title": "Updates work again", "new": ["Phone and Mac find new versions again", "Move here and Back to phone are gone: the sound of a call stays on the phone"] },
-    "nl": { "title": "Updates werken weer", "new": ["Telefoon en Mac vinden weer nieuwe versies", "Move here en Back to phone zijn weg: het geluid van een gesprek blijft op de telefoon"] }
+    "en": {
+      "title": "Updates work again",
+      "new": [
+        "Phone and Mac find new versions again",
+        "Move here and Back to phone are gone: the sound of a call stays on the phone"
+      ]
+    },
+    "nl": {
+      "title": "Updates werken weer",
+      "new": [
+        "Telefoon en Mac vinden weer nieuwe versies",
+        "Move here en Back to phone zijn weg: het geluid van een gesprek blijft op de telefoon"
+      ]
+    }
   },
   {
     "version": "0.2.89",
     "date": "2026-11-04",
-    "en": { "title": "The Mac builds again", "new": ["The Mac app is back in the release"] },
-    "nl": { "title": "De Mac bouwt weer", "new": ["De Mac-app zit weer in de release"] }
+    "en": {
+      "title": "The Mac builds again",
+      "new": [
+        "The Mac app is back in the release"
+      ]
+    },
+    "nl": {
+      "title": "De Mac bouwt weer",
+      "new": [
+        "De Mac-app zit weer in de release"
+      ]
+    }
   },
   {
     "version": "0.2.86",
     "date": "2026-11-04",
-    "en": { "title": "Far less battery", "new": ["A phone no longer searches for devices over mobile data, which kept its radio awake", "Devices that are away are tried less often, and fewer of their old addresses", "A device that wakes or changes network says so, and connects at once", "The Mac and Linux look at permissions, the clipboard and the lock less often when nobody is there"] },
-    "nl": { "title": "Veel minder accu", "new": ["Een telefoon zoekt niet meer naar apparaten over mobiele data, wat de radio wakker hield", "Apparaten die weg zijn worden minder vaak geprobeerd, en minder van hun oude adressen", "Een apparaat dat wakker wordt of van netwerk wisselt meldt zich, en verbindt meteen", "De Mac en Linux kijken minder vaak naar rechten, klembord en vergrendeling als er niemand is"] }
+    "en": {
+      "title": "Far less battery",
+      "new": [
+        "A phone no longer searches for devices over mobile data, which kept its radio awake",
+        "Devices that are away are tried less often, and fewer of their old addresses",
+        "A device that wakes or changes network says so, and connects at once",
+        "The Mac and Linux look at permissions, the clipboard and the lock less often when nobody is there"
+      ]
+    },
+    "nl": {
+      "title": "Veel minder accu",
+      "new": [
+        "Een telefoon zoekt niet meer naar apparaten over mobiele data, wat de radio wakker hield",
+        "Apparaten die weg zijn worden minder vaak geprobeerd, en minder van hun oude adressen",
+        "Een apparaat dat wakker wordt of van netwerk wisselt meldt zich, en verbindt meteen",
+        "De Mac en Linux kijken minder vaak naar rechten, klembord en vergrendeling als er niemand is"
+      ]
+    }
   },
   {
     "version": "0.2.85",
     "date": "2026-11-04",
-    "en": { "title": "Hotspot seen, and left", "new": ["The panel shows when the Mac is on your hotspot, also when macOS hides the network's name", "The Mac moves from your hotspot to a network it knows, unless you asked for the hotspot with the button"] },
-    "nl": { "title": "Hotspot gezien, en verlaten", "new": ["Het paneel laat zien wanneer de Mac op je hotspot zit, ook als macOS de netwerknaam verbergt", "De Mac stapt van je hotspot over naar een netwerk dat hij kent, tenzij je de hotspot met de knop aanvroeg"] }
+    "en": {
+      "title": "Hotspot seen, and left",
+      "new": [
+        "The panel shows when the Mac is on your hotspot, also when macOS hides the network's name",
+        "The Mac moves from your hotspot to a network it knows, unless you asked for the hotspot with the button"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot gezien, en verlaten",
+      "new": [
+        "Het paneel laat zien wanneer de Mac op je hotspot zit, ook als macOS de netwerknaam verbergt",
+        "De Mac stapt van je hotspot over naar een netwerk dat hij kent, tenzij je de hotspot met de knop aanvroeg"
+      ]
+    }
   },
   {
     "version": "0.2.84",
@@ -1007,11 +1105,11 @@
       ]
     },
     "nl": {
-      "title": "E\u00e9n belverbinding",
+      "title": "Eén belverbinding",
       "new": [
         "Neem een telefoongesprek over op je Mac met hetzelfde geluid, beantwoord of weiger vanaf elk apparaat",
-        "Verplaats gesprekgeluid naar deze Mac of terug naar je telefoon met \u00e9\u00e9n tik",
-        "Demp je microfoon op dit apparaat zonder het gesprek te be\u00ebindigen"
+        "Verplaats gesprekgeluid naar deze Mac of terug naar je telefoon met één tik",
+        "Demp je microfoon op dit apparaat zonder het gesprek te beëindigen"
       ]
     }
   },
@@ -1150,7 +1248,7 @@
     "nl": {
       "title": "Ontgrendelen met je vingerafdruk",
       "new": [
-        "Ontgrendel een vergrendelde Mac met je vingerafdruk op je telefoon, \u00e9\u00e9n keer per sessie",
+        "Ontgrendel een vergrendelde Mac met je vingerafdruk op je telefoon, één keer per sessie",
         "Kies onder Voor in de instellingen van de Mac meerdere apparaten tegelijk"
       ]
     }
@@ -1859,7 +1957,7 @@
       "title": "Wat Tandem kan",
       "new": [
         "Een rondleiding langs alles wat Tandem kan, met wat elk onderdeel nodig heeft: nu instellen, later of niet",
-        "E\u00e9n herinnering een paar dagen later voor wat je voor later bewaarde"
+        "Eén herinnering een paar dagen later voor wat je voor later bewaarde"
       ]
     }
   },
@@ -1896,11 +1994,11 @@
       ]
     },
     "nl": {
-      "title": "E\u00e9n pagina om in te stellen",
+      "title": "Eén pagina om in te stellen",
       "new": [
         "De telefoon is stil terwijl zijn geluid op een ander apparaat speelt",
         "Wat de telefoon speelt staat op de computer, ook als Spotify daar hetzelfde nummer toont",
-        "Rechten, Shizuku en bestandstoegang op \u00e9\u00e9n pagina op Android",
+        "Rechten, Shizuku en bestandstoegang op één pagina op Android",
         "Berichten staat in de zijbalk onder de naam van de telefoon"
       ]
     }
@@ -1988,7 +2086,7 @@
         "Het venster op Linux en Windows laadt weer",
         "Een oproep verschijnt als klein kaartje met Opnemen, Weigeren en Ophangen",
         "Zoek en bel de contacten van je telefoon vanuit Spotlight, GNOME en KDE",
-        "Wissel met \u00e9\u00e9n klik tussen de voor- en achtercamera van je telefoon",
+        "Wissel met één klik tussen de voor- en achtercamera van je telefoon",
         "Zoeken met geluid gebruikt eerst de stille toon"
       ]
     }
@@ -2032,7 +2130,7 @@
         "Bel vanaf je computer: typ een naam of nummer en je telefoon belt",
         "Bestanden versturen vanaf Linux werkt weer",
         "Zet een schakelaar van Tandem op een ander apparaat van hieruit aan",
-        "Alle tegels voor Snelle instellingen op \u00e9\u00e9n plek op Android",
+        "Alle tegels voor Snelle instellingen op één plek op Android",
         "Computers bieden Downloads, Documenten en Bureaublad aan om te bekijken"
       ]
     }
@@ -2091,7 +2189,7 @@
     "nl": {
       "title": "Netter",
       "new": [
-        "E\u00e9n zoekveld in de pagina, naast de filters, op elke pagina",
+        "Eén zoekveld in de pagina, naast de filters, op elke pagina",
         "Een gedeeld scherm sluit meteen als de andere kant stopt",
         "Wifi delen staat er alleen als het apparaat nog niet op dat netwerk zit"
       ]
@@ -2141,7 +2239,7 @@
       "title": "Vind je computer, deel je wifi",
       "new": [
         "Laat een computer een geluid afspelen om hem te vinden, met het geluid van je eigen systeem, en zie waar hij het laatst was",
-        "Deel de wifi van je computer met \u00e9\u00e9n tik met je telefoon",
+        "Deel de wifi van je computer met één tik met je telefoon",
         "Sturen met Tandem vanuit Bestanden, Dolphin, Nemo en Windows Verkenner",
         "Mac: een rustiger ontwerp volgens de regels van Apple"
       ]
@@ -2230,7 +2328,7 @@
       ]
     },
     "nl": {
-      "title": "Alle rechten op \u00e9\u00e9n plek",
+      "title": "Alle rechten op één plek",
       "new": [
         "Android: Rechten heeft nu ook Toegankelijkheid en Alle bestanden, met een knop naar elk",
         "Mac: bij hover groeit het glas van een knop gelijkmatig rond de tekst, die in het midden blijft"
@@ -2469,7 +2567,7 @@
       "title": "Wat werkt",
       "new": [
         "De instellingen tonen per apparaat wat werkt, wat er mist en waarom",
-        "Open de goede instelling op een ander apparaat met \u00e9\u00e9n knop",
+        "Open de goede instelling op een ander apparaat met één knop",
         "Mediaknoppen zijn grijs als de computer ze niet mag bedienen, met de reden",
         "De pagina van een apparaat zegt wat daar niet werkt"
       ]
@@ -3257,7 +3355,7 @@
     "nl": {
       "title": "Ook op Windows een pagina voor muis en toetsenbord",
       "new": [
-        "Windows: een eigen pagina in de zijbalk voor \u00e9\u00e9n muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat je de computer naast deze pc en de kant kiezen, en bevat de schakelaar waarmee andere computers en je telefoon deze pc mogen gebruiken, met een opmerking over de firewall. De keuze die in Instellingen stond is hierheen verhuisd"
+        "Windows: een eigen pagina in de zijbalk voor één muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat je de computer naast deze pc en de kant kiezen, en bevat de schakelaar waarmee andere computers en je telefoon deze pc mogen gebruiken, met een opmerking over de firewall. De keuze die in Instellingen stond is hierheen verhuisd"
       ]
     }
   },
@@ -3282,7 +3380,7 @@
     "nl": {
       "title": "Een rustiger telefoonvenster en een pagina voor muis en toetsenbord",
       "new": [
-        "Mac: een eigen pagina in de zijbalk voor \u00e9\u00e9n muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat zien wat deze Mac moet toestaan (Toegankelijkheid, met een knop), laat je kiezen waar elke computer staat en per computer of die deze Mac mag gebruiken. Eerst was er \u00e9\u00e9n schakelaar voor allemaal, in Instellingen. Een telefoon krijgt zijn eigen uitleg: toon zijn scherm en beweeg de muis in het venster",
+        "Mac: een eigen pagina in de zijbalk voor één muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat zien wat deze Mac moet toestaan (Toegankelijkheid, met een knop), laat je kiezen waar elke computer staat en per computer of die deze Mac mag gebruiken. Eerst was er één schakelaar voor allemaal, in Instellingen. Een telefoon krijgt zijn eigen uitleg: toon zijn scherm en beweeg de muis in het venster",
         "Mac: het venster met het telefoonscherm heeft standaard geen titelbalk, zodat de telefoon het venster vult zonder zwarte randen. Ga met de muis naar de bovenkant en de knoppen van het venster en de naam van de telefoon komen tevoorschijn, en gaan weer weg als je wegbeweegt",
         "Mac: elke knop van het telefoonvenster toont meteen zijn naam als je eroverheen beweegt, boven de knoppen zodat het nooit buiten het venster valt",
         "Mac: het menu met de drie puntjes is een ronde knop zoals de andere, ook het cameramenu. De knop om op de telefoon te klikken en te typen kun je altijd indrukken: staat de telefoon het nog niet toe, dan zegt hij hoe je het aanzet, en staat het aan dan licht hij op en meldt hij het als je het omzet",
@@ -3337,7 +3435,7 @@
       ]
     },
     "nl": {
-      "title": "Een Windows-pc naast je Mac, met \u00e9\u00e9n muis en toetsenbord",
+      "title": "Een Windows-pc naast je Mac, met één muis en toetsenbord",
       "new": [
         "Windows: een pc kan de computer zijn waar de aanwijzer van een Mac naartoe gaat. Zet de pc aan een kant van de Mac bij Instellingen, Muis en toetsenbord over computers, en zet de instelling aan die een telefoon of andere computer de muis en het toetsenbord van de pc laat gebruiken. De aanwijzer komt binnen aan de tegenoverliggende kant van de pc en gaat terug naar de Mac bij de rand waar hij binnenkwam. Het is nog niet op een echte pc naast een Mac geprobeerd"
       ]
@@ -3354,7 +3452,7 @@
       ]
     },
     "nl": {
-      "title": "E\u00e9n muis en toetsenbord over meer computers (eerste versie, Mac naar Mac)",
+      "title": "Eén muis en toetsenbord over meer computers (eerste versie, Mac naar Mac)",
       "new": [
         "Instellingen, Muis en toetsenbord over computers: zeg aan welke kant van deze Mac een andere computer staat, en de aanwijzer gaat over als hij die rand raakt, met het toetsenbord erachteraan. De andere Mac moet het toestaan met Laat een andere computer deze Mac gebruiken. Control, Option en Command met Escape haalt de aanwijzer altijd terug. De aanwijzer komt ook vanzelf terug als hij de rand raakt waar hij binnenkwam",
         "Dit werkt voorlopig tussen Macs. Windows en Linux doen nog niet mee en het is nog niet op twee echte computers geprobeerd, dus meld wat niet werkt"
@@ -3520,7 +3618,7 @@
     "nl": {
       "title": "Duidelijker je Mac bedienen, en een telefoonscherm dat bijblijft",
       "new": [
-        "Deze Mac bedienen is een eigen kaart op de apparaatpagina en staat er altijd. Hij is grijs tot hij kan werken, met eronder de stappen op de Mac: Tandem bijwerken, Schermopname en Toegankelijkheid toestaan en \u00e9\u00e9n keer opnieuw starten. Hij zegt het ook als alleen Toegankelijkheid ontbreekt",
+        "Deze Mac bedienen is een eigen kaart op de apparaatpagina en staat er altijd. Hij is grijs tot hij kan werken, met eronder de stappen op de Mac: Tandem bijwerken, Schermopname en Toegankelijkheid toestaan en één keer opnieuw starten. Hij zegt het ook als alleen Toegankelijkheid ontbreekt",
         "De Mac bedienen vanaf je telefoon: tikken met twee vingers is de rechterknop, ingedrukt houden en bewegen is slepen, en ingedrukt houden zonder te bewegen is een gewone klik. De knoppen voor toetsenbord en aanwijzer ronden samen hun hoeken af zoals de trackpadknoppen",
         "Je Android-scherm op de Mac blijft bij als er niets beweegt: het beeld blijft niet meer op het oude staan tot je scrolt. De balk die zei dat je scherm te zien was staat standaard uit en de melding is kort",
         "Bedien je Android-telefoon vanaf de Mac: klik, sleep, scroll en typ in het venster van de telefoon met de muis en het toetsenbord. De rechterknop is Terug. De telefoon heeft Tandem-bediening nodig in de toegankelijkheidsinstellingen (Instellingen, Apparaten, de Mac, Laat klikken en typen toe) en zegt dat op de pagina. Zonder dat kan de Mac kijken maar niet aanraken en is de knop in het venster grijs",
@@ -3559,7 +3657,7 @@
     "nl": {
       "title": "Je Mac vanaf je telefoon en je telefoon op je Mac (eerste versie)",
       "new": [
-        "Bedien je Mac vanuit de Android-app: op de apparaatpagina van de Mac laat Deze computer bedienen het Mac-scherm zien en wordt aanraken muisklikken, bewegen, scrollen en een vastgehouden knop om te slepen. De Mac vraagt eerst toestemming voordat een telefoon mag kijken, laat zien dat iemand meekijkt en kan het direct stoppen. Het heeft Schermopname en Toegankelijkheid nodig en de Mac moet \u00e9\u00e9n keer opnieuw starten nadat je Schermopname toestaat",
+        "Bedien je Mac vanuit de Android-app: op de apparaatpagina van de Mac laat Deze computer bedienen het Mac-scherm zien en wordt aanraken muisklikken, bewegen, scrollen en een vastgehouden knop om te slepen. De Mac vraagt eerst toestemming voordat een telefoon mag kijken, laat zien dat iemand meekijkt en kan het direct stoppen. Het heeft Schermopname en Toegankelijkheid nodig en de Mac moet één keer opnieuw starten nadat je Schermopname toestaat",
         "Toon het scherm of de camera van je telefoon in een venster op de Mac, vanaf de Mac of vanaf de telefoon. Het venster kan gedraaid, gespiegeld, bovenaan gehouden en als plaatje gekopieerd worden. Het is een venster en geen virtuele webcam. Android vraagt altijd zelf om de opnametoestemming",
         "Dit is een eerste versie. Hij is stuk voor stuk getest en nog niet van begin tot eind tussen twee echte apparaten, dus meld wat niet werkt"
       ]
@@ -3599,9 +3697,9 @@
     "nl": {
       "title": "Bestanden selecteren, hotspotdata per maand en een rustigere speler",
       "new": [
-        "Bestanden op de Mac: zoek op naam, beperk tot foto's, video, documenten en meer, en kies meerdere bestanden door er \u00e9\u00e9n ingedrukt te houden en over de andere te bewegen. Een vinkje neemt de plaats van het icoon in, zodat je ziet wat je koos, en Download of Verwijder werkt op allemaal",
+        "Bestanden op de Mac: zoek op naam, beperk tot foto's, video, documenten en meer, en kies meerdere bestanden door er één ingedrukt te houden en over de andere te bewegen. Een vinkje neemt de plaats van het icoon in, zodat je ziet wat je koos, en Download of Verwijder werkt op allemaal",
         "Op de pagina van een apparaat heeft Recent een knop Alles bekijken die de pagina Gedeeld voor dat apparaat opent. Gedeeld is te doorzoeken en elk bestand heeft een eigen vak met voorbeeld en een menu achter drie puntjes, zoals op Android",
-        "De cover in de speler flitst niet meer weg tussen nummers. Meer dan \u00e9\u00e9n speler staat als \u00e9\u00e9n grote speler met de andere als kleine regels eronder, op de Mac en op Android. Tik op een regel om hem naar voren te halen",
+        "De cover in de speler flitst niet meer weg tussen nummers. Meer dan één speler staat als één grote speler met de andere als kleine regels eronder, op de Mac en op Android. Tik op een regel om hem naar voren te halen",
         "Een link die je vanaf je telefoon stuurt opent op de Mac en staat ook op je klembord",
         "Instellingen, Trackpad: stel de snelheid van de aanwijzer in, de scrolsnelheid en hoe lang je vasthoudt voordat slepen begint",
         "Hotspotdata wordt per maand geteld. Deze maand begint vanzelf opnieuw, eerdere maanden staan in een lijst met een balk, en je stelt de dag in waarop je maand begint zodat het bij je abonnement past. De ontwikkelaarsopties hebben hulpmiddelen om het met testdata te vullen",
@@ -3622,7 +3720,7 @@
     "nl": {
       "title": "Invoegen vanaf je telefoon",
       "new": [
-        "Je Mac kan je telefoon om een foto, een scan of een plaatje vragen en dat plakken waar je typt. Druk op de Mac op Control Option Command P of kies Insert from phone in het menu Services. De telefoon krijgt een melding, opent een camerascherm, de documentscanner of de galerij en stuurt het resultaat direct terug. Een scan komt als pdf. Sluit je het scherm aan \u00e9\u00e9n kant, dan stopt de andere kant ook",
+        "Je Mac kan je telefoon om een foto, een scan of een plaatje vragen en dat plakken waar je typt. Druk op de Mac op Control Option Command P of kies Insert from phone in het menu Services. De telefoon krijgt een melding, opent een camerascherm, de documentscanner of de galerij en stuurt het resultaat direct terug. Een scan komt als pdf. Sluit je het scherm aan één kant, dan stopt de andere kant ook",
         "Het camerascherm heeft een flitsschakelaar, een knop om van camera te wisselen en laat de foto zien voordat hij verstuurd wordt"
       ]
     }
@@ -3660,7 +3758,7 @@
       "title": "Klembordgeschiedenis, instellingen met zoekbalk en slepen met indrukken",
       "new": [
         "De Mac bewaart een klembordgeschiedenis: Control Option V opent een paneel met alles wat je onlangs hebt gekopieerd, tekst en plaatjes, met zoeken, vastzetten en Return om het te plakken waar je typt. Wachtwoordmanagers worden standaard overgeslagen en onder Instellingen, Klembord kies je hoeveel er bewaard wordt, hoe lang, van welke apps, en kun je alles wissen",
-        "Instellingen op Android beginnen met een overzicht van categorie\u00ebn die als eigen pagina openen, met een zoekbalk die een instelling vindt op naam of op wat hij doet en er naartoe scrolt",
+        "Instellingen op Android beginnen met een overzicht van categorieën die als eigen pagina openen, met een zoekbalk die een instelling vindt op naam of op wat hij doet en er naartoe scrolt",
         "De trackpadpagina sleept als een muisknop: houd het vlak ingedrukt en beweeg dan. Het vlak laat zien dat de knop ingedrukt is",
         "Het afgespeelde deel van de zoekbalk in de speler is een golf zolang de muziek speelt en een rechte lijn als die stopt",
         "Meldingen op de Mac met een verificatiecode krijgen een knop Kopieer code, en de telefoon en de Mac vinden codes nu op dezelfde manier"
@@ -3679,7 +3777,7 @@
     "nl": {
       "title": "Het icoon van de app bij je meldingen",
       "new": [
-        "Meldingen van je telefoon komen met het icoon van de app waar ze vandaan komen, bijvoorbeeld Snapchat of WhatsApp: als plaatje op de melding op de Mac en voor elke regel op de pagina Meldingen. De telefoon stuurt een icoon \u00e9\u00e9n keer per app en de Mac bewaart het"
+        "Meldingen van je telefoon komen met het icoon van de app waar ze vandaan komen, bijvoorbeeld Snapchat of WhatsApp: als plaatje op de melding op de Mac en voor elke regel op de pagina Meldingen. De telefoon stuurt een icoon één keer per app en de Mac bewaart het"
       ]
     }
   },
@@ -3697,7 +3795,7 @@
     "nl": {
       "title": "Je Mac en pc in de Bestanden-app",
       "new": [
-        "De bestanden van je Mac, pc en andere apparaten staan in de Bestanden-app van de telefoon en in elke bestandskiezer, naast de opslag van de telefoon zelf: openen, kopi\u00ebren, erin bewaren en mappen maken. Een groot bestand opent meteen en reist alleen zo ver als er gelezen wordt. Bestanden bekijken op een apparaatpagina opent de Bestanden-app op dat apparaat",
+        "De bestanden van je Mac, pc en andere apparaten staan in de Bestanden-app van de telefoon en in elke bestandskiezer, naast de opslag van de telefoon zelf: openen, kopiëren, erin bewaren en mappen maken. Een groot bestand opent meteen en reist alleen zo ver als er gelezen wordt. Bestanden bekijken op een apparaatpagina opent de Bestanden-app op dat apparaat",
         "De Mac heeft eigen instellingen voor wat andere apparaten met zijn bestanden mogen, onder Instellingen, Bestanden: voor alle apparaten of een apparaat, of ze iets mogen wijzigen of verwijderen, verborgen bestanden, een limiet op wat ze mogen sturen, welke mappen worden gedeeld (elk met een eigen schakelaar voor wijzigen) en een lijst van wat ze deden",
         "tandemd kan hetzelfde voor Linux en servers: tandemd files share, unshare, usual, on, off, write, delete, hidden en log"
       ]
@@ -3729,12 +3827,12 @@
         "De pagina Apparaten op de telefoon heeft een knop Apparaat koppelen zodra je een apparaat hebt, zodat het volgende niet verstopt zit"
       ],
       "better": [
-        "De bestanden van een telefoon openen op de Mac meteen in zijn map als er maar \u00e9\u00e9n wordt gedeeld, in plaats van een lijst met \u00e9\u00e9n map erin",
+        "De bestanden van een telefoon openen op de Mac meteen in zijn map als er maar één wordt gedeeld, in plaats van een lijst met één map erin",
         "De knoppen play en mute van de speler op een apparaatpagina komen los van de rij zolang ze aan staan, zoals de schakelaars bovenin het trackpad",
         "Het icoon van een apparaat indrukken op de telefoon laat de cirkel oplichten, niet een vierkant eromheen",
         "De rij met apparaten onder Bestandstoegang loopt door tot de randen van het scherm in plaats van eerder te worden afgesneden",
         "Voltooide wissen heeft een kruisje, en de teksten onder Bestandstoegang beginnen niet meer met Uit",
-        "De status van een apparaat in de Mac-instellingen staat op \u00e9\u00e9n lijn met zijn naam, en de welkomsttekst noemt Tailscale niet meer",
+        "De status van een apparaat in de Mac-instellingen staat op één lijn met zijn naam, en de welkomsttekst noemt Tailscale niet meer",
         "De batterij-pill en -ring op de telefoon gebruiken het gewone groen van de Mac zolang een apparaat oplaadt"
       ]
     }
@@ -3758,7 +3856,7 @@
       "title": "Bestanden van je telefoon bekijken op de Mac",
       "new": [
         "Bestanden bekijken op de pagina van een telefoon opent zijn mappen op de Mac: mappen en bestanden openen, uploaden (met de knop of door ze neer te zetten), downloaden naar waar ontvangen bestanden komen, mappen maken, hernoemen en verwijderen. Het gaat over dezelfde versleutelde verbinding als al het andere, rechtstreeks tussen je apparaten",
-        "Bestandstoegang onder Instellingen op de telefoon kiest wat andere apparaten kunnen zien en wijzigen: welke mappen, of ze iets mogen wijzigen of verwijderen, of verborgen bestanden getoond worden, een limiet op wat ze mogen sturen, andere keuzes voor \u00e9\u00e9n apparaat dan voor de rest, en een lijst van wat ze deden. Android vraagt je eenmalig om toegang tot alle bestanden toe te staan, en zolang je dat niet doet is er niets van de telefoon te zien",
+        "Bestandstoegang onder Instellingen op de telefoon kiest wat andere apparaten kunnen zien en wijzigen: welke mappen, of ze iets mogen wijzigen of verwijderen, of verborgen bestanden getoond worden, een limiet op wat ze mogen sturen, andere keuzes voor één apparaat dan voor de rest, en een lijst van wat ze deden. Android vraagt je eenmalig om toegang tot alle bestanden toe te staan, en zolang je dat niet doet is er niets van de telefoon te zien",
         "De bestanden van een telefoon kunnen ook als schijf in Finder openen, als experiment: Toon in Finder op de bestandenpagina. macOS vraagt eenmalig of Tandem netwerkschijven mag gebruiken",
         "tandemd heeft ls, get, put, mkdir, rm en mv voor de bestanden van een ander apparaat"
       ],
@@ -3784,7 +3882,7 @@
       "better": [
         "De Mac-app werkt niet meer hard voor niets als zijn venster open staat op een telefoon die oplaadt. De laadbliksem werd bij elk beeld van het scherm opnieuw getekend, waardoor de app op zo'n 30 procent van een kern zat zolang het venster openstond. Hij pulseert nu in de compositor van het systeem, en de app zit op zo'n 2 procent terwijl er op die pagina een nummer speelt en ruim onder 1 procent als er niets speelt",
         "Een gesloten venster op de Mac geeft zijn geheugen terug: de app zakt van zo'n 69 naar zo'n 41 MB als je het venster sluit, waar hij eerst gewoon bleef staan",
-        "De balk van de speler op de Mac en op Windows beweegt \u00e9\u00e9n keer per seconde in plaats van twee keer, en helemaal niet als de muziek op pauze staat, want elke keer dat een venster opnieuw wordt getekend kost stroom",
+        "De balk van de speler op de Mac en op Windows beweegt één keer per seconde in plaats van twee keer, en helemaal niet als de muziek op pauze staat, want elke keer dat een venster opnieuw wordt getekend kost stroom",
         "Op de telefoon stopt de Apparaten-pagina met tekenen als er niets verandert. De ringen om de bolletjes van online apparaten en de laadbliksem ademen een paar keer als ze verschijnen en rusten dan, waar ze het scherm eerst met 60 beelden per seconde bezig hielden zolang de pagina openstond"
       ]
     }
@@ -3819,7 +3917,7 @@
     "nl": {
       "title": "Voorbeelden bij Gedeeld, vastgezette apparaten en een app die minder accu vraagt",
       "new": [
-        "Gedeeld op de telefoon toont van elk bestand een voorbeeld in plaats van een vinkje, opent het met een tik en heeft achter drie puntjes een menu met wat het rechtermuisknopmenu op de Mac heeft: openen, tonen in Bestanden, pad kopi\u00ebren, uit de lijst halen en het bestand verwijderen",
+        "Gedeeld op de telefoon toont van elk bestand een voorbeeld in plaats van een vinkje, opent het met een tik en heeft achter drie puntjes een menu met wat het rechtermuisknopmenu op de Mac heeft: openen, tonen in Bestanden, pad kopiëren, uit de lijst halen en het bestand verwijderen",
         "Houd een apparaat op de Apparaten-pagina van de telefoon ingedrukt om het vast te pinnen. Vastgepinde apparaten staan bovenaan, daarna die verbonden zijn, en vanaf vier apparaten staan ze twee aan twee in kleinere kaarten, zodat ze allemaal passen",
         "Tandem voor Windows (nog steeds een experiment) werkt zichzelf nu bij: hij zoekt op GitHub naar een nieuwe versie, downloadt het installatiebestand, controleert de hash en de handtekening en voert het uit. De schakelaar en een knop staan in de instellingen",
         "Een Mac of pc zonder geluid meldt dat aan de telefoon, dus dempen staat als ingedrukt in de speler op de telefoon en gaat los als je op de computer het geluid weer aanzet"
@@ -3896,7 +3994,7 @@
       "better": [
         "Een telefoon in Bluetooth-bereik staat op de Mac als Via Bluetooth, en de hotspot kan vanaf de apparaatpagina worden aangevraagd als er helemaal geen netwerk is",
         "De speler heeft een dunne balk die groeit onder de aanwijzer, zonder het witte bolletje, in de app en in het kleine menu, waar de knoppen nu boven de balk staan. De cover zakt weg bij pauze, een nieuw nummer schuift binnen en de kaart krijgt een lichte tint van de kleur van de cover",
-        "De apparaatpagina zegt van wie het netwerk is (Telefoon op mobiele data), zegt Via hotspot in plaats van Internet als deze Mac op de hotspot van de telefoon zit, en toont hotspot en mobiele data als \u00e9\u00e9n chip",
+        "De apparaatpagina zegt van wie het netwerk is (Telefoon op mobiele data), zegt Via hotspot in plaats van Internet als deze Mac op de hotspot van de telefoon zit, en toont hotspot en mobiele data als één chip",
         "De hotspotdata worden geteld zoals ze worden gebruikt, dus een sessie die wordt afgebroken verliest ze niet meer"
       ],
       "fixed": [

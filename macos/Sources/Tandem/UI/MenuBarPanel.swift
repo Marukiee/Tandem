@@ -28,7 +28,7 @@ struct MenuBarPanel: View {
 
             quickShare
 
-            UpdateBanner(compact: true)
+            UpdateBanner()
         }
         .padding(14)
         .frame(width: 344)

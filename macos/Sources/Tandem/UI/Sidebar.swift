@@ -232,11 +232,11 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             if folded {
                 if updateWaits {
-                    FootButton(symbol: "arrow.down.circle.fill", name: "Update", action: onPeek)
+                    FoldedUpdateButton(onPeek: onPeek)
                         .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
             } else {
-                UpdateBanner(compact: true, fromBottom: true)
+                UpdateBanner(fromBottom: true)
                     .padding(.horizontal, Sidebar.inset)
                     .frame(width: Sidebar.wideWidth)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -632,6 +632,51 @@ private struct ClipboardRow: View {
 }
 
 /// A round button at the foot of the folded sidebar, in line with the glyphs above it.
+/// The update while the sidebar is folded, where the card has no room: one tap starts it, and the progress is drawn in the button
+/// itself (a ring that fills, then a green tick). A failed update opens the sidebar, where the card says why.
+private struct FoldedUpdateButton: View {
+    let onPeek: () -> Void
+    @LocalState private var updater = Updater.shared
+
+    private var progress: Double? {
+        switch updater.state {
+        case let .downloading(_, fraction): fraction
+        case .installing: 1
+        default: nil
+        }
+    }
+
+    var body: some View {
+        let installing = updater.state == .installing
+        let failed: Bool = { if case .failed = updater.state { return true } else { return false } }()
+        let tint = installing ? Color(hex: 0x34C759) : failed ? Palette.urgent : Palette.indigo
+        Button {
+            if case .available = updater.state { Task { await updater.install() } } else if failed { onPeek() }
+        } label: {
+            ZStack {
+                if let progress {
+                    Circle().stroke(tint.opacity(0.2), lineWidth: 3)
+                    Circle().trim(from: 0, to: progress).stroke(tint, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .animation(.tandem, value: progress)
+                }
+                Image(systemName: installing ? "checkmark" : failed ? "exclamationmark.triangle.fill" : "sparkles")
+                    .font(.system(size: progress == nil ? 19 : 15, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .contentTransition(.opacity)
+            }
+            .frame(width: Sidebar.glyph - (progress == nil ? 0 : 6), height: Sidebar.glyph - (progress == nil ? 0 : 6))
+            .frame(width: Sidebar.glyph, height: Sidebar.glyph)
+            .hoverHighlight(radius: Sidebar.glyph / 2)
+        }
+        .buttonStyle(.bouncy)
+        .help(installing ? "Installing…" : progress != nil ? "Downloading" : "Update")
+        .padding(.leading, Sidebar.inset + 10)
+        .padding(.vertical, 2)
+        .animation(.tandem, value: progress == nil)
+    }
+}
+
 private struct FootButton: View {
     let symbol: String
     let name: LocalizedStringKey

@@ -631,6 +631,24 @@ accu zijn daar niet echt, dus de winst zelf is niet gemeten.
 - [ ] **Teksten.** De pagina staat in het Nederlands (Accu-logboek, wekmomenten, scherm, link, scan) en in het Engels (Battery log, wake
   moments), en past op het ronde scherm.
 
+## 0.3.33, 2026-11-21 (updatekaart op Mac en Linux/Windows)
+
+Wat veranderde: de updatemelding is op de Mac (zijbalk en menubalkpaneel) en op Linux/Windows één tonale kaart: icoon, "Nieuwe versie X",
+"Je hebt Y", hooguit twee regels uit de release notes, en Later en Bijwerken naast elkaar over de hele breedte. Na Bijwerken krimpt Later
+weg en wordt Bijwerken een voortgangsbalk met het percentage (de regel eronder wordt "x van y MB"); als de download binnen is en
+gecontroleerd, staat de balk vol op "Installeren…", wordt het icoon een groen vinkje en start de app zonder tweede klik opnieuw. Mislukt
+het, dan staat er kort waarom en één brede knop "Opnieuw". Bekeken met `TANDEM_DEBUG_UPDATE` (Mac, nepversie zonder echte download) en
+in de browser-mock (Linux/Windows). Het echte downloaden, controleren en vervangen is niet opnieuw uitgevoerd: die code is niet veranderd.
+Android volgt apart met een gedeelde bibliotheek.
+
+- [ ] **Mac, echte update.** Bij de eerstvolgende release: de kaart verschijnt in de zijbalk, Bijwerken toont de balk met MB en procent, daarna
+  "Installeren…" met vinkje, en Tandem start vanzelf opnieuw op de nieuwe versie. Later verbergt alleen die versie.
+- [ ] **Mac, menubalkpaneel.** Dezelfde kaart onderaan het paneel, past op de breedte zonder afgekapte tekst.
+- [ ] **Mac, mislukt.** Zonder internet midden in de download: kaart "De update is mislukt" met een brede knop Opnieuw die weer begint.
+- [ ] **Windows en Linux.** Zelfde kaart onderaan de zijbalk; bij een ingeklapte zijbalk blijft alleen het icoon. Op Windows installeert
+  de installer na de download, op Linux vervangt de AppImage zichzelf. Bij een .deb of .rpm meldt hij alleen de nieuwe versie.
+- [ ] **Nederlands.** Alle teksten van de kaart staan in het Nederlands als de taal Nederlands is.
+
 ## 0.3.32, 2026-11-21 (gezondheidstegels, tweede deel)
 
 - [ ] **Telefoon, pagina van het horloge.** Tik op de tegel met de hartslag (BPM): je komt meteen op Hart, niet op het Gezondheidsoverzicht.
