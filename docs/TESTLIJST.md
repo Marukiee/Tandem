@@ -687,3 +687,13 @@ Het nieuwe uiterlijk van de Mac-app. Mark heeft het in de Dev-app met testappara
   komt op al je apparaten. Waar het staat: zoeken op geluid, vanzelf controleren, het geluid. Bij een computer "Mag deze Mac gebruiken".
   De schakelaars voor wat het apparaat op deze Mac mag (bestanden, bedienen, vergrendelen, herstarten, wifiwachtwoord) doen wat ze zeggen.
 - [ ] **Horlogepagina.** "Verbonden" is dezelfde rustige pil, niet meer helemaal groen.
+
+## 0.3.33, 2026-11-21 (updatekaart op Android, gedeelde module)
+
+Wat veranderde: Android gebruikt de gedeelde module `android/markupdate` (ongewijzigd uit Keeper) voor het controleren, downloaden en installeren van updates en voor de kaart. Het horloge blijft zijn eigen updater houden.
+
+### Te testen door Mark
+
+- [ ] **Android, echte update**: bij een nieuwere release verschijnt de kaart bovenaan met wat er nieuw is. Update toont de voortgang en daarna "Installing", de app sluit kort en start bijgewerkt. Later verbergt de kaart voor die versie.
+- [ ] **Android, onderbalk**: de balk onderaan en de inhoud schuiven mee als de kaart komt en gaat.
+- [ ] **Android, Instellingen > Updates**: controleren, automatisch controleren aan en uit, en de samenvatting kloppen nog.
