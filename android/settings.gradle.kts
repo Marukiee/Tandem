@@ -22,4 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Tandem"
 include(":app")
+include(":markupdate:core", ":markupdate:card")
 include(":watch", ":watch-protocol", ":watch-sleep")

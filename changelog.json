@@ -3,16 +3,18 @@
     "version": "0.3.33",
     "date": "2026-11-21",
     "en": {
-      "title": "A calmer update card",
+      "title": "A calmer update card on every device",
       "new": [
-        "On Mac, Linux and Windows the update is one card: Later and Update side by side, Update becomes a progress bar, and the update installs by itself when the download is in"
+        "On Mac, Linux and Windows the update is one card: Later and Update side by side, Update becomes a progress bar, and the update installs by itself when the download is in",
+        "The update card on Android is the shared one from the other apps: it shows what is new, downloads with progress and installs without leaving the app"
       ],
       "fixed": []
     },
     "nl": {
-      "title": "Een rustigere updatekaart",
+      "title": "Een rustigere updatekaart op elk apparaat",
       "new": [
-        "Op Mac, Linux en Windows is de update één kaart: Later en Bijwerken naast elkaar, Bijwerken wordt een voortgangsbalk en de update installeert vanzelf als de download binnen is"
+        "Op Mac, Linux en Windows is de update één kaart: Later en Bijwerken naast elkaar, Bijwerken wordt een voortgangsbalk en de update installeert vanzelf als de download binnen is",
+        "De updatekaart op Android is de gedeelde kaart van de andere apps: hij toont wat er nieuw is, downloadt met voortgang en installeert zonder de app te verlaten"
       ],
       "fixed": []
     }

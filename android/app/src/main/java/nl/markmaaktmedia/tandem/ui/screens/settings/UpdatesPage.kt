@@ -30,7 +30,7 @@ import nl.markmaaktmedia.tandem.ui.components.TandemConfirmDialog
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.data.Backup
 import nl.markmaaktmedia.tandem.data.BackupDevice
-import nl.markmaaktmedia.tandem.update.UpdateState
+import nl.markmaaktmedia.markupdate.UpdateState
 
 /** Updates and backup: the version, checking for a new one, and saving or restoring the settings in a file. */
 @Composable
@@ -40,8 +40,9 @@ internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.u
     val prefs = graph.prefs
     val scope = rememberCoroutineScope()
 
-    val autoUpdate by prefs.autoUpdateCheck.collectAsState(initial = true)
-    val updateState by graph.updater.state.collectAsState()
+    val updater = nl.markmaaktmedia.markupdate.MarkUpdate.get()
+    val autoUpdate by updater.autoCheck.collectAsState()
+    val updateState by updater.state.collectAsState()
     var pendingLanguage by remember { mutableStateOf<String?>(null) }
     val currentLanguage = appLanguage()
 
@@ -86,7 +87,7 @@ internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.u
                 InfoRow(0, 4, TandemIcons.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
             }
             SettingsTarget(FocusKeys.AutoUpdate, 1, 4) {
-                SwitchRow(1, 4, TandemIcons.Update, stringResource(R.string.settings_auto_update), stringResource(R.string.settings_auto_update_sub), autoUpdate, { scope.launch { prefs.setAutoUpdateCheck(it) } })
+                SwitchRow(1, 4, TandemIcons.Update, stringResource(R.string.settings_auto_update), stringResource(R.string.settings_auto_update_sub), autoUpdate, { updater.setAutoCheck(it) })
             }
             ActionRow(
                 2, 4, TandemIcons.Refresh, stringResource(R.string.settings_check_update),
@@ -99,7 +100,7 @@ internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.u
                     is UpdateState.NeedsPermission -> stringResource(R.string.update_needs_permission)
                     else -> null
                 },
-                { scope.launch { graph.updater.check() } },
+                { scope.launch { updater.check() } },
                 modifier = Modifier.settingsTarget(FocusKeys.CheckUpdate, 2, 4),
             )
             // What is new in each version lives with the update, not under About.

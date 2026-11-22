@@ -41,7 +41,7 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     val context = LocalContext.current
     val graph = context.graph
-    val updater = graph.updater
+    val updater = nl.markmaaktmedia.markupdate.MarkUpdate.get()
     val watchState by graph.watch.state.collectAsState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -98,7 +98,7 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
         SectionHeader(stringResource(R.string.dev_pieces))
         SettingsGroup {
-            ActionRow(0, 3, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { scope.launch { graph.prefs.setDismissedUpdate(""); updater.showPreview() } })
+            ActionRow(0, 3, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { updater.showPreview() })
             val fake by nl.markmaaktmedia.tandem.media.FakePlayer.running.collectAsState()
             SwitchRow(
                 1, 3, TandemIcons.Music, stringResource(R.string.dev_player), stringResource(R.string.dev_player_sub), fake,

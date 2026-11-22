@@ -63,7 +63,7 @@ import nl.markmaaktmedia.tandem.ui.screens.PairScreen
 import nl.markmaaktmedia.tandem.ui.screens.RemoteScreen
 import nl.markmaaktmedia.tandem.ui.screens.SettingsScreen
 import nl.markmaaktmedia.tandem.ui.screens.TransfersScreen
-import nl.markmaaktmedia.tandem.ui.update.UpdateBanner
+import nl.markmaaktmedia.tandem.ui.update.TandemUpdateCard
 import nl.markmaaktmedia.tandem.ui.update.UpdateBannerMargin
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.WindowInsets
@@ -86,12 +86,12 @@ fun AppRoot() {
     // A cold start: the answer to "has the person set up the app" comes a moment after the screen is up, which is
     // after the effect below has already seen the app come to the front, so that one skips this start.
     LaunchedEffect(onboarded) {
-        if (onboarded == true) graph.updater.checkIfDue()
+        if (onboarded == true) nl.markmaaktmedia.markupdate.MarkUpdate.get().checkIfDue()
     }
     // Every time the app comes to the front, so a release from an hour ago is not missed
     // just because the process has been alive for days.
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_START) {
-        if (onboarded == true) scope.launch { graph.updater.checkIfDue() }
+        if (onboarded == true) scope.launch { nl.markmaaktmedia.markupdate.MarkUpdate.get().checkIfDue() }
     }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -272,7 +272,7 @@ private fun MainNavigation() {
             }
             // Over every screen: an update is worth seeing wherever you are in the app.
             // In a box of its own: a banner that is hidden is no node at all, and the measuring below counts on two.
-            Box { UpdateBanner(shown = bannerShown) }
+            Box { TandemUpdateCard(shown = bannerShown) }
         },
     ) { (pages, banner), constraints ->
         val bar = banner.measure(constraints.copy(minWidth = 0, minHeight = 0))

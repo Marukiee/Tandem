@@ -45,3 +45,4 @@ macos/Sources/tandem_coreFFI/include/
 android/watch/build/
 android/watch-protocol/build/
 android/watch-sleep/build/
+android/markupdate/*/build/
