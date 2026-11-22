@@ -12,7 +12,6 @@ struct WatchDetail: View {
     var onOpenHealth: () -> Void = { AppScenes.showSettings(.health) }
 
     @State private var speaker = WatchAudio.shared.chosen
-    @State private var showSettings = false
 
     private var watch: TandemWatchStatus? { phone.status.watch }
     private var reachable: Bool { phone.online && watch?.online == true }
@@ -25,6 +24,8 @@ struct WatchDetail: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
+                // The health card under the head and not beside it, as the player is beside a phone's: its three tiles need the
+                // whole width, at half of it the night ran into its score.
                 header
                 WatchHealthCard(phone: phone, onOpen: onOpenHealth)
                 actions
@@ -33,42 +34,71 @@ struct WatchDetail: View {
                 settingsRow
             }
             .devicePagePadding()
-            .frame(maxWidth: 760)
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
         .ignoresSafeArea(.container, edges: .top)
         .animation(.tandem, value: reachable)
         .animation(.tandemFade, value: watch?.sleeping)
         .animation(.tandemFade, value: settings == nil)
-        .sheet(isPresented: $showSettings) { WatchSettingsSheet(phone: phone) }
     }
 
+    /// Its phone has Bluetooth off, so the watch can never connect: said in the head, not only that it is away.
+    private var bluetoothOff: Bool { !reachable && phone.online && watch?.bluetoothOff == true }
+
+    private var statePill: some View {
+        StatePill(there: reachable, text: reachable ? "Connected" : "Watch away")
+    }
+
+    /// The head as a phone or a computer has it: the watch, its name, what it runs on, that it is there in the corner, and under them
+    /// tiles with what there is to know at a glance.
     private var header: some View {
-        // The plain card of the page, as the head of a device has: colour only in what is small.
         Card(radius: Metrics.card, padding: 20) {
-            HStack(spacing: 16) {
-                WatchGlyph(online: reachable, size: 60)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(verbatim: name).font(.title2.weight(.semibold)).lineLimit(1).contentTransition(.opacity)
-                    Text("Wear OS \u{00B7} by way of \(phone.name)").font(.callout).foregroundStyle(.secondary).lineLimit(1)
-                    HStack(spacing: 8) {
-                        // Without Bluetooth on the phone the watch can never connect: say that, not only that it is away.
-                        if !reachable, phone.online, watch?.bluetoothOff == true {
-                            Chip(symbol: "antenna.radiowaves.left.and.right.slash", text: "Bluetooth off on \(phone.name)", tint: .orange, strong: true)
-                        } else {
-                            StatePill(there: reachable, text: reachable ? "Connected" : "Watch away")
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    WatchGlyph(online: reachable, size: 52)
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 8) {
+                            Text(verbatim: name)
+                                .font(.title3.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .contentTransition(.opacity)
+                            Spacer(minLength: 0)
+                            statePill.hidden()
                         }
-                        if reachable, watch?.sleeping == true {
-                            Chip(symbol: "bed.double.fill", text: "Recording your sleep", tint: Palette.indigo)
-                        }
+                        Text(verbatim: "Wear OS")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
-                Spacer(minLength: 0)
-                if let level = watch?.level {
-                    BatteryRing(battery: TandemBattery(level: level, charging: watch?.charging == true, powerSave: false), size: 74, connected: reachable)
-                        .transition(.scale.combined(with: .opacity))
-                }
+                HStack(spacing: 8) { tiles }
+                    .frame(maxHeight: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .overlay(alignment: .topTrailing) { statePill }
+        }
+    }
+
+    @ViewBuilder
+    private var tiles: some View {
+        if let level = watch?.level {
+            let battery = TandemBattery(level: level, charging: watch?.charging == true, powerSave: false)
+            HeadTile(
+                symbol: DeviceDetail.batterySymbol(battery),
+                tint: batteryTint(battery, connected: reachable),
+                value: Text(verbatim: "\(level)%"),
+                label: battery.charging && reachable ? Text("Charging") : Text("Battery")
+            )
+        }
+        if bluetoothOff {
+            HeadTile(symbol: "antenna.radiowaves.left.and.right.slash", tint: .orange, value: Text("Bluetooth off"), label: Text(verbatim: phone.name))
+        } else {
+            HeadTile(symbol: "iphone.gen3", tint: Palette.indigo, value: Text(verbatim: phone.name), label: Text("By way of"))
+        }
+        if reachable, watch?.sleeping == true {
+            HeadTile(symbol: "bed.double.fill", tint: Palette.indigo, value: Text("Recording"), label: Text("Sleep"))
         }
     }
 
@@ -186,11 +216,13 @@ struct WatchDetail: View {
     /// one row instead of sitting between the things that are used.
     private var settingsRow: some View {
         Card(radius: Metrics.card, padding: 6) {
-            Button { showSettings = true } label: {
-                SettingRow(symbol: "slider.horizontal.3", title: "Settings for this device", subtitle: "Name, watch app, and unpairing") {
-                    Image(systemName: "chevron.right").foregroundStyle(.secondary)
+            Button { DeviceSettingsShown.shared.watchOf = phone.id } label: {
+                SettingRow(symbol: "gearshape", title: "Settings for this device", subtitle: "Its name, the watch app, and unpairing") {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
                 }
-                .contentShape(.rect)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -212,74 +244,94 @@ struct WatchDetail: View {
     }
 }
 
-/// What is set for the watch itself: its name, the Tandem on it, and unpairing it. A sheet, so unpairing is never one click away on the
-/// page that is used every day.
-private struct WatchSettingsSheet: View {
+/// What is set for the watch itself: its name, the Tandem on it, and unpairing it. The same panel over the window as a phone or a
+/// computer has, so unpairing is never one click away on the page that is used every day.
+struct WatchSettingsSheet: View {
     @Environment(EngineModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     let phone: TandemDevice
+    let close: () -> Void
 
-    @State private var renaming = false
     @State private var newName = ""
     @State private var confirmUnpair = false
 
-    private var name: String { phone.status.watch?.name ?? String(localized: "Watch") }
+    private var watch: TandemWatchStatus? { phone.status.watch }
+    private var name: String { watch?.name ?? String(localized: "Watch") }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: name).font(.title2.weight(.bold))
-                Text("Settings for this device").foregroundStyle(.secondary)
-            }
-            Card(radius: Metrics.card, padding: 6) {
-                VStack(spacing: 0) {
-                    SettingRow(symbol: "pencil", title: "Name", subtitle: "\(name). Your phone and your other computers show it by this name too.") {
-                        Button("Rename") {
-                            newName = name
-                            renaming = true
-                        }
-                        .buttonStyle(.tandemGlass)
-                        .disabled(!phone.online)
-                        .help(phone.online ? "" : "Its phone is not connected")
-                    }
-                    Divider().opacity(0.4).padding(.horizontal, 14)
-                    // The phone updates the app on the watch by itself; this Mac does not hear which version it has.
-                    SettingRow(symbol: "arrow.triangle.2.circlepath", title: "Watch app", subtitle: "\(phone.name) keeps it up to date by itself") {
-                        EmptyView()
-                    }
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                WatchGlyph(online: phone.online && watch?.online == true, size: 40)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: name).font(.title3.weight(.semibold)).lineLimit(1)
+                    Text("Settings for this device").font(.callout).foregroundStyle(.secondary)
                 }
-            }
-            Card(radius: Metrics.card, padding: 6) {
-                SettingRow(symbol: "trash", title: "Unpair this watch", subtitle: "Pairing it again is done on your phone") {
-                    Button("Unpair", role: .destructive) { confirmUnpair = true }
-                        .buttonStyle(.tandemGlass)
-                        .disabled(!phone.online)
-                        .help(phone.online ? "" : "Its phone is not connected")
-                }
-            }
-            HStack {
                 Spacer()
-                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+                RoundIconButton(symbol: "xmark", size: 28, action: close)
+                    .keyboardShortcut(.cancelAction)
+                    .help("Close")
             }
+            .padding(20)
+
+            Form {
+                Section {
+                    TextField("Name", text: $newName)
+                        .disabled(!phone.online)
+                        .onSubmit(save)
+                } header: {
+                    Text("Name")
+                } footer: {
+                    if phone.online {
+                        Text("Your phone and your other computers show it by this name too.")
+                    } else {
+                        Text("Its phone is not connected")
+                    }
+                }
+                Section {
+                    // The phone updates the app on the watch by itself; this Mac does not hear which version it has.
+                    LabeledContent {
+                        EmptyView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Watch app")
+                            Text("\(phone.name) keeps it up to date by itself").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                Section {
+                    LabeledContent {
+                        Button("Unpair", role: .destructive) { confirmUnpair = true }
+                            .disabled(!phone.online)
+                            .help(phone.online ? "" : "Its phone is not connected")
+                    } label: {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Unpair this watch")
+                            Text("Pairing it again is done on your phone").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
         }
-        .padding(22)
-        .frame(width: 520)
-        .alert("Rename watch", isPresented: $renaming) {
-            TextField("Name", text: $newName)
-            Button("Save") { model.renameWatch(phone.id, name: newName == String(localized: "Watch") ? "" : newName) }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your phone and your other computers show it by this name too.")
-        }
+        .frame(width: 520, height: 400)
+        .onAppear { newName = name }
+        .onDisappear(perform: save)
         .confirmationDialog("Unpair \(name)?", isPresented: $confirmUnpair, titleVisibility: .visible) {
             Button("Unpair", role: .destructive) {
                 model.unpairWatch(phone.id)
-                dismiss()
+                close()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Pairing it again is done on your phone.")
         }
+    }
+
+    /// Empty, or the plain word, is the watch's own name again.
+    private func save() {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard phone.online, trimmed != name else { return }
+        model.renameWatch(phone.id, name: trimmed == String(localized: "Watch") ? "" : trimmed)
     }
 }
 
@@ -456,9 +508,12 @@ private struct GlanceTile: View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    Image(systemName: symbol)
-                        .foregroundStyle(tint)
-                        .symbolEffect(.pulse, options: .repeating, isActive: beating)
+                    if beating {
+                        HeartBeat(symbol: symbol, pointSize: 11, color: tint)
+                    } else {
+                        Image(systemName: symbol)
+                            .foregroundStyle(tint)
+                    }
                     Text(title)
                 }
                 .font(.caption.weight(.semibold))

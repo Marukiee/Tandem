@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.layout.Arrangement
@@ -598,6 +599,16 @@ internal fun rememberHeartBeat(on: Boolean): Float {
     ).value
 }
 
+/**
+ * Scales a heart icon by [beat] around the middle of the heart itself. Its two round tops weigh more than its point, so a swell
+ * around the middle of the box looked as if it grew from the bottom up.
+ */
+internal fun Modifier.heartBeat(beat: Float): Modifier = graphicsLayer {
+    scaleX = beat
+    scaleY = beat
+    transformOrigin = TransformOrigin(0.5f, 0.43f)
+}
+
 /** Asks the watch for the heart rate now for as long as this is on screen and the watch is here; asked again every half minute, as the watch stops by itself. */
 @Composable
 internal fun LiveHeartWhileShown(screen: String) {
@@ -663,7 +674,7 @@ private fun HeartCard(index: Int, total: Int, title: String, curve: List<Int>, n
                 val beat = rememberHeartBeat(true)
                 Icon(
                     TandemIcons.Heart, null, tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp).padding(bottom = 6.dp).graphicsLayer { scaleX = beat; scaleY = beat },
+                    modifier = Modifier.padding(bottom = 6.dp).size(24.dp).heartBeat(beat),
                 )
                 BigNumber(stringResource(R.string.health_resting_line, now))
                 Column(Modifier.padding(bottom = 6.dp)) {
@@ -1172,7 +1183,7 @@ private fun Glance(
         // A live number beats: two quick swells and a rest, about once a second.
         val beat = rememberHeartBeat(beating)
         Box(Modifier.size(34.dp).clip(CircleShape).background(content.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = content, modifier = Modifier.size(20.dp).graphicsLayer { scaleX = beat; scaleY = beat })
+            Icon(icon, null, tint = content, modifier = Modifier.size(20.dp).heartBeat(beat))
         }
         Spacer(Modifier.height(4.dp))
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = content, maxLines = 1)

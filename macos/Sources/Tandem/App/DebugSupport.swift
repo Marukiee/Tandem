@@ -121,6 +121,13 @@ enum DebugSupport {
                 }
             }
         }
+        // `TANDEM_DEBUG_DEVICESETTINGS=<device id>|watch:<phone id>`: the settings panel of that device over the main window.
+        if let value = variable("TANDEM_DEBUG_DEVICESETTINGS") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                if value.hasPrefix("watch:") { DeviceSettingsShown.shared.watchOf = String(value.dropFirst("watch:".count)) }
+                else { DeviceSettingsShown.shared.id = value }
+            }
+        }
         // `TANDEM_DEBUG_DEVICEPAGE=linux|linux-away|android|watch`: the page of a made up device, for the layout of its buttons.
         if let kind = variable("TANDEM_DEBUG_DEVICEPAGE") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showDevicePageWindow(kind) }
@@ -458,6 +465,14 @@ enum DebugSupport {
             EngineModel.shared.healthInsights = healthInsightsFor(
                 records: records, nowMs: UInt64(Date().timeIntervalSince1970 * 1000), utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)
             )
+            // A heart rate now, as the watch sends it every two seconds, so the beating heart shows.
+            Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+                MainActor.assumeIsolated {
+                    let now = HeartNow(bpm: 68 + Int.random(in: 0...4), at: Date())
+                    EngineModel.shared.watchHeartNow["debug"] = now
+                    EngineModel.shared.watchHeartNow["debug-phone"] = now
+                }
+            }.fire()
         }
         let device = TandemDevice(
             id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: kind != "linux-away", route: nil, rttMs: 7, status: status,

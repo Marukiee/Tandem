@@ -697,3 +697,20 @@ Wat veranderde: Android gebruikt de gedeelde module `android/markupdate` (ongewi
 - [ ] **Android, echte update**: bij een nieuwere release verschijnt de kaart bovenaan met wat er nieuw is. Update toont de voortgang en daarna "Installing", de app sluit kort en start bijgewerkt. Later verbergt de kaart voor die versie.
 - [ ] **Android, onderbalk**: de balk onderaan en de inhoud schuiven mee als de kaart komt en gaat.
 - [ ] **Android, Instellingen > Updates**: controleren, automatisch controleren aan en uit, en de samenvatting kloppen nog.
+
+## Hartslag en horlogepagina, 2026-11-22
+
+Wat veranderd is:
+- Het kloppende hartje bij Now groeit vanuit het midden van het hart, op Android, de Mac en Linux/Windows.
+- Mac: het hartje op de horlogepagina klopt nu echt (twee keer zwellen en een rust) in plaats van te vervagen.
+- Mac: de hartpagina van Gezondheid laat ook Now zien met een kloppend hartje, zolang het horloge bij de telefoon is.
+- Linux/Windows: het hartje naast het getal op de hartpagina klopt nu ook (alleen het tegeltje deed dat).
+- Mac: de horlogepagina heeft dezelfde kop als telefoon en laptop: pil in de hoek, tegels voor accu en via welke telefoon, Bluetooth uit als tegel, slaap als tegel.
+- Mac: Instellingen voor dit apparaat van het horloge opent hetzelfde venster over de pagina als bij telefoon en laptop; ernaast klikken sluit het.
+
+Zelf testen:
+- [ ] Android, Gezondheid, Hart met het horloge om: zwelt het hartje bij Now vanuit het midden?
+- [ ] Mac, horlogepagina: klopt het hartje bij Heart rate now, en ziet de kop eruit als die van de Pixel 9?
+- [ ] Mac, Gezondheid, Hart: staat Now met het kloppende hartje bovenaan als het horloge verbonden is?
+- [ ] Mac, horloge, Settings for this device: naam wijzigen, ernaast klikken sluit het venster.
+- [ ] Linux: klopt het hartje op de hartpagina naast het getal?

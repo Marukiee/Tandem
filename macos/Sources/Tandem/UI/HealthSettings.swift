@@ -1116,12 +1116,7 @@ private struct DayCards: View {
                 title: "Heart rate",
                 more: "Half a minute of measuring every five minutes while you wear your watch. A gap means it was off your wrist or could not measure."
             ) {
-                HStack(alignment: .lastTextBaseline, spacing: 12) {
-                    BigNumber(text: String(localized: "\(Int(measured.last ?? 0)) bpm"))
-                    Text("\(dayName(lastHeart.startMs)), lowest \(Int(measured.min() ?? 0)), highest \(Int(measured.max() ?? 0))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                HeartNowHead(measured: measured.map { Int($0) }, day: dayName(lastHeart.startMs))
                 DayHeartLine(curve: lastHeart.curve)
             }
         }
