@@ -249,7 +249,12 @@ enum DebugSupport {
         // `TANDEM_DEBUG_UPDATE=1`: a made up newer version, so the update card shows without looking for a release or installing one.
         // (`TANDEM_UPDATE_TEST_FROM` does the whole update, and replaces the app it runs from.)
         if variable("TANDEM_DEBUG_UPDATE") != nil, let page = URL(string: "https://example.com") {
-            Updater.shared.state = .available(.init(version: "9.9.9", notes: "", zipURL: [], shaURL: [], sigURL: [], size: 0, page: page))
+            Updater.shared.state = .available(.init(
+                version: "9.9.9", notes: "9.9.9\n\u{2022} Calmer in your pocket\n\u{2022} Heart rate live on the watch",
+                zipURL: [], shaURL: [], sigURL: [], size: 22_000_000, page: page))
+            if let step = Updater.debugFake, step == "downloading" || step == "installing" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Task { await Updater.shared.install() } }
+            }
         }
         // `TANDEM_DEBUG_INSERT=choose|which|waiting|receiving|done|ready|refused|offline|timeout|cancelled`: the Insert from phone panel.
         if let stage = variable("TANDEM_DEBUG_INSERT") {

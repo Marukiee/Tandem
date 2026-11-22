@@ -1694,6 +1694,12 @@
 "Your phone cannot hand over its hotspot password. Sharing with this Mac may be off, or Shizuku is not running." = "Je telefoon kan het wachtwoord van zijn hotspot niet doorgeven. Delen met deze Mac staat misschien uit, of Shizuku draait niet.";
 "Your phone says its hotspot is not called that anymore. Type the name and password." = "Je telefoon zegt dat zijn hotspot niet meer zo heet. Tik de naam en het wachtwoord in.";
 "Your phone could not read the password of its hotspot. Type it instead." = "Je telefoon kon het wachtwoord van zijn hotspot niet lezen. Tik het zelf in.";
+
+"New version %@" = "Nieuwe versie %@";
+"Installing %@" = "%@ installeren";
+"Installing…" = "Installeren…";
+"Restarts in a moment" = "Start zo opnieuw";
+"Again" = "Opnieuw";
 "Settings for this device" = "Instellingen voor dit apparaat";
 "Its name, and what it may do on this Mac" = "De naam, en wat het op deze Mac mag";
 "Every device in your circle shows this name." = "Elk apparaat in je circle toont deze naam.";
@@ -1732,3 +1738,4 @@
 "Where it stands" = "Waar het staat";
 "Left or right is chosen on its page. Checking by itself and the sound count for every device." = "Links of rechts kies je op de pagina van het apparaat. Vanzelf controleren en het geluid gelden voor elk apparaat.";
 "Its mouse and keyboard cross over on the side chosen on its page." = "De muis en het toetsenbord steken over aan de kant die op de pagina is gekozen.";
+"%@ of %@ MB" = "%1$@ van %2$@ MB";

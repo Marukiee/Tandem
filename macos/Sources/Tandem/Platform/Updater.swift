@@ -43,6 +43,8 @@ final class Updater {
     }
 
     var state: State = .idle
+    /// The release that is being installed, for the card: `.installing` itself carries nothing.
+    private(set) var installingRelease: Release?
     /// True when the last failure came from installing (download, checks, unpacking), not from a look at GitHub.
     /// The banner only speaks up about the first: a check nobody asked for that finds no network says nothing.
     private(set) var installFailed = false
@@ -177,8 +179,12 @@ final class Updater {
     }
 
     func install() async {
-        guard case let .available(release) = state, mayUpdateThisBuild else { return }
+        guard case let .available(release) = state else { return }
+        // `TANDEM_DEBUG_UPDATE`: the card's whole way without downloading or replacing anything.
+        if Self.debugFake != nil { await simulateInstall(release); return }
+        guard mayUpdateThisBuild else { return }
         installFailed = false
+        installingRelease = release
         do {
             state = .downloading(release, 0)
             trace("download start")
@@ -204,6 +210,25 @@ final class Updater {
             installFailed = true
             state = .failed(error.localizedDescription)
         }
+    }
+
+    /// `TANDEM_DEBUG_UPDATE=1` shows the card and plays the whole update when Update is pressed. `downloading` and `installing` start
+    /// by themselves and stop in that state, for a picture. Nothing is downloaded or installed.
+    static let debugFake = ProcessInfo.processInfo.environment["TANDEM_DEBUG_UPDATE"]
+
+    private func simulateInstall(_ release: Release) async {
+        let hold = Self.debugFake
+        let end = hold == "downloading" ? 0.58 : 1.0
+        for step in 0...50 {
+            state = .downloading(release, end * Double(step) / 50)
+            try? await Task.sleep(for: .milliseconds(80))
+        }
+        if hold == "downloading" { return }
+        installingRelease = release
+        state = .installing
+        if hold == "installing" { return }
+        try? await Task.sleep(for: .seconds(3))
+        state = .idle
     }
 
     // MARK: Steps
@@ -442,6 +467,13 @@ private final class FileDownloader: NSObject, URLSessionDownloadDelegate, @unche
 }
 
 extension Updater {
+    /// At most two short lines of what is new, for the card: the bullets of the summary, or else its first lines.
+    static func notes(_ summary: String, max: Int = 2) -> [String] {
+        let lines = summary.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let bullets = lines.filter { $0.hasPrefix("\u{2022} ") }.map { String($0.dropFirst(2)) }
+        return Array((bullets.isEmpty ? lines.filter { !$0.hasPrefix("#") } : bullets).prefix(max))
+    }
+
     /// What a release says is new, as plain text for the banner: the part above the line (the table of files is below it), without
     /// the marks of Markdown. Releases from before that had the table first and a Dutch half: those parts are left out too.
     static func summary(_ body: String) -> String {

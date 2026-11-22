@@ -13,7 +13,6 @@ import { TourPage, maybeShowTour } from "./tour.js";
 import { dropPaths, markDropTarget } from "./drops.js";
 import { watchTips } from "./tips.js";
 
-/** The update, in the sidebar above its lower rows: what is out, how far the download is, and what went wrong. */
 // The watch only talks to its phone, but it is a device of its own: its page goes by way of the phone.
 function watchRow(d, folded) {
   const watch = d.status && d.status.watch;
@@ -32,38 +31,59 @@ function watchRow(d, folded) {
   </div>`;
 }
 
+/** What is new in a release, as at most two short lines: the bullets of its summary, or else its first lines. */
+export function updateNotes(summary, max = 2) {
+  const lines = String(summary || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const bullets = lines.filter((l) => l.startsWith("\u2022 ")).map((l) => l.slice(2).trim());
+  return (bullets.length ? bullets : lines.filter((l) => !l.startsWith("#"))).slice(0, max);
+}
+
+// The download and install states carry no notes or size, so what the card showed when it was first offered is kept.
+let offered = { version: "", notes: [], size: 0, progress: 0 };
+
+/**
+ * The update card. One card for the whole update: Later and Update share its width, Update becomes a bar while the file comes
+ * in, and when it is in the update installs by itself and Tandem opens again. The three lines of text and of the button are all
+ * in the page, and the phase only says which of them is in view, so a change is a slide and not a swap.
+ */
 function UpdateBanner() {
   const u = state.update;
   const failed = (e) => say(String(e && e.message ? e.message : e));
-  if (u.state === "available" && u.version !== u.dismissed) {
-    return html`<div class="update">
-      <div class="update-head"><span class="update-icon"><${Icon} name="arrow-down" size=${15} /></span>
-        <div class="grow"><div class="t">${t("update_available", u.version)}</div><div class="s">${t("update_you_have", state.version)}</div></div></div>
+  if (u.state === "available" && u.version !== u.dismissed) offered = { version: u.version, notes: updateNotes(u.notes), size: u.size || 0, progress: 0 };
+  const phase = u.state === "available" && u.version !== u.dismissed ? 0 : u.state === "downloading" ? 1 : u.state === "installing" ? 2 : -1;
+  if (phase >= 0) {
+    if (phase === 1) offered.progress = u.progress || 0;
+    const pct = phase === 2 ? 100 : Math.round(offered.progress * 100);
+    const at = (i) => (i === phase ? "" : i < phase ? " up" : " down");
+    const mb = (n) => (n / 1e6).toFixed(1);
+    const version = u.version || offered.version;
+    return html`<div class=${"update card-new" + (phase === 2 ? " installing" : "")}>
+      <div class="update-head"><span class=${"update-tile" + (phase === 2 ? " ok" : "")}>
+          <span class=${"ic" + (phase === 2 ? " out" : "")}><${Icon} name="sparkles" size=${22} /></span>
+          <span class=${"ic" + (phase === 2 ? "" : " out")}><${Icon} name="check" size=${24} stroke=${2.4} /></span></span>
+        <div class="grow update-lines">
+          <div class=${"ln" + at(0)}><div class="t">${t("update_new_version", version)}</div><div class="s">${t("update_you_have_now", state.version)}</div></div>
+          <div class=${"ln" + at(1)}><div class="t">${t("update_new_version", version)}</div><div class="s">${offered.size ? t("update_size_of", mb(offered.size * offered.progress), mb(offered.size)) : pct + "%"}</div></div>
+          <div class=${"ln" + at(2)}><div class="t">${t("update_installing_version", version)}</div><div class="s">${t("update_restarts")}</div></div>
+        </div></div>
+      <ul class=${"update-notes" + (phase === 2 ? " shut" : "")}>${offered.notes.map((n) => html`<li key=${n}>${n}</li>`)}</ul>
       <div class="update-actions">
-        <button class="btn small ghost" onClick=${() => call("dismiss_update", { version: u.version }).catch(failed)}>${t("later")}</button>
-        <button class="btn small accent" onClick=${() => call("install_update").catch(failed)}>${t("update_and_restart")}</button>
+        <button class=${"btn small later" + (phase === 0 ? "" : " shut")} disabled=${phase !== 0} onClick=${() => call("dismiss_update", { version: u.version }).catch(failed)}>${t("later")}</button>
+        <button class=${"btn small accent go" + (phase === 1 ? " bar" : phase === 2 ? " installing" : "")} disabled=${phase !== 0} onClick=${() => call("install_update").catch(failed)}>
+          <i class="fill" style=${`width:${phase === 1 ? pct : 0}%`}></i>
+          <span class=${"lab" + at(0)}>${t("update_button")}</span>
+          <span class=${"lab" + at(1)}>${pct}%</span>
+          <span class=${"lab" + at(2)}>${t("update_installing_dots")}</span>
+        </button>
       </div>
     </div>`;
-  }
-  if (u.state === "downloading") {
-    const pct = Math.round((u.progress || 0) * 100);
-    return html`<div class="update">
-      <div class="update-head"><span class="update-icon"><${Icon} name="arrow-down" size=${15} /></span>
-        <div class="grow"><div class="t">${t("update_downloading", u.version)}</div></div><span class="small muted">${pct}%</span></div>
-      <div class="prog"><i style=${`width:${pct}%`}></i></div>
-    </div>`;
-  }
-  if (u.state === "installing") {
-    return html`<div class="update"><div class="update-head"><span class="update-icon"><${Icon} name="refresh" size=${15} /></span>
-      <div class="grow"><div class="t">${t("update_installing")}</div><div class="s">${t("update_reopens")}</div></div></div></div>`;
   }
   if (u.state === "failed") {
     return html`<div class="update bad">
       <div class="update-head"><span class="update-icon bad"><${Icon} name="alert-triangle" size=${15} /></span>
         <div class="grow"><div class="t">${t("update_failed")}</div><div class="s">${u.reason}</div></div></div>
       <div class="update-actions">
-        ${u.page && html`<button class="btn small ghost" onClick=${() => call("open_url", { url: u.page }).catch(failed)}>${t("update_open_page")}</button>`}
-        ${u.version && html`<button class="btn small" onClick=${() => call("install_update").catch(failed)}>${t("try_again")}</button>`}
+        <button class="btn accent wide" onClick=${() => call(u.version ? "install_update" : "check_update").catch(failed)}>${t("update_again")}</button>
       </div>
     </div>`;
   }
