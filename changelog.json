@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.35",
+    "date": "2026-11-23",
+    "en": {
+      "title": "An update bar you can read",
+      "new": [],
+      "fixed": [
+        "The update bar on Android is a clear bar now, and the percentage rides on the edge of it instead of vanishing into it"
+      ]
+    },
+    "nl": {
+      "title": "Een updatebalk die je kunt lezen",
+      "new": [],
+      "fixed": [
+        "De updatebalk op Android is nu een duidelijke balk en het percentage staat op de rand ervan in plaats van erin te verdwijnen"
+      ]
+    }
+  },
+  {
     "version": "0.3.34",
     "date": "2026-11-23",
     "en": {
