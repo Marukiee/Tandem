@@ -715,3 +715,15 @@ Zelf testen:
 - [ ] **Updatekaart op Android.** Tijdens een echte update (of Instellingen, Ontwikkelaar, Updatebanner): de balk is een volle blauwe vulling op een lichte
   baan, en het percentage staat in de vulling tegen de rand aan (wit), of net achter de rand op de baan (donker) zolang de vulling nog smal is. Het
   percentage wordt nooit doormidden gesneden. Bij Installeren is de hele balk vol blauw met het lichtje erover.
+
+## Hotspot niet vragen met de klep dicht, 2026-11-23
+
+Wat veranderd is:
+- Met de klep dicht wordt de Mac af en toe een paar seconden wakker (Power Nap). Tandem vroeg de telefoon dan om de hotspot, omdat "net nog gebruikt" de slaaptijd niet meetelt. Dat verzoek brak na een paar seconden af toen de Mac weer insliep, en de hotspot ging niet aan. Nu vraagt de Mac het alleen als het scherm aan is.
+- Gaat de Mac slapen terwijl hij de hotspot vraagt, dan stopt hij daarmee. Bij openen staat er dan geen oude fout of "Asking your phone" meer.
+- Klep weer open en nog geen netwerk: de Mac kijkt opnieuw (na de gewone wachttijd voor bekende netwerken) en vraagt dan de hotspot.
+
+Zelf testen:
+- [ ] Weg van bekende wifi, klep dicht, een kwartier wachten: de hotspot op de Oppo blijft uit.
+- [ ] Daarna de klep open: binnen een minuut vraagt de Mac de hotspot en komt hij online.
+- [ ] De knop om de hotspot aan te zetten werkt nog gewoon.
