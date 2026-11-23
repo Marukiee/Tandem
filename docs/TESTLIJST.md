@@ -721,3 +721,15 @@ Zelf testen:
 - [ ] **Instellingen, Updates en back-up.** Is er een nieuwere versie, dan staat er onder Nu controleren een brede balk "Bijwerken naar versie X". Een tik maakt er
   dezelfde voortgangsbalk van als op de updatekaart (percentage aan de rand van de vulling), daarna Installeren met de glans. De kaart bovenaan loopt mee.
   Is er geen nieuwe versie, dan staat er niets en zijn de twee groepen gewoon rijen onder elkaar. De losse regel "Versie X is beschikbaar" onder Nu controleren is weg.
+
+## 0.3.36, 2026-11-23 (hotspot niet vragen met de klep dicht, Mac)
+
+Wat veranderd is:
+- Met de klep dicht wordt de Mac af en toe een paar seconden wakker (Power Nap). Tandem vroeg de telefoon dan om de hotspot, omdat "net nog gebruikt" de slaaptijd niet meetelt. Dat verzoek brak na een paar seconden af toen de Mac weer insliep, en de hotspot ging niet aan. Nu vraagt de Mac het alleen als het scherm aan is.
+- Gaat de Mac slapen terwijl hij de hotspot vraagt, dan stopt hij daarmee. Bij openen staat er dan geen oude fout of "Asking your phone" meer.
+- Klep weer open en nog geen netwerk: de Mac kijkt opnieuw (na de gewone wachttijd voor bekende netwerken) en vraagt dan de hotspot.
+
+Zelf testen:
+- [ ] Weg van bekende wifi, klep dicht, een kwartier wachten: de hotspot op de Oppo blijft uit.
+- [ ] Daarna de klep open: binnen een minuut vraagt de Mac de hotspot en komt hij online.
+- [ ] De knop om de hotspot aan te zetten werkt nog gewoon.
