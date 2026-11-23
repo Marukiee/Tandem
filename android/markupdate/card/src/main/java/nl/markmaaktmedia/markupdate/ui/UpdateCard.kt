@@ -178,6 +178,87 @@ fun UpdateCard(
     }
 }
 
+/**
+ * De balk van de kaart, los, voor de instellingen van een app (onder "Controleren op updates"): staat er alleen als er een nieuwere versie
+ * is, en zegt dan "Bijwerken naar versie X". Een tik doet precies wat Bijwerken op de kaart doet: hij wordt een voortgangsbalk met het
+ * percentage, en is de download klaar, dan installeert hij meteen met "Installeren…" en de glans. Zelfde kleuren, veren en tijden als
+ * de kaart, zonder Later (in de instellingen kies je er zelf voor). Mislukt het, dan zegt hij "Opnieuw proberen".
+ *
+ * Kaart en balk lezen dezelfde updater: tik je op de een, dan loopt de ander mee.
+ */
+@Composable
+fun UpdateBar(
+    modifier: Modifier = Modifier,
+    style: UpdateCardStyle = UpdateCardStyle(),
+    updater: MarkUpdater = MarkUpdate.get(),
+) {
+    val state by updater.state.collectAsState()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        updater.resume()
+        updater.resumeConfirmation()
+    }
+    val release = releaseOf(state)
+    val failed = state as? UpdateState.Failed
+    val visible = release != null || failed != null
+    // Wat de balk toont, bewaard terwijl hij wegschuift (net als de kaart).
+    val shown = remember { Shown() }
+    if (visible) {
+        shown.release = release
+        shown.failure = failed
+        shown.phase = phaseOf(state)
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(style.motion.fade()) + expandVertically(style.motion.sizeSpring()),
+        exit = fadeOut(style.motion.fade()) + shrinkVertically(style.motion.sizeSpring()),
+        modifier = modifier,
+    ) {
+        val phase = shown.phase
+        val progress = when (phase) {
+            Phase.Rest -> 0f
+            Phase.Busy -> (state as? UpdateState.Downloading)?.progress ?: 0f
+            Phase.Installing -> 1f
+        }
+        val restLabel = when {
+            shown.failure != null -> stringResource(R.string.markupdate_retry)
+            state is UpdateState.NeedsPermission -> stringResource(R.string.markupdate_allow)
+            else -> stringResource(R.string.markupdate_update_to, shown.release?.versionName ?: "")
+        }
+        Actions(
+            phase = phase, progress = progress, style = style, restLabel = restLabel,
+            barEnabled = phase == Phase.Rest || state is UpdateState.AwaitingConfirmation,
+            onBar = {
+                when (val s = state) {
+                    is UpdateState.Available -> updater.startUpdate(s.release)
+                    is UpdateState.NeedsPermission -> updater.openInstallPermissionSettings()
+                    is UpdateState.AwaitingConfirmation -> updater.launchConfirmation()
+                    is UpdateState.Failed -> updater.startRetry()
+                    else -> Unit
+                }
+            },
+            onLater = {},
+            showLater = false,
+        )
+    }
+}
+
+/** De release waar de updater mee bezig is, of null als er niets nieuws is. */
+private fun releaseOf(state: UpdateState): ReleaseInfo? = when (state) {
+    is UpdateState.Available -> state.release
+    is UpdateState.Downloading -> state.release
+    is UpdateState.ReadyToInstall -> state.release
+    is UpdateState.NeedsPermission -> state.release
+    is UpdateState.Installing -> state.release
+    is UpdateState.AwaitingConfirmation -> state.release
+    else -> null
+}
+
+private fun phaseOf(state: UpdateState): Phase = when (state) {
+    is UpdateState.Downloading -> Phase.Busy
+    is UpdateState.ReadyToInstall, is UpdateState.Installing, is UpdateState.AwaitingConfirmation -> Phase.Installing
+    else -> Phase.Rest
+}
+
 @Composable
 private fun UpdateContent(
     release: ReleaseInfo, phase: Phase, state: UpdateState, currentVersion: String, style: UpdateCardStyle, onBar: () -> Unit, onLater: () -> Unit,
@@ -275,11 +356,14 @@ private fun UpdateIcon(done: Boolean, style: UpdateCardStyle) {
  * de balk vol en zegt hij "Installeren…" met een zachte glans.
  */
 @Composable
-private fun Actions(phase: Phase, progress: Float, style: UpdateCardStyle, restLabel: String, barEnabled: Boolean, onBar: () -> Unit, onLater: () -> Unit) {
+private fun Actions(
+    phase: Phase, progress: Float, style: UpdateCardStyle, restLabel: String, barEnabled: Boolean, onBar: () -> Unit, onLater: () -> Unit,
+    showLater: Boolean = true,
+) {
     val colors = MaterialTheme.colorScheme
     val motion = style.motion
     // Later is een derde van de breedte en krimpt tot niets: de breedte zelf is de veer, geen gewicht (dat krimpt te snel).
-    val laterFraction by animateFloatAsState(if (phase == Phase.Rest) LaterFraction else 0f, motion.laterSpring(), label = "laterFraction")
+    val laterFraction by animateFloatAsState(if (phase == Phase.Rest && showLater) LaterFraction else 0f, motion.laterSpring(), label = "laterFraction")
     // Doorzichtigheid is een tween, geen veer: een veer laat het knopje flikkeren.
     val laterAlpha by animateFloatAsState(if (phase == Phase.Rest) 1f else 0f, tween(260), label = "laterAlpha")
     val barFill by animateColorAsState(
@@ -293,7 +377,7 @@ private fun Actions(phase: Phase, progress: Float, style: UpdateCardStyle, restL
     val fillAlpha by animateFloatAsState(if (phase == Phase.Busy) 1f else 0f, tween(400), label = "fillAlpha")
     val pill = RoundedCornerShape(percent = 50)
 
-    Row(Modifier.padding(top = 14.dp).fillMaxWidth().height(ButtonHeight)) {
+    Row(Modifier.padding(top = if (showLater) 14.dp else 0.dp).fillMaxWidth().height(ButtonHeight)) {
         if (laterFraction > 0.002f) {
             val fraction = laterFraction.coerceIn(0.001f, LaterFraction)
             Box(

@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.3.36",
+    "date": "2026-11-23",
+    "en": {
+      "title": "Update from Settings too, and no hotspot asked in a closed Mac",
+      "new": [
+        "On Android you can update from Settings, Updates and backup too: the same bar as on the update card appears under Check now when a new version is out"
+      ],
+      "fixed": [
+        "A Mac with its lid closed no longer asks your phone for its hotspot when it wakes for a moment in the dark; it looks again when the screen lights up"
+      ]
+    },
+    "nl": {
+      "title": "Ook bijwerken vanuit Instellingen, en geen hotspot gevraagd met de klep dicht",
+      "new": [
+        "Op Android kun je ook bijwerken vanuit Instellingen, Updates en back-up: dezelfde balk als op de updatekaart staat onder Nu controleren als er een nieuwe versie is"
+      ],
+      "fixed": [
+        "Een Mac met de klep dicht vraagt je telefoon niet meer om de hotspot als hij even in het donker wakker wordt; hij kijkt opnieuw als het scherm aangaat"
+      ]
+    }
+  },
+  {
     "version": "0.3.35",
     "date": "2026-11-23",
     "en": {
