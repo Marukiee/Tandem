@@ -76,10 +76,35 @@ enum class BleState(val code: Int) {
     }
 }
 
+/**
+ * Why turning the hotspot on did not work, so the computer can say it instead of a plain "it failed". The code is the third byte
+ * of the state over Bluetooth, the key follows "failed:" over the normal connection. Keep in step with docs/HOTSPOT.md and
+ * HotspotFailReason in Hotspot.swift.
+ */
+enum class FailReason(val code: Int, val key: String) {
+    ShizukuMissing(1, "shizuku-missing"),
+    ShizukuStopped(2, "shizuku-stopped"),
+    ShizukuPermission(3, "shizuku-permission"),
+    ShizukuError(4, "shizuku-error"),
+    NotUp(5, "not-up"),
+    NoTap(6, "no-tap"),
+    ;
+
+    companion object {
+        /** Why Shizuku could not do it, from where it stands. */
+        fun ofShizuku(state: ShizukuState): FailReason = when (state) {
+            ShizukuState.NotInstalled -> ShizukuMissing
+            ShizukuState.NotRunning -> ShizukuStopped
+            ShizukuState.NeedsPermission, ShizukuState.Denied -> ShizukuPermission
+            else -> ShizukuError
+        }
+    }
+}
+
 object StateCodec {
-    /** Two bytes: the state, then the number of connected devices. */
-    fun encode(state: BleState, clients: Int?): ByteArray =
-        byteArrayOf(state.code.toByte(), (clients?.coerceIn(0, 254) ?: HotspotProtocol.CLIENTS_UNKNOWN).toByte())
+    /** The state, then the number of connected devices, then why it failed (0 when it did not). A Mac that reads only the first byte still works. */
+    fun encode(state: BleState, clients: Int?, reason: FailReason? = null): ByteArray =
+        byteArrayOf(state.code.toByte(), (clients?.coerceIn(0, 254) ?: HotspotProtocol.CLIENTS_UNKNOWN).toByte(), (reason?.code ?: 0).toByte())
 
     fun decode(bytes: ByteArray): Pair<BleState, Int?>? {
         if (bytes.isEmpty()) return null

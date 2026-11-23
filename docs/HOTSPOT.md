@@ -85,7 +85,7 @@ adverteert, de Mac is centraal (CoreBluetooth).
 |----------------|------------------------|------------|--------|
 | challenge | `...11...` | read | 16 verse willekeurige bytes per read, eenmalig, 30 s geldig |
 | request | `...12...` | write met response | het getekende verzoek |
-| state | `...13...` | notify en read | 2 bytes: status en aantal clients (255 is onbekend) |
+| state | `...13...` | notify en read | 3 bytes: status, aantal clients (255 is onbekend) en de reden van mislukken (0 is geen) |
 
 **Advertentie.** De service-UUID staat in de advertentie. In de scanrespons staat als
 service data (zelfde UUID) een label van 8 bytes: de eerste 8 bytes van
@@ -117,6 +117,13 @@ geldige handtekening telt. Een goed verzoek krijgt een ATT-succes, een slecht ve
 **Statuscodes** (byte 0 van state): 0 uit, 1 start, 2 aan, 3 handmatig (tik op de melding),
 4 mislukt, 5 verzoek niet vertrouwd, 6 accu te laag, 7 roaming, 8 uitgezet op de telefoon,
 9 daglimiet voor data bereikt.
+
+**Reden van mislukken** (byte 2 van state, bij status 4): 1 Shizuku niet geinstalleerd, 2 Shizuku draait niet,
+3 Tandem heeft geen toestemming in Shizuku, 4 Shizuku gaf een fout, 5 Shizuku zette hem aan maar hij kwam niet
+binnen 20 seconden, 6 niemand tikte op de melding. Over QUIC staat dezelfde reden in `error` als `failed:<sleutel>`
+(`shizuku-missing`, `shizuku-stopped`, `shizuku-permission`, `shizuku-error`, `not-up`, `no-tap`), bij
+`shizuku-error` gevolgd door `:` en wat Shizuku zei. Een oudere Mac leest alleen byte 0 en ziet elke `failed...`
+als mislukt, dus dit breekt niets. De Mac zelf voegt "geen antwoord" toe als er binnen 45 seconden niets terugkomt.
 
 **Volgorde op de Mac.** Verbinden, services en characteristics ontdekken, notificaties op
 state aanzetten, challenge lezen, ondertekenen met `sign_message`, request schrijven, dan

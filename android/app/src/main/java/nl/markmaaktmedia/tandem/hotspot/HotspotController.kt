@@ -32,6 +32,8 @@ data class HotspotSnapshot(
     val clients: Int? = null,
     val refusal: Refusal? = null,
     val error: String? = null,
+    /** Why it failed, for the computer that asked. */
+    val reason: FailReason? = null,
 ) {
     val on: Boolean get() = phase == Phase.On
 
@@ -222,6 +224,7 @@ class HotspotController(
         }
 
         var shizukuFailure: String? = null
+        var shizukuReason: FailReason? = null
         if (method() == HotspotMethod.Shizuku) {
             publish(HotspotSnapshot(Phase.Starting))
             val result = shizuku.start()
@@ -235,13 +238,14 @@ class HotspotController(
                 } else {
                     startedByUs = false
                     _lastAttempt.value = HotspotAttempt(clock(), viaShizuku = true, ok = false, detail = "the hotspot did not come up")
-                    fail("the hotspot did not come up")
+                    fail(FailReason.NotUp, "the hotspot did not come up")
                 }
                 return
             }
             // Shizuku refused or died: the person can still do it by hand.
             Log.w(TAG, "Shizuku could not start the hotspot: ${result.message}")
             shizukuFailure = result.message
+            shizukuReason = FailReason.ofShizuku(shizuku.state.value)
             _lastAttempt.value = HotspotAttempt(clock(), viaShizuku = true, ok = false, detail = result.message)
         }
 
@@ -258,7 +262,9 @@ class HotspotController(
         } else {
             if (shizukuFailure == null) _lastAttempt.value = HotspotAttempt(clock(), viaShizuku = false, ok = false, detail = "nobody turned it on")
             askedFor = false
-            publish(HotspotSnapshot(Phase.Off))
+            // Said as a failure with its reason, not as a plain "off": the computer that asked shows why. Shizuku that could not do it
+            // is the thing to fix, more than the tap that did not come.
+            fail(shizukuReason ?: FailReason.NoTap, shizukuFailure ?: "nobody turned it on")
         }
     }
 
@@ -309,9 +315,9 @@ class HotspotController(
         settleLater()
     }
 
-    private fun fail(reason: String) {
-        Log.w(TAG, "failed: $reason")
-        publish(HotspotSnapshot(Phase.Failed, error = reason))
+    private fun fail(reason: FailReason, detail: String) {
+        Log.w(TAG, "failed: $reason, $detail")
+        publish(HotspotSnapshot(Phase.Failed, error = detail, reason = reason))
         settleLater()
     }
 

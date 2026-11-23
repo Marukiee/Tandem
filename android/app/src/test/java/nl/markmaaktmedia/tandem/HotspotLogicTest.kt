@@ -3,6 +3,7 @@ package nl.markmaaktmedia.tandem
 import nl.markmaaktmedia.tandem.hotspot.AuthResult
 import nl.markmaaktmedia.tandem.hotspot.BleState
 import nl.markmaaktmedia.tandem.hotspot.ChallengeStore
+import nl.markmaaktmedia.tandem.hotspot.FailReason
 import nl.markmaaktmedia.tandem.hotspot.FailureLimiter
 import nl.markmaaktmedia.tandem.hotspot.HotspotAuth
 import nl.markmaaktmedia.tandem.hotspot.HotspotPolicy
@@ -10,6 +11,7 @@ import nl.markmaaktmedia.tandem.hotspot.HotspotProtocol
 import nl.markmaaktmedia.tandem.hotspot.HotspotRequest
 import nl.markmaaktmedia.tandem.hotspot.IdleTracker
 import nl.markmaaktmedia.tandem.hotspot.Refusal
+import nl.markmaaktmedia.tandem.hotspot.ShizukuState
 import nl.markmaaktmedia.tandem.hotspot.StateCodec
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -156,5 +158,23 @@ class HotspotLogicTest {
         assertFalse(idle.shouldTurnOff(200_000, true))
         assertFalse(idle.shouldTurnOff(400_000, false))
         assertTrue(idle.shouldTurnOff(700_000, false))
+    }
+
+    @Test
+    fun `a failure says why in a third byte that an older Mac skips`() {
+        val bytes = StateCodec.encode(BleState.Failed, null, FailReason.ShizukuStopped)
+        assertEquals(3, bytes.size)
+        assertEquals(FailReason.ShizukuStopped.code, bytes[2].toInt())
+        // An older Mac reads the state and the clients as before.
+        assertEquals(BleState.Failed to null, StateCodec.decode(bytes))
+        assertEquals(0, StateCodec.encode(BleState.On, 2)[2].toInt())
+    }
+
+    @Test
+    fun `why Shizuku could not do it follows from where it stands`() {
+        assertEquals(FailReason.ShizukuMissing, FailReason.ofShizuku(ShizukuState.NotInstalled))
+        assertEquals(FailReason.ShizukuStopped, FailReason.ofShizuku(ShizukuState.NotRunning))
+        assertEquals(FailReason.ShizukuPermission, FailReason.ofShizuku(ShizukuState.Denied))
+        assertEquals(FailReason.ShizukuError, FailReason.ofShizuku(ShizukuState.Ready))
     }
 }

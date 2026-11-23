@@ -85,6 +85,8 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     private var hints: [Data] = []
     private var progress: (@Sendable (HotspotBleState) -> Void)?
     private var lastState: HotspotBleState?
+    /// Why the phone said it failed, from the third byte of its state: 0 when it did not say.
+    private var lastReason: UInt8 = 0
 
     /// Runs one request and returns the last state the phone reported. Throws when the
     /// phone could not be reached at all. A phone that says no (battery, roaming, not
@@ -108,6 +110,7 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
                     self.myId = engine.id()
                     self.progress = progress
                     self.lastState = nil
+                    self.lastReason = 0
                     self.step = .waitingForPower
                     // A phone's tag is per hour, so the neighbouring hours cover a clock
                     // that is a little off and the moment the hour turns.
@@ -135,6 +138,9 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
         timer = item
         queue.asyncAfter(deadline: .now() + seconds, execute: item)
     }
+
+    /// Why the last request failed, as the phone said it. Read after `run` has returned.
+    var reason: HotspotFailReason? { queue.sync { HotspotFailReason(rawValue: lastReason) } }
 
     private func finish(_ result: Result<HotspotBleState, Error>) {
         guard let continuation else { return }
@@ -330,6 +336,7 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
               let state = HotspotBleState(rawValue: first)
         else { return }
         lastState = state
+        if data.count > 2 { lastReason = data[data.startIndex + 2] }
         progress?(state)
         if action == Self.actionLeave { return finish(.success(state)) }
         switch state {
