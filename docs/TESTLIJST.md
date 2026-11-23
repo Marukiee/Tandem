@@ -709,3 +709,9 @@ Zelf testen:
 - [ ] Oppo herstarten zonder Shizuku weer te starten, dan op de Mac de hotspot vragen: zegt hij dat Shizuku niet draait?
 - [ ] Met Shizuku aan: gaat de hotspot nog gewoon vanzelf aan?
 - [ ] Wifi op de Mac uit (dan gaat het via Bluetooth): zegt hij ook dan waarom het niet lukt?
+
+## 0.3.35, 2026-11-23 (updatebalk Android)
+
+- [ ] **Updatekaart op Android.** Tijdens een echte update (of Instellingen, Ontwikkelaar, Updatebanner): de balk is een volle blauwe vulling op een lichte
+  baan, en het percentage staat in de vulling tegen de rand aan (wit), of net achter de rand op de baan (donker) zolang de vulling nog smal is. Het
+  percentage wordt nooit doormidden gesneden. Bij Installeren is de hele balk vol blauw met het lichtje erover.
