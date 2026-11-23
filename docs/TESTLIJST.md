@@ -703,6 +703,7 @@ Wat veranderde: Android gebruikt de gedeelde module `android/markupdate` (ongewi
 Wat veranderd is:
 - Lukt het automatisch aanzetten van de hotspot niet, dan zegt de Mac nu waarom, zoals de telefoon het weet: Shizuku draait niet (na een herstart van de telefoon), Shizuku niet geinstalleerd of geen toestemming, een fout van Shizuku met de tekst erbij, de hotspot kwam niet aan binnen 20 seconden, niemand tikte op de melding, of de telefoon gaf helemaal geen antwoord.
 - Niemand tikte op de melding: de Mac hoort dat nu meteen van de telefoon in plaats van na ruim drie minuten wachten.
+- Over Bluetooth (de Mac zonder netwerk): krijgt de telefoon het verzoek en gebeurt er daarna niets, dan zegt de Mac dat nu, in plaats van de algemene tekst over Shizuku.
 
 Zelf testen:
 - [ ] Oppo herstarten zonder Shizuku weer te starten, dan op de Mac de hotspot vragen: zegt hij dat Shizuku niet draait?

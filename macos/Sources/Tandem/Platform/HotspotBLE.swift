@@ -327,7 +327,12 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
             return
         }
         step = .waitingForState
-        arm(seconds: 20) { self.finish(.success(self.lastState ?? .failed)) }
+        arm(seconds: 20) {
+            // The request went in and nothing came of it: not a word, or only the "off" from before. Said as that, so it does not
+            // read as a failure of the phone's own.
+            if self.lastReason == 0 { self.lastReason = self.lastState == nil ? HotspotFailReason.noAnswer.rawValue : HotspotFailReason.noStart.rawValue }
+            self.finish(.success(self.lastState ?? .failed))
+        }
     }
 
     private func handleState(_ data: Data) {

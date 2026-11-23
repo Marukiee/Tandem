@@ -123,7 +123,7 @@ geldige handtekening telt. Een goed verzoek krijgt een ATT-succes, een slecht ve
 binnen 20 seconden, 6 niemand tikte op de melding. Over QUIC staat dezelfde reden in `error` als `failed:<sleutel>`
 (`shizuku-missing`, `shizuku-stopped`, `shizuku-permission`, `shizuku-error`, `not-up`, `no-tap`), bij
 `shizuku-error` gevolgd door `:` en wat Shizuku zei. Een oudere Mac leest alleen byte 0 en ziet elke `failed...`
-als mislukt, dus dit breekt niets. De Mac zelf voegt "geen antwoord" toe als er binnen 45 seconden niets terugkomt.
+als mislukt, dus dit breekt niets. De Mac zelf voegt twee redenen toe: geen antwoord (over QUIC 45 seconden niets, over Bluetooth 20 seconden geen enkele status na het verzoek) en verzoek wel ontvangen maar niets gedaan (over Bluetooth alleen de "uit" van daarvoor). Een tweede weigering vlak na de eerste wordt ook weer gestuurd.
 
 **Volgorde op de Mac.** Verbinden, services en characteristics ontdekken, notificaties op
 state aanzetten, challenge lezen, ondertekenen met `sign_message`, request schrijven, dan

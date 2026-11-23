@@ -49,6 +49,8 @@ enum HotspotFailReason: UInt8 {
     case noTap = 6
     /// Not from the phone: it did not answer at all.
     case noAnswer = 200
+    /// Not from the phone: it took the request over Bluetooth and did nothing with it.
+    case noStart = 201
 
     init?(key: String) {
         switch key {
@@ -83,6 +85,8 @@ enum HotspotFailReason: UInt8 {
             String(localized: "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself.")
         case .noAnswer:
             String(localized: "Your phone did not answer. Open Tandem on your phone and try again.")
+        case .noStart:
+            String(localized: "Your phone got the request but did not start its hotspot within 20 seconds. Open Tandem on your phone and try again.")
         }
     }
 }
@@ -394,7 +398,7 @@ final class HotspotCoordinator {
                 await joinAndConnect(id: id, name: name, engine: engine)
             case .manual:
                 model.hotspotStatus = .failed(HotspotFailReason.noTap.text())
-            case .failed, .starting:
+            case .failed, .starting, .off:
                 // What the phone said went wrong, where it said it; an older phone says nothing more than that it failed.
                 model.hotspotStatus = .failed(why?.text(detail: detail) ?? Self.reason(for: answer))
                 heldOffUntil = Date().addingTimeInterval(Self.holdOff)

@@ -34,6 +34,11 @@ data class HotspotSnapshot(
     val error: String? = null,
     /** Why it failed, for the computer that asked. */
     val reason: FailReason? = null,
+    /**
+     * Counts each "no", so the same no a second time is a new state: the flow keeps an equal value to itself, and the computer
+     * that asked again would hear nothing and think the phone did not answer.
+     */
+    val answer: Int = 0,
 ) {
     val on: Boolean get() = phase == Phase.On
 
@@ -86,6 +91,7 @@ class HotspotController(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val _snapshot = MutableStateFlow(HotspotSnapshot())
+    private var answers = 0
     val snapshot: StateFlow<HotspotSnapshot> = _snapshot.asStateFlow()
 
     private val jobLock = Any()
@@ -311,13 +317,13 @@ class HotspotController(
 
     private fun refuse(refusal: Refusal) {
         Log.i(TAG, "refused: $refusal")
-        publish(HotspotSnapshot(Phase.Refused, refusal = refusal))
+        publish(HotspotSnapshot(Phase.Refused, refusal = refusal, answer = ++answers))
         settleLater()
     }
 
     private fun fail(reason: FailReason, detail: String) {
         Log.w(TAG, "failed: $reason, $detail")
-        publish(HotspotSnapshot(Phase.Failed, error = detail, reason = reason))
+        publish(HotspotSnapshot(Phase.Failed, error = detail, reason = reason, answer = ++answers))
         settleLater()
     }
 

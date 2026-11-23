@@ -1746,3 +1746,4 @@
 "Your phone could not turn on its hotspot by itself: Shizuku gave an error. Tandem on your phone shows it under Hotspot." = "Je telefoon kon de hotspot niet zelf aanzetten: Shizuku gaf een fout. Tandem op je telefoon toont die onder Hotspot.";
 "Your phone tried to turn on its hotspot, but it did not come on within 20 seconds. Turn it on once by hand on your phone and try again." = "Je telefoon probeerde de hotspot aan te zetten, maar hij ging niet binnen 20 seconden aan. Zet hem een keer met de hand aan op je telefoon en probeer het opnieuw.";
 "Your phone did not answer. Open Tandem on your phone and try again." = "Je telefoon gaf geen antwoord. Open Tandem op je telefoon en probeer het opnieuw.";
+"Your phone got the request but did not start its hotspot within 20 seconds. Open Tandem on your phone and try again." = "Je telefoon kreeg het verzoek, maar zette de hotspot niet binnen 20 seconden aan. Open Tandem op je telefoon en probeer het opnieuw.";
