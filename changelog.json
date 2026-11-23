@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.34",
+    "date": "2026-11-23",
+    "en": {
+      "title": "The hotspot says why it did not work",
+      "new": [],
+      "fixed": [
+        "When your phone cannot turn on its hotspot, the Mac says why and what to do: Shizuku missing, stopped or not allowed, an error from Shizuku, a hotspot that did not come up, or a notification nobody tapped"
+      ]
+    },
+    "nl": {
+      "title": "De hotspot zegt waarom het niet lukte",
+      "new": [],
+      "fixed": [
+        "Als je telefoon zijn hotspot niet aan kan zetten, zegt de Mac waarom en wat je kunt doen: Shizuku ontbreekt, staat uit of mag niet, een fout van Shizuku, een hotspot die niet aan kwam, of een melding waar niemand op tikte"
+      ]
+    }
+  },
+  {
     "version": "0.3.33",
     "date": "2026-11-21",
     "en": {

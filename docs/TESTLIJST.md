@@ -698,7 +698,7 @@ Wat veranderde: Android gebruikt de gedeelde module `android/markupdate` (ongewi
 - [ ] **Android, onderbalk**: de balk onderaan en de inhoud schuiven mee als de kaart komt en gaat.
 - [ ] **Android, Instellingen > Updates**: controleren, automatisch controleren aan en uit, en de samenvatting kloppen nog.
 
-## Hotspot zegt waarom het niet lukt, 2026-11-23
+## 0.3.34, 2026-11-23 (hotspot zegt waarom het niet lukt)
 
 Wat veranderd is:
 - Lukt het automatisch aanzetten van de hotspot niet, dan zegt de Mac nu waarom, zoals de telefoon het weet: Shizuku draait niet (na een herstart van de telefoon), Shizuku niet geinstalleerd of geen toestemming, een fout van Shizuku met de tekst erbij, de hotspot kwam niet aan binnen 20 seconden, niemand tikte op de melding, of de telefoon gaf helemaal geen antwoord.
