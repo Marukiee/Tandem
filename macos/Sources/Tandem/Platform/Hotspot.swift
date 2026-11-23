@@ -121,6 +121,10 @@ final class HotspotCoordinator {
     /// turned its hotspot on for nothing (seen 2026-10-29, after a restart at home).
     private var settlingSince = Date()
     private var wakeObserver: NSObjectProtocol?
+    private var sleepObservers: [NSObjectProtocol] = []
+    /// Set from the moment the screens go dark until they light up again. A Mac with its lid closed wakes for a few seconds now and then
+    /// (Power Nap) without lighting them, and without a wake notice for apps.
+    private var screensAsleep = false
     /// Looks in a row that found a known network nearby, so a network macOS will not join does not keep the hotspot away for good.
     private var waitedForKnown = 0
     /// The hotspot went away while this Mac used it: most often the person turned it off on the phone, because a network of its own is
@@ -150,9 +154,40 @@ final class HotspotCoordinator {
 
     func attach(model: EngineModel) {
         self.model = model
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { _ in
-            Task { @MainActor [weak self] in self?.settlingSince = Date() }
+        let center = NSWorkspace.shared.notificationCenter
+        wakeObserver = center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.settlingSince = Date()
+                self?.screensAsleep = false
+                self?.lookAgainAfterWake()
+            }
         }
+        // Going to sleep: what was being asked cannot finish (Bluetooth goes off with the Mac), and waking up to its failure, or to
+        // "Asking your phone" from before, said something that was not so (2026-11-23). It is asked again after the wake, if still needed.
+        sleepObservers.append(center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.screensAsleep = true
+                self.offlineTask?.cancel()
+                // Only a request to turn it on: a stop or a leave on its way to the phone may still get there.
+                guard let model = self.model, model.hotspotStatus.isBusy else { return }
+                self.runTask?.cancel()
+                self.runTask = nil
+                model.hotspotStatus = .idle
+            }
+        })
+        sleepObservers.append(center.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.screensAsleep = true
+                self?.offlineTask?.cancel()
+            }
+        })
+        sleepObservers.append(center.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.screensAsleep = false
+                self?.lookAgainAfterWake()
+            }
+        })
         // A wired connection is a reason to let the hotspot go. The model's own network
         // watcher only says online or not, so this looks at the path itself.
         pathMonitor.pathUpdateHandler = { [weak self] path in
@@ -276,8 +311,10 @@ final class HotspotCoordinator {
             guard !Task.isCancelled, let self, let model = self.model, !model.isOnline, Date() >= self.heldOffUntil else { return }
             let hotspots = HotspotProfiles.shared.allNames
             // Nobody at this Mac: a closed lid that wakes in the dark for a moment (Power Nap) has no network and needs none. Asking then
-            // turned the hotspot on at home, in a bag (2026-11-02).
-            guard Self.someoneUsedThisMac() else { return }
+            // turned the hotspot on at home, in a bag (2026-11-02). The time since the last key alone does not tell: it stands still
+            // while the Mac sleeps, so 12 and 16 minutes after the lid closed it still read as just now, and the phone was asked in the
+            // dark, cut off a few seconds later by the Mac falling asleep again (2026-11-23). The screen is what does tell.
+            guard self.someoneAtThisMac else { return }
             // Still on a Wi-Fi of its own (home, school): that network is out for a moment, or asks for a login. The hotspot is no help.
             if await Task.detached(operation: { Self.onOtherWiFi(than: hotspots) }).value { return }
             if self.waitedForKnown < Self.knownTries, await Task.detached(operation: { Self.joinKnownNearby(except: hotspots) }).value {
@@ -292,7 +329,19 @@ final class HotspotCoordinator {
         }
     }
 
-    /// A key or the pointer was used in the last few minutes.
+    /// The screen is lit and a key or the pointer was used in the last few minutes: only then is the phone asked by itself.
+    private var someoneAtThisMac: Bool {
+        !screensAsleep && CGDisplayIsAsleep(CGMainDisplayID()) == 0 && Self.someoneUsedThisMac()
+    }
+
+    /// The screen lit up again (the lid opened, a key woke it): a Mac that is still without a network is looked at once more, since
+    /// nothing changed on the network side to call for it. Right after a wake it first waits for macOS to join a network it knows.
+    private func lookAgainAfterWake() {
+        guard let model, !model.isOnline else { return }
+        networkChanged(online: false)
+    }
+
+    /// A key or the pointer was used in the last few minutes of the time this Mac was awake.
     nonisolated static func someoneUsedThisMac() -> Bool {
         guard let any = CGEventType(rawValue: ~0) else { return true }
         return CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: any) < 5 * 60
@@ -590,7 +639,7 @@ final class HotspotCoordinator {
             let name = model?.device(id)?.name ?? String(localized: "your phone")
             FloatingToast.show(String(localized: "Hotspot of \(name) saved"), symbol: "personalhotspot")
             // This Mac has no connection and the hotspot was just made joinable: do what it was waiting for.
-            if let model, autoEnabled, !model.isOnline, !model.hotspotStatus.isBusy { requestNow(id, byPerson: false) }
+            if let model, autoEnabled, !model.isOnline, !model.hotspotStatus.isBusy, someoneAtThisMac { requestNow(id, byPerson: false) }
             return true
         case let .refuse(ssid, why) where ssid == asked:
             profiles.stopAsking(id, refusal: Self.refusalText(why))
