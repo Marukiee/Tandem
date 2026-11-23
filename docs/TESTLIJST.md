@@ -715,3 +715,9 @@ Zelf testen:
 - [ ] **Updatekaart op Android.** Tijdens een echte update (of Instellingen, Ontwikkelaar, Updatebanner): de balk is een volle blauwe vulling op een lichte
   baan, en het percentage staat in de vulling tegen de rand aan (wit), of net achter de rand op de baan (donker) zolang de vulling nog smal is. Het
   percentage wordt nooit doormidden gesneden. Bij Installeren is de hele balk vol blauw met het lichtje erover.
+
+## 0.3.36, 2026-11-23 (bijwerken vanuit Instellingen, Android)
+
+- [ ] **Instellingen, Updates en back-up.** Is er een nieuwere versie, dan staat er onder Nu controleren een brede balk "Bijwerken naar versie X". Een tik maakt er
+  dezelfde voortgangsbalk van als op de updatekaart (percentage aan de rand van de vulling), daarna Installeren met de glans. De kaart bovenaan loopt mee.
+  Is er geen nieuwe versie, dan staat er niets en zijn de twee groepen gewoon rijen onder elkaar. De losse regel "Versie X is beschikbaar" onder Nu controleren is weg.

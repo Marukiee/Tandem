@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.36",
+    "date": "2026-11-23",
+    "en": {
+      "title": "Update from Settings too",
+      "new": [
+        "On Android you can update from Settings, Updates and backup too: the same bar as on the update card appears under Check now when a new version is out"
+      ],
+      "fixed": []
+    },
+    "nl": {
+      "title": "Ook bijwerken vanuit Instellingen",
+      "new": [
+        "Op Android kun je ook bijwerken vanuit Instellingen, Updates en back-up: dezelfde balk als op de updatekaart staat onder Nu controleren als er een nieuwe versie is"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "0.3.35",
     "date": "2026-11-23",
     "en": {

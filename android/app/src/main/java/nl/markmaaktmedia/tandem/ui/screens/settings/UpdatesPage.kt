@@ -10,7 +10,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
@@ -83,29 +86,31 @@ internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.u
     SettingsPageFrame(stringResource(R.string.settings_cat_updates), onBack) {
         SectionHeader(stringResource(R.string.settings_updates))
         SettingsGroup {
-            SettingsTarget(FocusKeys.Version, 0, 4) {
-                InfoRow(0, 4, TandemIcons.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
+            SettingsTarget(FocusKeys.Version, 0, 3) {
+                InfoRow(0, 3, TandemIcons.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
             }
-            SettingsTarget(FocusKeys.AutoUpdate, 1, 4) {
-                SwitchRow(1, 4, TandemIcons.Update, stringResource(R.string.settings_auto_update), stringResource(R.string.settings_auto_update_sub), autoUpdate, { updater.setAutoCheck(it) })
+            SettingsTarget(FocusKeys.AutoUpdate, 1, 3) {
+                SwitchRow(1, 3, TandemIcons.Update, stringResource(R.string.settings_auto_update), stringResource(R.string.settings_auto_update_sub), autoUpdate, { updater.setAutoCheck(it) })
             }
             ActionRow(
-                2, 4, TandemIcons.Refresh, stringResource(R.string.settings_check_update),
+                2, 3, TandemIcons.Refresh, stringResource(R.string.settings_check_update),
                 when (val state = updateState) {
                     is UpdateState.Checking -> stringResource(R.string.settings_checking)
                     is UpdateState.UpToDate -> stringResource(R.string.settings_up_to_date)
-                    is UpdateState.Available -> stringResource(R.string.update_available, state.release.versionName)
                     is UpdateState.Failed -> state.reason
-                    is UpdateState.Downloading -> stringResource(R.string.update_downloading, (state.progress * 100).toInt())
                     is UpdateState.NeedsPermission -> stringResource(R.string.update_needs_permission)
                     else -> null
                 },
                 { scope.launch { updater.check() } },
-                modifier = Modifier.settingsTarget(FocusKeys.CheckUpdate, 2, 4),
+                modifier = Modifier.settingsTarget(FocusKeys.CheckUpdate, 2, 3),
             )
+        }
+        // The bar of the update card, here as well: only there when a newer version is out, and it does what Update does on the card.
+        nl.markmaaktmedia.markupdate.ui.UpdateBar(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        SettingsGroup {
             // What is new in each version lives with the update, not under About.
             ActionRow(
-                3, 4, TandemIcons.Update, stringResource(R.string.changelog_title), stringResource(R.string.changelog_sub),
+                0, 1, TandemIcons.Update, stringResource(R.string.changelog_title), stringResource(R.string.changelog_sub),
                 { onOpen(nl.markmaaktmedia.tandem.ui.Route.Changelog) },
                 modifier = Modifier.routeBounds(nl.markmaaktmedia.tandem.ui.routeKey(nl.markmaaktmedia.tandem.ui.Route.Changelog)),
             )
