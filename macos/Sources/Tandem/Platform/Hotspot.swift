@@ -38,6 +38,59 @@ enum HotspotStatus: Equatable {
     }
 }
 
+/// Why the phone could not turn its hotspot on, as it says it: the third byte of its state over Bluetooth, or the key after
+/// "failed:" over the normal connection. Keep in step with docs/HOTSPOT.md and FailReason in HotspotProtocol.kt.
+enum HotspotFailReason: UInt8 {
+    case shizukuMissing = 1
+    case shizukuStopped = 2
+    case shizukuPermission = 3
+    case shizukuError = 4
+    case notUp = 5
+    case noTap = 6
+    /// Not from the phone: it did not answer at all.
+    case noAnswer = 200
+    /// Not from the phone: it took the request over Bluetooth and did nothing with it.
+    case noStart = 201
+
+    init?(key: String) {
+        switch key {
+        case "shizuku-missing": self = .shizukuMissing
+        case "shizuku-stopped": self = .shizukuStopped
+        case "shizuku-permission": self = .shizukuPermission
+        case "shizuku-error": self = .shizukuError
+        case "not-up": self = .notUp
+        case "no-tap": self = .noTap
+        default: return nil
+        }
+    }
+
+    /// What went wrong and what to do about it, in a sentence.
+    func text(detail: String? = nil) -> String {
+        switch self {
+        case .shizukuMissing:
+            String(localized: "Your phone could not turn on its hotspot by itself: Shizuku is not installed. Tap the notification on your phone next time, or install Shizuku.")
+        case .shizukuStopped:
+            String(localized: "Your phone could not turn on its hotspot by itself: Shizuku is not running. It stops when the phone restarts. Start it again in the Shizuku app.")
+        case .shizukuPermission:
+            String(localized: "Your phone could not turn on its hotspot by itself: Tandem is not allowed in Shizuku. Allow it in the Shizuku app.")
+        case .shizukuError:
+            if let detail, !detail.isEmpty {
+                String(localized: "Your phone could not turn on its hotspot by itself. Shizuku said: \(detail)")
+            } else {
+                String(localized: "Your phone could not turn on its hotspot by itself: Shizuku gave an error. Tandem on your phone shows it under Hotspot.")
+            }
+        case .notUp:
+            String(localized: "Your phone tried to turn on its hotspot, but it did not come on within 20 seconds. Turn it on once by hand on your phone and try again.")
+        case .noTap:
+            String(localized: "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself.")
+        case .noAnswer:
+            String(localized: "Your phone did not answer. Open Tandem on your phone and try again.")
+        case .noStart:
+            String(localized: "Your phone got the request but did not start its hotspot within 20 seconds. Open Tandem on your phone and try again.")
+        }
+    }
+}
+
 /// Turns the phone's hotspot on when the Mac has no connection, and reports it.
 ///
 /// When the Mac is offline it cannot reach the phone over the network, so the
@@ -55,6 +108,9 @@ final class HotspotCoordinator {
     private var hotspotGateway: String?
     /// The last answer that came over the normal connection, for the QUIC route.
     private var quicAnswer: HotspotBleState?
+    /// Why it failed, with that answer, and what Shizuku said for an error of its own.
+    private var quicReason: HotspotFailReason?
+    private var quicDetail: String?
     /// Set when the person lets the hotspot go, so the Mac still sitting on it for a few
     /// seconds is not taken for a new connection.
     private var ignoreNetworkUntil = Date.distantPast
@@ -311,6 +367,8 @@ final class HotspotCoordinator {
         runTask?.cancel()
         activeDevice = id
         quicAnswer = nil
+        quicReason = nil
+        quicDetail = nil
         model.hotspotStatus = .asking
         runTask = Task { [weak self] in
             await self?.run(id: id, engine: engine, byPerson: byPerson, extra: extra)
@@ -322,18 +380,28 @@ final class HotspotCoordinator {
         let name = model.device(id)?.name ?? "Phone"
         do {
             let answer: HotspotBleState
+            let why: HotspotFailReason?
+            var detail: String?
             if model.device(id)?.online == true {
                 answer = try await askOverNetwork(id: id, engine: engine, reason: extra ? "extra" : byPerson ? "asked" : "mac-offline")
+                why = quicReason
+                detail = quicDetail
             } else {
                 answer = try await ble.run(action: extra ? BleHotspotClient.actionOnExtra : byPerson ? BleHotspotClient.actionOnAsked : BleHotspotClient.actionOn, phoneId: id, engine: engine) { [weak self] state in
                     Task { @MainActor in self?.showProgress(state) }
                 }
+                // Still starting when the time was up: it did not come on, whatever the phone thinks.
+                why = answer == .starting ? .notUp : ble.reason
             }
             switch answer {
             case .on:
                 await joinAndConnect(id: id, name: name, engine: engine)
             case .manual:
-                model.hotspotStatus = .failed(String(localized: "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself."))
+                model.hotspotStatus = .failed(HotspotFailReason.noTap.text())
+            case .failed, .starting, .off:
+                // What the phone said went wrong, where it said it; an older phone says nothing more than that it failed.
+                model.hotspotStatus = .failed(why?.text(detail: detail) ?? Self.reason(for: answer))
+                heldOffUntil = Date().addingTimeInterval(Self.holdOff)
             default:
                 model.hotspotStatus = answer == .refusedLimit ? .limitReached : .failed(Self.reason(for: answer))
                 // The phone said no (turned off by hand a moment ago, battery, data limit): asking again in a few seconds is the same no.
@@ -375,6 +443,8 @@ final class HotspotCoordinator {
             try await Task.sleep(for: .milliseconds(500))
             waited += 0.5
         }
+        // Not a word back in all that time: that is what to say, not that the phone could not do it.
+        if quicReason == nil { quicReason = .noAnswer }
         return .failed
     }
 
@@ -625,7 +695,12 @@ final class HotspotCoordinator {
                 case "roaming": quicAnswer = .refusedRoaming
                 case "limit": quicAnswer = .refusedLimit
                 case "disabled": quicAnswer = .disabled
-                case .some: quicAnswer = .failed
+                case let .some(code):
+                    // "failed:<reason>", and for an error of Shizuku's own what it said after one more colon.
+                    let parts = code.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+                    quicReason = parts.count > 1 ? HotspotFailReason(key: parts[1]) : nil
+                    quicDetail = parts.count > 2 ? parts[2] : nil
+                    quicAnswer = .failed
                 case .none:
                     // The phone turned it off: ours to follow, once we were using it, and not to ask for again right away.
                     if case .connected = model?.hotspotStatus {

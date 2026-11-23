@@ -1739,3 +1739,11 @@
 "Left or right is chosen on its page. Checking by itself and the sound count for every device." = "Links of rechts kies je op de pagina van het apparaat. Vanzelf controleren en het geluid gelden voor elk apparaat.";
 "Its mouse and keyboard cross over on the side chosen on its page." = "De muis en het toetsenbord steken over aan de kant die op de pagina is gekozen.";
 "%@ of %@ MB" = "%1$@ van %2$@ MB";
+"Your phone could not turn on its hotspot by itself: Shizuku is not installed. Tap the notification on your phone next time, or install Shizuku." = "Je telefoon kon de hotspot niet zelf aanzetten: Shizuku is niet geïnstalleerd. Tik de volgende keer op de melding op je telefoon, of installeer Shizuku.";
+"Your phone could not turn on its hotspot by itself: Shizuku is not running. It stops when the phone restarts. Start it again in the Shizuku app." = "Je telefoon kon de hotspot niet zelf aanzetten: Shizuku draait niet. Het stopt als de telefoon opnieuw opstart. Start het weer in de Shizuku-app.";
+"Your phone could not turn on its hotspot by itself: Tandem is not allowed in Shizuku. Allow it in the Shizuku app." = "Je telefoon kon de hotspot niet zelf aanzetten: Tandem heeft geen toestemming in Shizuku. Geef die in de Shizuku-app.";
+"Your phone could not turn on its hotspot by itself. Shizuku said: %@" = "Je telefoon kon de hotspot niet zelf aanzetten. Shizuku zei: %@";
+"Your phone could not turn on its hotspot by itself: Shizuku gave an error. Tandem on your phone shows it under Hotspot." = "Je telefoon kon de hotspot niet zelf aanzetten: Shizuku gaf een fout. Tandem op je telefoon toont die onder Hotspot.";
+"Your phone tried to turn on its hotspot, but it did not come on within 20 seconds. Turn it on once by hand on your phone and try again." = "Je telefoon probeerde de hotspot aan te zetten, maar hij ging niet binnen 20 seconden aan. Zet hem een keer met de hand aan op je telefoon en probeer het opnieuw.";
+"Your phone did not answer. Open Tandem on your phone and try again." = "Je telefoon gaf geen antwoord. Open Tandem op je telefoon en probeer het opnieuw.";
+"Your phone got the request but did not start its hotspot within 20 seconds. Open Tandem on your phone and try again." = "Je telefoon kreeg het verzoek, maar zette de hotspot niet binnen 20 seconden aan. Open Tandem op je telefoon en probeer het opnieuw.";

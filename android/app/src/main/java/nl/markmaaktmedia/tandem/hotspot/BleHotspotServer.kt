@@ -42,6 +42,7 @@ class BleHotspotServer(
     private val challenges: ChallengeStore,
     private val myId: () -> String,
     private val currentState: () -> Pair<BleState, Int?>,
+    private val currentReason: () -> FailReason? = { null },
     /** Called for a request that passed the signature check. */
     private val onRequest: (action: Int, deviceId: String) -> Unit,
     /** Clipboard and notifications over Bluetooth, when there is no network. */
@@ -163,8 +164,8 @@ class BleHotspotServer(
     }
 
     /** Pushes the state to every Mac that is listening. */
-    fun publish(state: BleState, clients: Int?) {
-        val bytes = StateCodec.encode(state, clients)
+    fun publish(state: BleState, clients: Int?, reason: FailReason? = null) {
+        val bytes = StateCodec.encode(state, clients, reason)
         synchronized(lock) {
             if (!running) return
             for (peer in peers.values) if (peer.subscribed) enqueueStateLocked(peer, bytes)
@@ -248,7 +249,7 @@ class BleHotspotServer(
                 // A fresh challenge per read. A continued read (offset above zero) never
                 // happens for 16 bytes and must not mint another one.
                 HotspotProtocol.CHALLENGE -> if (offset == 0) challenges.issue(device.address) else null
-                HotspotProtocol.STATE -> currentState().let { StateCodec.encode(it.first, it.second) }
+                HotspotProtocol.STATE -> currentState().let { StateCodec.encode(it.first, it.second, currentReason()) }
                 else -> null
             }
             if (value == null || offset > value.size) {
@@ -355,7 +356,7 @@ class BleHotspotServer(
                 // Also tell this Mac where things stand right now: if nothing changes
                 // (the hotspot was already on) no other state would ever be sent.
                 val (state, clients) = currentState()
-                synchronized(lock) { peers[device.address]?.let { enqueueStateLocked(it, StateCodec.encode(state, clients)) } }
+                synchronized(lock) { peers[device.address]?.let { enqueueStateLocked(it, StateCodec.encode(state, clients, currentReason())) } }
             }
             AuthResult.Blocked -> {
                 if (responseNeeded) reply(device, requestId, HotspotProtocol.ATT_REFUSED, 0, null)

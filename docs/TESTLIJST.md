@@ -697,3 +697,15 @@ Wat veranderde: Android gebruikt de gedeelde module `android/markupdate` (ongewi
 - [ ] **Android, echte update**: bij een nieuwere release verschijnt de kaart bovenaan met wat er nieuw is. Update toont de voortgang en daarna "Installing", de app sluit kort en start bijgewerkt. Later verbergt de kaart voor die versie.
 - [ ] **Android, onderbalk**: de balk onderaan en de inhoud schuiven mee als de kaart komt en gaat.
 - [ ] **Android, Instellingen > Updates**: controleren, automatisch controleren aan en uit, en de samenvatting kloppen nog.
+
+## Hotspot zegt waarom het niet lukt, 2026-11-23
+
+Wat veranderd is:
+- Lukt het automatisch aanzetten van de hotspot niet, dan zegt de Mac nu waarom, zoals de telefoon het weet: Shizuku draait niet (na een herstart van de telefoon), Shizuku niet geinstalleerd of geen toestemming, een fout van Shizuku met de tekst erbij, de hotspot kwam niet aan binnen 20 seconden, niemand tikte op de melding, of de telefoon gaf helemaal geen antwoord.
+- Niemand tikte op de melding: de Mac hoort dat nu meteen van de telefoon in plaats van na ruim drie minuten wachten.
+- Over Bluetooth (de Mac zonder netwerk): krijgt de telefoon het verzoek en gebeurt er daarna niets, dan zegt de Mac dat nu, in plaats van de algemene tekst over Shizuku.
+
+Zelf testen:
+- [ ] Oppo herstarten zonder Shizuku weer te starten, dan op de Mac de hotspot vragen: zegt hij dat Shizuku niet draait?
+- [ ] Met Shizuku aan: gaat de hotspot nog gewoon vanzelf aan?
+- [ ] Wifi op de Mac uit (dan gaat het via Bluetooth): zegt hij ook dan waarom het niet lukt?

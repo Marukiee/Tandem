@@ -187,7 +187,7 @@ class HotspotModule private constructor(private val context: Context) {
     }
 
     private fun publish(snapshot: HotspotSnapshot) {
-        server?.publish(snapshot.bleState(), snapshot.clients)
+        server?.publish(snapshot.bleState(), snapshot.clients, snapshot.reason)
         // "Starting" is not news for a Mac that is watching, and the first "off" is
         // just the state before anyone asked.
         if (snapshot.phase == Phase.Starting) return
@@ -213,7 +213,11 @@ class HotspotModule private constructor(private val context: Context) {
             error = when (snapshot.phase) {
                 Phase.NeedsTap -> "manual"
                 Phase.Refused -> snapshot.refusal?.let(HotspotPolicy::errorCode) ?: "failed"
-                Phase.Failed -> "failed"
+                // "failed:" and the reason, with what Shizuku said for its own error: a Mac that does not know the reason still reads a failure.
+                Phase.Failed -> snapshot.reason?.let { reason ->
+                    val detail = snapshot.error?.takeIf { reason == FailReason.ShizukuError }?.take(MAX_DETAIL)
+                    "failed:${reason.key}" + (detail?.let { ":$it" } ?: "")
+                } ?: "failed"
                 else -> null
             },
         )
@@ -310,6 +314,7 @@ class HotspotModule private constructor(private val context: Context) {
                 challenges = challenges,
                 myId = { graph.host.myId },
                 currentState = { controller.snapshot.value.let { it.bleState() to it.clients } },
+                currentReason = { controller.snapshot.value.reason },
                 onRequest = { action, _ ->
                     when (action) {
                         HotspotProtocol.ACTION_LEAVE -> controller.leave()
@@ -332,6 +337,10 @@ class HotspotModule private constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "HotspotModule"
+
+        /** What Shizuku said, cut short: a message to read, not a log. */
+        private const val MAX_DETAIL = 120
+
         private const val TICK_MS = 20_000L
 
         @Volatile
