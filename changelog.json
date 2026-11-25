@@ -1,21 +1,43 @@
 [
   {
-    "version": "0.3.39",
+    "version": "0.3.40",
     "date": "2026-11-25",
     "en": {
-      "title": "No hotspot button for a phone that does not share it",
+      "title": "Calmer sidebar",
       "new": [],
       "fixed": [
-        "A phone that does not share its hotspot (switched off there, or no SIM card) no longer shows a hotspot button and is not asked",
-        "A hotspot error goes away by itself after two minutes, or as soon as the Mac is online"
+        "Devices keep their order",
+        "The selection no longer glides",
+        "Update card without icon, slides in smoothly"
       ]
     },
     "nl": {
-      "title": "Geen hotspotknop bij een telefoon die hem niet deelt",
+      "title": "Rustigere zijbalk",
       "new": [],
       "fixed": [
-        "Een telefoon die zijn hotspot niet deelt (daar uitgezet, of geen simkaart) heeft geen hotspotknop meer en wordt niet gevraagd",
-        "Een hotspotfout verdwijnt vanzelf na twee minuten, of zodra de Mac online is"
+        "Apparaten houden hun volgorde",
+        "De selectie glijdt niet meer",
+        "Updatekaart zonder icoon, komt soepel binnen"
+      ]
+    }
+  },
+  {
+    "version": "0.3.39",
+    "date": "2026-11-25",
+    "en": {
+      "title": "Hotspot button only when shared",
+      "new": [],
+      "fixed": [
+        "No hotspot button if the phone does not share",
+        "Hotspot errors go away by themselves"
+      ]
+    },
+    "nl": {
+      "title": "Hotspotknop alleen als hij deelt",
+      "new": [],
+      "fixed": [
+        "Geen hotspotknop als de telefoon niet deelt",
+        "Hotspotfouten verdwijnen vanzelf"
       ]
     }
   },
@@ -23,19 +45,19 @@
     "version": "0.3.38",
     "date": "2026-11-25",
     "en": {
-      "title": "Updates are seen when you open the app",
+      "title": "Updates found on opening",
       "new": [],
       "fixed": [
-        "On Android a new version is found when you open the app, not only after six hours",
-        "Updates and backup: Check now and What's new no longer touch"
+        "Android finds updates when you open it",
+        "More room between the update rows"
       ]
     },
     "nl": {
-      "title": "Updates zie je als je de app opent",
+      "title": "Updates gevonden bij openen",
       "new": [],
       "fixed": [
-        "Op Android wordt een nieuwe versie gevonden als je de app opent, niet pas na zes uur",
-        "Updates en back-up: Nu controleren en Wat is er nieuw plakken niet meer tegen elkaar"
+        "Android vindt updates als je hem opent",
+        "Meer ruimte tussen de updaterijen"
       ]
     }
   },
@@ -43,23 +65,23 @@
     "version": "0.3.37",
     "date": "2026-11-25",
     "en": {
-      "title": "The hotspot with two phones",
+      "title": "Hotspot with two phones",
       "new": [],
       "fixed": [
-        "With two phones, only the phone whose hotspot this Mac uses shows it as in use, and Stop goes to that phone",
-        "Without a connection the Mac first asks the phone whose hotspot it knows, and when a phone cannot do it, it asks the next one",
-        "A phone without a SIM card or with mobile data off says so at once instead of keeping the Mac waiting",
-        "The Mac says which phone it is asking"
+        "Hotspot button only on the phone in use",
+        "Asks the next phone when one fails",
+        "Says which phone it asks",
+        "No SIM or data: the phone says so"
       ]
     },
     "nl": {
-      "title": "De hotspot met twee telefoons",
+      "title": "Hotspot met twee telefoons",
       "new": [],
       "fixed": [
-        "Met twee telefoons staat de hotspot alleen als in gebruik bij de telefoon waarvan deze Mac hem gebruikt, en Stop gaat naar die telefoon",
-        "Zonder verbinding vraagt de Mac eerst de telefoon waarvan hij de hotspot kent, en lukt het bij een telefoon niet, dan vraagt hij de volgende",
-        "Een telefoon zonder simkaart of met mobiele data uit zegt dat meteen, in plaats van de Mac te laten wachten",
-        "De Mac zegt welke telefoon hij vraagt"
+        "Hotspotknop alleen bij de telefoon in gebruik",
+        "Vraagt de volgende telefoon als het mislukt",
+        "Zegt welke telefoon hij vraagt",
+        "Geen simkaart of data: de telefoon zegt het"
       ]
     }
   },

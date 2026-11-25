@@ -44,7 +44,22 @@ export const state = {
 
 const listeners = new Set();
 
+/**
+ * The devices in the order they had before, from one start to the next. The core puts the connected ones first, and at a start they
+ * connect one by one, so every row jumped about (2026-11-25). A new device goes at the end, a removed one leaves the order.
+ */
+function inKeptOrder(devices) {
+  let kept = [];
+  try { kept = JSON.parse(localStorage.getItem("deviceOrder") || "[]"); } catch { kept = []; }
+  const present = new Set(devices.map((d) => d.id));
+  const order = (Array.isArray(kept) ? kept : []).filter((id) => present.has(id));
+  for (const d of devices) if (!order.includes(d.id)) order.push(d.id);
+  try { localStorage.setItem("deviceOrder", JSON.stringify(order)); } catch { /* kept for this run only */ }
+  return [...devices].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+}
+
 export function set(patch) {
+  if (Array.isArray(patch.devices)) patch = { ...patch, devices: inKeptOrder(patch.devices) };
   Object.assign(state, patch);
   listeners.forEach((listener) => listener());
 }

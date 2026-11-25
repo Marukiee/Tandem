@@ -22,6 +22,19 @@ struct UpdateBanner: View {
         }
     }
 
+    /// Which card shows, as a number: the place around the card animates on it, so the room for the card opens in the same movement as
+    /// the card comes in. With the room there at once and the card flying into it afterwards the two did not go together (2026-11-25).
+    @MainActor static func stage(dismissed: String) -> Int {
+        let updater = Updater.shared
+        switch updater.state {
+        case let .available(release): return release.version != dismissed ? 1 : 0
+        case .downloading: return 2
+        case .installing: return updater.installingRelease != nil ? 3 : 0
+        case .failed: return updater.installFailed ? 4 : 0
+        default: return 0
+        }
+    }
+
     var body: some View {
         Group {
             if let current {
@@ -30,7 +43,8 @@ struct UpdateBanner: View {
                 failed(message)
             }
         }
-        .transition(.move(edge: fromBottom ? .bottom : .top).combined(with: .opacity))
+        // It grows into its room as that opens, the text and the card together, instead of sliding in over what is under it.
+        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: fromBottom ? .bottom : .top)))
         .animation(.tandemSpringy, value: updater.state)
     }
 
@@ -38,11 +52,9 @@ struct UpdateBanner: View {
 
     private func card(_ release: Updater.Release, _ phase: Phase, _ progress: Double) -> some View {
         let notes = Updater.notes(release.notes)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                tile(done: phase == .installing)
-                lines(release, phase, progress)
-            }
+        // No icon at the side: the room goes to the text (a sparkle there looked odd, 2026-11-25).
+        return VStack(alignment: .leading, spacing: 6) {
+            lines(release, phase, progress)
             if phase != .installing, !notes.isEmpty {
                 VStack(alignment: .leading, spacing: 1) {
                     ForEach(notes, id: \.self) { note in
@@ -51,7 +63,6 @@ struct UpdateBanner: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .padding(.leading, 50)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
             actions(release, phase, progress)
@@ -87,20 +98,6 @@ struct UpdateBanner: View {
         .transition(.opacity)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 38)
-    }
-
-    /// A sparkle for "new", and once it installs a round green tick.
-    private func tile(done: Bool) -> some View {
-        let green = Color(hex: 0x34C759)
-        return ZStack {
-            Image(systemName: "sparkles").opacity(done ? 0 : 1).scaleEffect(done ? 0.3 : 1).rotationEffect(.degrees(done ? -30 : 0))
-            Image(systemName: "checkmark").opacity(done ? 1 : 0).scaleEffect(done ? 1 : 0.3)
-        }
-        .font(.system(size: 17, weight: .semibold))
-        .foregroundStyle(done ? green : Palette.indigo)
-        .frame(width: 40, height: 40)
-        .background((done ? green : Palette.indigo).opacity(0.16), in: .rect(cornerRadius: done ? 20 : 13, style: .continuous))
-        .animation(.tandem, value: done)
     }
 
     // MARK: Buttons and bar

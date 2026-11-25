@@ -311,7 +311,22 @@ class EngineHost(
     }
 
     fun refreshDevices() {
-        engine?.let { _devices.value = it.devices() + listOfNotNull(demoDevice) }
+        engine?.let { _devices.value = inKeptOrder(it.devices()) + listOfNotNull(demoDevice) }
+    }
+
+    /**
+     * The devices in the order they had before, from one start to the next. The core puts the connected ones first, and at a start
+     * they connect one by one, so every row jumped about (2026-11-25). A new device goes at the end, a removed one leaves the order.
+     */
+    private fun inKeptOrder(devices: List<TandemDevice>): List<TandemDevice> {
+        val store = context.getSharedPreferences("device_order", Context.MODE_PRIVATE)
+        val kept = store.getString("order", "").orEmpty().split(',').filter { it.isNotEmpty() }
+        val present = devices.map { it.id }.toSet()
+        val order = kept.filter { it in present }.toMutableList()
+        devices.forEach { if (it.id !in order) order += it.id }
+        if (order != kept) store.edit().putString("order", order.joinToString(",")).apply()
+        val rank = order.withIndex().associate { it.value to it.index }
+        return devices.sortedBy { rank[it.id] ?: Int.MAX_VALUE }
     }
 
     /** A made-up computer to look at its page without pairing one. Only in builds for testing; gone when the app restarts. */

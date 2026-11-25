@@ -472,11 +472,24 @@ final class EngineModel {
         healthInsights = engine?.healthInsights(utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60))
     }
 
+    private static let deviceOrderKey = "deviceOrder"
+
+    /// The devices in the order they had before, from one start to the next. The core puts the connected ones first, and at a start they
+    /// connect one by one, so every row jumped about (2026-11-25). A new device goes at the end, a removed one leaves the order.
+    static func inKeptOrder(_ devices: [TandemDevice]) -> [TandemDevice] {
+        let defaults = UserDefaults.standard
+        let kept = defaults.stringArray(forKey: deviceOrderKey) ?? []
+        let order = DeviceOrder.merge(kept: kept, current: devices.map(\.id))
+        if order != kept { defaults.set(order, forKey: deviceOrderKey) }
+        let rank = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
+        return devices.sorted { (rank[$0.id] ?? .max) < (rank[$1.id] ?? .max) }
+    }
+
     func refreshDevices() {
         guard let engine else { return }
         let refusing = Set(devices.filter { $0.online && !Self.takesPointer($0) }.map(\.id))
         // Every open or hidden view that shows a device is redone when this is set, also when nothing changed.
-        let fresh = engine.devices()
+        let fresh = Self.inKeptOrder(engine.devices())
         if fresh != devices { devices = fresh }
         // What was filled in for the hotspot before there was one for each phone goes to the first phone, as soon as there is one.
         if let first = fresh.first(where: { $0.platform == .android }) { HotspotProfiles.shared.adoptLegacy(by: first.id) }

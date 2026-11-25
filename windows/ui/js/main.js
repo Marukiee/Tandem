@@ -58,9 +58,7 @@ function UpdateBanner() {
     const mb = (n) => (n / 1e6).toFixed(1);
     const version = u.version || offered.version;
     return html`<div class=${"update card-new" + (phase === 2 ? " installing" : "")}>
-      <div class="update-head"><span class=${"update-tile" + (phase === 2 ? " ok" : "")}>
-          <span class=${"ic" + (phase === 2 ? " out" : "")}><${Icon} name="sparkles" size=${22} /></span>
-          <span class=${"ic" + (phase === 2 ? "" : " out")}><${Icon} name="check" size=${24} stroke=${2.4} /></span></span>
+      <div class="update-head">
         <div class="grow update-lines">
           <div class=${"ln" + at(0)}><div class="t">${t("update_new_version", version)}</div><div class="s">${t("update_you_have_now", state.version)}</div></div>
           <div class=${"ln" + at(1)}><div class="t">${t("update_new_version", version)}</div><div class="s">${offered.size ? t("update_size_of", mb(offered.size * offered.progress), mb(offered.size)) : pct + "%"}</div></div>

@@ -134,6 +134,8 @@ struct Sidebar: View {
                 }
             foot
         }
+        // The list makes room for the update card in the same movement as the card comes in.
+        .animation(.tandemSpringy, value: UpdateBanner.stage(dismissed: dismissedVersion))
         // What is laid out for the wide sidebar ends at the edge of the narrow one.
         .clipped()
     }
@@ -204,20 +206,20 @@ struct Sidebar: View {
                     ClipboardRow(folded: folded, selected: selection == .clipboard)
                 }
             }
-            // One fill for the chosen row, with the place and the size of that row. When another row is chosen it is this same fill
-            // that glides there. A fill of its own in every row is two fills for a moment: the new one is there at once while the old
-            // one is still leaving.
+            // One fill for the chosen row, with the place and the size of that row. Another row chosen: the fill is there at once and
+            // fades in quickly, the old one fades out where it was. Gliding from row to row was too much (2026-11-25).
             .background {
                 if let row = chosenRow, order.contains(row) {
                     RoundedRectangle(cornerRadius: Sidebar.rowRadius, style: .continuous)
                         .fill(Palette.indigo.opacity(0.16))
                         .matchedGeometryEffect(id: row, in: chosen, isSource: false)
+                        .id(row)
                         .transition(.opacity)
                 }
             }
             .padding(.horizontal, Sidebar.inset)
             .animation(.tandem, value: model.devices.map(\.id))
-            .animation(.tandem, value: selection)
+            .animation(.easeOut(duration: 0.12), value: selection)
         }
         .scrollContentBackground(.hidden)
         .scrollIndicators(folded ? .hidden : .automatic)

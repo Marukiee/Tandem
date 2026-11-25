@@ -779,3 +779,16 @@ Zelf testen:
 - [ ] Op de Sony "Let my Mac use my hotspot" uit (of geen simkaart): in het menu van de Mac is de hotspotknop bij de Sony weg, de pagina van de Sony heeft geen hotspotkaart.
 - [ ] Weer aan: de knop komt binnen een paar seconden terug.
 - [ ] Een hotspotfout in het menu is na twee minuten vanzelf weg.
+
+## 0.3.40, 2026-11-25 (rustigere zijbalk, updatekaart)
+
+Wat veranderd is:
+- De apparaten houden hun volgorde van start tot start. De kern zet verbonden apparaten bovenaan, dus bij het openen sprong alles om terwijl ze een voor een verbonden. Nu blijft de volgorde staan; een nieuw apparaat komt onderaan, een verwijderd apparaat gaat eruit. Mac, Android, Linux en Windows. De eerste keer staat alles op naam (bij de start is nog niets verbonden), daarna blijft het zo.
+- Mac, zijbalk: het paarse vlak glijdt niet meer van rij naar rij. Het staat meteen op de nieuwe rij en komt in 0,12 seconde op. Linux en Windows hadden geen glijdend vlak.
+- Updatekaart, Mac, Linux en Windows: geen sterretjes meer, de tekst krijgt de ruimte. Op de Mac gaat de ruimte voor de kaart open in dezelfde beweging als de kaart binnenkomt (eerst was de ruimte er meteen en vloog de kaart er daarna in). De Android-kaart komt uit de gedeelde updatemodule van al je apps en is niet aangeraakt.
+- Changelog: de regels van 0.3.37 tot en met 0.3.40 zijn kort gemaakt, zodat de kaart leest.
+
+Zelf testen:
+- [ ] Tandem op de Mac afsluiten en opnieuw openen: de apparaten in de zijbalk springen niet om.
+- [ ] In de zijbalk een ander apparaat kiezen: het paarse vlak glijdt niet, het staat er meteen.
+- [ ] Bij de volgende update: de kaart komt in een beweging binnen, zonder icoon, met korte regels.

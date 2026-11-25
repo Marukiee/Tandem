@@ -9,6 +9,7 @@ struct MenuBarPanel: View {
     @Environment(EngineModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
+    @AppStorage("updateDismissedVersion") private var dismissedUpdate = ""
 
     var body: some View {
         VStack(spacing: 10) {
@@ -39,6 +40,8 @@ struct MenuBarPanel: View {
         .animation(.tandem, value: model.hotspotNotice)
         .animation(.tandem, value: model.isTransferring)
         .animation(.tandem, value: model.remoteMedia.mapValues(\.players))
+        // The panel makes room for the update card in the same movement as the card comes in.
+        .animation(.tandemSpringy, value: UpdateBanner.stage(dismissed: dismissedUpdate))
     }
 
     /// All devices on one card: the ones that can be reached with their buttons, the hotspot in use, and the rest on a line each.
