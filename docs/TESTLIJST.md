@@ -733,3 +733,14 @@ Zelf testen:
 - [ ] Weg van bekende wifi, klep dicht, een kwartier wachten: de hotspot op de Oppo blijft uit.
 - [ ] Daarna de klep open: binnen een minuut vraagt de Mac de hotspot en komt hij online.
 - [ ] De knop om de hotspot aan te zetten werkt nog gewoon.
+
+## 0.3.37, 2026-11-25 (hotspot bij de juiste telefoon, Mac)
+
+Wat veranderd is:
+- De Mac hield een status voor de hotspot bij, niet per telefoon. Met twee telefoons lichtte de hotspotknop bij allebei op en stond er bij allebei "Stop the hotspot". Stop op de verkeerde telefoon ging naar die telefoon, terwijl de Mac op de hotspot van de andere zat.
+- Nu licht alleen de telefoon op waarvan de hotspot gebruikt wordt. De andere is grijs en zegt bij aanwijzen "Using the hotspot of ...". Op de pagina van die andere telefoon staat dat ook, met Turn on hotspot grijs.
+- De kaart in het menu staat onder de juiste telefoon en Stop daarin gaat naar die telefoon.
+
+Zelf testen:
+- [ ] Twee telefoons in de buurt, de hotspot van een ervan in gebruik: alleen die knop is gekleurd, de andere is grijs met de uitleg.
+- [ ] Stop in het menu en op de pagina van die telefoon zet de goede hotspot uit.

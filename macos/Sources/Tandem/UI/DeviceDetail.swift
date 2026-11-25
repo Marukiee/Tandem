@@ -218,12 +218,6 @@ struct DeviceDetail: View {
         model.reach(of: device).reachable ? model.visibleMedia(for: device.id).map(\.id) : []
     }
 
-    /// This Mac has joined the phone's hotspot, by itself or by hand.
-    private var usingItsHotspot: Bool {
-        if device.platform == .android, case .connected = model.hotspotStatus { return true }
-        return false
-    }
-
     // MARK: Content
 
     private var content: some View {
@@ -857,7 +851,13 @@ struct HotspotCard: View {
                     }))
                     .controlSize(.mini)
                 }
-                if model.hotspotStatus != .idle {
+                // What goes on with the hotspot shows on the page of the phone it is about, with its buttons: on another phone's page
+                // Stop went to that phone instead (2026-11-25).
+                let ours = model.hotspotStatus != .idle && (model.hotspotFor ?? device.id) == device.id
+                let inUse = { if case .connected = model.hotspotStatus { true } else { false } }()
+                // The hotspot of another phone is asked for or in use: this one waits, and says whose it is.
+                let elsewhere = !ours && (model.hotspotStatus.isBusy || inUse)
+                if ours {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     HStack(spacing: 10) {
                         if model.hotspotStatus.isBusy { PillSpinner(size: 18) }
@@ -886,7 +886,11 @@ struct HotspotCard: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Need it right now?").font(.callout).foregroundStyle(.secondary)
-                            if !device.online {
+                            if inUse, elsewhere, let other = model.hotspotFor.flatMap(model.device) {
+                                Text("Using the hotspot of \(other.name)")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            } else if !device.online {
                                 // Without a network the request goes over Bluetooth, which only works in range.
                                 Text(model.reach(of: device).reachable ? "Asked over Bluetooth, your phone is in range" : "Asked over Bluetooth, so your phone has to be near")
                                     .font(.caption)
@@ -898,6 +902,7 @@ struct HotspotCard: View {
                             if ready { model.hotspot.requestNow(device.id) } else { openSetup() }
                         }
                         .buttonStyle(.tandemGlass)
+                        .disabled(elsewhere)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)

@@ -48,7 +48,7 @@ struct MenuBarPanel: View {
         // No glass container here: the buttons in a row sit close together, and in a container glass that close blends into one
         // blob and drags the icons off centre as soon as one of them swells under the pointer.
         // The hotspot belongs to the phone it comes from: right under that phone, above its watch. Away, it has no row to sit under.
-        let hotspotFrom = model.hotspotStatus != .idle ? model.hotspotPhone?.id : nil
+        let hotspotFrom = model.hotspotStatus != .idle ? model.hotspotFor ?? model.hotspotPhone?.id : nil
         let hotspotUnder = reachable.contains { $0.id == hotspotFrom }
         return VStack(spacing: 2) {
             ForEach(reachable, id: \.id) { device in
@@ -254,7 +254,8 @@ private struct MenuHotspot: View {
             }
             .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .leading)
             .help(status.text)
-            if let phone = model.hotspotPhone {
+            // The phone this is about, not the one that would be asked next: Stop went to the other phone (2026-11-25).
+            if let phone = model.hotspotFor.flatMap(model.device) ?? model.hotspotPhone {
                 if case .connected = status {
                     Button("Stop") { model.hotspot.stop(phone.id) }
                         .buttonStyle(.tandemGlass)
@@ -413,11 +414,18 @@ private struct MenuDeviceRow: View {
                     ) { model.toggleSpeaker(for: device.id) }
                     .disabled(!device.online)
                     // Asked over Bluetooth when there is no network, so it works when it is needed most.
+                    // Only the phone the hotspot comes from lights up; another phone waits while it is in use, and says whose it is.
                     let status = model.hotspotStatus
-                    let joined = { if case .connected = status { true } else { false } }()
+                    let mine = model.hotspotFor == device.id
+                    let inUse = { if case .connected = status { true } else { false } }()
+                    let joined = inUse && mine
+                    let other = inUse && !mine ? model.hotspotFor.flatMap(model.device)?.name : nil
                     RoundIconButton(
-                        symbol: "personalhotspot", tint: joined || status.isBusy ? Palette.indigo : nil, size: 32,
-                        onHover: { hover($0, joined ? "Stop the hotspot" : "Turn on hotspot") }
+                        symbol: "personalhotspot", tint: joined || (status.isBusy && mine) ? Palette.indigo : nil, size: 32,
+                        onHover: { inside in
+                            if let other { hover(inside, "Using the hotspot of \(other)") }
+                            else { hover(inside, joined ? "Stop the hotspot" : "Turn on hotspot") }
+                        }
                     ) {
                         if joined { model.hotspot.stop(device.id) }
                         else if HotspotProfiles.shared.complete(for: device.id) { model.hotspot.requestNow(device.id) }
@@ -426,7 +434,7 @@ private struct MenuDeviceRow: View {
                             AppScenes.showMain(.device(device.id))
                         }
                     }
-                    .disabled(status.isBusy)
+                    .disabled(status.isBusy || other != nil)
                 }
             }
             .environment(\.iconButtonsFill, true)

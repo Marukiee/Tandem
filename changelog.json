@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.37",
+    "date": "2026-11-25",
+    "en": {
+      "title": "The hotspot shows on its own phone",
+      "new": [],
+      "fixed": [
+        "With two phones, only the phone whose hotspot this Mac uses shows it as in use, and Stop goes to that phone"
+      ]
+    },
+    "nl": {
+      "title": "De hotspot staat bij zijn eigen telefoon",
+      "new": [],
+      "fixed": [
+        "Met twee telefoons staat de hotspot alleen als in gebruik bij de telefoon waarvan deze Mac hem gebruikt, en Stop gaat naar die telefoon"
+      ]
+    }
+  },
+  {
     "version": "0.3.36",
     "date": "2026-11-23",
     "en": {

@@ -73,6 +73,9 @@ final class EngineModel {
     var removedFromCircle = false
     var isOnline = true
     var hotspotStatus: HotspotStatus = .idle
+    /// The phone `hotspotStatus` is about: the one asked, joined or in use. Two phones each with a hotspot both lit up as in use, and
+    /// Stop on the other one went to the wrong phone (2026-11-25).
+    var hotspotFor: String?
     /// A phone whose hotspot this Mac cannot join yet (new, renamed): the row in the panel. See `HotspotNotice`.
     var hotspotNotice: HotspotNotice?
     /// The phone whose page opens its hotspot setup when it is shown (the button of the row, the click on the notification).

@@ -104,7 +104,11 @@ final class HotspotCoordinator {
     private var offlineTask: Task<Void, Never>?
     private var runTask: Task<Void, Never>?
     private var pathTask: Task<Void, Never>?
-    private var activeDevice: String?
+    /// Kept on the model, where the panel and the pages see it: only that phone shows the hotspot as its own.
+    private var activeDevice: String? {
+        get { model?.hotspotFor }
+        set { model?.hotspotFor = newValue }
+    }
     private var hotspotGateway: String?
     /// The last answer that came over the normal connection, for the QUIC route.
     private var quicAnswer: HotspotBleState?
