@@ -754,3 +754,14 @@ Zelf testen:
 - [ ] Stop in het menu en op de pagina van die telefoon zet de goede hotspot uit.
 - [ ] Zonder wifi (trein), beide telefoons bij je: de Mac vraagt de Oppo en komt online. De Sony wordt niet eerst gevraagd.
 - [ ] Op de Sony (zonder abonnement), Tandem, Hotspot, testknop: "Geweigerd, deze telefoon heeft geen simkaart voor mobiele data" (of mobiele data staat uit).
+
+## 0.3.38, 2026-11-25 (updates vinden bij openen, Android)
+
+Wat veranderd is:
+- De schakelaar zegt "Every time you open the app", maar de app keek bij openen hooguit eens per zes uur. Een versie van tien minuten oud werd zo niet gezien. Nu hooguit eens per vijf minuten.
+- Updates en back-up: zonder nieuwe versie plakten Check now en What's new tegen elkaar. Er zit nu altijd ruimte tussen de twee groepen.
+- De Mac, Linux en Windows zeggen zelf "every few hours" en doen dat ook; daar verandert niets.
+
+Zelf testen:
+- [ ] Na de volgende release de app openen (niet Nu controleren): de updatekaart en de balk onder Check now verschijnen.
+- [ ] Updates en back-up zonder nieuwe versie: tussen Check now en What's new zit dezelfde ruimte als tussen andere groepen.

@@ -108,6 +108,9 @@ class TandemApp : Application() {
             nl.markmaaktmedia.markupdate.MarkUpdateConfig(
                 owner = "Marukiee", repo = "Tandem", apkAsset = "Tandem.apk",
                 currentVersion = BuildConfig.VERSION_NAME, appName = "Tandem", notificationIcon = R.drawable.ic_stat_tandem,
+                // The switch says every time the app opens. With the six hours of the library a release from ten minutes ago was not
+                // seen on opening (2026-11-25). Five minutes still keeps a phone that is opened often from asking each time.
+                checkIntervalMs = 5 * 60 * 1000L,
             ),
         )
         graph = Graph(this)

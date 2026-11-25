@@ -10,7 +10,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -106,7 +108,9 @@ internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.u
             )
         }
         // The bar of the update card, here as well: only there when a newer version is out, and it does what Update does on the card.
-        nl.markmaaktmedia.markupdate.ui.UpdateBar(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        // The room between the two groups is always there: the padding of the bar goes with the bar, and without it the groups touched.
+        Spacer(Modifier.height(12.dp))
+        nl.markmaaktmedia.markupdate.ui.UpdateBar(Modifier.fillMaxWidth().padding(bottom = 12.dp))
         SettingsGroup {
             // What is new in each version lives with the update, not under About.
             ActionRow(

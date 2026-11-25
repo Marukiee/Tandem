@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.38",
+    "date": "2026-11-25",
+    "en": {
+      "title": "Updates are seen when you open the app",
+      "new": [],
+      "fixed": [
+        "On Android a new version is found when you open the app, not only after six hours",
+        "Updates and backup: Check now and What's new no longer touch"
+      ]
+    },
+    "nl": {
+      "title": "Updates zie je als je de app opent",
+      "new": [],
+      "fixed": [
+        "Op Android wordt een nieuwe versie gevonden als je de app opent, niet pas na zes uur",
+        "Updates en back-up: Nu controleren en Wat is er nieuw plakken niet meer tegen elkaar"
+      ]
+    }
+  },
+  {
     "version": "0.3.37",
     "date": "2026-11-25",
     "en": {
