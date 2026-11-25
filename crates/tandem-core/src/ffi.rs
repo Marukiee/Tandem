@@ -345,6 +345,9 @@ pub struct TandemStatus {
     /// A computer's Bluetooth address, for a watch to be its mouse straight over Bluetooth.
     #[uniffi(default = None)]
     pub bt_address: Option<String>,
+    /// This phone lets computers use its hotspot (switch on, a SIM for data). Nil: not said, taken as yes.
+    #[uniffi(default = None)]
+    pub hotspot_share: Option<bool>,
 }
 
 /// Long enough for any name a person gives a watch, short enough for a row in a sidebar.
@@ -556,6 +559,7 @@ impl From<Status> for TandemStatus {
             lock: s.lock,
             watch: s.watch.map(Into::into),
             bt_address: s.bt_address,
+            hotspot_share: s.hotspot_share,
         }
     }
 }
@@ -585,6 +589,7 @@ impl From<TandemStatus> for Status {
             lock: s.lock,
             watch: s.watch.map(Into::into),
             bt_address: s.bt_address,
+            hotspot_share: s.hotspot_share,
             // Said by the engine itself (`set_quiet`, `trust`).
             trust: None,
             quiet: None,

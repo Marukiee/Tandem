@@ -157,6 +157,10 @@ final class HotspotCoordinator {
     private var keepHotspot = false
     /// The phones asked by themselves this round that could not do it (see `handOn`). A request that is not handed on starts a new round.
     private var triedThisRound: Set<String> = []
+    /// Since when the status says it failed: it goes by itself after a while, and as soon as this Mac is online. A failure that stayed in
+    /// the panel for good was in the way (2026-11-25).
+    private var failedSince: Date?
+    private static let failureShownFor: TimeInterval = 120
     /// The networks this Mac moved to from the hotspot, and when. One that did not hold (no internet, a password that is gone) is not
     /// tried again right away, which would keep throwing this Mac off the hotspot.
     private var triedKnown: [String: Date] = [:]
@@ -246,6 +250,7 @@ final class HotspotCoordinator {
     /// an app without Location access, also from `networksetup`, while Android lets a phone be on Wi-Fi and share at once. What always
     /// holds: the gateway of a hotspot is the phone, at the address the connection with it runs over.
     private func syncWithCurrentNetwork() async {
+        expireFailure()
         guard let model, Date() >= ignoreNetworkUntil else { return }
         let profiles = HotspotProfiles.shared
         let names = profiles.allNames
@@ -284,6 +289,23 @@ final class HotspotCoordinator {
         }
     }
 
+    /// A failure, or the limit reached, is shown for `failureShownFor` and then goes. Looked at with each look at the network, which comes
+    /// every few seconds while the status is not idle.
+    private func expireFailure() {
+        guard let model else { return }
+        switch model.hotspotStatus {
+        case .failed, .limitReached:
+            let since = failedSince ?? Date()
+            failedSince = since
+            if Date().timeIntervalSince(since) > Self.failureShownFor {
+                model.hotspotStatus = .idle
+                failedSince = nil
+            }
+        default:
+            failedSince = nil
+        }
+    }
+
     /// Joined by macOS or by hand, the phone is not found by mDNS, which does not cross a hotspot reliably. Dialing its port at the gateway
     /// finds it there; the key of the phone is checked as with any address, so a router that happens to answer is nothing.
     private func tryPhoneAtGateway(_ phones: [TandemDevice]) {
@@ -316,6 +338,11 @@ final class HotspotCoordinator {
             waitedForKnown = 0
             // Online through something else than the hotspot: the next time it is missed, it may be asked for again.
             if case .connected = model?.hotspotStatus {} else { heldOffUntil = .distantPast }
+            // What went wrong asking for it no longer matters.
+            switch model?.hotspotStatus {
+            case .failed, .limitReached: model?.hotspotStatus = .idle
+            default: break
+            }
         }
         guard let model, !online, autoEnabled, Date() >= heldOffUntil else { return }
         if model.hotspotStatus.isBusy { return }
@@ -433,6 +460,7 @@ final class HotspotCoordinator {
         keepHotspot = byPerson
         runTask?.cancel()
         if !handedOn { triedThisRound = [] }
+        failedSince = nil
         activeDevice = id
         quicAnswer = nil
         quicReason = nil

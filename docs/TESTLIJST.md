@@ -765,3 +765,17 @@ Wat veranderd is:
 Zelf testen:
 - [ ] Na de volgende release de app openen (niet Nu controleren): de updatekaart en de balk onder Check now verschijnen.
 - [ ] Updates en back-up zonder nieuwe versie: tussen Check now en What's new zit dezelfde ruimte als tussen andere groepen.
+
+## 0.3.39, 2026-11-25 (geen hotspotknop als de telefoon hem niet deelt)
+
+Wat veranderd is:
+- De telefoon zegt in zijn status of computers zijn hotspot mogen gebruiken: "Let my Mac use my hotspot" staat aan en er is een simkaart voor mobiele data.
+- Zegt hij nee, dan heeft die telefoon op de Mac geen hotspotknop in het menu en geen hotspotkaart op zijn pagina, en de Mac vraagt hem niet meer. Alleen als de hotspot van die telefoon op dat moment gevraagd of gebruikt wordt, blijft de knop staan.
+- Een hotspotfout verdween nooit. Nu na twee minuten, of zodra de Mac online is.
+- Een telefoon met een oudere Tandem zegt niets; die houdt zijn knop.
+- Linux en Windows hebben nog geen hotspot, dus daar verandert niets.
+
+Zelf testen:
+- [ ] Op de Sony "Let my Mac use my hotspot" uit (of geen simkaart): in het menu van de Mac is de hotspotknop bij de Sony weg, de pagina van de Sony heeft geen hotspotkaart.
+- [ ] Weer aan: de knop komt binnen een paar seconden terug.
+- [ ] Een hotspotfout in het menu is na twee minuten vanzelf weg.

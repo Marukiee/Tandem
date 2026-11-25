@@ -224,7 +224,10 @@ struct DeviceDetail: View {
         VStack(spacing: 18) {
             actions
             DropZone(device: device)
-            if device.platform == .android { HotspotCard(device: device) }
+            // Not for a phone that does not share its hotspot (switched off there, no SIM for data), unless it is in use or asked now.
+            if device.platform == .android, device.status.hotspotShare != false || model.hotspotFor == device.id && model.hotspotStatus != .idle {
+                HotspotCard(device: device)
+            }
             // What is set comes before what was sent: the list grows, and the settings should not move further down the more is sent.
             settings
             deviceSettingsCard

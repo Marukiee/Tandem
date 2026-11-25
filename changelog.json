@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.39",
+    "date": "2026-11-25",
+    "en": {
+      "title": "No hotspot button for a phone that does not share it",
+      "new": [],
+      "fixed": [
+        "A phone that does not share its hotspot (switched off there, or no SIM card) no longer shows a hotspot button and is not asked",
+        "A hotspot error goes away by itself after two minutes, or as soon as the Mac is online"
+      ]
+    },
+    "nl": {
+      "title": "Geen hotspotknop bij een telefoon die hem niet deelt",
+      "new": [],
+      "fixed": [
+        "Een telefoon die zijn hotspot niet deelt (daar uitgezet, of geen simkaart) heeft geen hotspotknop meer en wordt niet gevraagd",
+        "Een hotspotfout verdwijnt vanzelf na twee minuten, of zodra de Mac online is"
+      ]
+    }
+  },
+  {
     "version": "0.3.38",
     "date": "2026-11-25",
     "en": {

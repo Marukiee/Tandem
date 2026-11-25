@@ -147,7 +147,8 @@ final class EngineModel {
 
     /// The next phone to ask, leaving out the ones that were tried and could not do it.
     func hotspotPhone(except tried: Set<String>) -> TandemDevice? {
-        let phones = devices.filter { $0.platform == .android }
+        // A phone that says it does not share its hotspot (switched off there, no SIM for data) is not asked.
+        let phones = devices.filter { $0.platform == .android && $0.status.hotspotShare != false }
         let profiles = HotspotProfiles.shared
         let candidates = phones.map { HotspotRules.Candidate(id: $0.id, reachable: reach(of: $0).reachable, complete: profiles.complete(for: $0.id)) }
         let chosen = HotspotRules.choosePhone(candidates, except: tried)

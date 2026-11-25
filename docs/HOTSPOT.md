@@ -126,6 +126,10 @@ staat dezelfde reden in `error` als `failed:<sleutel>`
 `shizuku-error` gevolgd door `:` en wat Shizuku zei. Een oudere Mac leest alleen byte 0 en ziet elke `failed...`
 als mislukt, dus dit breekt niets. De Mac zelf voegt twee redenen toe: geen antwoord (over QUIC 45 seconden niets, over Bluetooth 20 seconden geen enkele status na het verzoek) en verzoek wel ontvangen maar niets gedaan (over Bluetooth alleen de "uit" van daarvoor). Een tweede weigering vlak na de eerste wordt ook weer gestuurd.
 
+**Delen in de status.** Een telefoon zegt in zijn status (`hotspot_share`) of computers zijn hotspot mogen gebruiken: de schakelaar
+staat aan en er is een simkaart voor mobiele data. Zegt hij nee, dan toont de Mac geen hotspotknop en geen hotspotkaart voor die
+telefoon en vraagt hij hem niet. Een oudere telefoon zegt niets; dat telt als ja.
+
 **Volgorde op de Mac.** Verbinden, services en characteristics ontdekken, notificaties op
 state aanzetten, challenge lezen, ondertekenen met `sign_message`, request schrijven, dan
 state volgen tot "aan" (of een weigering). Lange writes (prepared write) worden door de

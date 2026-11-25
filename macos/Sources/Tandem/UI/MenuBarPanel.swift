@@ -420,6 +420,9 @@ private struct MenuDeviceRow: View {
                     let inUse = { if case .connected = status { true } else { false } }()
                     let joined = inUse && mine
                     let other = inUse && !mine ? model.hotspotFor.flatMap(model.device)?.name : nil
+                    // A phone that does not share its hotspot (switched off there, no SIM for data) has no button for it, unless this is
+                    // about it right now: a failure that stayed in the panel for good was in the way (2026-11-25).
+                    if device.status.hotspotShare != false || (mine && status != .idle) {
                     RoundIconButton(
                         symbol: "personalhotspot", tint: joined || (status.isBusy && mine) ? Palette.indigo : nil, size: 32,
                         onHover: { inside in
@@ -437,6 +440,7 @@ private struct MenuDeviceRow: View {
                     // Busy with another phone, this one can still be asked: that takes over (stuck asking an old phone, the new one
                     // could not be pressed, 2026-11-25).
                     .disabled((status.isBusy && mine) || other != nil)
+                    }
                 }
             }
             .environment(\.iconButtonsFill, true)

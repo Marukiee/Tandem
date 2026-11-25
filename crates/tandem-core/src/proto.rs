@@ -370,6 +370,11 @@ pub struct Status {
     /// The Bluetooth address of a computer, so a watch can be its mouse straight over Bluetooth (by way of the phone it learns it).
     #[serde(default)]
     pub bt_address: Option<String>,
+    /// This phone lets computers use its hotspot: the switch for it is on and it has a SIM for mobile data. A computer leaves the
+    /// hotspot out for a phone that says false (no button, not asked), so an old phone without a subscription is not asked and its
+    /// failure does not sit in the panel (2026-11-25). Nil from a device that does not say, which is taken as yes.
+    #[serde(default)]
+    pub hotspot_share: Option<bool>,
     /// A phone with its screen off: the others check on it seldom, so it is not woken every half minute (see `Inner::heartbeat`).
     /// Set by the engine (`Engine::set_quiet`), not by the app.
     #[serde(default)]
@@ -508,7 +513,7 @@ pub struct Feature {
 /// The fields of a `Status` that `merge` and `changes` go through.
 macro_rules! status_fields {
     ($m:ident!($($arg:tt)*)) => {
-        $m!($($arg)* battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, quiet, trust)
+        $m!($($arg)* battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address, hotspot_share, quiet, trust)
     };
 }
 

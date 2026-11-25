@@ -109,7 +109,8 @@ class HotspotModule private constructor(private val context: Context) {
         }
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
 
-        jobs += scope.launch { graph.prefs.hotspotForMac.collectLatest { enabled = it; reconcile() } }
+        // The status says whether computers may use the hotspot, so a switch turned here shows on them at once.
+        jobs += scope.launch { graph.prefs.hotspotForMac.collectLatest { enabled = it; reconcile(); onStatusChanged() } }
         jobs += scope.launch { graph.prefs.bluetoothMessages.collectLatest { messagesOn = it; reconcile() } }
         jobs += scope.launch { prefs.allowRoaming.collectLatest { allowRoaming = it } }
         jobs += scope.launch { prefs.dataLimitMb.collectLatest { dataLimitMb = it } }
@@ -286,6 +287,12 @@ class HotspotModule private constructor(private val context: Context) {
             }
         }
     }
+
+    /**
+     * Computers may use this phone's hotspot: the switch is on and there is a SIM for mobile data. Said in the status, so a computer
+     * leaves the hotspot out (no button, not asked) for a phone that does not share it.
+     */
+    fun sharesWithComputers(): Boolean = enabled && PhoneConditions.noMobileData(context) == null
 
     // ---- Over Bluetooth --------------------------------------------------------
 

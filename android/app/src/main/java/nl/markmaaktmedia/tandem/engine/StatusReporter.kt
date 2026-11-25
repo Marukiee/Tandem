@@ -152,6 +152,7 @@ class StatusReporter(
                 soundDnd = now.soundDnd.takeIf { it != last.soundDnd },
                 lock = now.lock.takeIf { it != last.lock },
                 watch = now.watch.takeIf { it != last.watch },
+                hotspotShare = now.hotspotShare.takeIf { it != last.hotspotShare },
             )
             last = now
             // A message with nothing in it still goes to every device: a broadcast that woke this for nothing says nothing.
@@ -190,6 +191,7 @@ class StatusReporter(
                 signal = null,
             ),
             hotspot = HotspotState.isOn,
+            hotspotShare = nl.markmaaktmedia.tandem.hotspot.HotspotModule.current?.sharesWithComputers(),
             dnd = notifications.currentInterruptionFilter.let {
                 it != NotificationManager.INTERRUPTION_FILTER_ALL && it != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
             },
