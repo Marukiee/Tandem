@@ -63,8 +63,8 @@ public enum HotspotRules {
     /// phone that was never set up.
     public static func failureMarker(stored: HotspotProfile?, reported: String? = nil) -> String { reported ?? stored?.ssid ?? "" }
 
-    /// The first phone that can be asked and joined, else one that has its hotspot filled in, else the first. A new phone beside the old
-    /// one that is still in the circle must not be passed over for the old one, which is not in range.
+    /// A phone that could be asked for its hotspot: in range (over the network or Bluetooth) or not, and with its hotspot filled in on
+    /// this Mac or not.
     public struct Candidate: Equatable {
         public var id: String
         public var reachable: Bool
@@ -77,11 +77,17 @@ public enum HotspotRules {
         }
     }
 
-    public static func choosePhone(_ phones: [Candidate]) -> String? {
-        phones.first { $0.reachable && $0.complete }?.id
-            ?? phones.first { $0.reachable }?.id
-            ?? phones.first { $0.complete }?.id
-            ?? phones.first?.id
+    /// The phone to ask next, leaving out the ones `tried` this round. First the phones this Mac can join (hotspot filled in), in range
+    /// before out of range: Bluetooth may still find a phone whose beacon was not heard. Then one in range that is not filled in, so a new
+    /// phone gets its setup, then the rest. A phone in range went first before, filled in or not: in a train an old phone without mobile
+    /// data or a password was asked while the new one lay beside it, and the Mac stayed on "Asking your phone" (2026-11-25). Each phone
+    /// that fails hands on to the next, so a new phone beside an old one out of range is still asked, a few seconds later.
+    public static func choosePhone(_ phones: [Candidate], except tried: Set<String> = []) -> String? {
+        let left = phones.filter { !tried.contains($0.id) }
+        return left.first { $0.reachable && $0.complete }?.id
+            ?? left.first { $0.complete }?.id
+            ?? left.first { $0.reachable }?.id
+            ?? left.first?.id
     }
 
     /// Before there was a hotspot for each phone there was one for all, filled in for the phone that was asked: the first one. It is

@@ -88,6 +88,10 @@ enum class FailReason(val code: Int, val key: String) {
     ShizukuError(4, "shizuku-error"),
     NotUp(5, "not-up"),
     NoTap(6, "no-tap"),
+    /** No SIM for mobile data: a hotspot would have nothing to share. */
+    NoSim(7, "no-sim"),
+    /** Mobile data is switched off. */
+    DataOff(8, "data-off"),
     ;
 
     companion object {

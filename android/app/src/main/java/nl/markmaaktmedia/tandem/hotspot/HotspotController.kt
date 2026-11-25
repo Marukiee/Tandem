@@ -214,6 +214,12 @@ class HotspotController(
             refuse(refusal)
             return
         }
+        // Nothing to share: said at once, so the computer asks another phone instead of waiting on this one. Not when the hotspot is on
+        // already (turned on by hand): then whoever did that knows.
+        PhoneConditions.noMobileData(context)?.takeIf { !isOn() }?.let { missing ->
+            fail(missing, "no mobile data to share")
+            return
+        }
         if (byPerson) offByHandAt = 0L
         if (offByHandAt != 0L && android.os.SystemClock.elapsedRealtime() - offByHandAt < OFF_BY_HAND_MS && !isOn()) {
             Log.i(TAG, "turned off by hand a moment ago, not turning it on again")

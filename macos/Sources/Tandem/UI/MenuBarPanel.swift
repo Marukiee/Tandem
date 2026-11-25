@@ -434,7 +434,9 @@ private struct MenuDeviceRow: View {
                             AppScenes.showMain(.device(device.id))
                         }
                     }
-                    .disabled(status.isBusy || other != nil)
+                    // Busy with another phone, this one can still be asked: that takes over (stuck asking an old phone, the new one
+                    // could not be pressed, 2026-11-25).
+                    .disabled((status.isBusy && mine) || other != nil)
                 }
             }
             .environment(\.iconButtonsFill, true)

@@ -7,7 +7,8 @@ import TandemLogic
 
 enum HotspotStatus: Equatable {
     case idle
-    case asking
+    /// Asking the phone of that name: with two phones it shows which one (an old phone without mobile data was asked, unseen).
+    case asking(String)
     case starting
     /// The phone cannot turn the hotspot on alone: someone has to tap a notification.
     case needsTap
@@ -27,7 +28,7 @@ enum HotspotStatus: Equatable {
     var text: String {
         switch self {
         case .idle: ""
-        case .asking: String(localized: "Asking your phone")
+        case let .asking(name): String(localized: "Asking \(name)")
         case .starting: String(localized: "Your phone is turning on its hotspot")
         case .needsTap: String(localized: "Tap the notification on your phone to turn on the hotspot")
         case let .joining(name): String(localized: "Joining \(name)")
@@ -47,6 +48,10 @@ enum HotspotFailReason: UInt8 {
     case shizukuError = 4
     case notUp = 5
     case noTap = 6
+    /// The phone has no SIM for mobile data: its hotspot would have nothing to share.
+    case noSim = 7
+    /// Mobile data is switched off on the phone.
+    case dataOff = 8
     /// Not from the phone: it did not answer at all.
     case noAnswer = 200
     /// Not from the phone: it took the request over Bluetooth and did nothing with it.
@@ -60,6 +65,8 @@ enum HotspotFailReason: UInt8 {
         case "shizuku-error": self = .shizukuError
         case "not-up": self = .notUp
         case "no-tap": self = .noTap
+        case "no-sim": self = .noSim
+        case "data-off": self = .dataOff
         default: return nil
         }
     }
@@ -83,6 +90,10 @@ enum HotspotFailReason: UInt8 {
             String(localized: "Your phone tried to turn on its hotspot, but it did not come on within 20 seconds. Turn it on once by hand on your phone and try again.")
         case .noTap:
             String(localized: "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself.")
+        case .noSim:
+            String(localized: "Your phone has no SIM card for mobile data, so its hotspot has nothing to share.")
+        case .dataOff:
+            String(localized: "Mobile data is off on your phone. Turn it on there and try again.")
         case .noAnswer:
             String(localized: "Your phone did not answer. Open Tandem on your phone and try again.")
         case .noStart:
@@ -144,6 +155,8 @@ final class HotspotCoordinator {
     private var triedGateway: String?
     /// Asked for with a button: the person wants the hotspot, known network nearby or not.
     private var keepHotspot = false
+    /// The phones asked by themselves this round that could not do it (see `handOn`). A request that is not handed on starts a new round.
+    private var triedThisRound: Set<String> = []
     /// The networks this Mac moved to from the hotspot, and when. One that did not hold (no internet, a password that is gone) is not
     /// tried again right away, which would keep throwing this Mac off the hotspot.
     private var triedKnown: [String: Date] = [:]
@@ -413,16 +426,18 @@ final class HotspotCoordinator {
     /// Once, for today: the phone adds to its daily limit and turns the hotspot on.
     func requestExtra(_ id: String) { requestNow(id, extra: true) }
 
-    func requestNow(_ id: String, byPerson: Bool = true, extra: Bool = false) {
+    /// `handedOn`: the phone before it could not do it (see `handOn`), so the phones tried this round stay tried.
+    func requestNow(_ id: String, byPerson: Bool = true, extra: Bool = false, handedOn: Bool = false) {
         guard let model, let engine = model.engineHandle else { return }
         heldOffUntil = .distantPast
         keepHotspot = byPerson
         runTask?.cancel()
+        if !handedOn { triedThisRound = [] }
         activeDevice = id
         quicAnswer = nil
         quicReason = nil
         quicDetail = nil
-        model.hotspotStatus = .asking
+        model.hotspotStatus = .asking(model.device(id)?.name ?? String(localized: "your phone"))
         runTask = Task { [weak self] in
             await self?.run(id: id, engine: engine, byPerson: byPerson, extra: extra)
         }
@@ -448,23 +463,44 @@ final class HotspotCoordinator {
             }
             switch answer {
             case .on:
-                await joinAndConnect(id: id, name: name, engine: engine)
+                if await joinAndConnect(id: id, name: name, engine: engine) { return }
+                // On, but this Mac cannot get on it (no password here, or the name changed): the next phone may do. The phone turns a
+                // hotspot nobody uses off by itself after a few minutes.
+                handOn(from: id, byPerson: byPerson)
             case .manual:
                 model.hotspotStatus = .failed(HotspotFailReason.noTap.text())
+                handOn(from: id, byPerson: byPerson)
             case .failed, .starting, .off:
                 // What the phone said went wrong, where it said it; an older phone says nothing more than that it failed.
                 model.hotspotStatus = .failed(why?.text(detail: detail) ?? Self.reason(for: answer))
-                heldOffUntil = Date().addingTimeInterval(Self.holdOff)
+                if !handOn(from: id, byPerson: byPerson) { heldOffUntil = Date().addingTimeInterval(Self.holdOff) }
             default:
                 model.hotspotStatus = answer == .refusedLimit ? .limitReached : .failed(Self.reason(for: answer))
                 // The phone said no (turned off by hand a moment ago, battery, data limit): asking again in a few seconds is the same no.
-                heldOffUntil = Date().addingTimeInterval(Self.holdOff)
+                if !handOn(from: id, byPerson: byPerson) { heldOffUntil = Date().addingTimeInterval(Self.holdOff) }
             }
         } catch is CancellationError {
             // A newer request or a stop took over.
         } catch {
             model.hotspotStatus = .failed(error.localizedDescription)
+            // Not found over Bluetooth, the connection dropped: another phone may be there. Bluetooth off on this Mac is off for all.
+            if let ble = error as? HotspotBleError, [.bluetoothOff, .bluetoothDenied, .bluetoothUnsupported].contains(ble) { return }
+            handOn(from: id, byPerson: byPerson)
         }
+    }
+
+    /// Asked by itself, and this phone could not do it: the next phone that might is asked, each phone once a round. In a train an old
+    /// phone without mobile data was asked and the Mac stayed on it while the new one lay beside it (2026-11-25). False when none is
+    /// left, or a person asked for this very phone: then what went wrong stays up.
+    @discardableResult
+    private func handOn(from id: String, byPerson: Bool) -> Bool {
+        // Stopped, or a newer request took over: nothing to hand on.
+        guard !byPerson, !Task.isCancelled, let model else { return false }
+        triedThisRound.insert(id)
+        guard let next = model.hotspotPhone(except: triedThisRound) else { return false }
+        NSLog("Tandem: the hotspot of one phone did not work, asking the next")
+        requestNow(next.id, byPerson: false, handedOn: true)
+        return true
     }
 
     private func showProgress(_ state: HotspotBleState) {
@@ -514,13 +550,14 @@ final class HotspotCoordinator {
 
     // MARK: Joining
 
-    private func joinAndConnect(id: String, name: String, engine: TandemEngine) async {
-        guard let model else { return }
+    /// True once this Mac is on the hotspot.
+    private func joinAndConnect(id: String, name: String, engine: TandemEngine) async -> Bool {
+        guard let model else { return false }
         let profiles = HotspotProfiles.shared
         guard let profile = profiles.profile(for: id), profile.complete else {
             // A phone this Mac has no hotspot of: said once, with the way to fill it in. Said before, it is what the status says.
             model.hotspotStatus = noticeForFailure(id) ? .idle : .failed(String(localized: "Enter the hotspot name and password in Settings first"))
-            return
+            return false
         }
         model.hotspotStatus = .joining(profile.ssid)
         do {
@@ -538,7 +575,9 @@ final class HotspotCoordinator {
                 title: String(localized: "Connected through the hotspot of \(name)"),
                 body: String(localized: "This Mac is online again")
             )
+            return true
         } catch is CancellationError {
+            return false
         } catch {
             // Not found, or refused: the name or the password is not what the phone has now (a new phone, a renamed hotspot). That is for
             // the person to fix, and said once. A timeout or no route is not, and stays a plain failure with its retry.
@@ -547,6 +586,7 @@ final class HotspotCoordinator {
             } else {
                 model.hotspotStatus = .failed(error.localizedDescription)
             }
+            return false
         }
     }
 

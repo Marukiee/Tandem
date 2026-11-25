@@ -142,11 +142,15 @@ final class EngineModel {
             .flatMap { device in visibleMedia(for: device.id).map { (device: device, player: $0) } }
         return all.first { $0.player.playing } ?? all.first
     }
-    /// The phone the hotspot is asked of: one that is in reach and has its hotspot filled in, else one of the two, else the first.
-    var hotspotPhone: TandemDevice? {
+    /// The phone the hotspot is asked of: see `HotspotRules.choosePhone`.
+    var hotspotPhone: TandemDevice? { hotspotPhone(except: []) }
+
+    /// The next phone to ask, leaving out the ones that were tried and could not do it.
+    func hotspotPhone(except tried: Set<String>) -> TandemDevice? {
         let phones = devices.filter { $0.platform == .android }
         let profiles = HotspotProfiles.shared
-        let chosen = HotspotRules.choosePhone(phones.map { .init(id: $0.id, reachable: reach(of: $0).reachable, complete: profiles.complete(for: $0.id)) })
+        let candidates = phones.map { HotspotRules.Candidate(id: $0.id, reachable: reach(of: $0).reachable, complete: profiles.complete(for: $0.id)) }
+        let chosen = HotspotRules.choosePhone(candidates, except: tried)
         return phones.first { $0.id == chosen }
     }
     /// The colour of each cover, for the wash behind its player.

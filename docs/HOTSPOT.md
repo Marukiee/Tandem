@@ -120,8 +120,9 @@ geldige handtekening telt. Een goed verzoek krijgt een ATT-succes, een slecht ve
 
 **Reden van mislukken** (byte 2 van state, bij status 4): 1 Shizuku niet geinstalleerd, 2 Shizuku draait niet,
 3 Tandem heeft geen toestemming in Shizuku, 4 Shizuku gaf een fout, 5 Shizuku zette hem aan maar hij kwam niet
-binnen 20 seconden, 6 niemand tikte op de melding. Over QUIC staat dezelfde reden in `error` als `failed:<sleutel>`
-(`shizuku-missing`, `shizuku-stopped`, `shizuku-permission`, `shizuku-error`, `not-up`, `no-tap`), bij
+binnen 20 seconden, 6 niemand tikte op de melding, 7 geen simkaart voor mobiele data, 8 mobiele data staat uit. Over QUIC
+staat dezelfde reden in `error` als `failed:<sleutel>`
+(`shizuku-missing`, `shizuku-stopped`, `shizuku-permission`, `shizuku-error`, `not-up`, `no-tap`, `no-sim`, `data-off`), bij
 `shizuku-error` gevolgd door `:` en wat Shizuku zei. Een oudere Mac leest alleen byte 0 en ziet elke `failed...`
 als mislukt, dus dit breekt niets. De Mac zelf voegt twee redenen toe: geen antwoord (over QUIC 45 seconden niets, over Bluetooth 20 seconden geen enkele status na het verzoek) en verzoek wel ontvangen maar niets gedaan (over Bluetooth alleen de "uit" van daarvoor). Een tweede weigering vlak na de eerste wordt ook weer gestuurd.
 

@@ -3,17 +3,23 @@
     "version": "0.3.37",
     "date": "2026-11-25",
     "en": {
-      "title": "The hotspot shows on its own phone",
+      "title": "The hotspot with two phones",
       "new": [],
       "fixed": [
-        "With two phones, only the phone whose hotspot this Mac uses shows it as in use, and Stop goes to that phone"
+        "With two phones, only the phone whose hotspot this Mac uses shows it as in use, and Stop goes to that phone",
+        "Without a connection the Mac first asks the phone whose hotspot it knows, and when a phone cannot do it, it asks the next one",
+        "A phone without a SIM card or with mobile data off says so at once instead of keeping the Mac waiting",
+        "The Mac says which phone it is asking"
       ]
     },
     "nl": {
-      "title": "De hotspot staat bij zijn eigen telefoon",
+      "title": "De hotspot met twee telefoons",
       "new": [],
       "fixed": [
-        "Met twee telefoons staat de hotspot alleen als in gebruik bij de telefoon waarvan deze Mac hem gebruikt, en Stop gaat naar die telefoon"
+        "Met twee telefoons staat de hotspot alleen als in gebruik bij de telefoon waarvan deze Mac hem gebruikt, en Stop gaat naar die telefoon",
+        "Zonder verbinding vraagt de Mac eerst de telefoon waarvan hij de hotspot kent, en lukt het bij een telefoon niet, dan vraagt hij de volgende",
+        "Een telefoon zonder simkaart of met mobiele data uit zegt dat meteen, in plaats van de Mac te laten wachten",
+        "De Mac zegt welke telefoon hij vraagt"
       ]
     }
   },

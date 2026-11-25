@@ -25,6 +25,8 @@
     <string name="hotspot_test_failed">De hotspot ging niet aan</string>
     <string name="hotspot_test_battery">Geweigerd, de accu is te leeg</string>
     <string name="hotspot_test_roaming">Geweigerd, je zit in roaming</string>
+    <string name="hotspot_test_no_sim">Geweigerd, deze telefoon heeft geen simkaart voor mobiele data</string>
+    <string name="hotspot_test_data_off">Geweigerd, mobiele data staat uit</string>
     <string name="hotspot_test_limit">Geweigerd, de datalimiet van vandaag is bereikt</string>
 
     <string name="hotspot_roaming">Ook in roaming</string>

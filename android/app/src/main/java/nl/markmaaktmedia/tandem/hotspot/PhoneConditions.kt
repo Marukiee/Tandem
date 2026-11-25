@@ -122,6 +122,21 @@ object PhoneConditions {
         return battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
     }
 
+    /**
+     * Why this phone has no mobile data to share at all, or null. Only what holds for good: no SIM for data, or mobile data switched
+     * off. Out of reach of a mast is not a reason, since in a train that is every tunnel. An old phone without a subscription was asked
+     * and the Mac waited on it while the new one lay beside it (2026-11-25); now it says no at once and the Mac asks the next one.
+     */
+    fun noMobileData(context: Context): FailReason? {
+        val sub = android.telephony.SubscriptionManager.getDefaultDataSubscriptionId()
+        if (sub == android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID) return FailReason.NoSim
+        val telephony = context.getSystemService(android.telephony.TelephonyManager::class.java)?.createForSubscriptionId(sub) ?: return null
+        if (telephony.simState != android.telephony.TelephonyManager.SIM_STATE_READY) return FailReason.NoSim
+        // Needs the network state permission, which Tandem has; failing, it is no reason to say no.
+        if (runCatching { telephony.isDataEnabled }.getOrDefault(true) == false) return FailReason.DataOff
+        return null
+    }
+
     /** Roaming on the mobile connection the hotspot would share. */
     fun roaming(context: Context): Boolean {
         val connectivity = context.getSystemService(ConnectivityManager::class.java)

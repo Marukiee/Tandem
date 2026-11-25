@@ -741,6 +741,16 @@ Wat veranderd is:
 - Nu licht alleen de telefoon op waarvan de hotspot gebruikt wordt. De andere is grijs en zegt bij aanwijzen "Using the hotspot of ...". Op de pagina van die andere telefoon staat dat ook, met Turn on hotspot grijs.
 - De kaart in het menu staat onder de juiste telefoon en Stop daarin gaat naar die telefoon.
 
+- In de trein (2026-11-25) vroeg de Mac de oude Sony (via Bluetooth te zien, geen abonnement, geen hotspotwachtwoord op de Mac) en bleef op "Asking your phone" staan. De Oppo, waarvan de Mac het wachtwoord wel heeft, werd niet gevraagd.
+- De Mac vraagt nu eerst de telefoons waarvan hij de hotspot kent, ook als hun Bluetooth-baken niet gehoord is. Lukt het bij een telefoon niet (niet gevonden, geweigerd, geen wachtwoord), dan vraagt hij vanzelf de volgende, elke telefoon een keer per ronde. Alleen bij een verzoek dat de Mac zelf doet; een druk op de knop vraagt alleen die telefoon.
+- Terwijl de Mac een telefoon vraagt, kun je op de knop van de andere telefoon drukken: die neemt het over.
+- Er staat nu "Asking <naam>" in plaats van "Asking your phone".
+- Android: zonder simkaart voor mobiele data of met mobiele data uit weigert de telefoon meteen (reden 7 en 8, zie docs/HOTSPOT.md), zodat de Mac door kan naar de volgende. Geen bereik (tunnel) is geen reden om te weigeren. Ook de testknop op de telefoon zegt het.
+- Nog niet verklaard: waarom de Oppo in de trein niet via Bluetooth te zien was.
+- Linux en Windows hebben nog geen hotspot (zie windows/README.md), dus daar verandert niets.
+
 Zelf testen:
 - [ ] Twee telefoons in de buurt, de hotspot van een ervan in gebruik: alleen die knop is gekleurd, de andere is grijs met de uitleg.
 - [ ] Stop in het menu en op de pagina van die telefoon zet de goede hotspot uit.
+- [ ] Zonder wifi (trein), beide telefoons bij je: de Mac vraagt de Oppo en komt online. De Sony wordt niet eerst gevraagd.
+- [ ] Op de Sony (zonder abonnement), Tandem, Hotspot, testknop: "Geweigerd, deze telefoon heeft geen simkaart voor mobiele data" (of mobiele data staat uit).

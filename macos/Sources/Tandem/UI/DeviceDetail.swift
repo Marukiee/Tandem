@@ -855,8 +855,8 @@ struct HotspotCard: View {
                 // Stop went to that phone instead (2026-11-25).
                 let ours = model.hotspotStatus != .idle && (model.hotspotFor ?? device.id) == device.id
                 let inUse = { if case .connected = model.hotspotStatus { true } else { false } }()
-                // The hotspot of another phone is asked for or in use: this one waits, and says whose it is.
-                let elsewhere = !ours && (model.hotspotStatus.isBusy || inUse)
+                // The hotspot of another phone is in use: this one waits, and says whose it is. One still being asked can be taken over.
+                let elsewhere = !ours && inUse
                 if ours {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     HStack(spacing: 10) {
@@ -886,7 +886,7 @@ struct HotspotCard: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Need it right now?").font(.callout).foregroundStyle(.secondary)
-                            if inUse, elsewhere, let other = model.hotspotFor.flatMap(model.device) {
+                            if elsewhere, let other = model.hotspotFor.flatMap(model.device) {
                                 Text("Using the hotspot of \(other.name)")
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)

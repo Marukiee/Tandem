@@ -181,7 +181,7 @@
 "Code %@ copied" = "Code %@ gekopieerd";
 
 /* Hotspot */
-"Asking your phone" = "Je telefoon wordt gevraagd";
+"Asking %@" = "%@ wordt gevraagd";
 "Your phone is turning on its hotspot" = "Je telefoon zet zijn hotspot aan";
 "Joining %@" = "Verbinden met %@";
 "Using the hotspot of %@" = "De hotspot van %@ wordt gebruikt";
@@ -378,6 +378,8 @@
 
 /* Hotspot failures */
 "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself." = "Niemand tikte op tijd op de melding op je telefoon. Tik er de volgende keer op, of start Shizuku zodat de telefoon het zelf doet.";
+"Your phone has no SIM card for mobile data, so its hotspot has nothing to share." = "Je telefoon heeft geen simkaart voor mobiele data, dus zijn hotspot heeft niets te delen.";
+"Mobile data is off on your phone. Turn it on there and try again." = "Mobiele data staat uit op je telefoon. Zet het daar aan en probeer het opnieuw.";
 "Your phone could not turn on its hotspot. Tap the notification on your phone, or make sure Shizuku is running so it can start by itself." = "Je telefoon kon zijn hotspot niet aanzetten. Tik op de melding op je telefoon, of zorg dat Shizuku draait zodat hij zelf kan starten.";
 
 "Bluetooth without a network" = "Bluetooth zonder netwerk";

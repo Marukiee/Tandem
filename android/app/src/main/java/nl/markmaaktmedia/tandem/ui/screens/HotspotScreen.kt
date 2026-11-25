@@ -53,6 +53,7 @@ import kotlin.math.roundToInt
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.hotspot.BleAvailability
+import nl.markmaaktmedia.tandem.hotspot.FailReason
 import nl.markmaaktmedia.tandem.hotspot.HotspotChecklistRows
 import nl.markmaaktmedia.tandem.hotspot.HotspotModule
 import nl.markmaaktmedia.tandem.hotspot.HotspotUsage
@@ -175,6 +176,11 @@ fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route
                                             Refusal.Battery -> R.string.hotspot_test_battery
                                             Refusal.Limit -> R.string.hotspot_test_limit
                                             else -> R.string.hotspot_test_roaming
+                                        }
+                                        Phase.Failed -> when (result.reason) {
+                                            FailReason.NoSim -> R.string.hotspot_test_no_sim
+                                            FailReason.DataOff -> R.string.hotspot_test_data_off
+                                            else -> R.string.hotspot_test_failed
                                         }
                                         else -> R.string.hotspot_test_failed
                                     },

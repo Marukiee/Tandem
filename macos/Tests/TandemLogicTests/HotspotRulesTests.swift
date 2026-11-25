@@ -61,12 +61,17 @@ import TandemLogic
         #expect(HotspotRules.usableName(String(repeating: "é", count: 17)) == nil)
     }
 
-    @Test func theNewPhoneIsAskedBeforeTheOldOneThatIsOutOfRange() {
-        let old = HotspotRules.Candidate(id: "old", reachable: false, complete: true)
-        let new = HotspotRules.Candidate(id: "new", reachable: true, complete: false)
-        #expect(HotspotRules.choosePhone([old, new]) == "new")
-        #expect(HotspotRules.choosePhone([old]) == "old")
-        #expect(HotspotRules.choosePhone([new, HotspotRules.Candidate(id: "ready", reachable: true, complete: true)]) == "ready")
+    @Test func aPhoneThatCanBeJoinedIsAskedFirstAndTheOthersFollow() {
+        let filledIn = HotspotRules.Candidate(id: "filled-in", reachable: false, complete: true)
+        let inRange = HotspotRules.Candidate(id: "in-range", reachable: true, complete: false)
+        let ready = HotspotRules.Candidate(id: "ready", reachable: true, complete: true)
+        // The train: the phone this Mac can join, its beacon not heard, goes before the one in range it has no password for.
+        #expect(HotspotRules.choosePhone([inRange, filledIn]) == "filled-in")
+        #expect(HotspotRules.choosePhone([inRange, filledIn, ready]) == "ready")
+        // When that one fails, the next is asked: a new phone beside an old one out of range still gets its turn.
+        #expect(HotspotRules.choosePhone([inRange, filledIn], except: ["filled-in"]) == "in-range")
+        #expect(HotspotRules.choosePhone([inRange, filledIn], except: ["filled-in", "in-range"]) == nil)
+        #expect(HotspotRules.choosePhone([filledIn]) == "filled-in")
         #expect(HotspotRules.choosePhone([]) == nil)
     }
 
