@@ -792,3 +792,13 @@ Zelf testen:
 - [ ] Tandem op de Mac afsluiten en opnieuw openen: de apparaten in de zijbalk springen niet om.
 - [ ] In de zijbalk een ander apparaat kiezen: het paarse vlak glijdt niet, het staat er meteen.
 - [ ] Bij de volgende update: de kaart komt in een beweging binnen, zonder icoon, met korte regels.
+
+## 0.3.41, 2026-11-25 (updatekaart zonder icoon, Android)
+
+Wat veranderd is:
+- De gedeelde updatemodule (bron: Keeper, `android/markupdate`, commit de6fa5a op branch `claude/updatekaart-zonder-icoon`) is opnieuw gesynct. De kaart heeft geen sterretje meer; titel, regel eronder en de korte regels beginnen aan de linkerrand. De foutkaart houdt zijn waarschuwingsicoon.
+- Daarin zit ook de fix van de sessie voor de donkere stand (8bbf56d): tekst en rimpels van de kaart hebben hun eigen kleur, leesbaar in de donkere stand.
+
+Zelf testen:
+- [ ] Bij de volgende update op Android: de kaart bovenaan heeft geen icoon, de tekst loopt over de hele breedte.
+- [ ] In de donkere stand is de tekst van de kaart goed leesbaar.

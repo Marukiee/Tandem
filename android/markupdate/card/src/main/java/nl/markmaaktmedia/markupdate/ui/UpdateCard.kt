@@ -274,14 +274,14 @@ private fun UpdateContent(
     }
     Column(Modifier.fillMaxWidth().clip(style.shape).background(colors.surfaceContainer).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            UpdateIcon(done = phase == Phase.Installing, style = style)
             AnimatedContent(
                 targetState = phase, transitionSpec = slideUp(2, style), modifier = Modifier.weight(1f), label = "updateText",
             ) { p ->
                 Column(Modifier.fillMaxWidth()) {
                     Text(
                         stringResource(if (p == Phase.Installing) R.string.markupdate_installing_title else R.string.markupdate_title, release.versionName),
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         when (p) {
@@ -301,8 +301,8 @@ private fun UpdateContent(
             enter = fadeIn(style.motion.fade()) + expandVertically(style.motion.sizeSpring()),
             exit = fadeOut(style.motion.fade()) + shrinkVertically(style.motion.sizeSpring()),
         ) {
-            Column(Modifier.padding(start = IconSize + 12.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                lines.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                lines.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
         Actions(
@@ -323,31 +323,6 @@ private fun downloaded(release: ReleaseInfo, progress: Float): String {
     val done = format.format(total * progress / 1e6)
     val all = format.format(total / 1e6)
     return stringResource(R.string.markupdate_progress, done, all)
-}
-
-/** Het vierkante icoon: een sparkle op de primaire container, een groene cirkel met vinkje zodra het installeert. */
-@Composable
-private fun UpdateIcon(done: Boolean, style: UpdateCardStyle) {
-    val colors = MaterialTheme.colorScheme
-    val green = style.successColor.takeIf { it != Color.Unspecified }
-        ?: if (colors.background.luminance() < 0.5f) Color(0xFF30D158) else Color(0xFF1A8F37)
-    val radius by animateDpAsState(if (done) IconSize / 2 else 15.dp, style.motion.spatial(), label = "updateIconRadius")
-    val fill by animateColorAsState(
-        if (done) green.copy(alpha = 0.2f).compositeOver(colors.surfaceContainer) else colors.primaryContainer, style.motion.colour(), label = "updateIconFill",
-    )
-    val ink by animateColorAsState(if (done) green else colors.onPrimaryContainer, style.motion.colour(), label = "updateIconInk")
-    Box(Modifier.size(IconSize).clip(RoundedCornerShape(radius)).background(fill), contentAlignment = Alignment.Center) {
-        AnimatedContent(
-            targetState = done,
-            transitionSpec = {
-                (scaleIn(spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow), initialScale = 0.3f) + fadeIn(tween(220))) togetherWith
-                    (scaleOut(tween(160), targetScale = 0.3f) + fadeOut(tween(160)))
-            },
-            label = "updateIcon",
-        ) { d ->
-            Icon(painterResource(if (d) R.drawable.markupdate_ic_check else R.drawable.markupdate_ic_sparkle), contentDescription = null, tint = ink, modifier = Modifier.size(24.dp))
-        }
-    }
 }
 
 /**
@@ -382,7 +357,7 @@ private fun Actions(
             val fraction = laterFraction.coerceIn(0.001f, LaterFraction)
             Box(
                 Modifier.weight(fraction).fillMaxHeight().graphicsLayer { alpha = laterAlpha }
-                    .clip(pill).background(colors.surfaceContainerHighest).pressable(phase == Phase.Rest, style, onLater),
+                    .clip(pill).background(colors.surfaceContainerHighest).pressable(phase == Phase.Rest, style, colors.primary, onLater),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -393,7 +368,7 @@ private fun Actions(
             Spacer(Modifier.width(8.dp * (fraction / LaterFraction)))
         }
         Box(
-            Modifier.weight(1f - laterFraction.coerceIn(0f, LaterFraction)).fillMaxHeight().clip(pill).background(barFill).pressable(barEnabled, style, onBar),
+            Modifier.weight(1f - laterFraction.coerceIn(0f, LaterFraction)).fillMaxHeight().clip(pill).background(barFill).pressable(barEnabled, style, ink, onBar),
         ) {
             Box(
                 Modifier.fillMaxHeight().fillMaxWidth(shownProgress.coerceIn(0f, 1f)).graphicsLayer { alpha = fillAlpha }
@@ -473,12 +448,12 @@ private fun FailedCard(reason: String, style: UpdateCardStyle, onRetry: () -> Un
                 Icon(painterResource(R.drawable.markupdate_ic_error), contentDescription = null, tint = colors.onErrorContainer, modifier = Modifier.size(24.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.markupdate_failed), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(R.string.markupdate_failed), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(reason, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         Box(
-            Modifier.padding(top = 14.dp).fillMaxWidth().height(ButtonHeight).clip(pill).background(colors.primary).pressable(true, style, onRetry),
+            Modifier.padding(top = 14.dp).fillMaxWidth().height(ButtonHeight).clip(pill).background(colors.primary).pressable(true, style, colors.onPrimary, onRetry),
             contentAlignment = Alignment.Center,
         ) {
             Text(stringResource(R.string.markupdate_retry), style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), color = colors.onPrimary)
@@ -488,12 +463,13 @@ private fun FailedCard(reason: String, style: UpdateCardStyle, onRetry: () -> Un
 
 /**
  * Een tik die terugpraat: de knop duikt onder de vinger en veert terug, met de rimpel eronder. De rimpel eerst en het duiken erna, zodat
- * de rimpel de hele knop vult terwijl de inhoud krimpt.
+ * de rimpel de hele knop vult terwijl de inhoud krimpt. De rimpel krijgt de kleur van de tekst op de knop: zonder kleur pakt hij
+ * LocalContentColor, en die is buiten een Surface zwart (onzichtbaar op een donkere kaart).
  */
-private fun Modifier.pressable(enabled: Boolean, style: UpdateCardStyle, onClick: () -> Unit): Modifier = composed {
+private fun Modifier.pressable(enabled: Boolean, style: UpdateCardStyle, rippleColor: Color, onClick: () -> Unit): Modifier = composed {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed && enabled) style.pressedScale else 1f, style.motion.press(), label = "pressScale")
-    clickable(interactionSource = source, indication = ripple(), enabled = enabled, role = Role.Button, onClick = onClick)
+    clickable(interactionSource = source, indication = ripple(color = rippleColor), enabled = enabled, role = Role.Button, onClick = onClick)
         .graphicsLayer { scaleX = scale; scaleY = scale }
 }

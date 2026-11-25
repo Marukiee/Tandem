@@ -71,6 +71,8 @@ De module brengt zelf mee (via de manifest-merge): `REQUEST_INSTALL_PACKAGES`, `
 `UpdateCardStyle` is voor wat per app anders is: de vorm van de kaart, het groen van het vinkje, hoe ver een knop krimpt, de regel onder "Installeren"
 (`installingSubtitle`) en `UpdateCardMotion` (veer- en tweenwaarden, ook de veer waarmee Later krimpt: demping 0,9 en stijfheid 90, als aandeel van de
 breedte). Alles is standaard Keeper. Kleuren, lettertypen en vormen komen uit `MaterialTheme`.
+Elke tekst en rimpel op de kaart en de balk heeft een eigen kleur uit het schema (`onSurface` op `surfaceContainer`), dus de kaart hoeft niet in
+een `Surface` te staan en een app hoeft `LocalContentColor` niet zelf te zetten.
 
 ### Wat een app zelf doet rond de installatie (`InstallHook`)
 

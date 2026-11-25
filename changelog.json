@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.41",
+    "date": "2026-11-25",
+    "en": {
+      "title": "Update card without icon",
+      "new": [],
+      "fixed": [
+        "Android update card without icon",
+        "Update card readable in dark mode"
+      ]
+    },
+    "nl": {
+      "title": "Updatekaart zonder icoon",
+      "new": [],
+      "fixed": [
+        "Android-updatekaart zonder icoon",
+        "Updatekaart leesbaar in de donkere stand"
+      ]
+    }
+  },
+  {
     "version": "0.3.40",
     "date": "2026-11-25",
     "en": {
