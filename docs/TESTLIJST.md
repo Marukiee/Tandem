@@ -812,5 +812,14 @@ Wat veranderd is:
 - Leest Bluetooth vlak na het wakker worden nog even als uit, dan wacht de vraag tot 10 seconden tot het aan is, in plaats van meteen "zet Bluetooth aan" te melden.
 
 Zelf testen:
+- [ ] Eerst: op de Oppo staat Tandem › Instellingen › Hotspot › "Laat mijn computer mijn hotspot gebruiken" aan. Staat die uit, dan meldt de Oppo dat hij niet deelt, verdwijnt de hotspotknop op de Mac en vraagt de Mac de Sony (gezien op 26 november om 09:25 en 14:41).
 - [ ] Klep dicht thuis, weg van bekende wifi klep open (na een paar minuten): binnen ongeveer 15 seconden vraagt de Mac de Oppo om de hotspot, en hij gaat erop. Met locatie toegestaan binnen de gekozen vertraging.
 - [ ] Klep open thuis of op school: de Mac gaat op de eigen wifi en vraagt de telefoon niets.
+
+## 0.3.43 (nog niet uitgebracht)
+
+Wat veranderd is:
+- De melding dat de hotspot nog ingevuld moet worden noemt nu de telefoon ("Vul eerst de hotspot van Maruks Sony Telefoon in bij Instellingen"). Onder de laatste apparaatrij leek hij bij de watch te horen.
+
+Zelf testen:
+- [ ] Vraagt de Mac een telefoon zonder bewaarde hotspot, dan staat de naam van die telefoon in de melding.

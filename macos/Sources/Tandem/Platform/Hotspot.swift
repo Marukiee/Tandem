@@ -609,8 +609,9 @@ final class HotspotCoordinator {
         guard let model else { return false }
         let profiles = HotspotProfiles.shared
         guard let profile = profiles.profile(for: id), profile.complete else {
-            // A phone this Mac has no hotspot of: said once, with the way to fill it in. Said before, it is what the status says.
-            model.hotspotStatus = noticeForFailure(id) ? .idle : .failed(String(localized: "Enter the hotspot name and password in Settings first"))
+            // A phone this Mac has no hotspot of: said once, with the way to fill it in. Said before, it is what the status says, with
+            // the name of the phone: below the last device in the panel it read as being about that one, a watch (2026-11-26).
+            model.hotspotStatus = noticeForFailure(id) ? .idle : .failed(String(localized: "Enter the hotspot of \(name) in Settings first"))
             return false
         }
         model.hotspotStatus = .joining(profile.ssid)

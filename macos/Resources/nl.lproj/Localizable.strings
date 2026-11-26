@@ -303,7 +303,7 @@
 "Your phone is roaming, so it does not share its hotspot" = "Je telefoon zit in roaming en deelt de hotspot dus niet";
 "Hotspot sharing is switched off on your phone" = "Hotspot delen staat uit op je telefoon";
 "Your phone could not turn on its hotspot" = "Je telefoon kon zijn hotspot niet aanzetten";
-"Enter the hotspot name and password in Settings first" = "Vul eerst de naam en het wachtwoord van de hotspot in bij Instellingen";
+"Enter the hotspot of %@ in Settings first" = "Vul eerst de hotspot van %@ in bij Instellingen";
 "Connected through the hotspot of %@" = "Verbonden via de hotspot van %@";
 "This Mac is online again" = "Deze Mac is weer online";
 "The hotspot is not visible yet" = "De hotspot is nog niet zichtbaar";
