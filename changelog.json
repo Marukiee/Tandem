@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.42",
+    "date": "2026-11-26",
+    "en": {
+      "title": "Hotspot faster after opening the lid",
+      "new": [],
+      "fixed": [
+        "Hotspot asked sooner after opening the lid"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot sneller na openen klep",
+      "new": [],
+      "fixed": [
+        "Hotspot sneller gevraagd na openen klep"
+      ]
+    }
+  },
+  {
     "version": "0.3.41",
     "date": "2026-11-25",
     "en": {

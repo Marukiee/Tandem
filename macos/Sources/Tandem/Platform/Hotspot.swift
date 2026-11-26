@@ -348,10 +348,8 @@ final class HotspotCoordinator {
         if model.hotspotStatus.isBusy { return }
         if case .connected = model.hotspotStatus { return }
         let chosen = UserDefaults.standard.object(forKey: Self.delayKey) as? Double ?? 8
-        let settling = Self.settleSeconds - Date().timeIntervalSince(settlingSince)
-        let delay = max(chosen, settling)
         offlineTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(delay))
+            try? await Task.sleep(for: .seconds(chosen))
             guard !Task.isCancelled, let self, let model = self.model, !model.isOnline, Date() >= self.heldOffUntil else { return }
             let hotspots = HotspotProfiles.shared.allNames
             // Nobody at this Mac: a closed lid that wakes in the dark for a moment (Power Nap) has no network and needs none. Asking then
@@ -359,6 +357,17 @@ final class HotspotCoordinator {
             // while the Mac sleeps, so 12 and 16 minutes after the lid closed it still read as just now, and the phone was asked in the
             // dark, cut off a few seconds later by the Mac falling asleep again (2026-11-23). The screen is what does tell.
             guard self.someoneAtThisMac else { return }
+            // Just started or woken: macOS may still be joining a network it knows, and asking then turned the hotspot on for nothing
+            // (2026-10-29). A look around that finds no saved network in range means there is nothing to wait for.
+            let left = Self.settleSeconds - Date().timeIntervalSince(self.settlingSince)
+            if left > 0 {
+                let nearby = await Task.detached(operation: { Self.savedNetworkNearby(except: hotspots) }).value
+                let wait = HotspotRules.settleWait(left: left, savedNearby: nearby)
+                if wait > 0 {
+                    try? await Task.sleep(for: .seconds(wait))
+                    guard !Task.isCancelled, !model.isOnline, Date() >= self.heldOffUntil, self.someoneAtThisMac else { return }
+                }
+            }
             // Still on a Wi-Fi of its own (home, school): that network is out for a moment, or asks for a login. The hotspot is no help.
             if await Task.detached(operation: { Self.onOtherWiFi(than: hotspots) }).value { return }
             if self.waitedForKnown < Self.knownTries, await Task.detached(operation: { Self.joinKnownNearby(except: hotspots) }).value {
@@ -399,8 +408,21 @@ final class HotspotCoordinator {
         return !hotspots.contains(ssid)
     }
 
-    /// The seconds after a start or a wake in which the phone is not asked.
+    /// The seconds after a start or a wake in which the phone is not asked, unless no saved network is in range.
     private static let settleSeconds = 40.0
+
+    /// Whether a network this Mac has saved (not a hotspot of a phone) is in range, from one look around. Nil when that cannot be told:
+    /// the Wi-Fi is off, the look failed (right after a wake it can be busy), it named no networks (without Location access macOS
+    /// leaves the names out), or there is no saved network to look for. Joined to a network already, or still joining one, is nil too.
+    nonisolated static func savedNetworkNearby(except hotspots: Set<String>) -> Bool? {
+        guard let interface = CWWiFiClient.shared().interface(), interface.powerOn(), interface.wlanChannel() == nil else { return nil }
+        let known = Set(WifiShare.known()).subtracting(hotspots)
+        guard !known.isEmpty, let found = try? interface.scanForNetworks(withSSID: nil) else { return nil }
+        let names = found.compactMap(\.ssid)
+        guard !names.isEmpty else { return nil }
+        return names.contains(where: known.contains)
+    }
+
     /// How many looks a known network nearby may hold the hotspot off: the delay apart, so about half a minute.
     private static let knownTries = 3
 
@@ -478,7 +500,9 @@ final class HotspotCoordinator {
             let answer: HotspotBleState
             let why: HotspotFailReason?
             var detail: String?
-            if model.device(id)?.online == true {
+            // Without any network here the phone cannot be reached over one, whatever the core still says: right after a wake the old
+            // connection reads as up for a few seconds more (it went at 09:25:27 after a wake at 09:25:18, 2026-11-26).
+            if model.isOnline, model.device(id)?.online == true {
                 answer = try await askOverNetwork(id: id, engine: engine, reason: extra ? "extra" : byPerson ? "asked" : "mac-offline")
                 why = quicReason
                 detail = quicDetail

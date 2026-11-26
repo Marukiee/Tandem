@@ -90,6 +90,14 @@ public enum HotspotRules {
             ?? left.first?.id
     }
 
+    /// The seconds still to wait before the phone is asked by itself, with `left` of the wait after a start or a wake, in which macOS
+    /// joins a network it knows. A look around that found no saved network in range (a street, a train) ends that wait: there is
+    /// nothing to join. `savedNearby` is nil when the look could not tell, and then the wait stays. With the lid opened in a train the
+    /// phone was asked after 40 seconds, and the person had turned the hotspot on by hand just before (2026-11-26).
+    public static func settleWait(left: Double, savedNearby: Bool?) -> Double {
+        savedNearby == false ? 0 : max(0, left)
+    }
+
     /// Before there was a hotspot for each phone there was one for all, filled in for the phone that was asked: the first one. It is
     /// handed to `phone` unless that phone has its own already. The caller drops the old one either way.
     public static func adopt(legacy: HotspotProfile, into profiles: [String: HotspotProfile], phone: String) -> [String: HotspotProfile] {

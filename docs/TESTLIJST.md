@@ -802,3 +802,14 @@ Wat veranderd is:
 Zelf testen:
 - [ ] Bij de volgende update op Android: de kaart bovenaan heeft geen icoon, de tekst loopt over de hele breedte.
 - [ ] In de donkere stand is de tekst van de kaart goed leesbaar.
+
+## 0.3.42, 2026-11-26 (hotspot na het openen van de klep)
+
+Wat veranderd is:
+- Na het openen van de klep (of een herstart) wachtte de Mac altijd 40 seconden voordat hij de telefoon om de hotspot vroeg, ook met de vertraging op 3 seconden. Op 26 november zette Mark de hotspot daardoor zelf aan, 2 seconden voordat Tandem het vroeg. Nu kijkt de Mac na de gekozen vertraging welke netwerken er zijn: staat er geen bewaard netwerk in de buurt (straat, trein), dan vraagt hij meteen. Is er wel een, of kan hij het niet zien (geen toegang tot locatie, wifi uit of nog bezig), dan wacht hij zoals eerst.
+- Zonder netwerk op de Mac gaat de vraag altijd over Bluetooth, ook als de oude verbinding met de telefoon na het wakker worden nog even als verbonden telt.
+- Leest Bluetooth vlak na het wakker worden nog even als uit, dan wacht de vraag tot 10 seconden tot het aan is, in plaats van meteen "zet Bluetooth aan" te melden.
+
+Zelf testen:
+- [ ] Klep dicht thuis, weg van bekende wifi klep open: binnen ongeveer 10 seconden vraagt de Mac de Oppo om de hotspot, en hij gaat erop.
+- [ ] Klep open thuis of op school: de Mac gaat op de eigen wifi en vraagt de telefoon niets.

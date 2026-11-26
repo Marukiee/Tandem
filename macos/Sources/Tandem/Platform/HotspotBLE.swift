@@ -122,7 +122,7 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
                         queue: self.queue,
                         options: [CBCentralManagerOptionShowPowerAlertKey: false]
                     )
-                    self.arm(seconds: 8) { self.finish(.failure(HotspotBleError.bluetoothOff)) }
+                    self.arm(seconds: 10) { self.finish(.failure(HotspotBleError.bluetoothOff)) }
                 }
             }
         } onCancel: {
@@ -172,7 +172,8 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
         case .poweredOn:
             if step == .waitingForPower { startScan() }
         case .poweredOff:
-            finish(.failure(HotspotBleError.bluetoothOff))
+            // Right after a wake Bluetooth can read as off for a moment before it comes on: the timer from `run` decides then.
+            if step != .waitingForPower { finish(.failure(HotspotBleError.bluetoothOff)) }
         case .unauthorized:
             finish(.failure(HotspotBleError.bluetoothDenied))
         case .unsupported:

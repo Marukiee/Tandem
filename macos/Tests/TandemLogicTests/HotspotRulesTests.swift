@@ -85,4 +85,21 @@ import TandemLogic
         // Another phone does not take the one of the first.
         #expect(HotspotRules.adopt(legacy: legacy, into: ["a": known], phone: "b")["b"] == legacy)
     }
+
+    @Test func noSavedNetworkInRangeEndsTheWaitAfterAWake() {
+        #expect(HotspotRules.settleWait(left: 37, savedNearby: false) == 0)
+    }
+
+    @Test func aSavedNetworkInRangeKeepsTheWaitSoMacOSCanJoinIt() {
+        #expect(HotspotRules.settleWait(left: 37, savedNearby: true) == 37)
+    }
+
+    @Test func aLookThatCannotTellKeepsTheWait() {
+        #expect(HotspotRules.settleWait(left: 37, savedNearby: nil) == 37)
+    }
+
+    @Test func aWaitThatIsOverStaysOver() {
+        #expect(HotspotRules.settleWait(left: -5, savedNearby: nil) == 0)
+        #expect(HotspotRules.settleWait(left: -5, savedNearby: true) == 0)
+    }
 }
