@@ -806,10 +806,11 @@ Zelf testen:
 ## 0.3.42, 2026-11-26 (hotspot na het openen van de klep)
 
 Wat veranderd is:
-- Na het openen van de klep (of een herstart) wachtte de Mac altijd 40 seconden voordat hij de telefoon om de hotspot vroeg, ook met de vertraging op 3 seconden. Op 26 november zette Mark de hotspot daardoor zelf aan, 2 seconden voordat Tandem het vroeg. Nu kijkt de Mac na de gekozen vertraging welke netwerken er zijn: staat er geen bewaard netwerk in de buurt (straat, trein), dan vraagt hij meteen. Is er wel een, of kan hij het niet zien (geen toegang tot locatie, wifi uit of nog bezig), dan wacht hij zoals eerst.
+- Na het openen van de klep (of een herstart) wachtte de Mac altijd 40 seconden voordat hij de telefoon om de hotspot vroeg, ook met de vertraging op 3 seconden. Op 26 november zette Mark de hotspot daardoor zelf aan, 2 seconden voordat Tandem het vroeg. Nu kijkt de Mac na de gekozen vertraging welke netwerken er zijn: staat er geen bewaard netwerk in de buurt (straat, trein), dan vraagt hij meteen. Is er wel een, of kan hij het niet zien (geen toegang tot locatie, wifi uit of nog bezig), dan wacht hij: 40 seconden na een herstart of als het netwerk pas bij het wakker worden wegviel, 15 seconden als de Mac al ruim voor het openen van de klep geen netwerk had (dan is hij ergens anders heen gedragen).
+- Let op: Tandem heeft op Marks Mac geen toegang tot locatie (status "nog niet gevraagd", gezien in de log van locationd op 26 november). Zonder die toegang verbergt macOS de netwerknamen, ook voor `system_profiler`. Dan geldt dus de 15 seconden, niet de gekozen vertraging.
 - Zonder netwerk op de Mac gaat de vraag altijd over Bluetooth, ook als de oude verbinding met de telefoon na het wakker worden nog even als verbonden telt.
 - Leest Bluetooth vlak na het wakker worden nog even als uit, dan wacht de vraag tot 10 seconden tot het aan is, in plaats van meteen "zet Bluetooth aan" te melden.
 
 Zelf testen:
-- [ ] Klep dicht thuis, weg van bekende wifi klep open: binnen ongeveer 10 seconden vraagt de Mac de Oppo om de hotspot, en hij gaat erop.
+- [ ] Klep dicht thuis, weg van bekende wifi klep open (na een paar minuten): binnen ongeveer 15 seconden vraagt de Mac de Oppo om de hotspot, en hij gaat erop. Met locatie toegestaan binnen de gekozen vertraging.
 - [ ] Klep open thuis of op school: de Mac gaat op de eigen wifi en vraagt de telefoon niets.

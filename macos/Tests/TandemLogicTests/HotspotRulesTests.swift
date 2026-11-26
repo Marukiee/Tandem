@@ -98,6 +98,19 @@ import TandemLogic
         #expect(HotspotRules.settleWait(left: 37, savedNearby: nil) == 37)
     }
 
+    @Test func afterARestartOrAWakeAtHomeTheWaitIsLong() {
+        let woke = Date()
+        #expect(HotspotRules.settleSeconds(offlineSince: nil, wokeAt: woke) == 40)
+        // The network went with the wake itself.
+        #expect(HotspotRules.settleSeconds(offlineSince: woke.addingTimeInterval(-10), wokeAt: woke) == 40)
+        #expect(HotspotRules.settleSeconds(offlineSince: woke.addingTimeInterval(2), wokeAt: woke) == 40)
+    }
+
+    @Test func gone11MinutesBeforeTheLidOpenedTheWaitIsShort() {
+        let woke = Date()
+        #expect(HotspotRules.settleSeconds(offlineSince: woke.addingTimeInterval(-11 * 60), wokeAt: woke) == 15)
+    }
+
     @Test func aWaitThatIsOverStaysOver() {
         #expect(HotspotRules.settleWait(left: -5, savedNearby: nil) == 0)
         #expect(HotspotRules.settleWait(left: -5, savedNearby: true) == 0)

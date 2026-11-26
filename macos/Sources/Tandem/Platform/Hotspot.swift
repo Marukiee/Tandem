@@ -135,6 +135,8 @@ final class HotspotCoordinator {
     /// When this Mac started or last woke: macOS needs a while then to join a network it knows, and asking the phone in the meantime
     /// turned its hotspot on for nothing (seen 2026-10-29, after a restart at home).
     private var settlingSince = Date()
+    /// Since when this Mac has had no network, nil while it has one. Kept through sleep, so a wake can tell it was carried away.
+    private var offlineSince: Date?
     private var wakeObserver: NSObjectProtocol?
     private var sleepObservers: [NSObjectProtocol] = []
     /// Set from the moment the screens go dark until they light up again. A Mac with its lid closed wakes for a few seconds now and then
@@ -335,6 +337,7 @@ final class HotspotCoordinator {
     func networkChanged(online: Bool) {
         offlineTask?.cancel()
         if online {
+            offlineSince = nil
             waitedForKnown = 0
             // Online through something else than the hotspot: the next time it is missed, it may be asked for again.
             if case .connected = model?.hotspotStatus {} else { heldOffUntil = .distantPast }
@@ -344,6 +347,7 @@ final class HotspotCoordinator {
             default: break
             }
         }
+        if !online, offlineSince == nil { offlineSince = Date() }
         guard let model, !online, autoEnabled, Date() >= heldOffUntil else { return }
         if model.hotspotStatus.isBusy { return }
         if case .connected = model.hotspotStatus { return }
@@ -359,7 +363,8 @@ final class HotspotCoordinator {
             guard self.someoneAtThisMac else { return }
             // Just started or woken: macOS may still be joining a network it knows, and asking then turned the hotspot on for nothing
             // (2026-10-29). A look around that finds no saved network in range means there is nothing to wait for.
-            let left = Self.settleSeconds - Date().timeIntervalSince(self.settlingSince)
+            let settle = HotspotRules.settleSeconds(offlineSince: self.offlineSince, wokeAt: self.settlingSince)
+            let left = settle - Date().timeIntervalSince(self.settlingSince)
             if left > 0 {
                 let nearby = await Task.detached(operation: { Self.savedNetworkNearby(except: hotspots) }).value
                 let wait = HotspotRules.settleWait(left: left, savedNearby: nearby)
@@ -407,9 +412,6 @@ final class HotspotCoordinator {
         guard let ssid = interface.ssid() else { return hotspots.isEmpty }
         return !hotspots.contains(ssid)
     }
-
-    /// The seconds after a start or a wake in which the phone is not asked, unless no saved network is in range.
-    private static let settleSeconds = 40.0
 
     /// Whether a network this Mac has saved (not a hotspot of a phone) is in range, from one look around. Nil when that cannot be told:
     /// the Wi-Fi is off, the look failed (right after a wake it can be busy), it named no networks (without Location access macOS

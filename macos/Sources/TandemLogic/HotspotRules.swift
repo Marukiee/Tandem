@@ -90,6 +90,14 @@ public enum HotspotRules {
             ?? left.first?.id
     }
 
+    /// How long after a start or a wake the phone is not asked by itself, as macOS may still be joining a network it knows: 40 seconds,
+    /// since after a restart at home 8 was too short (2026-10-29). A Mac without a network since well before it woke (the short wakes with
+    /// the lid closed found none) was carried somewhere else, where macOS joins a network it knows within a few seconds: 15 will do.
+    public static func settleSeconds(offlineSince: Date?, wokeAt: Date) -> Double {
+        guard let offlineSince, wokeAt.timeIntervalSince(offlineSince) > 60 else { return 40 }
+        return 15
+    }
+
     /// The seconds still to wait before the phone is asked by itself, with `left` of the wait after a start or a wake, in which macOS
     /// joins a network it knows. A look around that found no saved network in range (a street, a train) ends that wait: there is
     /// nothing to join. `savedNearby` is nil when the look could not tell, and then the wait stays. With the lid opened in a train the
