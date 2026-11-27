@@ -77,6 +77,18 @@ public enum HotspotRules {
         }
     }
 
+    /// Whether each phone shares its hotspot, kept over a restart of this Mac: the core knows a status only while the app runs, so after
+    /// a restart every phone read as sharing until it connected, and one that does not share was asked (2026-11-27). `said` is what each
+    /// phone said since this Mac started (nil: nothing yet), `kept` what was kept from before. What a phone says wins and is kept; until
+    /// it says something, what was kept stands.
+    public static func shares(said: [String: Bool?], kept: [String: Bool]) -> [String: Bool] {
+        var known = kept
+        for (id, share) in said {
+            if let share { known[id] = share }
+        }
+        return known
+    }
+
     /// The phone to ask next, leaving out the ones `tried` this round. First the phones this Mac can join (hotspot filled in), in range
     /// before out of range: Bluetooth may still find a phone whose beacon was not heard. Then one in range that is not filled in, so a new
     /// phone gets its setup, then the rest. A phone in range went first before, filled in or not: in a train an old phone without mobile

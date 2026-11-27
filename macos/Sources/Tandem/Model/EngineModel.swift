@@ -502,11 +502,29 @@ final class EngineModel {
         return devices.sorted { (rank[$0.id] ?? .max) < (rank[$1.id] ?? .max) }
     }
 
+    /// Whether each phone shares its hotspot, as it last said (see `HotspotRules.shares`).
+    private static let hotspotShareKey = "hotspotShareByPhone"
+
+    /// The phones with whether they share their hotspot filled in from before a restart, until they say it again.
+    private static func withKeptHotspotShare(_ devices: [TandemDevice]) -> [TandemDevice] {
+        let defaults = UserDefaults.standard
+        let kept = defaults.dictionary(forKey: hotspotShareKey) as? [String: Bool] ?? [:]
+        let phones = devices.filter { $0.platform == .android }
+        let known = HotspotRules.shares(said: Dictionary(uniqueKeysWithValues: phones.map { ($0.id, $0.status.hotspotShare) }), kept: kept)
+        if known != kept { defaults.set(known, forKey: hotspotShareKey) }
+        return devices.map { device in
+            guard device.platform == .android, device.status.hotspotShare == nil, let share = known[device.id] else { return device }
+            var device = device
+            device.status.hotspotShare = share
+            return device
+        }
+    }
+
     func refreshDevices() {
         guard let engine else { return }
         let refusing = Set(devices.filter { $0.online && !Self.takesPointer($0) }.map(\.id))
         // Every open or hidden view that shows a device is redone when this is set, also when nothing changed.
-        let fresh = Self.inKeptOrder(engine.devices())
+        let fresh = Self.withKeptHotspotShare(Self.inKeptOrder(engine.devices()))
         if fresh != devices { devices = fresh }
         // What was filled in for the hotspot before there was one for each phone goes to the first phone, as soon as there is one.
         if let first = fresh.first(where: { $0.platform == .android }) { HotspotProfiles.shared.adoptLegacy(by: first.id) }

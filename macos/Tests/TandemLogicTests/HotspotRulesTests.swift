@@ -75,6 +75,15 @@ import TandemLogic
         #expect(HotspotRules.choosePhone([]) == nil)
     }
 
+    @Test func whetherAPhoneSharesIsKeptOverARestartUntilItSaysAgain() {
+        let kept = ["oppo": false, "sony": true]
+        // Just restarted: nothing said yet, what was kept stands. A phone never heard of stays unknown.
+        #expect(HotspotRules.shares(said: ["oppo": nil, "sony": nil, "new": nil], kept: kept) == kept)
+        // What a phone says now wins, both ways.
+        #expect(HotspotRules.shares(said: ["oppo": true, "sony": false], kept: kept) == ["oppo": true, "sony": false])
+        #expect(HotspotRules.shares(said: ["new": false], kept: [:]) == ["new": false])
+    }
+
     @Test func byItselfTheMacLeavesOutAPhoneItCanNeitherJoinNorReach() {
         let away = HotspotRules.Candidate(id: "away", reachable: false, complete: false)
         let inRange = HotspotRules.Candidate(id: "in-range", reachable: true, complete: false)

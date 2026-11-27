@@ -831,9 +831,11 @@ Zelf testen:
 Wat veranderd is:
 - Android: mist Tandem het recht op Bluetooth of meldingen, dan staat de schakelaar "Laat mijn computer mijn hotspot gebruiken" grijs en uit, en nu gedraagt de telefoon zich ook zo. Hij zegt de Mac dat hij niet deelt en zet zijn hotspot niet meer aan als de Mac erom vraagt. De Sony deed dat wel, met meldingen uit (2026-11-27).
 - Mac: vraagt hij uit zichzelf een hotspot, dan slaat hij een telefoon over die hij niet kan bereiken en waarvan de hotspot niet is ingevuld. Druk je zelf op de knop, dan wordt die telefoon nog wel gevraagd.
+- Mac: onthoudt per telefoon of die zijn hotspot deelt, ook na een herstart. Tot de telefoon het opnieuw zegt geldt wat hij het laatst zei. Eerder gold na een herstart elke telefoon als delend tot hij via het netwerk verbond.
 - Mac: een hotspotlogboek in `~/Library/Application Support/Tandem/hotspot.log`. Per keuze staat erin wat de Mac van elke telefoon wist (deelt, bereik, ingevuld), wie hij vroeg, via welke weg, het antwoord en of hij verbond. Nooit een wachtwoord of hotspotnaam.
 
 Zelf testen (Mac, Oppo en Sony alle drie bijwerken):
 - [ ] Sony met meldingen uit voor Tandem: de Mac offline zetten. "Sony vragen" verschijnt niet meer en de hotspot van de Sony blijft uit.
 - [ ] Op de Sony meldingen weer aan en de hotspotpagina openen: de schakelaar kan aan, en de Mac ziet binnen een paar seconden dat de Sony deelt.
+- [ ] Mac herstarten terwijl hij offline is en de Oppo niet deelt: de Mac vraagt de Oppo niet, ook niet direct na de herstart.
 - [ ] Gaat er iets mis met de hotspot, zeg dan hoe laat: dan lees ik `hotspot.log`.

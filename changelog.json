@@ -9,7 +9,8 @@
       ],
       "fixed": [
         "Greyed hotspot switch really is off",
-        "Mac skips unset phones out of reach"
+        "Mac skips unset phones out of reach",
+        "Mac remembers hotspot sharing after restart"
       ]
     },
     "nl": {
@@ -19,7 +20,8 @@
       ],
       "fixed": [
         "Grijze hotspotschakelaar staat echt uit",
-        "Mac slaat niet ingestelde telefoon buiten bereik over"
+        "Mac slaat niet ingestelde telefoon buiten bereik over",
+        "Mac onthoudt hotspot delen na herstart"
       ]
     }
   },
