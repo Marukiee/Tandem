@@ -49,8 +49,10 @@ Inside is a CBOR `Msg` and a sequence number. The sender keeps its number climbi
 one more than the last), and the receiver stores the highest it accepted and refuses anything at
 or below it, so a captured frame cannot be replayed, also not after a restart.
 
-Only clipboard, notification (post, remove, action), music, Wi-Fi (see PROTOCOL.md) and ping messages may cross the air. A frame
-above 48 KB is not sent.
+Only clipboard, notification (post, remove, action), music, Wi-Fi (see PROTOCOL.md), refused and ping messages may cross the air,
+and a status that holds nothing but `hotspot_share`. A phone sends that one after its hello on every new link, and again when the
+switch changes while the link is up, so the computer knows which phone to ask for its hotspot while it
+has no network. A frame above 48 KB is not sent.
 
 ## Chunks
 

@@ -819,7 +819,9 @@ Zelf testen:
 ## 0.3.43 (nog niet uitgebracht)
 
 Wat veranderd is:
+- De schakelaar "Laat mijn computer mijn hotspot gebruiken" komt nu ook via Bluetooth bij de Mac, niet alleen via het netwerk. Zet je hem aan terwijl de Mac offline is, dan verschijnt de hotspotknop zonder te wachten tot ze weer via het netwerk verbonden zijn. De Mac houdt via Bluetooth maar met een telefoon contact: de eerste offline telefoon in de lijst.
 - De melding dat de hotspot nog ingevuld moet worden noemt nu de telefoon ("Vul eerst de hotspot van Maruks Sony Telefoon in bij Instellingen"). Onder de laatste apparaatrij leek hij bij de watch te horen.
 
 Zelf testen:
 - [ ] Vraagt de Mac een telefoon zonder bewaarde hotspot, dan staat de naam van die telefoon in de melding.
+- [ ] Mac offline, telefoon "Via Bluetooth": zet de hotspotschakelaar op de telefoon uit, dan verdwijnt de hotspotknop op de Mac binnen een paar seconden. Weer aan, dan komt hij terug.

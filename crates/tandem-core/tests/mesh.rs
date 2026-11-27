@@ -508,6 +508,58 @@ async fn status_reaches_the_other_device() {
     .await;
 }
 
+fn shares_hotspot(node: &Node, id: DeviceId) -> Option<bool> {
+    node.engine.devices().iter().find(|d| d.id == id).and_then(|d| d.status.hotspot_share)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_phone_says_over_bluetooth_whether_it_shares_its_hotspot() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    let (phone_id, mac_id) = (phone.engine.id(), mac.engine.id());
+    wait_until("the Bluetooth key", || mac.engine.ble_ready(&phone_id) && phone.engine.ble_ready(&mac_id)).await;
+    wait_until("connected", || online(&phone, mac_id) && online(&mac, phone_id)).await;
+    phone.engine.update_status(Status { hotspot_share: Some(true), ..Default::default() }).await;
+    wait_until("the switch over QUIC", || shares_hotspot(&mac, phone_id) == Some(true)).await;
+
+    // The Mac opens the link and says hello first; it has nothing of its status for the air.
+    for chunk in mac.engine.ble_hello(&phone_id, 180) {
+        phone.engine.ble_receive("mac", &chunk).await;
+    }
+    assert!(mac.engine.ble_take_outbox(&phone_id, 180).is_empty());
+    // The phone answers with its hello, and then the switch. That frame must come after the hello and open: one numbered below the
+    // hello would be dropped as a replay.
+    for chunk in phone.engine.ble_hello(&mac_id, 180) {
+        mac.engine.ble_receive("phone", &chunk).await;
+    }
+    let after_hello = phone.engine.ble_take_outbox(&mac_id, 180);
+    assert!(!after_hello.is_empty(), "the switch waits for the link after the hello");
+    let mut opened = false;
+    for chunk in after_hello {
+        opened |= mac.engine.ble_receive("phone", &chunk).await == Some(phone_id);
+    }
+    assert!(opened, "the Mac takes the switch from the air");
+    assert_eq!(shares_hotspot(&mac, phone_id), Some(true));
+
+    // A change goes over the link too, also while the connection looks up: on the phone it can outlive the Mac's network for a while.
+    // Other news does not: only the switch may cross.
+    phone
+        .engine
+        .update_status(Status { battery: Some(Battery { level: 40, charging: false, power_save: false }), ..Default::default() })
+        .await;
+    assert!(phone.engine.ble_take_outbox(&mac_id, 180).is_empty());
+    phone.engine.update_status(Status { hotspot_share: Some(false), ..Default::default() }).await;
+    let change = phone.engine.ble_take_outbox(&mac_id, 180);
+    assert!(!change.is_empty(), "the switch goes over the link as well");
+    let mut opened = false;
+    for chunk in change {
+        opened |= mac.engine.ble_receive("phone", &chunk).await == Some(phone_id);
+    }
+    assert!(opened, "the Mac takes the change from the air");
+    assert_eq!(shares_hotspot(&mac, phone_id), Some(false));
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_third_device_finds_the_first_through_the_second() {
     let phone = node("Phone").await;

@@ -585,22 +585,33 @@ impl Engine {
         // From working out what is news until it is sent: two quick calls (mute on, mute off) must reach the others in the order they were
         // made, or the older value would stay until the next refresh.
         let _in_order = self.inner.status_in_order.lock().await;
-        let to_send = {
+        let (to_send, air) = {
             let mut mine = self.inner.my_status.lock().unwrap();
             let news = mine.changes(&change);
             mine.merge(&change);
+            let air = news.for_the_air();
             let mut refreshed = self.inner.status_sent_in_full.lock().unwrap();
-            if news.is_empty() && refreshed.elapsed() < refresh {
+            let to_send = if news.is_empty() && refreshed.elapsed() < refresh {
                 None
             } else if news.is_empty() || refreshed.elapsed() >= refresh {
                 *refreshed = std::time::Instant::now();
                 Some(mine.clone())
             } else {
                 Some(news)
-            }
+            };
+            (to_send, air)
         };
         if let Some(status) = to_send {
             self.inner.broadcast(Msg::Status(status)).await;
+        }
+        // A device linked over Bluetooth hears the part that may cross the air when that part changed: the hotspot switch turned on the
+        // phone while the computer is offline and waits for that very hotspot. Also when the connection still looks up here: a computer
+        // links over Bluetooth only once it lost the network, and the connection to it can take a while to time out on this side. Twice
+        // is harmless, it is one small frame.
+        if let Some(air) = air {
+            for id in self.inner.ble_linked_ids() {
+                self.inner.ble_queue(&id, Msg::Status(air.clone()));
+            }
         }
     }
 

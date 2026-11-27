@@ -38,8 +38,12 @@ const OUTBOX_LIMIT: usize = 32;
 /// A chunk is msg id, index, count, then payload.
 const CHUNK_HEADER: usize = 3;
 
-/// Which messages may cross the air. A media cover is not one of them: it is too big for Bluetooth.
+/// Which messages may cross the air. A media cover is not one of them: it is too big for Bluetooth. A status only with what
+/// [`crate::proto::Status::for_the_air`] keeps of it.
 pub fn allowed(msg: &Msg) -> bool {
+    if let Msg::Status(status) = msg {
+        return status.for_the_air().as_ref() == Some(status);
+    }
     matches!(
         msg,
         Msg::Clipboard(_)
@@ -353,6 +357,13 @@ impl Inner {
     pub(crate) fn ble_hello(&self, peer: &DeviceId, chunk: usize) -> Vec<Vec<u8>> {
         let Ok(frame) = self.ble_seal(peer, Msg::Ping { nonce: 0 }) else { return Vec::new() };
         let id = self.ble_msg_id.fetch_add(1, Ordering::Relaxed);
+        // Then what of the status may cross (see `Status::for_the_air`), from the outbox. Sealed after the hello, so it goes out after
+        // it: a frame with a lower number than one already seen would be dropped as a replay. A phone says hello once the computer's
+        // first frame came in, which is when the link counts as up here; a computer says it first, and has nothing of it to say.
+        let air = self.my_status.lock().unwrap().for_the_air();
+        if let Some(status) = air {
+            self.ble_queue(peer, Msg::Status(status));
+        }
         fragment(id, &frame, chunk).unwrap_or_default()
     }
 
@@ -464,6 +475,20 @@ mod tests {
         assert!(seal(&key, &id(1), &id(2), 1, Msg::Ring { on: true }).is_err());
         assert!(seal(&key, &id(1), &id(2), 1, Msg::Dial { number: "1".into() }).is_err());
         assert!(seal(&key, &id(1), &id(2), 1, Msg::Ping { nonce: 1 }).is_ok());
+    }
+
+    #[test]
+    fn of_a_status_only_the_hotspot_switch_crosses_the_air() {
+        use crate::proto::{Battery, Status};
+        let key = [7u8; 32];
+        let share = Status { hotspot_share: Some(false), ..Status::default() };
+        assert!(seal(&key, &id(1), &id(2), 1, Msg::Status(share.clone())).is_ok());
+        let battery = Some(Battery { level: 50, charging: false, power_save: false });
+        let more = Status { battery, ..share.clone() };
+        assert!(seal(&key, &id(1), &id(2), 1, Msg::Status(more.clone())).is_err());
+        assert!(seal(&key, &id(1), &id(2), 1, Msg::Status(Status::default())).is_err());
+        assert_eq!(more.for_the_air(), Some(share));
+        assert_eq!(Status { battery, ..Status::default() }.for_the_air(), None);
     }
 
     #[test]

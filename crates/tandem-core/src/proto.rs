@@ -524,6 +524,13 @@ macro_rules! status_fields {
 pub const FREE_STORAGE_UNKNOWN: u64 = u64::MAX;
 
 impl Status {
+    /// The part of this status that may go over a Bluetooth link (see `ble::allowed`): what a computer without a network needs to
+    /// know, and small enough for the air. Now only whether this phone shares its hotspot, so a switch turned on the phone shows on
+    /// the computer while it waits for that very hotspot (2026-11-27). None when there is nothing of it to say.
+    pub fn for_the_air(&self) -> Option<Status> {
+        self.hotspot_share.map(|share| Status { hotspot_share: Some(share), ..Status::default() })
+    }
+
     pub fn merge(&mut self, other: &Status) {
         macro_rules! take {
             ($other:ident, $this:ident, $($field:ident),*) => {
