@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.3.44",
+    "date": "2026-11-27",
+    "en": {
+      "title": "Hotspot follows the switch",
+      "new": [
+        "Hotspot log on the Mac"
+      ],
+      "fixed": [
+        "Greyed hotspot switch really is off",
+        "Mac skips unset phones out of reach"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot volgt de schakelaar",
+      "new": [
+        "Hotspotlogboek op de Mac"
+      ],
+      "fixed": [
+        "Grijze hotspotschakelaar staat echt uit",
+        "Mac slaat niet ingestelde telefoon buiten bereik over"
+      ]
+    }
+  },
+  {
     "version": "0.3.43",
     "date": "2026-11-27",
     "en": {

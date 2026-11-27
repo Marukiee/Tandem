@@ -54,7 +54,7 @@ class HotspotModule private constructor(private val context: Context) {
         shizuku = shizuku,
         detector = detector,
         notifications = notifications,
-        enabled = { enabled },
+        enabled = { switchedOn() },
         allowRoaming = { allowRoaming },
         macConnected = { graph.host.devices.value.any { it.online && it.platform == TandemPlatform.MAC_OS } },
         onStatusChanged = { onStatusChanged() },
@@ -234,7 +234,20 @@ class HotspotModule private constructor(private val context: Context) {
     }
 
     /** Whether this phone shares its hotspot with a Mac at all: the switch in the settings. */
-    fun sharesWithMac(): Boolean = enabled
+    fun sharesWithMac(): Boolean = switchedOn()
+
+    /**
+     * The switch as the person sees it: on, and with what it needs allowed (see [Permissions.hotspot]). A switch that shows off for a
+     * missing permission is off here too: the Sony had notifications off, showed its switch off, and still said it shared and turned its
+     * hotspot on when the Mac asked (2026-11-27).
+     */
+    private fun switchedOn(): Boolean = enabled && Permissions.hotspot(context)
+
+    /** A permission was given or taken: the switch may read differently now, and the computers hear it at once. */
+    fun permissionsChanged() {
+        reconcile()
+        onStatusChanged()
+    }
 
     /** The password of the own hotspot named [ssid], or null when it cannot be read or is no longer called that. */
     suspend fun ownPassword(ssid: String): String? {
@@ -274,7 +287,7 @@ class HotspotModule private constructor(private val context: Context) {
         val reachable = graph.host.devices.value
             .filter { it.online && it.platform == TandemPlatform.MAC_OS && "hotspot" in it.caps }
             .map { it.id }.toSet()
-        val name = if (enabled && reachable.isNotEmpty()) ownNameNow(reachable) else null
+        val name = if (switchedOn() && reachable.isNotEmpty()) ownNameNow(reachable) else null
         val targets = synchronized(toldName) {
             val kept = HotspotNaming.stillTold(toldName, reachable)
             toldName.clear()
@@ -289,10 +302,10 @@ class HotspotModule private constructor(private val context: Context) {
     }
 
     /**
-     * Computers may use this phone's hotspot: the switch is on and there is a SIM for mobile data. Said in the status, so a computer
+     * Computers may use this phone's hotspot: the switch is on (as it shows, with its permissions) and there is a SIM for mobile data. Said in the status, so a computer
      * leaves the hotspot out (no button, not asked) for a phone that does not share it.
      */
-    fun sharesWithComputers(): Boolean = enabled && PhoneConditions.noMobileData(context) == null
+    fun sharesWithComputers(): Boolean = switchedOn() && PhoneConditions.noMobileData(context) == null
 
     // ---- Over Bluetooth --------------------------------------------------------
 

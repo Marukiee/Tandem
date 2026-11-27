@@ -25,6 +25,20 @@ enum HotspotStatus: Equatable {
         }
     }
 
+    /// For `HotspotLog`: what the panel says, in English, and without the name of the hotspot that is joined.
+    var logText: String {
+        switch self {
+        case .idle: "nothing"
+        case let .asking(name): "asking \(name)"
+        case .starting: "the phone is turning on its hotspot"
+        case .needsTap: "waiting for a tap on the phone"
+        case .joining: "joining the hotspot"
+        case let .connected(name): "using the hotspot of \(name)"
+        case let .failed(reason): "failed: \(reason)"
+        case .limitReached: "daily limit reached"
+        }
+    }
+
     var text: String {
         switch self {
         case .idle: ""
@@ -381,8 +395,12 @@ final class HotspotCoordinator {
             }
             self.waitedForKnown = 0
             // The phone that has its hotspot filled in and is in reach, not just the first one: a new phone may sit beside the old one.
-            if let target = model.hotspotPhone {
+            // By itself: not a phone it can neither join nor reach (see `HotspotRules.choosePhone`).
+            HotspotLog.write("offline, choosing a phone by itself. \(model.hotspotPhonesForLog)")
+            if let target = model.hotspotPhone(except: [], automatic: true) {
                 self.requestNow(target.id, byPerson: false)
+            } else {
+                HotspotLog.write("no phone to ask")
             }
         }
     }
@@ -489,6 +507,8 @@ final class HotspotCoordinator {
         quicAnswer = nil
         quicReason = nil
         quicDetail = nil
+        let why = extra ? "for more data" : byPerson ? "for the person" : handedOn ? "handed on" : "by itself"
+        HotspotLog.write("asks \(model.device(id)?.name ?? id), \(why)")
         model.hotspotStatus = .asking(model.device(id)?.name ?? String(localized: "your phone"))
         runTask = Task { [weak self] in
             await self?.run(id: id, engine: engine, byPerson: byPerson, extra: extra)
@@ -505,16 +525,19 @@ final class HotspotCoordinator {
             // Without any network here the phone cannot be reached over one, whatever the core still says: right after a wake the old
             // connection reads as up for a few seconds more (it went at 09:25:27 after a wake at 09:25:18, 2026-11-26).
             if model.isOnline, model.device(id)?.online == true {
+                HotspotLog.write("asks \(name) over the network")
                 answer = try await askOverNetwork(id: id, engine: engine, reason: extra ? "extra" : byPerson ? "asked" : "mac-offline")
                 why = quicReason
                 detail = quicDetail
             } else {
+                HotspotLog.write("asks \(name) over Bluetooth")
                 answer = try await ble.run(action: extra ? BleHotspotClient.actionOnExtra : byPerson ? BleHotspotClient.actionOnAsked : BleHotspotClient.actionOn, phoneId: id, engine: engine) { [weak self] state in
                     Task { @MainActor in self?.showProgress(state) }
                 }
                 // Still starting when the time was up: it did not come on, whatever the phone thinks.
                 why = answer == .starting ? .notUp : ble.reason
             }
+            HotspotLog.write("\(name) answered \(answer)\(why.map { ", \($0)" } ?? "")")
             switch answer {
             case .on:
                 if await joinAndConnect(id: id, name: name, engine: engine) { return }
@@ -536,6 +559,7 @@ final class HotspotCoordinator {
         } catch is CancellationError {
             // A newer request or a stop took over.
         } catch {
+            HotspotLog.write("asking \(name) went wrong: \(error.localizedDescription)")
             model.hotspotStatus = .failed(error.localizedDescription)
             // Not found over Bluetooth, the connection dropped: another phone may be there. Bluetooth off on this Mac is off for all.
             if let ble = error as? HotspotBleError, [.bluetoothOff, .bluetoothDenied, .bluetoothUnsupported].contains(ble) { return }
@@ -551,8 +575,11 @@ final class HotspotCoordinator {
         // Stopped, or a newer request took over: nothing to hand on.
         guard !byPerson, !Task.isCancelled, let model else { return false }
         triedThisRound.insert(id)
-        guard let next = model.hotspotPhone(except: triedThisRound) else { return false }
-        NSLog("Tandem: the hotspot of one phone did not work, asking the next")
+        guard let next = model.hotspotPhone(except: triedThisRound, automatic: true) else {
+            HotspotLog.write("no other phone to ask. \(model.hotspotPhonesForLog)")
+            return false
+        }
+        HotspotLog.write("hands on to \(next.name). \(model.hotspotPhonesForLog)")
         requestNow(next.id, byPerson: false, handedOn: true)
         return true
     }
@@ -609,6 +636,7 @@ final class HotspotCoordinator {
         guard let model else { return false }
         let profiles = HotspotProfiles.shared
         guard let profile = profiles.profile(for: id), profile.complete else {
+            HotspotLog.write("the hotspot of \(name) is on, but it is not filled in on this Mac")
             // A phone this Mac has no hotspot of: said once, with the way to fill it in. Said before, it is what the status says, with
             // the name of the phone: below the last device in the panel it read as being about that one, a watch (2026-11-26).
             model.hotspotStatus = noticeForFailure(id) ? .idle : .failed(String(localized: "Enter the hotspot of \(name) in Settings first"))
@@ -624,6 +652,7 @@ final class HotspotCoordinator {
             // The phone is the gateway. Without this the core would wait for mDNS, which
             // does not cross a hotspot reliably.
             try? engine.addAddress(id: id, addr: "\(gateway):\(HotspotWiFi.port)")
+            HotspotLog.write("on the hotspot of \(name)")
             model.hotspotStatus = .connected(name)
             Notifier.shared.post(
                 id: "hotspot.connected",
@@ -636,6 +665,13 @@ final class HotspotCoordinator {
         } catch {
             // Not found, or refused: the name or the password is not what the phone has now (a new phone, a renamed hotspot). That is for
             // the person to fix, and said once. A timeout or no route is not, and stays a plain failure with its retry.
+            let kind = switch error as? HotspotWiFiError {
+            case .notFound: "not found"
+            case .joinFailed: "refused"
+            case .noRoute: "no route"
+            case nil: error.localizedDescription
+            }
+            HotspotLog.write("could not join the hotspot of \(name): \(kind)")
             if let failure = error as? HotspotWiFiError, failure.pointsAtCredentials, noticeForFailure(id) {
                 model.hotspotStatus = .idle
             } else {
@@ -761,6 +797,7 @@ final class HotspotCoordinator {
 
     func stop(_ id: String) {
         guard let model, let engine = model.engineHandle else { return }
+        HotspotLog.write("stopped by the person: \(model.device(id)?.name ?? id)")
         runTask?.cancel()
         offlineTask?.cancel()
         model.hotspotStatus = .idle

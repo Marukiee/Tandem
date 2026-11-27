@@ -69,6 +69,12 @@ object Permissions {
 
     fun bluetooth(context: Context) = bluetoothPermissions.all { granted(context, it) }
 
+    /**
+     * What sharing the hotspot needs before its switch can be on: Bluetooth (asked without a network) and notifications (the tap when it
+     * cannot start by itself). Without them the switch shows off, and the phone acts as off too (see `HotspotModule.switchedOn`).
+     */
+    fun hotspot(context: Context) = bluetooth(context) && notifications(context)
+
     fun installApps(context: Context) = context.packageManager.canRequestPackageInstalls()
 
     fun openBatterySettings(context: Context) {

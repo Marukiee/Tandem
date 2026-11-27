@@ -99,6 +99,8 @@ fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route
     val attempt by module.controller.lastAttempt.collectAsState()
     val permissions = rememberPermissionStatus()
     val ready = permissions.bluetooth && permissions.notifications
+    // Given or taken in the system settings: the switch reads differently, and the computers hear it at once.
+    LaunchedEffect(ready) { module.permissionsChanged() }
     val devices by graph.host.devices.collectAsState()
     val setupDone = ready && permissions.battery && devices.any { it.platform in nl.markmaaktmedia.tandem.hotspot.COMPUTERS }
 
@@ -153,7 +155,8 @@ fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route
                     stringResource(R.string.hotspot_test_sub),
                     onClick = {
                         if (busy) return@ActionRow
-                        val message = when (module.availability()) {
+                        // Without its permissions the switch is off, and a test would only be told no.
+                        val message = if (!ready) R.string.hotspot_needs_permissions else when (module.availability()) {
                             BleAvailability.PrefOff -> R.string.hotspot_test_needs_pref
                             BleAvailability.NoPermission -> R.string.hotspot_test_needs_bluetooth
                             else -> null

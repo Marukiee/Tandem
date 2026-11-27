@@ -82,12 +82,15 @@ public enum HotspotRules {
     /// phone gets its setup, then the rest. A phone in range went first before, filled in or not: in a train an old phone without mobile
     /// data or a password was asked while the new one lay beside it, and the Mac stayed on "Asking your phone" (2026-11-25). Each phone
     /// that fails hands on to the next, so a new phone beside an old one out of range is still asked, a few seconds later.
-    public static func choosePhone(_ phones: [Candidate], except tried: Set<String> = []) -> String? {
+    ///
+    /// `automatic`: asked by this Mac by itself, not for a person. Then a phone that is neither filled in nor in range is left out: its
+    /// hotspot came on in a bag for nothing, and the Mac could only say to fill it in (the Sony, 2026-11-27).
+    public static func choosePhone(_ phones: [Candidate], except tried: Set<String> = [], automatic: Bool = false) -> String? {
         let left = phones.filter { !tried.contains($0.id) }
         return left.first { $0.reachable && $0.complete }?.id
             ?? left.first { $0.complete }?.id
             ?? left.first { $0.reachable }?.id
-            ?? left.first?.id
+            ?? (automatic ? nil : left.first?.id)
     }
 
     /// How long after a start or a wake the phone is not asked by itself, as macOS may still be joining a network it knows: 40 seconds,

@@ -75,6 +75,19 @@ import TandemLogic
         #expect(HotspotRules.choosePhone([]) == nil)
     }
 
+    @Test func byItselfTheMacLeavesOutAPhoneItCanNeitherJoinNorReach() {
+        let away = HotspotRules.Candidate(id: "away", reachable: false, complete: false)
+        let inRange = HotspotRules.Candidate(id: "in-range", reachable: true, complete: false)
+        let filledIn = HotspotRules.Candidate(id: "filled-in", reachable: false, complete: true)
+        // The Sony: not filled in, not heard. Asked for by a person it is still asked; by itself the Mac leaves it be.
+        #expect(HotspotRules.choosePhone([away]) == "away")
+        #expect(HotspotRules.choosePhone([away], automatic: true) == nil)
+        // A new phone in range still gets its setup, and a filled in one is still tried out of range.
+        #expect(HotspotRules.choosePhone([away, inRange], automatic: true) == "in-range")
+        #expect(HotspotRules.choosePhone([away, filledIn], automatic: true) == "filled-in")
+        #expect(HotspotRules.choosePhone([away, filledIn], except: ["filled-in"], automatic: true) == nil)
+    }
+
     @Test func theOldHotspotGoesToThePhoneThatWasAsked() {
         let legacy = HotspotProfile(ssid: "Old", password: "pw")
         let moved = HotspotRules.adopt(legacy: legacy, into: [:], phone: "a")

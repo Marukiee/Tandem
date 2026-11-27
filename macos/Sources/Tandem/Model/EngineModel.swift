@@ -72,7 +72,9 @@ final class EngineModel {
     var startError: String?
     var removedFromCircle = false
     var isOnline = true
-    var hotspotStatus: HotspotStatus = .idle
+    var hotspotStatus: HotspotStatus = .idle {
+        didSet { if hotspotStatus != oldValue { HotspotLog.write("shows: \(hotspotStatus.logText)") } }
+    }
     /// The phone `hotspotStatus` is about: the one asked, joined or in use. Two phones each with a hotspot both lit up as in use, and
     /// Stop on the other one went to the wrong phone (2026-11-25).
     var hotspotFor: String?
@@ -145,14 +147,29 @@ final class EngineModel {
     /// The phone the hotspot is asked of: see `HotspotRules.choosePhone`.
     var hotspotPhone: TandemDevice? { hotspotPhone(except: []) }
 
-    /// The next phone to ask, leaving out the ones that were tried and could not do it.
-    func hotspotPhone(except tried: Set<String>) -> TandemDevice? {
+    /// The next phone to ask, leaving out the ones that were tried and could not do it. `automatic`: this Mac asks by itself (see
+    /// `HotspotRules.choosePhone`).
+    func hotspotPhone(except tried: Set<String>, automatic: Bool = false) -> TandemDevice? {
         // A phone that says it does not share its hotspot (switched off there, no SIM for data) is not asked.
         let phones = devices.filter { $0.platform == .android && $0.status.hotspotShare != false }
         let profiles = HotspotProfiles.shared
         let candidates = phones.map { HotspotRules.Candidate(id: $0.id, reachable: reach(of: $0).reachable, complete: profiles.complete(for: $0.id)) }
-        let chosen = HotspotRules.choosePhone(candidates, except: tried)
+        let chosen = HotspotRules.choosePhone(candidates, except: tried, automatic: automatic)
         return phones.first { $0.id == chosen }
+    }
+
+    /// What this Mac knows of each phone when it chooses one for the hotspot, for `HotspotLog`: whether it shares, how it is in reach,
+    /// whether its hotspot is filled in here. Never the name of the hotspot or its password.
+    var hotspotPhonesForLog: String {
+        let profiles = HotspotProfiles.shared
+        let phones = devices.filter { $0.platform == .android }
+        guard !phones.isEmpty else { return "no phones" }
+        return phones.map { phone in
+            let shares = phone.status.hotspotShare.map { $0 ? "yes" : "no" } ?? "unknown"
+            let reach = phone.online ? "network" : phone.ble ? "Bluetooth link" : bleNearby.contains(phone.id) ? "Bluetooth beacon" : "none"
+            let filled = profiles.complete(for: phone.id) ? "yes" : "no"
+            return "\(phone.name) (shares: \(shares), in reach: \(reach), filled in: \(filled))"
+        }.joined(separator: "; ")
     }
     /// The colour of each cover, for the wash behind its player.
     var mediaTint: [UInt64: NSColor] = [:]
