@@ -2,14 +2,16 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Marukiee/Tandem/ci.yml?branch=main&label=CI)](https://github.com/Marukiee/Tandem/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Marukiee/Tandem?label=release)](https://github.com/Marukiee/Tandem/releases/latest)
-[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](#license)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![Rust](https://img.shields.io/badge/core-Rust-DEA584?logo=rust&logoColor=white)](#how-it-works)
 [![Android](https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white)](#)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-000000?logo=apple&logoColor=white)](#)
 [![Windows](https://img.shields.io/badge/Windows-experimental-0078D4?logo=windows&logoColor=white)](windows/README.md)
 [![Linux](https://img.shields.io/badge/Linux-experimental-FCC624?logo=linux&logoColor=black)](#linux)
 
-**The Apple ecosystem, on every device.** Tandem gives an Android phone, a Mac, a Linux device and a Windows device what
+English | [Nederlands](README.nl.md)
+
+**Continuity for every device.** Tandem gives an Android phone, a Mac, a Linux device and a Windows device what
 Apple's devices give each other: a second screen, one mouse for all of them, a shared clipboard, your phone on your
 desktop, a hotspot that turns on by itself. Straight between your own devices, encrypted, with no account and no cloud.
 
@@ -71,7 +73,7 @@ Everything is on the [releases page](https://github.com/Marukiee/Tandem/releases
 2. Open it. Android asks once whether the app you open it with (your browser or files app) may install
    apps from unknown sources. Turn that on, go back and tap Install.
 
-After that you never need GitHub again. Tandem looks for a new version at most once a day and installs it
+You can also add the repository to [Obtainium](https://obtainium.imranr.dev). After that you never need GitHub again. Tandem looks for a new version at most once a day and installs it
 over the old one, without uninstalling. For that the app asks once for permission to install apps.
 
 ### Mac (macOS 26 or newer, Apple silicon)
@@ -138,4 +140,4 @@ Making a release is described in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## License
 
-AGPL-3.0. See [LICENSE](LICENSE).
+AGPL-3.0, see [LICENSE](LICENSE). Made by Mark Maakt Media.
